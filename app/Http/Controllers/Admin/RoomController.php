@@ -52,4 +52,43 @@ class RoomController extends AdminController
         return redirect()->route('admin.rooms.index')
                          ->with('success', 'Thêm phòng chiếu thành công!');
     }
+
+    /**
+     * Show the form for editing a room
+     */
+    public function edit(Room $room)
+    {
+        $cinemas = Cinema::where('status', 'ACTIVE')->get();
+        return view('admin.rooms.edit', compact('room', 'cinemas'));
+    }
+
+    /**
+     * Update a room in storage
+     */
+    public function update(Request $request, Room $room)
+    {
+        $validated = $request->validate([
+            'cinema_id' => 'required|exists:cinemas,id',
+            'name' => 'required|string|max:255',
+            'format' => 'required|string|max:100',
+            'total_seats' => 'nullable|integer|min:0',
+            'status' => 'required|in:ACTIVE,INACTIVE,MAINTENANCE,CLOSED',
+        ]);
+
+        $room->update($validated);
+
+        return redirect()->route('admin.rooms.index')
+                         ->with('success', 'Cập nhật phòng chiếu thành công!');
+    }
+
+    /**
+     * Delete a room from storage
+     */
+    public function destroy(Room $room)
+    {
+        $room->delete();
+
+        return redirect()->route('admin.rooms.index')
+                         ->with('success', 'Xóa phòng chiếu thành công!');
+    }
 }

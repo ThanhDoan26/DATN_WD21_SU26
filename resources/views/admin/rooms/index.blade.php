@@ -43,6 +43,7 @@
                     <th>Tổng Ghế</th>
                     <th>Trạng thái</th>
                     <th>Tạo lúc</th>
+                    <th>Hành động</th>
                 </tr>
             </thead>
             <tbody>
@@ -71,10 +72,24 @@
                     <td>
                         <small class="text-muted">{{ $room->created_at->format('d/m/Y H:i') }}</small>
                     </td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('admin.rooms.edit', $room->id) }}" class="btn btn-sm btn-warning" title="Sửa">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form action="{{ route('admin.rooms.destroy', $room->id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Xác nhận xóa phòng này?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-sm btn-danger" title="Xóa">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="text-center py-4">
+                    <td colspan="8" class="text-center py-4">
                         <i class="fas fa-inbox" style="font-size: 2rem; color: #ccc;"></i>
                         <p class="text-muted mt-2">Chưa có phòng nào.</p>
                     </td>
