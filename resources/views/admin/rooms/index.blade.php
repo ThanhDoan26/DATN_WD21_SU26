@@ -15,10 +15,15 @@
 </div>
 
 <!-- Page Title -->
-<div class="page-title">
+<div class="page-title d-flex justify-content-between align-items-center">
     <div>
         <h2><i class="fas fa-door-open"></i> Danh sách Phòng Chiếu</h2>
-        <p class="text-muted" style="margin-top: 5px;">Xem danh sách tất cả các phòng chiếu trong hệ thống</p>
+        <p class="text-muted" style="margin-top: 5px; margin-bottom: 0;">Xem danh sách tất cả các phòng chiếu trong hệ thống</p>
+    </div>
+    <div>
+        <a href="{{ route('admin.rooms.create') }}" class="btn btn-primary">
+            <i class="fas fa-plus-circle"></i> Thêm Mới
+        </a>
     </div>
 </div>
 

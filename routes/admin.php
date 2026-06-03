@@ -21,8 +21,10 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     // Cinemas - Index only
     Route::get('cinemas', [CinemaController::class, 'index'])->name('admin.cinemas.index');
 
-    // Rooms - Index only
+    // Rooms
     Route::get('rooms', [RoomController::class, 'index'])->name('admin.rooms.index');
+    Route::get('rooms/create', [RoomController::class, 'create'])->name('admin.rooms.create');
+    Route::post('rooms', [RoomController::class, 'store'])->name('admin.rooms.store');
 
     // Seats - Index only
     Route::get('seats', [SeatController::class, 'index'])->name('admin.seats.index');
