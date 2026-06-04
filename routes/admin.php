@@ -18,8 +18,14 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');
 
-    // Cinemas - Index only
+    // Cinemas
     Route::get('cinemas', [CinemaController::class, 'index'])->name('admin.cinemas.index');
+    Route::get('cinemas/create', [CinemaController::class, 'create'])->name('admin.cinemas.create');
+    Route::post('cinemas', [CinemaController::class, 'store'])->name('admin.cinemas.store');
+    Route::get('cinemas/{cinema}', [CinemaController::class, 'show'])->name('admin.cinemas.show');
+    Route::get('cinemas/{cinema}/edit', [CinemaController::class, 'edit'])->name('admin.cinemas.edit');
+    Route::put('cinemas/{cinema}', [CinemaController::class, 'update'])->name('admin.cinemas.update');
+    Route::delete('cinemas/{cinema}', [CinemaController::class, 'destroy'])->name('admin.cinemas.destroy');
 
     // Rooms - Index only
     Route::get('rooms', [RoomController::class, 'index'])->name('admin.rooms.index');
