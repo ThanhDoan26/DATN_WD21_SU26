@@ -27,8 +27,13 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::put('cinemas/{cinema}', [CinemaController::class, 'update'])->name('admin.cinemas.update');
     Route::delete('cinemas/{cinema}', [CinemaController::class, 'destroy'])->name('admin.cinemas.destroy');
 
-    // Rooms - Index only
+    // Rooms
     Route::get('rooms', [RoomController::class, 'index'])->name('admin.rooms.index');
+    Route::get('rooms/create', [RoomController::class, 'create'])->name('admin.rooms.create');
+    Route::post('rooms', [RoomController::class, 'store'])->name('admin.rooms.store');
+    Route::get('rooms/{room}/edit', [RoomController::class, 'edit'])->name('admin.rooms.edit');
+    Route::put('rooms/{room}', [RoomController::class, 'update'])->name('admin.rooms.update');
+    Route::delete('rooms/{room}', [RoomController::class, 'destroy'])->name('admin.rooms.destroy');
 
     // Seats - Index only
     Route::get('seats', [SeatController::class, 'index'])->name('admin.seats.index');

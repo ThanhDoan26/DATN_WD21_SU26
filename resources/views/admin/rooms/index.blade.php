@@ -15,10 +15,15 @@
 </div>
 
 <!-- Page Title -->
-<div class="page-title">
+<div class="page-title d-flex justify-content-between align-items-center">
     <div>
         <h2><i class="fas fa-door-open"></i> Danh sách Phòng Chiếu</h2>
-        <p class="text-muted" style="margin-top: 5px;">Xem danh sách tất cả các phòng chiếu trong hệ thống</p>
+        <p class="text-muted" style="margin-top: 5px; margin-bottom: 0;">Xem danh sách tất cả các phòng chiếu trong hệ thống</p>
+    </div>
+    <div>
+        <a href="{{ route('admin.rooms.create') }}" class="btn btn-primary">
+            <i class="fas fa-plus-circle"></i> Thêm Mới
+        </a>
     </div>
 </div>
 
@@ -38,6 +43,7 @@
                     <th>Tổng Ghế</th>
                     <th>Trạng thái</th>
                     <th>Tạo lúc</th>
+                    <th>Hành động</th>
                 </tr>
             </thead>
             <tbody>
@@ -66,10 +72,24 @@
                     <td>
                         <small class="text-muted">{{ $room->created_at->format('d/m/Y H:i') }}</small>
                     </td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('admin.rooms.edit', $room->id) }}" class="btn btn-sm btn-warning" title="Sửa">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form action="{{ route('admin.rooms.destroy', $room->id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Xác nhận xóa phòng này?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-sm btn-danger" title="Xóa">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="text-center py-4">
+                    <td colspan="8" class="text-center py-4">
                         <i class="fas fa-inbox" style="font-size: 2rem; color: #ccc;"></i>
                         <p class="text-muted mt-2">Chưa có phòng nào.</p>
                     </td>
