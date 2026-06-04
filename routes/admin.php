@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CinemaController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\SeatController;
+use App\Http\Controllers\Admin\UserController;
 
 /**
  * Admin Routes
@@ -48,9 +49,12 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
         return view('admin.bookings.index');
     })->name('admin.bookings.index');
 
-    // Users (placeholder)
-    Route::get('users', function () {
-        return view('admin.users.index');
-    })->name('admin.users.index');
+    // Users
+    Route::get('users', [UserController::class, 'index'])->name('admin.users.index');
+    Route::get('users/create', [UserController::class, 'create'])->name('admin.users.create');
+    Route::post('users', [UserController::class, 'store'])->name('admin.users.store');
+    Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('admin.users.edit');
+    Route::put('users/{user}', [UserController::class, 'update'])->name('admin.users.update');
+    Route::delete('users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
 
 });
