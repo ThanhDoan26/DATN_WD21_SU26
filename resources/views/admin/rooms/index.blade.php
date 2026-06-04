@@ -74,6 +74,9 @@
                     </td>
                     <td>
                         <div class="d-flex gap-2">
+                            <a href="{{ route('admin.rooms.show', $room->id) }}" class="btn btn-sm btn-info text-white" title="Chi tiết">
+                                <i class="fas fa-eye"></i>
+                            </a>
                             <a href="{{ route('admin.rooms.edit', $room->id) }}" class="btn btn-sm btn-warning" title="Sửa">
                                 <i class="fas fa-edit"></i>
                             </a>
