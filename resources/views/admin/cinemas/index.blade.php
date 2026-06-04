@@ -20,6 +20,11 @@
         <h2><i class="fas fa-building"></i> Danh sách Rạp Chiếu Phim</h2>
         <p class="text-muted" style="margin-top: 5px;">Xem danh sách tất cả các cụm rạp trong hệ thống</p>
     </div>
+    <div class="btn-group">
+        <a href="{{ route('admin.cinemas.create') }}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus"></i> Thêm Rạp
+        </a>
+    </div>
 </div>
 
 <!-- Cinemas Table -->
@@ -38,6 +43,7 @@
                     <th>Điện thoại</th>
                     <th>Trạng thái</th>
                     <th>Tạo lúc</th>
+                    <th>Hành động</th>
                 </tr>
             </thead>
             <tbody>
@@ -62,10 +68,25 @@
                     <td>
                         <small class="text-muted">{{ $cinema->created_at->format('d/m/Y H:i') }}</small>
                     </td>
+                    <td>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <a href="{{ route('admin.cinemas.show', $cinema->id) }}" class="btn btn-info btn-sm" title="Xem chi tiết">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ route('admin.cinemas.edit', $cinema->id) }}" class="btn btn-warning btn-sm" title="Sửa">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button type="button" class="btn btn-danger btn-sm" 
+                                    onclick="deleteRecord('{{ route('admin.cinemas.destroy', $cinema->id) }}')" 
+                                    title="Xóa">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="text-center py-4">
+                    <td colspan="8" class="text-center py-4">
                         <i class="fas fa-inbox" style="font-size: 2rem; color: #ccc;"></i>
                         <p class="text-muted mt-2">Chưa có rạp nào.</p>
                     </td>
@@ -75,4 +96,30 @@
         </table>
     </div>
 </div>
+
+<!-- Pagination -->
+@if($cinemas && $cinemas->hasPages())
+<div class="d-flex justify-content-center mt-4">
+    {{ $cinemas->links() }}
+</div>
+@endif
+
+<script>
+function deleteRecord(deleteUrl) {
+    if (confirm('Bạn có chắc chắn muốn xóa?')) {
+        fetch(deleteUrl, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            }
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Lỗi xóa rạp!');
+            }
+        }).catch(error => console.error('Error:', error));
+    }
+}
+</script>
 @endsection
