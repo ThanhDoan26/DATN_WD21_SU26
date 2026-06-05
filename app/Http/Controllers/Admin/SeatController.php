@@ -44,4 +44,29 @@ class SeatController extends AdminController
 
         return response()->json($seats);
     }
+
+    /**
+     * Show form to edit seat
+     */
+    public function edit(Seat $seat)
+    {
+        $seat->load('room.cinema');
+        return view('admin.seats.edit', compact('seat'));
+    }
+
+    /**
+     * Update seat
+     */
+    public function update(\Illuminate\Http\Request $request, Seat $seat)
+    {
+        $validated = $request->validate([
+            'seat_type' => 'required|in:Regular,VIP,Sweetbox',
+            'status' => 'required|in:AVAILABLE,UNAVAILABLE',
+        ]);
+
+        $seat->update($validated);
+
+        return redirect()->route('admin.seats.index')
+            ->with('success', 'Cập nhật thông tin ghế thành công.');
+    }
 }
