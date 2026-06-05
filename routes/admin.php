@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CinemaController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\SeatController;
+use App\Http\Controllers\Admin\BookingController;
 
 /**
  * Admin Routes
@@ -43,10 +44,14 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
         return view('admin.showtimes.index');
     })->name('admin.showtimes.index');
 
-    // Bookings (placeholder)
-    Route::get('bookings', function () {
-        return view('admin.bookings.index');
-    })->name('admin.bookings.index');
+    // Bookings
+    Route::get('bookings', [BookingController::class, 'index'])->name('admin.bookings.index');
+    Route::get('bookings/create', [BookingController::class, 'create'])->name('admin.bookings.create');
+    Route::post('bookings', [BookingController::class, 'store'])->name('admin.bookings.store');
+    Route::get('bookings/{booking}', [BookingController::class, 'show'])->name('admin.bookings.show');
+    Route::get('bookings/{booking}/edit', [BookingController::class, 'edit'])->name('admin.bookings.edit');
+    Route::put('bookings/{booking}', [BookingController::class, 'update'])->name('admin.bookings.update');
+    Route::delete('bookings/{booking}', [BookingController::class, 'destroy'])->name('admin.bookings.destroy');
 
     // Users (placeholder)
     Route::get('users', function () {
