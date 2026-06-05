@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Cinema;
-
+use App\Http\Requests\Admin\StoreCinemaRequest;
+use App\Http\Requests\Admin\UpdateCinemaRequest;
+use Illuminate\Http\Request;
 /**
  * CinemaController
  * ========================================
- * Controller quản lý cinemas - Read-only (Index only)
+ * Controller quản lý cinemas
  */
 class CinemaController extends AdminController
 {
@@ -31,21 +33,12 @@ class CinemaController extends AdminController
     /**
      * Store a newly created cinema in storage
      */
-    public function store(Request $request)
+    public function store(StoreCinemaRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'address' => 'required|string|max:255',
-            'city' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'status' => 'required|in:ACTIVE,INACTIVE',
-        ]);
-
-        Cinema::create($validated);
+        Cinema::create($request->validated());
 
         return redirect()->route('admin.cinemas.index')
-                         ->with('success', 'Thêm rạp chiếu phim thành công!');
+            ->with('success', 'Rạp chiếu phim đã được tạo thành công.');
     }
 
     /**
@@ -68,21 +61,12 @@ class CinemaController extends AdminController
     /**
      * Update the specified cinema in storage
      */
-    public function update(Request $request, Cinema $cinema)
+    public function update(UpdateCinemaRequest $request, Cinema $cinema)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'address' => 'required|string|max:255',
-            'city' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'status' => 'required|in:ACTIVE,INACTIVE',
-        ]);
-
-        $cinema->update($validated);
+        $cinema->update($request->validated());
 
         return redirect()->route('admin.cinemas.index')
-                         ->with('success', 'Cập nhật rạp chiếu phim thành công!');
+            ->with('success', 'Rạp chiếu phim đã được cập nhật thành công.');
     }
 
     /**
@@ -90,14 +74,19 @@ class CinemaController extends AdminController
      */
     public function destroy(Cinema $cinema)
     {
-        if ($cinema->rooms()->count() > 0) {
+        try {
+            // Kiểm tra xem rạp có phòng chiếu phụ thuộc hay không trước khi xóa
+            if ($cinema->rooms()->exists()) {
+                return redirect()->route('admin.cinemas.index')
+                    ->with('error', 'Không thể xóa rạp này vì đang có phòng chiếu phụ thuộc.');
+            }
+            
+            $cinema->delete();
             return redirect()->route('admin.cinemas.index')
-                             ->with('error', 'Không thể xóa rạp này vì vẫn còn phòng chiếu liên kết!');
+                ->with('success', 'Rạp chiếu phim đã được xóa thành công.');
+        } catch (\Exception $e) {
+            return redirect()->route('admin.cinemas.index')
+                ->with('error', 'Có lỗi xảy ra khi xóa rạp chiếu phim.');
         }
-
-        $cinema->delete();
-
-        return redirect()->route('admin.cinemas.index')
-                         ->with('success', 'Xóa rạp chiếu phim thành công!');
     }
 }

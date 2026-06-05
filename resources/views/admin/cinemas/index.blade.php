@@ -15,12 +15,29 @@
 </div>
 
 <!-- Page Title -->
-<div class="page-title">
+<div class="page-title d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2><i class="fas fa-building"></i> Danh sách Rạp Chiếu Phim</h2>
-        <p class="text-muted" style="margin-top: 5px;">Xem danh sách tất cả các cụm rạp trong hệ thống</p>
+        <p class="text-muted" style="margin-top: 5px; margin-bottom: 0;">Xem danh sách tất cả các cụm rạp trong hệ thống</p>
+    </div>
+    <div>
+        <a href="{{ route('admin.cinemas.create') }}" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm Rạp Mới</a>
     </div>
 </div>
+
+@if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
+@if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
 
 <!-- Cinemas Table -->
 <div class="card">
@@ -38,6 +55,7 @@
                     <th>Điện thoại</th>
                     <th>Trạng thái</th>
                     <th>Tạo lúc</th>
+                    <th>Hành động</th>
                 </tr>
             </thead>
             <tbody>
@@ -62,10 +80,25 @@
                     <td>
                         <small class="text-muted">{{ $cinema->created_at->format('d/m/Y H:i') }}</small>
                     </td>
+                    <td>
+                        <a href="{{ route('admin.cinemas.show', $cinema->id) }}" class="btn btn-sm btn-info" title="Xem chi tiết">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="{{ route('admin.cinemas.edit', $cinema->id) }}" class="btn btn-sm btn-warning" title="Sửa rạp">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form action="{{ route('admin.cinemas.destroy', $cinema->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa rạp này không?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-sm btn-danger" title="Xóa rạp">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="text-center py-4">
+                    <td colspan="8" class="text-center py-4">
                         <i class="fas fa-inbox" style="font-size: 2rem; color: #ccc;"></i>
                         <p class="text-muted mt-2">Chưa có rạp nào.</p>
                     </td>
