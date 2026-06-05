@@ -36,9 +36,11 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::put('rooms/{room}', [RoomController::class, 'update'])->name('admin.rooms.update');
     Route::delete('rooms/{room}', [RoomController::class, 'destroy'])->name('admin.rooms.destroy');
 
-    // Seats - Index only
+    // Seats
     Route::get('seats', [SeatController::class, 'index'])->name('admin.seats.index');
     Route::get('seats/by-room/{roomId}', [SeatController::class, 'getBySeatsByRoom'])->name('admin.seats.by-room');
+    Route::get('seats/{seat}/edit', [SeatController::class, 'edit'])->name('admin.seats.edit');
+    Route::put('seats/{seat}', [SeatController::class, 'update'])->name('admin.seats.update');
 
     // Movies (placeholder)
     Route::get('movies', function () {
