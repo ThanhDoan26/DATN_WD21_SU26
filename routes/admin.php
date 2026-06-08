@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CinemaController;
+use App\Http\Controllers\Admin\MovieController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\SeatController;
 use App\Http\Controllers\Admin\UserController;
@@ -28,10 +29,20 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::put('cinemas/{cinema}', [CinemaController::class, 'update'])->name('admin.cinemas.update');
     Route::delete('cinemas/{cinema}', [CinemaController::class, 'destroy'])->name('admin.cinemas.destroy');
 
+    // Movies
+    Route::get('movies', [MovieController::class, 'index'])->name('admin.movies.index');
+    Route::get('movies/create', [MovieController::class, 'create'])->name('admin.movies.create');
+    Route::post('movies', [MovieController::class, 'store'])->name('admin.movies.store');
+    Route::get('movies/{movie}', [MovieController::class, 'show'])->name('admin.movies.show');
+    Route::get('movies/{movie}/edit', [MovieController::class, 'edit'])->name('admin.movies.edit');
+    Route::put('movies/{movie}', [MovieController::class, 'update'])->name('admin.movies.update');
+    Route::delete('movies/{movie}', [MovieController::class, 'destroy'])->name('admin.movies.destroy');
+
     // Rooms
     Route::get('rooms', [RoomController::class, 'index'])->name('admin.rooms.index');
     Route::get('rooms/create', [RoomController::class, 'create'])->name('admin.rooms.create');
     Route::post('rooms', [RoomController::class, 'store'])->name('admin.rooms.store');
+    Route::get('rooms/{room}', [RoomController::class, 'show'])->name('admin.rooms.show');
     Route::get('rooms/{room}/edit', [RoomController::class, 'edit'])->name('admin.rooms.edit');
     Route::put('rooms/{room}', [RoomController::class, 'update'])->name('admin.rooms.update');
     Route::delete('rooms/{room}', [RoomController::class, 'destroy'])->name('admin.rooms.destroy');
@@ -41,11 +52,6 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::get('seats/by-room/{roomId}', [SeatController::class, 'getBySeatsByRoom'])->name('admin.seats.by-room');
     Route::get('seats/{seat}/edit', [SeatController::class, 'edit'])->name('admin.seats.edit');
     Route::put('seats/{seat}', [SeatController::class, 'update'])->name('admin.seats.update');
-
-    // Movies (placeholder)
-    Route::get('movies', function () {
-        return view('admin.movies.index');
-    })->name('admin.movies.index');
 
     // Showtimes (placeholder)
     Route::get('showtimes', function () {

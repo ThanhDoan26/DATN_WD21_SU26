@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\Cinema;
 use App\Http\Requests\Admin\StoreCinemaRequest;
+use App\Http\Requests\Admin\UpdateCinemaRequest;
 
 /**
  * CinemaController

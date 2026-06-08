@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Đăng nhập vào CineTicket - Nền tảng đặt vé xem phim hàng đầu">
+    <meta name="theme-color" content="#2563EB">
+    <title>Đăng Nhập - CineTicket</title>
+    <link rel="stylesheet" href="auth-styles.css">
+</head>
+<body>
+    <div class="auth-container">
+        <!-- Hero Section - Left Side (Desktop Only) -->
+        <div class="auth-hero">
+            <div class="hero-content">
+                <div class="hero-icon">🎬</div>
+                <h2 class="hero-title">Trải Nghiệm Điện Ảnh<br>Đỉnh Cao</h2>
+                <p class="hero-description">
+                    Khám phá hàng nghìn bộ phim, tivi series và nội dung độc quyền. 
+                    Đặt vé xem phim dễ dàng, nhanh chóng, an toàn.
+                </p>
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <span class="stat-number">50K+</span>
+                        <span class="stat-label">Bộ phim</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">100K+</span>
+                        <span class="stat-label">Khán giả</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">4.9★</span>
+                        <span class="stat-label">Đánh giá</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Section - Right Side -->
+        <div class="auth-form-container">
+            <!-- Logo Mobile -->
+            <a href="#" class="logo logo-mobile" aria-label="CineTicket Home">
+                <span class="logo-icon">🎬</span>
+                <span class="logo-text">CineTicket</span>
+            </a>
+
+            <div class="form-wrapper">
+                <!-- Form Header -->
+                <div class="form-header">
+                    <h1 class="form-title">Đăng Nhập</h1>
+                    <p class="form-subtitle">Chào mừng quay trở lại. Vui lòng nhập thông tin đăng nhập.</p>
+                </div>
+
+                <!-- Login Form -->
+                <form id="loginForm" class="auth-form" novalidate>
+                    <!-- Email Input -->
+                    <div class="form-group">
+                        <label for="email" class="form-label">
+                            Địa chỉ Email
+                            <span class="required-indicator" aria-label="bắt buộc">*</span>
+                        </label>
+                        <div class="input-wrapper">
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                class="form-input"
+                                placeholder="your@email.com"
+                                aria-label="Địa chỉ email"
+                                aria-required="true"
+                                required
+                            >
+                            <span class="input-icon" aria-hidden="true">✉️</span>
+                        </div>
+                        <span class="form-error" id="emailError" role="alert" aria-live="polite"></span>
+                    </div>
+
+                    <!-- Password Input -->
+                    <div class="form-group">
+                        <div class="password-header">
+                            <label for="password" class="form-label">
+                                Mật Khẩu
+                                <span class="required-indicator" aria-label="bắt buộc">*</span>
+                            </label>
+                            <a href="#" class="forgot-password-link">Quên mật khẩu?</a>
+                        </div>
+                        <div class="input-wrapper">
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                class="form-input"
+                                placeholder="••••••••"
+                                aria-label="Mật khẩu"
+                                aria-required="true"
+                                required
+                            >
+                            <button
+                                type="button"
+                                class="toggle-password-btn"
+                                id="togglePassword"
+                                aria-label="Bật/tắt hiển thị mật khẩu"
+                                aria-pressed="false"
+                            >
+                                <span class="toggle-icon" aria-hidden="true">👁️</span>
+                            </button>
+                        </div>
+                        <span class="form-error" id="passwordError" role="alert" aria-live="polite"></span>
+                    </div>
+
+                    <!-- Remember Me Checkbox -->
+                    <div class="checkbox-group">
+                        <input
+                            type="checkbox"
+                            id="rememberMe"
+                            name="rememberMe"
+                            class="checkbox-input"
+                            aria-label="Ghi nhớ tôi"
+                        >
+                        <label for="rememberMe" class="checkbox-label">Ghi nhớ tôi</label>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
+                        <span class="btn-text">Đăng Nhập</span>
+                        <span class="btn-loader" aria-hidden="true"></span>
+                    </button>
+                </form>
+
+                <!-- Divider -->
+                <div class="divider">
+                    <span>Hoặc tiếp tục bằng</span>
+                </div>
+
+                <!-- Social Login -->
+                <div class="social-login">
+                    <button class="btn btn-social" aria-label="Đăng nhập bằng Google">
+                        <span class="social-icon">🔵</span>
+                        <span class="social-text">Google</span>
+                    </button>
+                    <button class="btn btn-social" aria-label="Đăng nhập bằng Facebook">
+                        <span class="social-icon">📘</span>
+                        <span class="social-text">Facebook</span>
+                    </button>
+                </div>
+
+                <!-- Register Link -->
+                <div class="auth-footer">
+                    <p class="auth-footer-text">
+                        Chưa có tài khoản?
+                        <a href="auth-register.html" class="auth-link">Tạo tài khoản mới</a>
+                    </p>
+                </div>
+
+                <!-- Legal Links -->
+                <div class="legal-links">
+                    <a href="#" class="legal-link">Điều khoản</a>
+                    <span class="separator">•</span>
+                    <a href="#" class="legal-link">Bảo mật</a>
+                    <span class="separator">•</span>
+                    <a href="#" class="legal-link">Hỗ trợ</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="auth-script.js"></script>
+    <script>
+        // Initialize login form
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeLoginForm();
+        });
+    </script>
+</body>
+</html>
