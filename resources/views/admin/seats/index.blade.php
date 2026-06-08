@@ -422,6 +422,12 @@
             </tbody>
         </table>
     </div>
+    <div class="card-footer d-flex justify-content-between align-items-center" id="paginationContainer" style="display: none !important;">
+        <div class="text-muted small" id="paginationInfo">Hiển thị 0 đến 0 của 0 mục</div>
+        <ul class="pagination pagination-sm m-0" id="paginationControls">
+            <!-- Pagination items will be injected here -->
+        </ul>
+    </div>
 </div>
 @endsection
 
@@ -430,6 +436,10 @@
     // Nhúng toàn bộ phòng chiếu để thực hiện lọc động
     const rooms = @json($rooms);
     let selectedSeatElement = null;
+    let currentSeats = [];
+    let currentRoomName = '';
+    let currentPage = 1;
+    const itemsPerPage = 10;
 
     function filterByCinema(cinemaId) {
         const roomSelect = document.getElementById('roomFilter');
@@ -495,7 +505,10 @@
             })
             .then(seats => {
                 renderSeatMap(seats);
-                renderSeatsTable(seats, roomName);
+                currentSeats = seats;
+                currentRoomName = roomName;
+                currentPage = 1;
+                renderSeatsTable();
             })
             .catch(error => {
                 console.error('Lỗi khi tải danh sách ghế:', error);
@@ -587,11 +600,12 @@
         updateStats(seats);
     }
 
-    function renderSeatsTable(seats, roomName) {
+    function renderSeatsTable() {
         const tableBody = document.getElementById('seatsTableBody');
+        const paginationContainer = document.getElementById('paginationContainer');
         tableBody.innerHTML = '';
         
-        if (seats.length === 0) {
+        if (currentSeats.length === 0) {
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="6" class="text-center py-4">
@@ -600,10 +614,27 @@
                     </td>
                 </tr>
             `;
+            if (paginationContainer) {
+                paginationContainer.style.setProperty('display', 'none', 'important');
+            }
             return;
         }
         
-        seats.forEach(seat => {
+        if (paginationContainer) {
+            paginationContainer.style.setProperty('display', 'flex', 'important');
+        }
+        
+        const totalItems = currentSeats.length;
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        
+        if (currentPage < 1) currentPage = 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+        
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+        const paginatedSeats = currentSeats.slice(startIndex, endIndex);
+        
+        paginatedSeats.forEach(seat => {
             const row = document.createElement('tr');
             
             // ID
@@ -613,7 +644,7 @@
             
             // Room Name
             const tdRoom = document.createElement('td');
-            tdRoom.textContent = roomName;
+            tdRoom.textContent = currentRoomName;
             row.appendChild(tdRoom);
             
             // Position
@@ -652,6 +683,70 @@
             
             tableBody.appendChild(row);
         });
+        
+        renderPaginationControls(totalItems, totalPages, startIndex, endIndex);
+    }
+
+    function renderPaginationControls(totalItems, totalPages, startIndex, endIndex) {
+        document.getElementById('paginationInfo').textContent = `Hiển thị ${startIndex + 1} đến ${endIndex} của ${totalItems} mục`;
+        
+        const controls = document.getElementById('paginationControls');
+        controls.innerHTML = '';
+        
+        // Previous button
+        const prevLi = document.createElement('li');
+        prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+        prevLi.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="${currentPage === 1 ? '' : `changePage(${currentPage - 1})`}">Trước</a>`;
+        controls.appendChild(prevLi);
+        
+        // Page numbers
+        let startPage = 1;
+        let endPage = totalPages;
+        
+        if (totalPages > 7) {
+            if (currentPage <= 4) {
+                startPage = 1;
+                endPage = 5;
+            } else if (currentPage >= totalPages - 3) {
+                startPage = totalPages - 4;
+                endPage = totalPages;
+            } else {
+                startPage = currentPage - 2;
+                endPage = currentPage + 2;
+            }
+        }
+        
+        if (startPage > 1) {
+            controls.innerHTML += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="changePage(1)">1</a></li>`;
+            if (startPage > 2) {
+                controls.innerHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${currentPage === i ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="changePage(${i})">${i}</a>`;
+            controls.appendChild(li);
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                controls.innerHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+            controls.innerHTML += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="changePage(${totalPages})">${totalPages}</a></li>`;
+        }
+        
+        // Next button
+        const nextLi = document.createElement('li');
+        nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+        nextLi.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="${currentPage === totalPages ? '' : `changePage(${currentPage + 1})`}">Sau</a>`;
+        controls.appendChild(nextLi);
+    }
+
+    function changePage(page) {
+        currentPage = page;
+        renderSeatsTable();
     }
 
     function selectSeat(element, seat) {
@@ -760,6 +855,10 @@
                 </td>
             </tr>
         `;
+        const paginationContainer = document.getElementById('paginationContainer');
+        if (paginationContainer) {
+            paginationContainer.style.setProperty('display', 'none', 'important');
+        }
         updateStats([]);
         closeSeatDetail();
     }

@@ -23,6 +23,11 @@
     <div>
         <a href="{{ route('admin.cinemas.create') }}" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm Rạp Mới</a>
     </div>
+    <div class="btn-group">
+        <a href="{{ route('admin.cinemas.create') }}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus"></i> Thêm Rạp
+        </a>
+    </div>
 </div>
 
 @if(session('success'))
@@ -108,4 +113,30 @@
         </table>
     </div>
 </div>
+
+<!-- Pagination -->
+@if($cinemas && $cinemas->hasPages())
+<div class="d-flex justify-content-center mt-4">
+    {{ $cinemas->links() }}
+</div>
+@endif
+
+<script>
+function deleteRecord(deleteUrl) {
+    if (confirm('Bạn có chắc chắn muốn xóa?')) {
+        fetch(deleteUrl, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            }
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Lỗi xóa rạp!');
+            }
+        }).catch(error => console.error('Error:', error));
+    }
+}
+</script>
 @endsection
