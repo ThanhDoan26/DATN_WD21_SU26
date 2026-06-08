@@ -131,6 +131,17 @@ if ($r == $totalRows) {
     }
 
     /**
+     * Display the specified room
+     */
+    public function show(Room $room)
+    {
+        // Load relationships to display more details
+        $room->load(['cinema', 'seats', 'showtimes']);
+        
+        return view('admin.rooms.show', compact('room'));
+    }
+
+    /**
      * Show the form for editing a room
      */
     public function edit(Room $room)

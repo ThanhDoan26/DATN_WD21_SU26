@@ -1,6 +1,6 @@
 @extends('admin.layouts.app')
 
-@section('title', 'View Room - Admin')
+@section('title', 'Room Details - Admin')
 @section('page_title', 'Room Details')
 
 @section('content')
@@ -10,114 +10,128 @@
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
             <li class="breadcrumb-item"><a href="{{ route('admin.rooms.index') }}">Rooms</a></li>
-            <li class="breadcrumb-item active">{{ $room->name }}</li>
+            <li class="breadcrumb-item active">Details</li>
         </ol>
     </nav>
 </div>
 
 <!-- Page Title -->
-<div class="page-title">
+<div class="page-title d-flex justify-content-between align-items-center">
     <div>
-        <h2><i class="fas fa-door-open"></i> {{ $room->name }}</h2>
+        <h2><i class="fas fa-eye"></i> Chi tiết Phòng Chiếu: #{{ $room->id }}</h2>
+        <p class="text-muted">Thông tin tổng quan về phòng chiếu</p>
     </div>
-    <div class="btn-group">
-        <a href="{{ route('admin.rooms.edit', $room->id) }}" class="btn btn-warning btn-sm">
-            <i class="fas fa-edit"></i> Edit
+    <div>
+        <a href="{{ route('admin.rooms.edit', $room->id) }}" class="btn btn-warning">
+            <i class="fas fa-edit"></i> Sửa Phòng
         </a>
-        <button type="button" class="btn btn-danger btn-sm" onclick="confirm('Bạn có chắc chắn?') && fetch('{{ route('admin.rooms.destroy', $room->id) }}', {method: 'DELETE', headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'}}).then(() => window.location = '{{ route('admin.rooms.index') }}')">
-            <i class="fas fa-trash"></i> Delete
-        </button>
+        <a href="{{ route('admin.rooms.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Quay lại
+        </a>
     </div>
 </div>
 
-<!-- Info Card -->
-<div class="card">
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <h6 class="text-muted mb-2">Room Name</h6>
-                <p><strong>{{ $room->name }}</strong></p>
+<div class="row">
+    <!-- Cột trái: Thông tin cơ bản -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white border-0 rounded-top">
+                <i class="fas fa-info-circle"></i> Thông Tin Cơ Bản
             </div>
-            <div class="col-md-6">
-                <h6 class="text-muted mb-2">Cinema</h6>
-                <p><a href="{{ route('admin.cinemas.show', $room->cinema->id) }}">{{ $room->cinema->name }}</a></p>
-            </div>
-        </div>
-
-        <hr>
-
-        <div class="row">
-            <div class="col-md-6">
-                <h6 class="text-muted mb-2">Format</h6>
-                <p><strong>{{ $room->format }}</strong></p>
-            </div>
-            <div class="col-md-6">
-                <h6 class="text-muted mb-2">Total Seats</h6>
-                <p><strong>{{ $room->total_seats ?? 0 }}</strong> ghế</p>
-            </div>
-        </div>
-
-        <hr>
-
-        <div class="row">
-            <div class="col-md-6">
-                <h6 class="text-muted mb-2">Status</h6>
-                <p>
-                    @if($room->status === 'ACTIVE')
-                        <span class="badge bg-success">Active</span>
-                    @elseif($room->status === 'MAINTENANCE')
-                        <span class="badge bg-warning">Maintenance</span>
-                    @elseif($room->status === 'CLOSED')
-                        <span class="badge bg-danger">Closed</span>
-                    @else
-                        <span class="badge bg-secondary">{{ $room->status }}</span>
-                    @endif
-                </p>
-            </div>
-            <div class="col-md-6">
-                <h6 class="text-muted mb-2">Created</h6>
-                <p>{{ $room->created_at->format('d/m/Y H:i:s') }}</p>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <th style="width: 35%;">Mã Phòng</th>
+                            <td>#{{ $room->id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Tên Phòng</th>
+                            <td><strong>{{ $room->name }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Thuộc Rạp</th>
+                            <td>
+                                @if($room->cinema)
+                                    <span class="badge bg-secondary">{{ $room->cinema->name }}</span>
+                                @else
+                                    <span class="text-muted">Không xác định</span>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Định Dạng (Format)</th>
+                            <td><span class="badge bg-info">{{ $room->format }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Tổng Ghế (Khai báo)</th>
+                            <td>{{ $room->total_seats ?? 0 }} ghế</td>
+                        </tr>
+                        <tr>
+                            <th>Trạng Thái</th>
+                            <td>
+                                @if($room->status === 'ACTIVE')
+                                    <span class="badge bg-success"><i class="fas fa-check-circle"></i> Active</span>
+                                @elseif($room->status === 'INACTIVE')
+                                    <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Inactive</span>
+                                @elseif($room->status === 'MAINTENANCE')
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-tools"></i> Maintenance</span>
+                                @else
+                                    <span class="badge bg-secondary"><i class="fas fa-lock"></i> Closed</span>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Ngày Tạo</th>
+                            <td>{{ $room->created_at ? $room->created_at->format('d/m/Y H:i') : 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Cập Nhật Lần Cuối</th>
+                            <td>{{ $room->updated_at ? $room->updated_at->format('d/m/Y H:i') : 'N/A' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Seats in this Room -->
-<div class="card mt-4">
-    <div class="card-header">
-        <i class="fas fa-chair"></i> Seats in this Room ({{ $room->seats->count() }})
-    </div>
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Position</th>
-                    <th>Seat Type</th>
-                    <th>Status</th>
-                    <th>Created</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($room->seats as $seat)
-                <tr>
-                    <td><strong>{{ $seat->row_name }}{{ $seat->seat_number }}</strong></td>
-                    <td><span class="badge bg-info">{{ $seat->seat_type }}</span></td>
-                    <td>
-                        @if($seat->status === 'AVAILABLE')
-                            <span class="badge bg-success">Available</span>
-                        @else
-                            <span class="badge bg-danger">Unavailable</span>
-                        @endif
-                    </td>
-                    <td>{{ $seat->created_at->format('d/m/Y') }}</td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="4" class="text-center text-muted">No seats found</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
+    <!-- Cột phải: Thống kê & Mở rộng -->
+    <div class="col-md-6 mb-4">
+        <div class="row">
+            <!-- Box 1 -->
+            <div class="col-6 mb-3">
+                <div class="stat-box border h-100">
+                    <div class="stat-number text-primary">{{ $room->seats->count() }}</div>
+                    <div class="stat-label">Ghế đã thiết lập</div>
+                    <a href="{{ route('admin.seats.by-room', $room->id) }}" class="btn btn-sm btn-outline-primary mt-2">Xem Sơ đồ ghế</a>
+                </div>
+            </div>
+            
+            <!-- Box 2 -->
+            <div class="col-6 mb-3">
+                <div class="stat-box border h-100">
+                    <div class="stat-number text-success">{{ $room->showtimes->count() }}</div>
+                    <div class="stat-label">Lịch Chiếu (Tất cả)</div>
+                    <!-- Assuming showtimes.index takes room_id in future implementation -->
+                    <a href="{{ route('admin.showtimes.index') }}?room_id={{ $room->id }}" class="btn btn-sm btn-outline-success mt-2">Lọc Lịch Chiếu</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header bg-light text-dark">
+                <i class="fas fa-cogs"></i> Hành Động Nhanh
+            </div>
+            <div class="card-body text-center">
+                <form action="{{ route('admin.rooms.destroy', $room->id) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa phòng chiếu này? Mọi ghế và lịch chiếu liên quan có thể bị ảnh hưởng.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Xóa Phòng Chiếu Này
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 @endsection
