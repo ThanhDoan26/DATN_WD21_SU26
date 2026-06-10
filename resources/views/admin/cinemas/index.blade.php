@@ -23,11 +23,6 @@
     <div>
         <a href="{{ route('admin.cinemas.create') }}" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm Rạp Mới</a>
     </div>
-    <div class="btn-group">
-        <a href="{{ route('admin.cinemas.create') }}" class="btn btn-primary btn-sm">
-            <i class="fas fa-plus"></i> Thêm Rạp
-        </a>
-    </div>
 </div>
 
 @if(session('success'))
