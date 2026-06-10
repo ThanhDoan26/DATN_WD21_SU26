@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Movie Model
@@ -12,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Movie extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'title',
         'description',
@@ -29,6 +33,11 @@ class Movie extends Model
     public function showtimes(): HasMany
     {
         return $this->hasMany(Showtime::class);
+    }
+
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class, 'category_movie');
     }
 
     /**

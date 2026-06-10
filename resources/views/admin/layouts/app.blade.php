@@ -394,6 +394,13 @@
                 </a>
             </li>
             <li>
+                <a href="{{ route('admin.categories.index') }}"
+                   class="@if(request()->routeIs('admin.categories.*')) active @endif">
+                    <i class="fas fa-tags"></i>
+                    <span>Categories</span>
+                </a>
+            </li>
+            <li>
                 <a href="{{ route('admin.movies.index') }}"
                    class="@if(request()->routeIs('admin.movies.*')) active @endif">
                     <i class="fas fa-video"></i>
