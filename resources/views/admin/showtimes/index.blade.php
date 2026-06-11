@@ -103,13 +103,6 @@
                             <a href="{{ route('admin.showtimes.edit', $showtime->id) }}" class="btn btn-sm btn-warning">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form action="{{ route('admin.showtimes.destroy', $showtime->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa suất chiếu này?');">
-                                @csrf
-                                @method('DELETE')
-                                <button class="btn btn-sm btn-danger" type="submit">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
                         </td>
                     </tr>
                 @empty

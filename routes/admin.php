@@ -3,8 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CinemaController;
+use App\Http\Controllers\Admin\MovieController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\SeatController;
+use App\Http\Controllers\Admin\ShowtimeController;
 use App\Http\Controllers\Admin\UserController;
 
 /**
@@ -42,13 +44,22 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::get('seats/{seat}/edit', [SeatController::class, 'edit'])->name('admin.seats.edit');
     Route::put('seats/{seat}', [SeatController::class, 'update'])->name('admin.seats.update');
 
+    // Movies
+    Route::get('movies', [MovieController::class, 'index'])->name('admin.movies.index');
+    Route::get('movies/create', [MovieController::class, 'create'])->name('admin.movies.create');
+    Route::post('movies', [MovieController::class, 'store'])->name('admin.movies.store');
+    Route::get('movies/{movie}', [MovieController::class, 'show'])->name('admin.movies.show');
+    Route::get('movies/{movie}/edit', [MovieController::class, 'edit'])->name('admin.movies.edit');
+    Route::put('movies/{movie}', [MovieController::class, 'update'])->name('admin.movies.update');
+    Route::delete('movies/{movie}', [MovieController::class, 'destroy'])->name('admin.movies.destroy');
+
     // Showtimes
-    Route::get('showtimes', [\App\Http\Controllers\Admin\ShowtimeController::class, 'index'])->name('admin.showtimes.index');
-    Route::get('showtimes/create', [\App\Http\Controllers\Admin\ShowtimeController::class, 'create'])->name('admin.showtimes.create');
-    Route::post('showtimes', [\App\Http\Controllers\Admin\ShowtimeController::class, 'store'])->name('admin.showtimes.store');
-    Route::get('showtimes/{showtime}/edit', [\App\Http\Controllers\Admin\ShowtimeController::class, 'edit'])->name('admin.showtimes.edit');
-    Route::put('showtimes/{showtime}', [\App\Http\Controllers\Admin\ShowtimeController::class, 'update'])->name('admin.showtimes.update');
-    Route::delete('showtimes/{showtime}', [\App\Http\Controllers\Admin\ShowtimeController::class, 'destroy'])->name('admin.showtimes.destroy');
+    Route::get('showtimes', [ShowtimeController::class, 'index'])->name('admin.showtimes.index');
+    Route::get('showtimes/create', [ShowtimeController::class, 'create'])->name('admin.showtimes.create');
+    Route::post('showtimes', [ShowtimeController::class, 'store'])->name('admin.showtimes.store');
+    Route::get('showtimes/{showtime}/edit', [ShowtimeController::class, 'edit'])->name('admin.showtimes.edit');
+    Route::put('showtimes/{showtime}', [ShowtimeController::class, 'update'])->name('admin.showtimes.update');
+    Route::delete('showtimes/{showtime}', [ShowtimeController::class, 'destroy'])->name('admin.showtimes.destroy');
 
     // Bookings (placeholder)
     Route::get('bookings', function () {

@@ -12,6 +12,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Movie extends Model
 {
+    public const STATUS_COMING_SOON = 'COMING_SOON';
+    public const STATUS_NOW_SHOWING = 'NOW_SHOWING';
+    public const STATUS_ENDED = 'ENDED';
+
+    public const STATUSES = [
+        self::STATUS_COMING_SOON,
+        self::STATUS_NOW_SHOWING,
+        self::STATUS_ENDED,
+    ];
+
     protected $fillable = [
         'title',
         'description',
