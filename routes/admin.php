@@ -42,17 +42,6 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::get('seats/{seat}/edit', [SeatController::class, 'edit'])->name('admin.seats.edit');
     Route::put('seats/{seat}', [SeatController::class, 'update'])->name('admin.seats.update');
 
-<<<<<<< Updated upstream
-    // Movies (placeholder)
-    Route::get('movies', function () {
-        return view('admin.movies.index');
-    })->name('admin.movies.index');
-
-    // Showtimes (placeholder)
-    Route::get('showtimes', function () {
-        return view('admin.showtimes.index');
-    })->name('admin.showtimes.index');
-=======
     // Showtimes
     Route::get('showtimes', [\App\Http\Controllers\Admin\ShowtimeController::class, 'index'])->name('admin.showtimes.index');
     Route::get('showtimes/create', [\App\Http\Controllers\Admin\ShowtimeController::class, 'create'])->name('admin.showtimes.create');
@@ -60,7 +49,6 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::get('showtimes/{showtime}/edit', [\App\Http\Controllers\Admin\ShowtimeController::class, 'edit'])->name('admin.showtimes.edit');
     Route::put('showtimes/{showtime}', [\App\Http\Controllers\Admin\ShowtimeController::class, 'update'])->name('admin.showtimes.update');
     Route::delete('showtimes/{showtime}', [\App\Http\Controllers\Admin\ShowtimeController::class, 'destroy'])->name('admin.showtimes.destroy');
->>>>>>> Stashed changes
 
     // Bookings (placeholder)
     Route::get('bookings', function () {
