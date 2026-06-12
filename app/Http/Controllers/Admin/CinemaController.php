@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Models\Cinema;
 use App\Http\Requests\Admin\StoreCinemaRequest;
 use App\Http\Requests\Admin\UpdateCinemaRequest;
-
+use Illuminate\Http\Request;
 /**
  * CinemaController
  * ========================================
@@ -61,7 +61,7 @@ class CinemaController extends AdminController
     /**
      * Update the specified cinema in storage
      */
-    public function update(\App\Http\Requests\Admin\UpdateCinemaRequest $request, Cinema $cinema)
+    public function update(UpdateCinemaRequest $request, Cinema $cinema)
     {
         $cinema->update($request->validated());
 
@@ -75,7 +75,7 @@ class CinemaController extends AdminController
     public function destroy(Cinema $cinema)
     {
         try {
-            // Check if cinema has rooms
+            // Kiểm tra xem rạp có phòng chiếu phụ thuộc hay không trước khi xóa
             if ($cinema->rooms()->exists()) {
                 return redirect()->route('admin.cinemas.index')
                     ->with('error', 'Không thể xóa rạp này vì đang có phòng chiếu phụ thuộc.');
