@@ -386,13 +386,7 @@
                     <span>Rooms</span>
                 </a>
             </li>
-            <li>
-                <a href="{{ route('admin.seats.index') }}"
-                   class="@if(request()->routeIs('admin.seats.*')) active @endif">
-                    <i class="fas fa-chair"></i>
-                    <span>Seats</span>
-                </a>
-            </li>
+
             <li>
                 <a href="{{ route('admin.categories.index') }}"
                    class="@if(request()->routeIs('admin.categories.*')) active @endif">

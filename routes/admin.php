@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CinemaController;
+use App\Http\Controllers\Admin\MovieController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\SeatController;
 use App\Http\Controllers\Admin\UserController;
@@ -27,6 +28,15 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::get('cinemas/{cinema}/edit', [CinemaController::class, 'edit'])->name('admin.cinemas.edit');
     Route::put('cinemas/{cinema}', [CinemaController::class, 'update'])->name('admin.cinemas.update');
     Route::delete('cinemas/{cinema}', [CinemaController::class, 'destroy'])->name('admin.cinemas.destroy');
+
+    // Movies
+    Route::get('movies', [MovieController::class, 'index'])->name('admin.movies.index');
+    Route::get('movies/create', [MovieController::class, 'create'])->name('admin.movies.create');
+    Route::post('movies', [MovieController::class, 'store'])->name('admin.movies.store');
+    Route::get('movies/{movie}', [MovieController::class, 'show'])->name('admin.movies.show');
+    Route::get('movies/{movie}/edit', [MovieController::class, 'edit'])->name('admin.movies.edit');
+    Route::put('movies/{movie}', [MovieController::class, 'update'])->name('admin.movies.update');
+    Route::delete('movies/{movie}', [MovieController::class, 'destroy'])->name('admin.movies.destroy');
 
     // Rooms
     Route::get('rooms', [RoomController::class, 'index'])->name('admin.rooms.index');

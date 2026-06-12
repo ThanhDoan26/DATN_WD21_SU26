@@ -118,5 +118,70 @@
             {{ $movies->withQueryString()->links() }}
         </div>
     </div>
+    @empty
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-film" style="font-size: 3rem; color: #ccc;"></i>
+                <h5 class="mt-3">Chưa có phim nào</h5>
+                <p class="text-muted">Hãy thêm phim đầu tiên của bạn</p>
+                <a href="{{ route('admin.movies.create') }}" class="btn btn-primary mt-3">
+                    <i class="fas fa-plus"></i> Thêm Phim
+                </a>
+            </div>
+        </div>
+    </div>
+    @endforelse
 </div>
+
+<!-- Pagination -->
+@if($movies && $movies->hasPages())
+<div class="d-flex justify-content-center mt-4">
+    {{ $movies->links() }}
+</div>
+@endif
+
+<style>
+.movie-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.movie-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+}
+
+.movie-poster {
+    position: relative;
+}
+
+.movie-poster img {
+    object-fit: cover;
+}
+
+.object-fit-cover {
+    object-fit: cover !important;
+}
+</style>
+
+<script>
+function deleteRecord(deleteUrl) {
+    if (confirm('Bạn có chắc chắn muốn xóa phim này?')) {
+        fetch(deleteUrl, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            }
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Lỗi xóa phim!');
+            }
+        }).catch(error => console.error('Error:', error));
+    }
+}
+</script>
 @endsection
+

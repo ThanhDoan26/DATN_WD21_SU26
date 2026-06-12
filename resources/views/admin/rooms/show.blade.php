@@ -3,6 +3,33 @@
 @section('title', 'Room Details - Admin')
 @section('page_title', 'Room Details')
 
+@section('extra_css')
+<style>
+    .seat-map-wrapper { background: #ffffff; padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; align-items: center; margin: 20px 0; border: 1px solid #e2e8f0; overflow-x: auto; }
+    .cinema-screen { width: 80%; max-width: 600px; margin: 0 auto 40px auto; padding: 12px 0; text-align: center; background: linear-gradient(180deg, rgba(30, 60, 114, 0.12) 0%, rgba(30, 60, 114, 0.02) 100%); border-top: 6px solid #1e3c72; border-radius: 8px 8px 120px 120px; font-size: 0.85rem; font-weight: 700; letter-spacing: 8px; color: #1e3c72; box-shadow: 0 8px 25px -8px rgba(30, 60, 114, 0.25); text-transform: uppercase; }
+    .seat-layout-container { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; min-width: 580px; padding: 10px 0; }
+    .seat-row { display: flex; align-items: center; justify-content: center; width: 100%; gap: 8px; }
+    .row-label { font-size: 0.85rem; font-weight: 700; color: #94a3b8; width: 30px; user-select: none; }
+    .row-label.left { text-align: right; margin-right: 15px; }
+    .row-label.right { text-align: left; margin-left: 15px; }
+    .seat-row-seats { display: flex; align-items: center; gap: 8px; }
+    .seat { width: 42px; height: 42px; border: 2px solid transparent; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); position: relative; color: #ffffff; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04); user-select: none; }
+    .seat:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); filter: brightness(1.1); }
+    .seat.regular { background-color: #0ea5e9; border-color: #0284c7; }
+    .seat.vip { background-color: #f59e0b; color: #1e293b; border-color: #d97706; }
+    .seat.sweetbox { background-color: #ec4899; width: 90px; border-color: #db2777; }
+    .seat.unavailable { background-color: #cbd5e1 !important; border-color: #94a3b8 !important; color: #64748b !important; cursor: not-allowed; box-shadow: none; opacity: 0.75; }
+    .seat.selected-active { outline: 3px solid #1e3c72; outline-offset: 2px; animation: pulseSelection 1.5s infinite; }
+    @keyframes pulseSelection { 0% { outline-color: rgba(30, 60, 114, 0.8); } 50% { outline-color: rgba(30, 60, 114, 0.1); } 100% { outline-color: rgba(30, 60, 114, 0.8); } }
+    .seat-legend { display: flex; gap: 20px; margin: 10px 0 30px 0; flex-wrap: wrap; justify-content: center; background-color: #f8fafc; padding: 15px 25px; border-radius: 12px; border: 1px solid #e2e8f0; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 500; color: #475569; }
+    .legend-box { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.65rem; font-weight: 700; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
+    .bg-sky { background-color: #0ea5e9 !important; color: #ffffff; }
+    .bg-pink { background-color: #ec4899 !important; color: #ffffff; }
+    .bg-gold { background-color: #f59e0b !important; color: #1e293b; }
+</style>
+@endsection
+
 @section('content')
 <!-- Breadcrumb -->
 <div class="breadcrumb-custom">
@@ -134,4 +161,141 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('extra_js')
+<script>
+    const seats = @json($room->seats);
+    let selectedSeatElement = null;
+
+    function renderSeatMap() {
+        const grid = document.getElementById('seatsGrid');
+        grid.innerHTML = '';
+        
+        if (seats.length === 0) {
+            grid.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox text-muted" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                    <p class="text-muted mt-3 fw-semibold">Phòng chiếu này chưa được thiết lập ghế vật lý.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const rows = {};
+        let rCount = 0, vCount = 0, sCount = 0, aCount = 0;
+
+        seats.forEach(seat => {
+            if (!rows[seat.row_name]) rows[seat.row_name] = [];
+            rows[seat.row_name].push(seat);
+
+            if (seat.seat_type === 'Regular') rCount++;
+            else if (seat.seat_type === 'VIP') vCount++;
+            else if (seat.seat_type === 'Sweetbox') sCount++;
+            
+            if (seat.status === 'AVAILABLE') aCount++;
+        });
+
+        document.getElementById('regularCount').textContent = rCount;
+        document.getElementById('vipCount').textContent = vCount;
+        document.getElementById('sweetboxCount').textContent = sCount;
+        document.getElementById('availableCount').textContent = aCount;
+        
+        const sortedRowNames = Object.keys(rows).sort();
+        const container = document.createElement('div');
+        container.className = 'seat-layout-container';
+        
+        sortedRowNames.forEach(rowName => {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'seat-row';
+            
+            const leftLabel = document.createElement('div');
+            leftLabel.className = 'row-label left';
+            leftLabel.textContent = rowName;
+            rowDiv.appendChild(leftLabel);
+            
+            const seatsWrapper = document.createElement('div');
+            seatsWrapper.className = 'seat-row-seats';
+            
+            const sortedSeats = rows[rowName].sort((a, b) => parseInt(a.seat_number) - parseInt(b.seat_number));
+            
+            sortedSeats.forEach(seat => {
+                const seatDiv = document.createElement('div');
+                seatDiv.className = `seat ${seat.seat_type.toLowerCase()} ${seat.status.toLowerCase()}`;
+                
+                if (seat.status === 'UNAVAILABLE') {
+                    seatDiv.innerHTML = `<i class="fas fa-wrench" title="Ghế Hỏng"></i>`;
+                } else {
+                    seatDiv.textContent = `${seat.row_name}${seat.seat_number}`;
+                }
+                
+                seatDiv.title = `Ghế ${seat.row_name}${seat.seat_number} - Loại: ${seat.seat_type} - Trạng thái: ${seat.status}`;
+                seatDiv.onclick = () => selectSeat(seatDiv, seat);
+                
+                seatsWrapper.appendChild(seatDiv);
+            });
+            
+            rowDiv.appendChild(seatsWrapper);
+            
+            const rightLabel = document.createElement('div');
+            rightLabel.className = 'row-label right';
+            rightLabel.textContent = rowName;
+            rowDiv.appendChild(rightLabel);
+            
+            container.appendChild(rowDiv);
+        });
+        
+        grid.appendChild(container);
+    }
+
+    function selectSeat(element, seat) {
+        if (selectedSeatElement) {
+            selectedSeatElement.classList.remove('selected-active');
+        }
+        
+        selectedSeatElement = element;
+        element.classList.add('selected-active');
+        
+        document.getElementById('seatDetailContainer').style.display = 'block';
+        document.getElementById('detailSeatId').textContent = `#${seat.id}`;
+        document.getElementById('detailSeatPos').textContent = `${seat.row_name}${seat.seat_number}`;
+        
+        const typeBadge = document.getElementById('detailSeatType');
+        typeBadge.textContent = seat.seat_type;
+        typeBadge.className = 'badge';
+        if (seat.seat_type === 'Regular') typeBadge.classList.add('bg-sky');
+        else if (seat.seat_type === 'VIP') typeBadge.classList.add('bg-gold');
+        else if (seat.seat_type === 'Sweetbox') typeBadge.classList.add('bg-pink');
+        else typeBadge.classList.add('bg-secondary');
+        
+        const statusBadge = document.getElementById('detailSeatStatus');
+        statusBadge.textContent = seat.status;
+        statusBadge.className = 'badge';
+        if (seat.status === 'AVAILABLE') {
+            statusBadge.classList.add('bg-success');
+        } else {
+            statusBadge.classList.add('bg-danger');
+        }
+        
+        const detailIcon = document.getElementById('detailSeatIcon');
+        detailIcon.textContent = `${seat.row_name}${seat.seat_number}`;
+        detailIcon.className = `seat ${seat.seat_type.toLowerCase()}`;
+        if (seat.status === 'UNAVAILABLE') {
+            detailIcon.classList.add('unavailable');
+            detailIcon.innerHTML = `<i class="fas fa-wrench"></i>`;
+        } else {
+            detailIcon.innerHTML = `${seat.row_name}${seat.seat_number}`;
+        }
+    }
+
+    function closeSeatDetail() {
+        document.getElementById('seatDetailContainer').style.display = 'none';
+        if (selectedSeatElement) {
+            selectedSeatElement.classList.remove('selected-active');
+            selectedSeatElement = null;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', renderSeatMap);
+</script>
 @endsection
