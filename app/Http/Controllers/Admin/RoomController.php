@@ -84,7 +84,7 @@ class RoomController extends AdminController
                 // - Hàng A tới C (rowIndex 0, 1, 2) là ghế thường (Regular)
                 // - Hàng cuối cùng là ghế đôi (Sweetbox)
                 // - Còn lại ở giữa là ghế VIP
-if ($r == $totalRows) {
+                if ($r == $totalRows) {
                     $seatType = 'Sweetbox';
                 } elseif ($r <= 3) {
                     $seatType = 'Regular';

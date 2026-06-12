@@ -1,114 +1,123 @@
 @extends('admin.layouts.app')
 
-@section('title', 'Movies - Admin')
-@section('page_title', 'Movies Management')
+@section('title', 'Danh sách Phim')
+@section('page_title', 'Danh sách Phim')
 
 @section('content')
-<!-- Breadcrumb -->
-<div class="breadcrumb-custom">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item active">Movies</li>
-        </ol>
-    </nav>
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Bộ lọc & Tìm kiếm</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ route('admin.movies.index') }}" method="GET" class="row g-3">
+            <div class="col-md-4">
+                <input type="text" name="search" class="form-control" placeholder="Tìm theo tên phim..." value="{{ request('search') }}">
+            </div>
+            <div class="col-md-3">
+                <select name="category_id" class="form-select">
+                    <option value="">-- Tất cả danh mục --</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
+                            {{ $category->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select">
+                    <option value="">-- Tất cả trạng thái --</option>
+                    <option value="COMING_SOON" {{ request('status') == 'COMING_SOON' ? 'selected' : '' }}>Sắp chiếu</option>
+                    <option value="NOW_SHOWING" {{ request('status') == 'NOW_SHOWING' ? 'selected' : '' }}>Đang chiếu</option>
+                    <option value="ENDED" {{ request('status') == 'ENDED' ? 'selected' : '' }}>Ngưng chiếu</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search"></i> Lọc</button>
+            </div>
+        </form>
+    </div>
 </div>
 
-<!-- Page Title -->
-<div class="page-title">
-    <div>
-        <h2><i class="fas fa-video"></i> Danh sách Phim</h2>
-        <p class="text-muted" style="margin-top: 5px;">Quản lý danh sách phim trong hệ thống</p>
-    </div>
-    <div class="btn-group">
-        <a href="{{ route('admin.movies.create') }}" class="btn btn-primary btn-sm">
-            <i class="fas fa-plus"></i> Thêm Phim
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Danh sách Phim</h5>
+        <a href="{{ route('admin.movies.create') }}" class="btn btn-sm btn-light text-primary fw-bold">
+            <i class="fas fa-plus"></i> Thêm phim mới
         </a>
     </div>
-</div>
-
-<!-- Movies Grid -->
-<div class="row">
-    @forelse($movies ?? [] as $movie)
-    <div class="col-md-6 col-lg-4 mb-4">
-        <div class="card movie-card h-100">
-            <!-- Poster -->
-            @if($movie->poster_url)
-            <div class="movie-poster" style="height: 250px; overflow: hidden; background: #f0f0f0;">
-                <img src="{{ $movie->poster_url }}" alt="{{ $movie->title }}" class="w-100 h-100 object-fit-cover">
-            </div>
-            @else
-            <div class="movie-poster" style="height: 250px; background: #e9ecef; display: flex; align-items: center; justify-content: center;">
-                <i class="fas fa-image" style="font-size: 3rem; color: #ccc;"></i>
-            </div>
-            @endif
-
-            <div class="card-body">
-                <!-- Title -->
-                <h5 class="card-title">{{ $movie->title }}</h5>
-
-                <!-- Info -->
-                <div class="mb-3" style="font-size: 0.85rem;">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Thời lượng:</span>
-                        <strong>{{ $movie->getDurationFormatted() }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Ngôn ngữ:</span>
-                        <strong>{{ $movie->language ?? 'N/A' }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Nước:</span>
-                        <strong>{{ $movie->country ?? 'N/A' }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between">
-                        <span class="text-muted">Đạo diễn:</span>
-                        <strong>{{ $movie->director ?? 'N/A' }}</strong>
-                    </div>
-                </div>
-
-                <!-- Status -->
-                <div class="mb-3">
-                    @if($movie->status === 'ACTIVE')
-                        <span class="badge bg-success"><i class="fas fa-check-circle"></i> Active</span>
-                    @elseif($movie->status === 'COMING_SOON')
-                        <span class="badge bg-info"><i class="fas fa-clock"></i> Coming Soon</span>
-                    @else
-                        <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Inactive</span>
-                    @endif
-                </div>
-
-                <!-- Actions -->
-                <div class="d-flex gap-2 mt-3">
-                    <a href="{{ route('admin.movies.show', $movie->id) }}" class="btn btn-info btn-sm flex-grow-1">
-                        <i class="fas fa-eye"></i> Xem
-                    </a>
-                    <a href="{{ route('admin.movies.edit', $movie->id) }}" class="btn btn-warning btn-sm flex-grow-1">
-                        <i class="fas fa-edit"></i> Sửa
-                    </a>
-                    <button type="button" class="btn btn-danger btn-sm" 
-                            onclick="deleteRecord('{{ route('admin.movies.destroy', $movie->id) }}')" 
-                            title="Xóa">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th width="80">Poster</th>
+                        <th>Tên phim</th>
+                        <th>Danh mục</th>
+                        <th>Thời lượng</th>
+                        <th>Trạng thái</th>
+                        <th class="text-center" width="150">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($movies as $movie)
+                    <tr>
+                        <td>
+                            @if($movie->poster_url)
+                                <img src="{{ asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="img-thumbnail" style="width: 60px; height: 80px; object-fit: cover;">
+                            @else
+                                <div class="bg-light d-flex align-items-center justify-content-center text-muted" style="width: 60px; height: 80px; font-size: 10px;">
+                                    No Image
+                                </div>
+                            @endif
+                        </td>
+                        <td>
+                            <strong>{{ $movie->title }}</strong><br>
+                            <small class="text-muted">{{ $movie->age_rating }} | {{ $movie->language }}</small>
+                        </td>
+                        <td>
+                            @foreach($movie->categories as $cat)
+                                <span class="badge bg-secondary">{{ $cat->name }}</span>
+                            @endforeach
+                        </td>
+                        <td>{{ $movie->getDurationFormatted() }}</td>
+                        <td>
+                            @if($movie->status == 'COMING_SOON')
+                                <span class="badge bg-warning text-dark">Sắp chiếu</span>
+                            @elseif($movie->status == 'NOW_SHOWING')
+                                <span class="badge bg-success">Đang chiếu</span>
+                            @else
+                                <span class="badge bg-danger">Ngưng chiếu</span>
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            <a href="{{ route('admin.movies.show', $movie) }}" class="btn btn-sm btn-info" title="Xem chi tiết">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ route('admin.movies.edit', $movie) }}" class="btn btn-sm btn-primary" title="Sửa">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form action="{{ route('admin.movies.destroy', $movie) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Bạn có chắc chắn muốn xóa bộ phim này?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-sm btn-danger" title="Xóa">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" class="text-center">Chưa có dữ liệu phim</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-3">
+            {{ $movies->withQueryString()->links() }}
         </div>
     </div>
-    @empty
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body text-center py-5">
-                <i class="fas fa-film" style="font-size: 3rem; color: #ccc;"></i>
-                <h5 class="mt-3">Chưa có phim nào</h5>
-                <p class="text-muted">Hãy thêm phim đầu tiên của bạn</p>
-                <a href="{{ route('admin.movies.create') }}" class="btn btn-primary mt-3">
-                    <i class="fas fa-plus"></i> Thêm Phim
-                </a>
-            </div>
-        </div>
-    </div>
-    @endforelse
 </div>
 
 <!-- Pagination -->
