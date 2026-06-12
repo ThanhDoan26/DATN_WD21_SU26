@@ -53,6 +53,9 @@ return new class extends Migration
             // - COMPLETED: Đã chiếu xong
             // - CANCELLED: Bị hủy
             $table->string('status')->default('SCHEDULED');
+
+            // Không cho phép tạo hai suất cùng phòng cùng thời điểm
+            $table->unique(['room_id', 'start_time']);
             
             $table->timestamps();
             

@@ -2,14 +2,20 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
 use App\Models\Movie;
 use App\Models\Category;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
-class MovieController extends Controller
+/**
+ * MovieController
+ * ========================================
+ * Controller quản lý phim
+ */
+class MovieController extends AdminController
 {
+    /**
+     * Display a listing of movies
+     */
     public function index(Request $request)
     {
         $query = Movie::with('categories');
@@ -28,41 +34,56 @@ class MovieController extends Controller
             $query->where('status', $request->status);
         }
 
-        $movies = $query->latest()->paginate(10);
+        $movies = $query->orderBy('created_at', 'desc')->paginate(12);
         $categories = Category::all();
 
-        return view('admin.movies.index', compact('movies', 'categories'));
+        return view('admin.movies.index', [
+            'movies' => $movies,
+            'categories' => $categories
+        ]);
     }
 
+    /**
+     * Show the form for creating a new movie
+     */
     public function create()
     {
         $categories = Category::all();
-        return view('admin.movies.create', compact('categories'));
+        return view('admin.movies.create', ['categories' => $categories]);
     }
 
+    /**
+     * Store a newly created movie
+     */
     public function store(Request $request)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
+        $validated = $request->validate([
+            'title' => 'required|string|max:255|unique:movies',
             'description' => 'nullable|string',
             'director' => 'nullable|string|max:255',
             'cast' => 'nullable|string',
-            'duration' => 'required|integer|min:1',
-            'age_rating' => 'nullable|string|max:10',
-            'status' => 'required|in:COMING_SOON,NOW_SHOWING,ENDED',
-            'language' => 'nullable|string|max:255',
-            'country' => 'nullable|string|max:255',
-            'trailer_url' => 'nullable|url|max:255',
             'poster' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'trailer_url' => 'nullable|url|max:255',
+            'duration' => 'required|integer|min:30|max:300', // in minutes
+            'age_rating' => 'nullable|string|max:50',
+            'language' => 'nullable|string|max:50',
+            'country' => 'nullable|string|max:100',
+            'status' => 'required|in:COMING_SOON,NOW_SHOWING,ENDED',
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
+        ], [
+            'title.required' => 'Tên phim là bắt buộc',
+            'title.unique' => 'Phim này đã tồn tại',
+            'duration.required' => 'Thời lượng phim là bắt buộc',
+            'duration.integer' => 'Thời lượng phải là số',
+            'duration.min' => 'Thời lượng tối thiểu 30 phút',
+            'status.required' => 'Trạng thái là bắt buộc',
         ]);
 
-        $data = $request->except(['poster', 'categories']);
+        $data = collect($validated)->except(['poster', 'categories'])->toArray();
 
         if ($request->hasFile('poster')) {
-            $path = $request->file('poster')->store('posters', 'public');
-            $data['poster_url'] = $path;
+            $data['poster_url'] = $request->file('poster')->store('posters', 'public');
         }
 
         $movie = Movie::create($data);
@@ -71,47 +92,60 @@ class MovieController extends Controller
             $movie->categories()->sync($request->categories);
         }
 
-        return redirect()->route('admin.movies.index')->with('success', 'Phim đã được thêm thành công.');
+        return redirect()->route('admin.movies.index')->with('success', 'Thêm phim thành công!');
     }
 
+    /**
+     * Display the specified movie details
+     */
     public function show(Movie $movie)
     {
-        $movie->load('categories');
-        return view('admin.movies.show', compact('movie'));
+        $movie->load(['showtimes']);
+        return view('admin.movies.show', ['movie' => $movie]);
     }
 
+    /**
+     * Show the form for editing the specified movie
+     */
     public function edit(Movie $movie)
     {
         $categories = Category::all();
-        return view('admin.movies.edit', compact('movie', 'categories'));
+        return view('admin.movies.edit', ['movie' => $movie, 'categories' => $categories]);
     }
 
+    /**
+     * Update the specified movie
+     */
     public function update(Request $request, Movie $movie)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
+        $validated = $request->validate([
+            'title' => 'required|string|max:255|unique:movies,title,' . $movie->id,
             'description' => 'nullable|string',
             'director' => 'nullable|string|max:255',
             'cast' => 'nullable|string',
-            'duration' => 'required|integer|min:1',
-            'age_rating' => 'nullable|string|max:10',
-            'status' => 'required|in:COMING_SOON,NOW_SHOWING,ENDED',
-            'language' => 'nullable|string|max:255',
-            'country' => 'nullable|string|max:255',
-            'trailer_url' => 'nullable|url|max:255',
             'poster' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'trailer_url' => 'nullable|url|max:255',
+            'duration' => 'required|integer|min:30|max:300',
+            'age_rating' => 'nullable|string|max:50',
+            'language' => 'nullable|string|max:50',
+            'country' => 'nullable|string|max:100',
+            'status' => 'required|in:COMING_SOON,NOW_SHOWING,ENDED',
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
+        ], [
+            'title.required' => 'Tên phim là bắt buộc',
+            'title.unique' => 'Phim này đã tồn tại',
+            'duration.required' => 'Thời lượng phim là bắt buộc',
+            'status.required' => 'Trạng thái là bắt buộc',
         ]);
 
-        $data = $request->except(['poster', 'categories']);
+        $data = collect($validated)->except(['poster', 'categories'])->toArray();
 
         if ($request->hasFile('poster')) {
-            if ($movie->poster_url && Storage::disk('public')->exists($movie->poster_url)) {
-                Storage::disk('public')->delete($movie->poster_url);
+            if ($movie->poster_url && \Illuminate\Support\Facades\Storage::disk('public')->exists($movie->poster_url)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($movie->poster_url);
             }
-            $path = $request->file('poster')->store('posters', 'public');
-            $data['poster_url'] = $path;
+            $data['poster_url'] = $request->file('poster')->store('posters', 'public');
         }
 
         $movie->update($data);
@@ -122,12 +156,15 @@ class MovieController extends Controller
             $movie->categories()->detach();
         }
 
-        return redirect()->route('admin.movies.index')->with('success', 'Thông tin phim đã được cập nhật.');
+        return redirect()->route('admin.movies.show', $movie->id)->with('success', 'Cập nhật phim thành công!');
     }
 
+    /**
+     * Delete the specified movie
+     */
     public function destroy(Movie $movie)
     {
         $movie->delete();
-        return redirect()->route('admin.movies.index')->with('success', 'Phim đã được xóa mềm.');
+        return redirect()->route('admin.movies.index')->with('success', 'Xóa phim thành công!');
     }
 }
