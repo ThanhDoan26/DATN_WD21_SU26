@@ -43,6 +43,88 @@
                     </div>
                 </form>
             </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Danh sách Phim</h5>
+        <a href="{{ route('admin.movies.create') }}" class="btn btn-sm btn-light text-primary fw-bold">
+            <i class="fas fa-plus"></i> Thêm phim mới
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th width="80">Poster</th>
+                        <th>Tên phim</th>
+                        <th>Danh mục</th>
+                        <th>Thời lượng</th>
+                        <th>Trạng thái</th>
+                        <th class="text-center" width="150">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($movies as $movie)
+                    <tr>
+                        <td>
+                            @if($movie->poster_url)
+                                <img src="{{ asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="img-thumbnail" style="width: 60px; height: 80px; object-fit: cover;">
+                            @else
+                                <div class="bg-light d-flex align-items-center justify-content-center text-muted" style="width: 60px; height: 80px; font-size: 10px;">
+                                    No Image
+                                </div>
+                            @endif
+                        </td>
+                        <td>
+                            <strong>{{ $movie->title }}</strong><br>
+                            <small class="text-muted">{{ $movie->age_rating }} | {{ $movie->language }}</small>
+                        </td>
+                        <td>
+                            @foreach($movie->categories as $cat)
+                                <span class="badge bg-secondary">{{ $cat->name }}</span>
+                            @endforeach
+                        </td>
+                        <td>{{ $movie->getDurationFormatted() }}</td>
+                        <td>
+                            @if($movie->status == 'COMING_SOON')
+                                <span class="badge bg-warning text-dark">Sắp chiếu</span>
+                            @elseif($movie->status == 'NOW_SHOWING')
+                                <span class="badge bg-success">Đang chiếu</span>
+                            @else
+                                <span class="badge bg-danger">Ngưng chiếu</span>
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            <a href="{{ route('admin.movies.show', $movie) }}" class="btn btn-sm btn-info" title="Xem chi tiết">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ route('admin.movies.edit', $movie) }}" class="btn btn-sm btn-primary" title="Sửa">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form action="{{ route('admin.movies.destroy', $movie) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Bạn có chắc chắn muốn xóa bộ phim này?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-sm btn-danger" title="Xóa">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" class="text-center">Chưa có dữ liệu phim</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-3">
+            {{ $movies->withQueryString()->links() }}
         </div>
     </div>
 </div>

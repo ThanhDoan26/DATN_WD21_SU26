@@ -2,16 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\Movie;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
-/**
- * MovieController
- * ========================================
- * Controller quản lý phim
- */
-class MovieController extends AdminController
+class MovieController extends Controller
 {
     /**
      * Display a listing of movies
@@ -43,22 +40,16 @@ class MovieController extends AdminController
         ]);
     }
 
-    /**
-     * Show the form for creating a new movie
-     */
     public function create()
     {
         $categories = Category::all();
         return view('admin.movies.create', ['categories' => $categories]);
     }
 
-    /**
-     * Store a newly created movie
-     */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255|unique:movies',
+        $request->validate([
+            'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'director' => 'nullable|string|max:255',
             'cast' => 'nullable|string',
@@ -95,31 +86,22 @@ class MovieController extends AdminController
         return redirect()->route('admin.movies.index')->with('success', 'Thêm phim thành công!');
     }
 
-    /**
-     * Display the specified movie details
-     */
     public function show(Movie $movie)
     {
-        $movie->load(['showtimes']);
-        return view('admin.movies.show', ['movie' => $movie]);
+        $movie->load('categories');
+        return view('admin.movies.show', compact('movie'));
     }
 
-    /**
-     * Show the form for editing the specified movie
-     */
     public function edit(Movie $movie)
     {
         $categories = Category::all();
         return view('admin.movies.edit', ['movie' => $movie, 'categories' => $categories]);
     }
 
-    /**
-     * Update the specified movie
-     */
     public function update(Request $request, Movie $movie)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255|unique:movies,title,' . $movie->id,
+        $request->validate([
+            'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'director' => 'nullable|string|max:255',
             'cast' => 'nullable|string',
@@ -159,12 +141,9 @@ class MovieController extends AdminController
         return redirect()->route('admin.movies.show', $movie->id)->with('success', 'Cập nhật phim thành công!');
     }
 
-    /**
-     * Delete the specified movie
-     */
     public function destroy(Movie $movie)
     {
         $movie->delete();
-        return redirect()->route('admin.movies.index')->with('success', 'Xóa phim thành công!');
+        return redirect()->route('admin.movies.index')->with('success', 'Phim đã được xóa mềm.');
     }
 }
