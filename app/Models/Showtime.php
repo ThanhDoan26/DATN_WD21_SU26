@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Showtime Model
@@ -13,6 +15,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Showtime extends Model
 {
+    use SoftDeletes;
+    public const STATUS_SCHEDULED = 'SCHEDULED';
+    public const STATUS_ONGOING = 'ONGOING';
+    public const STATUS_COMPLETED = 'COMPLETED';
+    public const STATUS_CANCELLED = 'CANCELLED';
+
+    public const STATUSES = [
+        self::STATUS_SCHEDULED,
+        self::STATUS_ONGOING,
+        self::STATUS_COMPLETED,
+        self::STATUS_CANCELLED,
+    ];
+
     protected $fillable = ['movie_id', 'room_id', 'start_time', 'end_time', 'status'];
 
     protected $casts = [
@@ -38,6 +53,60 @@ class Showtime extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    /**
+     * Query scope: Chỉ các suất chiếu sắp tới đang mở bán
+     */
+    public function scopeUpcoming(Builder $query): Builder
+    {
+        return $query->where('status', self::STATUS_SCHEDULED)
+            ->where('start_time', '>=', now());
+    }
+
+    /**
+     * Query scope: Chỉ các suất chiếu theo phòng
+     */
+    public function scopeForRoom(Builder $query, int $roomId): Builder
+    {
+        return $query->where('room_id', $roomId);
+    }
+
+    /**
+     * Query scope: Chỉ các suất chiếu theo phim
+     */
+    public function scopeForMovie(Builder $query, int $movieId): Builder
+    {
+        return $query->where('movie_id', $movieId);
+    }
+
+    public function isScheduled(): bool
+    {
+        return $this->status === self::STATUS_SCHEDULED;
+    }
+
+    public function isOngoing(): bool
+    {
+        return $this->status === self::STATUS_ONGOING;
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->status === self::STATUS_COMPLETED;
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === self::STATUS_CANCELLED;
+    }
+
+    public function durationMinutes(): ?int
+    {
+        if (! $this->start_time || ! $this->end_time) {
+            return null;
+        }
+
+        return $this->end_time->diffInMinutes($this->start_time);
     }
 
     /**

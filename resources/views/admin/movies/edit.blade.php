@@ -54,7 +54,7 @@
                         
                         <div class="mt-2 text-center">
                             @if($movie->poster_url)
-                                <img id="poster_preview" src="{{ asset('storage/' . $movie->poster_url) }}" alt="Preview" style="max-width: 100%; height: auto; border-radius: 8px;" class="img-thumbnail">
+                                <img id="poster_preview" src="{{ Str::startsWith($movie->poster_url, ['http://', 'https://']) ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" alt="Preview" style="max-width: 100%; height: auto; border-radius: 8px;" class="img-thumbnail">
                             @else
                                 <img id="poster_preview" src="#" alt="Preview" style="max-width: 100%; height: auto; display: none; border-radius: 8px;" class="img-thumbnail">
                             @endif

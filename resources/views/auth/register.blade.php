@@ -27,7 +27,10 @@
         }
     </style>
 </head>
-<body class="bg-slate-900 text-white antialiased selection:bg-[#e50914] selection:text-white min-h-screen flex items-center justify-center relative py-10">
+<body class="bg-slate-900 text-white antialiased selection:bg-[#e50914] selection:text-white min-h-screen flex flex-col relative">
+    
+    <!-- Navigation Bar -->
+    @include('layouts.guest-navigation')
     
     <!-- Background Image -->
     <div class="absolute inset-0 z-0 fixed">
@@ -35,7 +38,7 @@
         <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent"></div>
     </div>
 
-    <div class="relative z-10 w-full max-w-md px-6">
+    <div class="relative z-10 w-full max-w-sm px-6 mx-auto flex-grow flex flex-col justify-center pt-24 pb-12">
         <!-- Logo -->
         <div class="text-center mb-8">
             <a href="/" class="inline-flex items-center gap-2 group">
@@ -55,7 +58,7 @@
                 <!-- Name -->
                 <div>
                     <label for="name" class="block text-sm font-medium text-slate-300 mb-2">Họ và Tên <span class="text-[#e50914]">*</span></label>
-                    <input id="name" type="text" name="name" value="{{ old('name') }}" required autofocus autocomplete="name" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-[#e50914] focus:ring-1 focus:ring-[#e50914] transition-colors" placeholder="Nguyễn Văn A">
+                    <input id="name" type="text" name="name" value="{{ old('name') }}" required autofocus autocomplete="name" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#e50914] focus:ring-1 focus:ring-[#e50914] transition-colors" placeholder="Nguyễn Văn A">
                     @error('name')
                         <p class="mt-2 text-sm text-[#e50914]">{{ $message }}</p>
                     @enderror
@@ -64,7 +67,7 @@
                 <!-- Email -->
                 <div>
                     <label for="email" class="block text-sm font-medium text-slate-300 mb-2">Email <span class="text-[#e50914]">*</span></label>
-                    <input id="email" type="email" name="email" value="{{ old('email') }}" required autocomplete="email" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-[#e50914] focus:ring-1 focus:ring-[#e50914] transition-colors" placeholder="you@example.com">
+                    <input id="email" type="email" name="email" value="{{ old('email') }}" required autocomplete="email" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#e50914] focus:ring-1 focus:ring-[#e50914] transition-colors" placeholder="you@example.com">
                     @error('email')
                         <p class="mt-2 text-sm text-[#e50914]">{{ $message }}</p>
                     @enderror
@@ -73,7 +76,7 @@
                 <!-- Password -->
                 <div>
                     <label for="password" class="block text-sm font-medium text-slate-300 mb-2">Mật khẩu <span class="text-[#e50914]">*</span></label>
-                    <input id="password" type="password" name="password" required autocomplete="new-password" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-[#e50914] focus:ring-1 focus:ring-[#e50914] transition-colors" placeholder="Tối thiểu 8 ký tự">
+                    <input id="password" type="password" name="password" required autocomplete="new-password" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#e50914] focus:ring-1 focus:ring-[#e50914] transition-colors" placeholder="Tối thiểu 8 ký tự">
                     @error('password')
                         <p class="mt-2 text-sm text-[#e50914]">{{ $message }}</p>
                     @enderror
@@ -82,7 +85,7 @@
                 <!-- Confirm Password -->
                 <div>
                     <label for="password_confirmation" class="block text-sm font-medium text-slate-300 mb-2">Xác nhận mật khẩu <span class="text-[#e50914]">*</span></label>
-                    <input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-[#e50914] focus:ring-1 focus:ring-[#e50914] transition-colors" placeholder="Nhập lại mật khẩu">
+                    <input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#e50914] focus:ring-1 focus:ring-[#e50914] transition-colors" placeholder="Nhập lại mật khẩu">
                 </div>
 
                 <!-- Terms -->

@@ -12,7 +12,7 @@
             </div>
             <div class="card-body text-center">
                 @if($movie->poster_url)
-                    <img src="{{ asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="img-fluid rounded shadow" style="max-height: 400px; object-fit: cover;">
+                    <img src="{{ Str::startsWith($movie->poster_url, ['http://', 'https://']) ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="img-fluid rounded shadow" style="max-height: 400px; object-fit: cover;">
                 @else
                     <div class="bg-light p-5 text-muted rounded d-flex align-items-center justify-content-center" style="height: 300px;">
                         <span>Chưa có ảnh Poster</span>
@@ -112,5 +112,11 @@
             </div>
         </div>
     </div>
+    </div>
+</div>
+
+<div class="d-flex gap-2">
+    <a href="{{ route('admin.movies.edit', $movie->id) }}" class="btn btn-warning"><i class="fas fa-edit"></i> Chỉnh sửa</a>
+    <a href="{{ route('admin.movies.index') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Quay lại</a>
 </div>
 @endsection
