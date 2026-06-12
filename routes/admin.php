@@ -80,8 +80,12 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::get('showtimes/create', [ShowtimeController::class, 'create'])->name('admin.showtimes.create');
     Route::post('showtimes', [ShowtimeController::class, 'store'])->name('admin.showtimes.store');
     Route::get('showtimes/{showtime}/edit', [ShowtimeController::class, 'edit'])->name('admin.showtimes.edit');
+    Route::get('showtimes/trashed', [ShowtimeController::class, 'trashed'])->name('admin.showtimes.trashed');
+    Route::get('showtimes/{showtime}', [ShowtimeController::class, 'show'])->name('admin.showtimes.show');
     Route::put('showtimes/{showtime}', [ShowtimeController::class, 'update'])->name('admin.showtimes.update');
     Route::delete('showtimes/{showtime}', [ShowtimeController::class, 'destroy'])->name('admin.showtimes.destroy');
+    Route::post('showtimes/{showtime}/restore', [ShowtimeController::class, 'restore'])->name('admin.showtimes.restore');
+    Route::delete('showtimes/{showtime}/force-delete', [ShowtimeController::class, 'forceDelete'])->name('admin.showtimes.forceDelete');
 
     // Bookings
     Route::get('bookings', [BookingController::class, 'index'])->name('admin.bookings.index');

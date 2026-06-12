@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Showtime Model
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Showtime extends Model
 {
+    use SoftDeletes;
     public const STATUS_SCHEDULED = 'SCHEDULED';
     public const STATUS_ONGOING = 'ONGOING';
     public const STATUS_COMPLETED = 'COMPLETED';

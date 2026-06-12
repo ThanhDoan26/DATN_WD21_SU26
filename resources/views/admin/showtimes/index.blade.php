@@ -24,8 +24,13 @@
         <a href="{{ route('admin.showtimes.create') }}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Thêm Lịch Chiếu
         </a>
+        <a href="{{ route('admin.showtimes.trashed') }}" class="btn btn-secondary">
+            <i class="fas fa-trash-alt"></i> Thùng rác
+        </a>
     </div>
 </div>
+
+
 
 <div class="card mb-4">
     <div class="card-body">
@@ -100,9 +105,19 @@
                             @endif
                         </td>
                         <td>
-                            <a href="{{ route('admin.showtimes.edit', $showtime->id) }}" class="btn btn-sm btn-warning">
+                            <a href="{{ route('admin.showtimes.show', $showtime->id) }}" class="btn btn-sm btn-secondary" title="Xem chi tiết">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ route('admin.showtimes.edit', $showtime->id) }}" class="btn btn-sm btn-warning" title="Sửa">
                                 <i class="fas fa-edit"></i>
                             </a>
+                            <form action="{{ route('admin.showtimes.destroy', $showtime->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa mềm suất chiếu này?');">
+                                @csrf
+                                @method('DELETE')
+                                <button class="btn btn-sm btn-danger" type="submit" title="Xóa">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
                         </td>
                     </tr>
                 @empty
