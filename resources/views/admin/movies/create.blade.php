@@ -29,8 +29,8 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <div class="mb-3">
-                        <label class="form-label">Tiêu đề *</label>
-                        <input type="text" name="title" value="{{ old('title') }}" class="form-control @error('title') is-invalid @enderror" required>
+                        <label class="form-label">Tên phim *</label>
+                        <input type="text" name="title" value="{{ old('title') }}" class="form-control  @error('title') is-invalid @enderror" required>
                         @error('title')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 </div>
@@ -52,7 +52,7 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <div class="mb-3">
-                        <label class="form-label">Cast</label>
+                        <label class="form-label">Diễn Viên</label>
                         <textarea name="cast" rows="3" class="form-control @error('cast') is-invalid @enderror">{{ old('cast') }}</textarea>
                         @error('cast')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>

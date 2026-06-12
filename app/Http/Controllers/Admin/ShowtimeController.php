@@ -119,6 +119,56 @@ class ShowtimeController extends AdminController
             ->with('success', 'Cập nhật suất chiếu thành công!');
     }
 
+    public function show($id)
+    {
+        $showtime = Showtime::withTrashed()
+            ->with(['movie', 'room.cinema'])
+            ->findOrFail($id);
+
+        return view('admin.showtimes.show', compact('showtime'));
+    }
+
+    public function trashed(Request $request)
+    {
+        $showtimes = Showtime::onlyTrashed()
+            ->with(['movie', 'room.cinema'])
+            ->orderBy('deleted_at', 'desc')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.showtimes.trashed', compact('showtimes'));
+    }
+
+    public function restore($id)
+    {
+        $showtime = Showtime::withTrashed()->findOrFail($id);
+
+        if (! $showtime->trashed()) {
+            return redirect()->route('admin.showtimes.trashed')
+                ->with('error', 'Suất chiếu không nằm trong thùng rác.');
+        }
+
+        $showtime->restore();
+
+        return redirect()->route('admin.showtimes.trashed')
+            ->with('success', 'Khôi phục suất chiếu thành công!');
+    }
+
+    public function forceDelete($id)
+    {
+        $showtime = Showtime::withTrashed()->findOrFail($id);
+
+        if (! $showtime->trashed()) {
+            return redirect()->route('admin.showtimes.trashed')
+                ->with('error', 'Suất chiếu không nằm trong thùng rác.');
+        }
+
+        $showtime->forceDelete();
+
+        return redirect()->route('admin.showtimes.trashed')
+            ->with('success', 'Xóa vĩnh viễn suất chiếu thành công!');
+    }
+
     public function destroy(Showtime $showtime)
     {
         $showtime->delete();
