@@ -159,13 +159,56 @@ class RoomController extends AdminController
     }
 
     /**
-     * Delete a room from storage
+     * Delete a room from storage (soft delete)
      */
     public function destroy(Room $room)
     {
+        // Kiểm tra phòng có suất chiếu hợp lệ
+        if ($room->hasActiveShowtimes()) {
+            $activeCount = $room->getActiveShowtimesCount();
+            return redirect()->route('admin.rooms.index')
+                             ->with('error', "Không thể xóa phòng '$room->name' vì phòng đang có $activeCount suất chiếu hợp lệ. Vui lòng xóa hoặc hủy tất cả suất chiếu trước.");
+        }
+
         $room->delete();
 
         return redirect()->route('admin.rooms.index')
-                         ->with('success', 'Xóa phòng chiếu thành công!');
+                         ->with('success', 'Xóa phòng chiếu thành công! Bạn có thể khôi phục nó từ danh sách phòng đã xóa.');
     }
-}
+
+    /**
+     * Display a listing of trashed rooms
+     */
+    public function trashed()
+    {
+        $rooms = Room::onlyTrashed()
+            ->with('cinema')
+            ->orderBy('deleted_at', 'desc')
+            ->paginate(10);
+
+        return view('admin.rooms.trashed', ['rooms' => $rooms]);
+    }
+
+    /**
+     * Restore a trashed room
+     */
+    public function restore($id)
+    {
+        $room = Room::onlyTrashed()->findOrFail($id);
+        $room->restore();
+
+        return redirect()->route('admin.rooms.index')
+                         ->with('success', 'Khôi phục phòng chiếu thành công!');
+    }
+
+    /**
+     * Permanently delete a trashed room
+     */
+    public function forceDelete($id)
+    {
+        $room = Room::onlyTrashed()->findOrFail($id);
+        $room->forceDelete();
+
+        return redirect()->route('admin.rooms.trashed')
+                         ->with('success', 'Xóa vĩnh viễn phòng chiếu thành công!');
+    }}

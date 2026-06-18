@@ -44,10 +44,13 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::get('rooms', [RoomController::class, 'index'])->name('admin.rooms.index');
     Route::get('rooms/create', [RoomController::class, 'create'])->name('admin.rooms.create');
     Route::post('rooms', [RoomController::class, 'store'])->name('admin.rooms.store');
+    Route::get('rooms/trashed', [RoomController::class, 'trashed'])->name('admin.rooms.trashed');
     Route::get('rooms/{room}', [RoomController::class, 'show'])->name('admin.rooms.show');
     Route::get('rooms/{room}/edit', [RoomController::class, 'edit'])->name('admin.rooms.edit');
     Route::put('rooms/{room}', [RoomController::class, 'update'])->name('admin.rooms.update');
     Route::delete('rooms/{room}', [RoomController::class, 'destroy'])->name('admin.rooms.destroy');
+    Route::post('rooms/{id}/restore', [RoomController::class, 'restore'])->name('admin.rooms.restore');
+    Route::delete('rooms/{id}/force-delete', [RoomController::class, 'forceDelete'])->name('admin.rooms.forceDelete');
 
     // Seats
     Route::get('seats', [SeatController::class, 'index'])->name('admin.seats.index');
