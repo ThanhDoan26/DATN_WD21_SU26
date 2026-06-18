@@ -20,4 +20,8 @@ Route::middleware('auth')->group(function () {
 // Load admin routes
 require __DIR__.'/admin.php';
 
+// Frontend API/AJAX routes
+Route::post('/api/apply-coupon', [\App\Http\Controllers\CheckoutController::class, 'applyCoupon'])->name('api.apply-coupon');
+Route::get('/checkout', [\App\Http\Controllers\CheckoutController::class, 'index'])->name('checkout');
+
 require __DIR__.'/auth.php';

@@ -258,14 +258,14 @@
             });
         });
 
-        const form = document.querySelector('form');
-        if (form) {
+        const forms = document.querySelectorAll('.card-body form');
+        forms.forEach(form => {
             form.addEventListener('submit', function() {
                 priceInputs.forEach(input => {
                     input.value = input.value.replace(/\./g, '');
                 });
             });
-        }
+        });
 
         function loadSeatMap(roomId) {
             if (!roomId) {
