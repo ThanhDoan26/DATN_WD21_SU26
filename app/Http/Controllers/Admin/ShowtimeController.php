@@ -54,6 +54,8 @@ class ShowtimeController extends AdminController
             ],
             'end_time' => 'required|date|after:start_time',
             'status' => ['required', Rule::in(Showtime::STATUSES)],
+            'ticket_prices' => 'required|array',
+            'ticket_prices.*' => 'required|numeric|min:0',
         ], [
             'movie_id.required' => 'Phim là bắt buộc',
             'movie_id.exists' => 'Phim chọn không hợp lệ',
@@ -67,9 +69,25 @@ class ShowtimeController extends AdminController
             'end_time.after' => 'Thời gian kết thúc phải sau thời gian bắt đầu',
             'status.required' => 'Trạng thái suất chiếu là bắt buộc',
             'status.in' => 'Trạng thái suất chiếu không hợp lệ',
+            'ticket_prices.required' => 'Vui lòng nhập giá vé cho các loại ghế.',
+            'ticket_prices.array' => 'Dữ liệu giá vé không hợp lệ.',
+            'ticket_prices.*.required' => 'Giá vé không được để trống.',
+            'ticket_prices.*.numeric' => 'Giá vé phải là một số.',
+            'ticket_prices.*.min' => 'Giá vé không được nhỏ hơn 0.',
         ]);
 
-        Showtime::create($validated);
+        $showtime = Showtime::create($validated);
+
+        if (isset($validated['ticket_prices']) && is_array($validated['ticket_prices'])) {
+            foreach ($validated['ticket_prices'] as $seatType => $price) {
+                \App\Models\TicketPrice::create([
+                    'showtime_id' => $showtime->id,
+                    'seat_type' => $seatType,
+                    'price' => $price,
+                    'status' => 'ACTIVE'
+                ]);
+            }
+        }
 
         return redirect()->route('admin.showtimes.index')
             ->with('success', 'Thêm suất chiếu thành công!');
@@ -77,7 +95,7 @@ class ShowtimeController extends AdminController
 
     public function edit(Showtime $showtime)
     {
-        $showtime->load(['movie', 'room.cinema']);
+        $showtime->load(['movie', 'room.cinema', 'ticketPrices']);
         $movies = Movie::orderBy('title')->get();
         $rooms = Room::with('cinema')->orderBy('name')->get();
 
@@ -98,6 +116,8 @@ class ShowtimeController extends AdminController
             ],
             'end_time' => 'required|date|after:start_time',
             'status' => ['required', Rule::in(Showtime::STATUSES)],
+            'ticket_prices' => 'required|array',
+            'ticket_prices.*' => 'required|numeric|min:0',
         ], [
             'movie_id.required' => 'Phim là bắt buộc',
             'movie_id.exists' => 'Phim chọn không hợp lệ',
@@ -111,9 +131,29 @@ class ShowtimeController extends AdminController
             'end_time.after' => 'Thời gian kết thúc phải sau thời gian bắt đầu',
             'status.required' => 'Trạng thái suất chiếu là bắt buộc',
             'status.in' => 'Trạng thái suất chiếu không hợp lệ',
+            'ticket_prices.required' => 'Vui lòng nhập giá vé cho các loại ghế.',
+            'ticket_prices.array' => 'Dữ liệu giá vé không hợp lệ.',
+            'ticket_prices.*.required' => 'Giá vé không được để trống.',
+            'ticket_prices.*.numeric' => 'Giá vé phải là một số.',
+            'ticket_prices.*.min' => 'Giá vé không được nhỏ hơn 0.',
         ]);
 
         $showtime->update($validated);
+
+        if (isset($validated['ticket_prices']) && is_array($validated['ticket_prices'])) {
+            foreach ($validated['ticket_prices'] as $seatType => $price) {
+                \App\Models\TicketPrice::updateOrCreate(
+                    [
+                        'showtime_id' => $showtime->id,
+                        'seat_type' => $seatType
+                    ],
+                    [
+                        'price' => $price,
+                        'status' => 'ACTIVE'
+                    ]
+                );
+            }
+        }
 
         return redirect()->route('admin.showtimes.index')
             ->with('success', 'Cập nhật suất chiếu thành công!');
