@@ -66,7 +66,7 @@
             <div class="bg-slate-700/50 rounded-lg p-3 mb-4">
                 <p class="text-xs font-semibold text-slate-300 mb-2">
                     <i class="fas fa-calendar-check text-primary mr-1"></i>
-                    Suất chiếu ({ { $movie->showtimes->count() } } suất)
+                    Suất chiếu ({{ $movie->showtimes->count() }} suất)
                 </p>
                 <div class="flex flex-wrap gap-2">
                     @foreach($movie->showtimes->take(3) as $showtime)

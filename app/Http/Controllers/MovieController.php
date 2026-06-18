@@ -13,34 +13,33 @@ class MovieController extends Controller
      */
     public function welcome(): View
     {
-        $now = now();
-
-        // Movies currently in theaters (with any scheduled/ongoing showtimes)
-        $currentMovies = Movie::whereHas('showtimes', function ($query) {
-            $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING]);
-        })
-        ->with(['showtimes' => function ($query) {
-            $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
-                  ->orderBy('start_time');
-        }])
-        ->orderBy('created_at', 'desc')
-        ->get();
-
-        // Upcoming movies (with future showtimes)
-        $upcomingMovies = Movie::whereHas('showtimes', function ($query) use ($now) {
-            $query->where('status', Showtime::STATUS_SCHEDULED)
-                  ->where('start_time', '>', $now->copy()->addDays(7));
-        })
-        ->with(['showtimes' => function ($query) use ($now) {
-            $query->where('status', Showtime::STATUS_SCHEDULED)
-                  ->where('start_time', '>', $now->copy()->addDays(7))
-                  ->orderBy('start_time');
-        }])
-        ->get();
-
-        // Featured movies (all movies ordered by newest)
-        $featuredMovies = Movie::withCount('showtimes')
+        // Currently showing movies
+        $currentMovies = Movie::where('status', 'NOW_SHOWING')
+            ->with(['showtimes' => function ($query) {
+                $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+                      ->orderBy('start_time');
+            }, 'categories'])
             ->orderBy('created_at', 'desc')
+            ->limit(4)
+            ->get();
+
+        // Upcoming movies
+        $upcomingMovies = Movie::where('status', 'COMING_SOON')
+            ->with(['showtimes' => function ($query) {
+                $query->where('status', Showtime::STATUS_SCHEDULED)
+                      ->orderBy('start_time');
+            }, 'categories'])
+            ->orderBy('created_at', 'desc')
+            ->limit(4)
+            ->get();
+
+        // Featured movies (all non-ended movies)
+        $featuredMovies = Movie::whereIn('status', ['NOW_SHOWING', 'COMING_SOON'])
+            ->with(['showtimes' => function ($query) {
+                $query->orderBy('start_time');
+            }, 'categories'])
+            ->orderBy('created_at', 'desc')
+            ->limit(4)
             ->get();
 
         return view('welcome', [
@@ -55,19 +54,16 @@ class MovieController extends Controller
      */
     public function currentMovies(): View
     {
-        $now = now();
-
-        $movies = Movie::whereHas('showtimes', function ($query) {
-            $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING]);
-        })
-        ->with(['showtimes' => function ($query) {
-            $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
-                  ->with(['room' => function ($q) {
-                      $q->with('cinema');
-                  }])
-                  ->orderBy('start_time');
-        }, 'categories'])
-        ->paginate(12);
+        $movies = Movie::where('status', 'NOW_SHOWING')
+            ->with(['showtimes' => function ($query) {
+                $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+                      ->with(['room' => function ($q) {
+                          $q->with('cinema');
+                      }])
+                      ->orderBy('start_time');
+            }, 'categories'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(12);
 
         return view('movies.current', ['movies' => $movies]);
     }
@@ -77,21 +73,16 @@ class MovieController extends Controller
      */
     public function upcomingMovies(): View
     {
-        $now = now();
-
-        $movies = Movie::whereHas('showtimes', function ($query) use ($now) {
-            $query->where('status', Showtime::STATUS_SCHEDULED)
-                  ->where('start_time', '>', $now->copy()->addDays(7));
-        })
-        ->with(['showtimes' => function ($query) use ($now) {
-            $query->where('status', Showtime::STATUS_SCHEDULED)
-                  ->where('start_time', '>', $now->copy()->addDays(7))
-                  ->with(['room' => function ($q) {
-                      $q->with('cinema');
-                  }])
-                  ->orderBy('start_time');
-        }, 'categories'])
-        ->paginate(12);
+        $movies = Movie::where('status', 'COMING_SOON')
+            ->with(['showtimes' => function ($query) {
+                $query->where('status', Showtime::STATUS_SCHEDULED)
+                      ->with(['room' => function ($q) {
+                          $q->with('cinema');
+                      }])
+                      ->orderBy('start_time');
+            }, 'categories'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(12);
 
         return view('movies.upcoming', ['movies' => $movies]);
     }
