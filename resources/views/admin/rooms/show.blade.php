@@ -130,7 +130,7 @@
                 <div class="stat-box border h-100">
                     <div class="stat-number text-primary">{{ $room->seats->count() }}</div>
                     <div class="stat-label">Ghế đã thiết lập</div>
-                    <a href="{{ route('admin.seats.by-room', $room->id) }}" class="btn btn-sm btn-outline-primary mt-2">Xem Sơ đồ ghế</a>
+                    <a href="#seatMapSection" class="btn btn-sm btn-outline-primary mt-2">Xem Sơ đồ ghế</a>
                 </div>
             </div>
             
@@ -157,6 +157,115 @@
                         <i class="fas fa-trash"></i> Xóa Phòng Chiếu Này
                     </button>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== SƠ ĐỒ GHẾ ========== -->
+<div class="card mt-4" id="seatMapSection">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-th"></i> Sơ Đồ Ghế Phòng Chiếu</span>
+        <span class="badge bg-light text-dark">
+            Tổng: <strong id="totalSeatCount">{{ $room->seats->count() }}</strong> ghế
+        </span>
+    </div>
+    <div class="card-body">
+        <!-- Thống kê ghế theo loại -->
+        <div class="row mb-4">
+            <div class="col-md-3 col-6 mb-2">
+                <div class="stat-box border-start border-4 border-info py-3">
+                    <div class="stat-number text-info" id="regularCount">0</div>
+                    <div class="stat-label"><i class="fas fa-chair"></i> Regular</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-2">
+                <div class="stat-box border-start border-4 border-warning py-3">
+                    <div class="stat-number text-warning" id="vipCount">0</div>
+                    <div class="stat-label"><i class="fas fa-crown"></i> VIP</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-2">
+                <div class="stat-box border-start border-4 border-danger py-3">
+                    <div class="stat-number text-danger" id="sweetboxCount">0</div>
+                    <div class="stat-label"><i class="fas fa-heart"></i> Sweetbox</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-2">
+                <div class="stat-box border-start border-4 border-success py-3">
+                    <div class="stat-number text-success" id="availableCount">0</div>
+                    <div class="stat-label"><i class="fas fa-check-circle"></i> Available</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="seat-legend">
+            <div class="legend-item">
+                <div class="legend-box bg-sky">R</div>
+                <span>Regular</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box bg-gold">V</div>
+                <span>VIP</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box bg-pink">S</div>
+                <span>Sweetbox</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background-color: #cbd5e1; color: #64748b;">
+                    <i class="fas fa-wrench" style="font-size: 0.55rem;"></i>
+                </div>
+                <span>Unavailable</span>
+            </div>
+        </div>
+
+        <!-- Seat Map -->
+        <div class="seat-map-wrapper">
+            <!-- Màn hình -->
+            <div class="cinema-screen">
+                <i class="fas fa-tv"></i> MÀN HÌNH
+            </div>
+
+            <!-- Grid ghế -->
+            <div id="seatsGrid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== CHI TIẾT GHẾ KHI CLICK ========== -->
+<div id="seatDetailContainer" class="card mt-3" style="display: none;">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-info-circle"></i> Chi Tiết Ghế</span>
+        <button type="button" class="btn btn-sm btn-light" onclick="closeSeatDetail()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <div id="detailSeatIcon" class="seat" style="width: 56px; height: 56px; font-size: 1rem; pointer-events: none;"></div>
+            </div>
+            <div class="col">
+                <table class="table table-sm table-bordered mb-0">
+                    <tr>
+                        <th style="width: 120px;">ID</th>
+                        <td id="detailSeatId">-</td>
+                    </tr>
+                    <tr>
+                        <th>Vị Trí</th>
+                        <td id="detailSeatPos">-</td>
+                    </tr>
+                    <tr>
+                        <th>Loại Ghế</th>
+                        <td><span id="detailSeatType" class="badge bg-secondary">-</span></td>
+                    </tr>
+                    <tr>
+                        <th>Trạng Thái</th>
+                        <td><span id="detailSeatStatus" class="badge bg-secondary">-</span></td>
+                    </tr>
+                </table>
             </div>
         </div>
     </div>
