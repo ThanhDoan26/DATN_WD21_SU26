@@ -429,6 +429,15 @@
                     <span>Người dùng</span>
                 </a>
             </li>
+            <li>
+                <a href="{{ route('admin.combos.index') }}"
+                   class="@if(request()->routeIs('admin.combos.*')) active @endif">
+                    <i class="fas fa-popcorn"></i> <!-- Fallback to popcorn icon or fast-food if doesn't exist. font-awesome free: hamburger/utensils -->
+                    <i class="fas fa-hamburger" style="display:none;"></i>
+                    <i class="fas fa-utensils"></i>
+                    <span>Combo Bắp Nước</span>
+                </a>
+            </li>
         </ul>
 
         <!-- Sidebar User -->

@@ -8,7 +8,8 @@ class CheckoutController extends Controller
 {
     public function index()
     {
-        return view('checkout');
+        $combos = \App\Models\Combo::where('status', 'ACTIVE')->get();
+        return view('checkout', compact('combos'));
     }
 
     /**

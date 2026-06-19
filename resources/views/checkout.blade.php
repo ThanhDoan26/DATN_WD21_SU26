@@ -54,6 +54,41 @@
 
                 </div>
 
+                <!-- NEW: Combo Bắp Nước -->
+                <div class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl">
+                    <h2 class="text-xl font-semibold mb-4 text-white">Combo Bắp Nước</h2>
+                    <div class="space-y-4">
+                        @foreach($combos as $combo)
+                        <div class="flex items-center gap-4 bg-slate-900 p-4 rounded-xl border border-slate-700">
+                            <div class="w-16 h-16 bg-slate-700 rounded-lg overflow-hidden flex-shrink-0">
+                                @if($combo->image)
+                                    <img src="{{ asset('storage/' . $combo->image) }}" alt="{{ $combo->name }}" class="w-full h-full object-cover">
+                                @else
+                                    <div class="w-full h-full flex items-center justify-center text-slate-500"><i class="fas fa-hamburger"></i></div>
+                                @endif
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-white font-semibold">{{ $combo->name }}</h3>
+                                <p class="text-slate-400 text-xs mt-1">{{ $combo->description }}</p>
+                                <p class="text-primary font-bold mt-1" data-price="{{ $combo->price }}">{{ number_format($combo->price, 0, ',', '.') }} đ</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button type="button" class="btn-decrease-combo w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 flex items-center justify-center border border-slate-600 transition-colors" data-id="{{ $combo->id }}">
+                                    <i class="fas fa-minus text-xs"></i>
+                                </button>
+                                <span class="combo-quantity font-semibold text-white w-4 text-center" data-id="{{ $combo->id }}" data-name="{{ $combo->name }}" data-price="{{ $combo->price }}">0</span>
+                                <button type="button" class="btn-increase-combo w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 flex items-center justify-center border border-slate-600 transition-colors" data-id="{{ $combo->id }}">
+                                    <i class="fas fa-plus text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                        @endforeach
+                        @if($combos->isEmpty())
+                            <p class="text-slate-400 text-sm">Hiện không có combo nào.</p>
+                        @endif
+                    </div>
+                </div>
+
                 <div class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-white">Thông Tin Thanh Toán</h2>
                     <p class="text-slate-400">Chọn phương thức thanh toán...</p>
@@ -84,9 +119,11 @@
                             <span class="font-medium">200.000 đ</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-slate-400">1x Bắp nước</span>
-                            <span class="font-medium">65.000 đ</span>
+                            <span class="text-slate-400">2x Ghế VIP</span>
+                            <span class="font-medium">200.000 đ</span>
                         </div>
+                        <!-- Danh sách Combos đã chọn -->
+                        <div id="selected_combos_container" class="space-y-3"></div>
                         <div class="flex justify-between border-t border-slate-700 pt-3">
                             <span class="text-slate-300 font-medium">Tạm tính</span>
                             <span class="font-bold text-white" id="subtotal_display">265.000 đ</span>
@@ -125,20 +162,86 @@
     <!-- Script xử lý Coupon -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Biến giả lập
-            const orderTotal = 265000; // 265.000 VNĐ
+            // Biến nội bộ
+            let ticketTotal = 200000; // Giá trị giả lập tiền vé (2x Ghế VIP = 200k)
+            let combosTotal = 0;
+            let currentDiscount = 0;
+            let finalTotal = ticketTotal; 
+            
+            // Map lưu combo đang chọn: id => {name, price, qty}
+            const selectedCombos = {};
             
             const btnApply = document.getElementById('btn_apply_coupon');
             const inputCode = document.getElementById('coupon_code');
             const msgBox = document.getElementById('coupon_message');
             const discountRow = document.getElementById('discount_row');
             const discountDisplay = document.getElementById('discount_display');
+            const subtotalDisplay = document.getElementById('subtotal_display');
             const finalTotalDisplay = document.getElementById('final_total_display');
+            const combosContainer = document.getElementById('selected_combos_container');
 
             // Format tiền tệ
             const formatMoney = (amount) => {
                 return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
             };
+
+            const updateOrderSummary = () => {
+                combosTotal = 0;
+                combosContainer.innerHTML = '';
+                
+                Object.values(selectedCombos).forEach(combo => {
+                    if (combo.qty > 0) {
+                        combosTotal += combo.price * combo.qty;
+                        const div = document.createElement('div');
+                        div.className = 'flex justify-between';
+                        div.innerHTML = `<span class="text-slate-400">${combo.qty}x ${combo.name}</span><span class="font-medium">${formatMoney(combo.price * combo.qty)}</span>`;
+                        combosContainer.appendChild(div);
+                    }
+                });
+
+                let subtotal = ticketTotal + combosTotal;
+                subtotalDisplay.textContent = formatMoney(subtotal);
+                
+                finalTotal = subtotal - currentDiscount;
+                if(finalTotal < 0) finalTotal = 0;
+                
+                finalTotalDisplay.textContent = formatMoney(finalTotal);
+            };
+
+            // Event listeners cho các nút tăng giảm combo
+            document.querySelectorAll('.btn-decrease-combo').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    const span = document.querySelector(`.combo-quantity[data-id="${id}"]`);
+                    let qty = parseInt(span.textContent);
+                    if (qty > 0) {
+                        qty--;
+                        span.textContent = qty;
+                        selectedCombos[id].qty = qty;
+                        updateOrderSummary();
+                    }
+                });
+            });
+
+            document.querySelectorAll('.btn-increase-combo').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    const span = document.querySelector(`.combo-quantity[data-id="${id}"]`);
+                    let qty = parseInt(span.textContent);
+                    qty++;
+                    span.textContent = qty;
+                    
+                    if (!selectedCombos[id]) {
+                        selectedCombos[id] = {
+                            name: span.getAttribute('data-name'),
+                            price: parseFloat(span.getAttribute('data-price')),
+                            qty: 0
+                        };
+                    }
+                    selectedCombos[id].qty = qty;
+                    updateOrderSummary();
+                });
+            });
 
             btnApply.addEventListener('click', function() {
                 const code = inputCode.value.trim().toUpperCase();
@@ -154,6 +257,8 @@
                 btnApply.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 btnApply.disabled = true;
 
+                let orderTotalForCoupon = ticketTotal + combosTotal;
+
                 // Call API
                 fetch('/api/apply-coupon', {
                     method: 'POST',
@@ -164,7 +269,7 @@
                     },
                     body: JSON.stringify({
                         code: code,
-                        order_total: orderTotal
+                        order_total: orderTotalForCoupon
                     })
                 })
                 .then(response => response.json())
@@ -174,22 +279,23 @@
                     msgBox.classList.remove('hidden');
 
                     if(data.success) {
-                        // Thành công
                         msgBox.className = 'text-xs mt-2 text-emerald-400';
                         msgBox.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message}`;
                         
-                        // Cập nhật giao diện
+                        currentDiscount = data.data.discount_amount;
                         discountRow.classList.remove('hidden');
-                        discountDisplay.textContent = '-' + formatMoney(data.data.discount_amount);
-                        finalTotalDisplay.textContent = formatMoney(data.data.final_total);
+                        discountDisplay.textContent = '-' + formatMoney(currentDiscount);
+                        
+                        updateOrderSummary();
+                        
                         inputCode.disabled = true;
                         btnApply.classList.add('hidden'); // Ẩn nút áp dụng
                     } else {
-                        // Thất bại
                         msgBox.className = 'text-xs mt-2 text-red-400';
                         msgBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${data.message}`;
+                        currentDiscount = 0;
                         discountRow.classList.add('hidden');
-                        finalTotalDisplay.textContent = formatMoney(orderTotal);
+                        updateOrderSummary();
                     }
                 })
                 .catch(error => {
@@ -201,6 +307,9 @@
                     console.error('Error:', error);
                 });
             });
+            
+            // Khởi tạo tính toán ban đầu
+            updateOrderSummary();
         });
     </script>
 </body>

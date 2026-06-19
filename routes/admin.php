@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\ShowtimeController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CouponController;
+use App\Http\Controllers\Admin\ComboController;
 
 /**
  * Admin Routes
@@ -108,5 +109,8 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
 
     // Coupons
     Route::resource('coupons', CouponController::class, ['as' => 'admin']);
+
+    // Combos
+    Route::resource('combos', ComboController::class, ['as' => 'admin']);
 
 });
