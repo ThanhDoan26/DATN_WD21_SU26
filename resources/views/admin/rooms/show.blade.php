@@ -137,10 +137,13 @@
             <!-- Box 2 -->
             <div class="col-6 mb-3">
                 <div class="stat-box border h-100">
-                    <div class="stat-number text-success">{{ $room->showtimes->count() }}</div>
-                    <div class="stat-label">Lịch Chiếu (Tất cả)</div>
+                    @php
+                        $activeShowtimes = $room->getActiveShowtimesCount();
+                    @endphp
+                    <div class="stat-number text-warning">{{ $activeShowtimes }}</div>
+                    <div class="stat-label">Suất Chiếu Hợp Lệ</div>
                     <!-- Assuming showtimes.index takes room_id in future implementation -->
-                    <a href="{{ route('admin.showtimes.index') }}?room_id={{ $room->id }}" class="btn btn-sm btn-outline-success mt-2">Lọc Lịch Chiếu</a>
+                    <a href="{{ route('admin.showtimes.index') }}?room_id={{ $room->id }}" class="btn btn-sm btn-outline-warning mt-2">Xem Chi Tiết</a>
                 </div>
             </div>
         </div>
@@ -149,14 +152,30 @@
             <div class="card-header bg-light text-dark">
                 <i class="fas fa-cogs"></i> Hành Động Nhanh
             </div>
-            <div class="card-body text-center">
-                <form action="{{ route('admin.rooms.destroy', $room->id) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa phòng chiếu này? Mọi ghế và lịch chiếu liên quan có thể bị ảnh hưởng.');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash"></i> Xóa Phòng Chiếu Này
-                    </button>
-                </form>
+            <div class="card-body">
+                @php
+                    $activeShowtimes = $room->getActiveShowtimesCount();
+                @endphp
+
+                @if($activeShowtimes > 0)
+                    <div class="alert alert-warning mb-3" role="alert">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Không thể xóa phòng</strong> - Phòng đang có <strong>{{ $activeShowtimes }} suất chiếu</strong> hợp lệ.
+                        Vui lòng xóa hoặc hủy tất cả suất chiếu trước khi xóa phòng này.
+                    </div>
+                    <a href="{{ route('admin.showtimes.index') }}?room_id={{ $room->id }}" class="btn btn-warning w-100">
+                        <i class="fas fa-film"></i> Quản Lý Suất Chiếu
+                    </a>
+                @else
+                    <p class="text-muted mb-3">Phòng không có suất chiếu hợp lệ. Bạn có thể xóa phòng này.</p>
+                    <form action="{{ route('admin.rooms.destroy', $room->id) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa phòng chiếu này?');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="fas fa-trash"></i> Xóa Phòng Chiếu Này
+                        </button>
+                    </form>
+                @endif
             </div>
         </div>
     </div>

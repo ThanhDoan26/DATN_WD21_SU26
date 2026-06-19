@@ -100,7 +100,7 @@ class MovieController extends Controller
 
     public function update(Request $request, Movie $movie)
     {
-        $request->validate([
+        $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'director' => 'nullable|string|max:255',

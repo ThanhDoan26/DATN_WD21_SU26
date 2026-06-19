@@ -81,11 +81,11 @@
         <div class="row">
             <div class="col-md-6">
                 <h6 class="text-muted mb-2">Created</h6>
-                <p>{{ $cinema->created_at->format('d/m/Y H:i:s') }}</p>
+                <p>{{ $cinema->created_at?->format('d/m/Y H:i') ?? 'Chưa có dữ liệu' }}</p>
             </div>
             <div class="col-md-6">
                 <h6 class="text-muted mb-2">Updated</h6>
-                <p>{{ $cinema->updated_at->format('d/m/Y H:i:s') }}</p>
+                <p>{{ $cinema->updated_at?->format('d/m/Y H:i') ?? 'Chưa có dữ liệu' }}</p>
             </div>
         </div>
     </div>
