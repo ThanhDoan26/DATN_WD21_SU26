@@ -25,19 +25,7 @@
     </div>
 </div>
 
-@if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        {{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-@endif
 
-@if(session('error'))
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        {{ session('error') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-@endif
 
 <!-- Cinemas Table -->
 <div class="card">
@@ -78,7 +66,7 @@
                         @endif
                     </td>
                     <td>
-                        <small class="text-muted">{{ $cinema->created_at->format('d/m/Y H:i') }}</small>
+                        {{ $cinema->created_at?->format('d/m/Y H:i') ?? 'Chưa có dữ liệu' }}
                     </td>
                     <td>
                         <a href="{{ route('admin.cinemas.show', $cinema->id) }}" class="btn btn-sm btn-info" title="Xem chi tiết">

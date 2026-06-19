@@ -1,6 +1,6 @@
 @props(['movie'])
 
-<a href="#" class="group block overflow-hidden rounded-xl bg-slate-800 hover:bg-slate-700 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl">
+<a href="{{ route('movies.show', $movie->id) }}" class="group block overflow-hidden rounded-xl bg-slate-800 hover:bg-slate-700 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl">
     <!-- Poster Image -->
     <div class="relative overflow-hidden h-56 sm:h-64">
         @if($movie->poster_url)

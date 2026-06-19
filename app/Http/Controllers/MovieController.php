@@ -2,8 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
+use App\Http\Requests\MovieSearchRequest;
+use App\Models\Category;
+use App\Models\Cinema;
 use App\Models\Movie;
 use App\Models\Showtime;
+use App\Services\MovieSearchService;
+use App\Services\MovieDetailService;
 use Illuminate\View\View;
 
 class MovieController extends Controller
@@ -11,8 +17,27 @@ class MovieController extends Controller
     /**
      * Display the homepage with movies
      */
-    public function welcome(): View
+    public function welcome(MovieSearchRequest $request, MovieSearchService $searchService): View
     {
+        // Get cinemas and categories for search form
+        $cinemas = Cinema::where('status', 'ACTIVE')->get();
+        $categories = Category::all();
+
+        // Check if user is searching
+        $hasSearch = $request->anyFilled(['keyword', 'status', 'cinema_id', 'genre_id']);
+
+        if ($hasSearch) {
+            $filters = $request->validated();
+            $searchResults = $searchService->search($filters);
+
+            return view('welcome', [
+                'hasSearch' => true,
+                'searchResults' => $searchResults,
+                'cinemas' => $cinemas,
+                'categories' => $categories,
+            ]);
+        }
+
         // Currently showing movies
         $currentMovies = Movie::where('status', 'NOW_SHOWING')
             ->with(['showtimes' => function ($query) {
@@ -43,9 +68,12 @@ class MovieController extends Controller
             ->get();
 
         return view('welcome', [
+            'hasSearch' => false,
             'currentMovies' => $currentMovies,
             'upcomingMovies' => $upcomingMovies,
             'featuredMovies' => $featuredMovies,
+            'cinemas' => $cinemas,
+            'categories' => $categories,
         ]);
     }
 
@@ -85,6 +113,16 @@ class MovieController extends Controller
             ->paginate(12);
 
         return view('movies.upcoming', ['movies' => $movies]);
+    }
+
+    /**
+     * Display the movie details page
+     */
+    public function show($id, MovieDetailService $movieDetailService): View
+    {
+        $data = $movieDetailService->getMovieDetail($id);
+
+        return view('movies.show', $data);
     }
 }
 
