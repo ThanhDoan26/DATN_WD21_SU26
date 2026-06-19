@@ -42,6 +42,32 @@
 <div id="app">
     <cinema-manager></cinema-manager>
 </div>
+
+<!-- Pagination -->
+@if($cinemas && $cinemas->hasPages())
+<div class="d-flex justify-content-center mt-4">
+    {{ $cinemas->links() }}
+</div>
+@endif
+
+<script>
+function deleteRecord(deleteUrl) {
+    if (confirm('Bạn có chắc chắn muốn xóa?')) {
+        fetch(deleteUrl, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            }
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Lỗi xóa rạp!');
+            }
+        }).catch(error => console.error('Error:', error));
+    }
+}
+</script>
 @endsection
 
 @push('scripts')
