@@ -100,6 +100,15 @@
                         @enderror
                     </div>
                 </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="surcharge" class="form-label">Phụ thu suất chiếu (VNĐ / ghế)</label>
+                        <input type="number" step="0.01" min="0" id="surcharge" name="surcharge" class="form-control @error('surcharge') is-invalid @enderror" value="{{ old('surcharge', 0) }}">
+                        @error('surcharge')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
             </div>
 
             <hr class="my-4">
