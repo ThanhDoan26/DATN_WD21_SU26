@@ -20,12 +20,30 @@
         <h2><i class="fas fa-door-open"></i> Danh sách Phòng Chiếu</h2>
         <p class="text-muted" style="margin-top: 5px; margin-bottom: 0;">Xem danh sách tất cả các phòng chiếu trong hệ thống</p>
     </div>
-    <div>
+    <div class="d-flex gap-2">
+        <a href="{{ route('admin.rooms.trashed') }}" class="btn btn-secondary" title="Xem phòng đã xóa">
+            <i class="fas fa-trash"></i> Đã Xóa
+        </a>
         <a href="{{ route('admin.rooms.create') }}" class="btn btn-primary">
             <i class="fas fa-plus-circle"></i> Thêm Mới
         </a>
     </div>
 </div>
+
+<!-- Alert Messages -->
+@if (session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle"></i> {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
+@if (session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
 
 <!-- Rooms Table -->
 <div class="card">
@@ -42,6 +60,7 @@
                     <th>Format</th>
                     <th>Tổng Ghế</th>
                     <th>Trạng thái</th>
+                    <th>Suất Chiếu</th>
                     <th>Tạo lúc</th>
                     <th>Hành động</th>
                 </tr>
@@ -70,6 +89,16 @@
                         @endif
                     </td>
                     <td>
+                        @php
+                            $activeShowtimes = $room->getActiveShowtimesCount();
+                        @endphp
+                        @if($activeShowtimes > 0)
+                            <span class="badge bg-warning"><i class="fas fa-film"></i> {{ $activeShowtimes }} suất</span>
+                        @else
+                            <span class="badge bg-secondary">Không</span>
+                        @endif
+                    </td>
+                    <td>
                         <small class="text-muted">{{ $room->created_at->format('d/m/Y H:i') }}</small>
                     </td>
                     <td>
@@ -80,10 +109,13 @@
                             <a href="{{ route('admin.rooms.edit', $room->id) }}" class="btn btn-sm btn-warning" title="Sửa">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form action="{{ route('admin.rooms.destroy', $room->id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Xác nhận xóa phòng này?');">
+                            <form action="{{ route('admin.rooms.destroy', $room->id) }}" method="POST" style="display:inline;">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-danger" title="Xóa">
+                                <button type="submit" class="btn btn-sm btn-danger"
+                                        title="{{ $activeShowtimes > 0 ? 'Phòng đang có suất chiếu, không thể xóa' : 'Xóa' }}"
+                                        @if($activeShowtimes > 0) disabled @endif
+                                        @if($activeShowtimes == 0) onclick="return confirm('Xác nhận xóa phòng này?');" @endif>
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
@@ -92,7 +124,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8" class="text-center py-4">
+                    <td colspan="9" class="text-center py-4">
                         <i class="fas fa-inbox" style="font-size: 2rem; color: #ccc;"></i>
                         <p class="text-muted mt-2">Chưa có phòng nào.</p>
                     </td>
