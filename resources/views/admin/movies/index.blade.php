@@ -118,5 +118,53 @@
             {{ $movies->withQueryString()->links() }}
         </div>
     </div>
+
 </div>
+
+
+
+
+<style>
+.movie-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.movie-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+}
+
+.movie-poster {
+    position: relative;
+}
+
+.movie-poster img {
+    object-fit: cover;
+}
+
+.object-fit-cover {
+    object-fit: cover !important;
+}
+</style>
+
+<script>
+function deleteRecord(deleteUrl) {
+    if (confirm('Bạn có chắc chắn muốn xóa phim này?')) {
+        fetch(deleteUrl, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            }
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Lỗi xóa phim!');
+            }
+        }).catch(error => console.error('Error:', error));
+    }
+}
+</script>
 @endsection
+
