@@ -25,11 +25,9 @@
                 @if (Route::has('login'))
                     @auth
                         @if(auth()->user()->isAdmin() || auth()->user()->isManager())
-                            <a href="{{ route('admin.dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium">Quản trị</a>
-                        @else
-                            <a href="{{ url('/dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium">Bảng điều khiển</a>
+                            <a href="{{ route('admin.dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium">Bảng điều khiển</a>
                         @endif
-                        
+
                         <form method="POST" action="{{ route('logout') }}" class="inline">
                             @csrf
                             <button type="submit" class="bg-primary hover:bg-red-700 text-white px-5 py-2.5 rounded-full font-medium transition-all transform hover:scale-105 shadow-lg shadow-red-500/30">
