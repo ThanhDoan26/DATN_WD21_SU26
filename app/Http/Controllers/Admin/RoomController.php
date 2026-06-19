@@ -16,13 +16,26 @@ class RoomController extends AdminController
     /**
      * Display a listing of rooms
      */
-    public function index()
+    public function index(Request $request)
     {
-        $rooms = Room::with('cinema')
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
+        $search = $request->query('search');
+        $status = $request->query('status');
 
-        return view('admin.rooms.index', ['rooms' => $rooms]);
+        $rooms = Room::with('cinema')
+            ->when($search, function ($query, $search) {
+                return $query->where('name', 'like', '%' . $search . '%')
+                             ->orWhereHas('cinema', function ($q) use ($search) {
+                                 $q->where('name', 'like', '%' . $search . '%');
+                             });
+            })
+            ->when($status, function ($query, $status) {
+                return $query->where('status', $status);
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('admin.rooms.index', compact('rooms', 'search', 'status'));
     }
 
     /**

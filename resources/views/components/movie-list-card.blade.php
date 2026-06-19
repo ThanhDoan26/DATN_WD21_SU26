@@ -2,7 +2,7 @@
 
 <div class="bg-slate-800 rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-300 group">
     <!-- Poster Section -->
-    <div class="relative h-72 overflow-hidden">
+    <a href="{{ route('movies.show', $movie->id) }}" class="relative h-72 overflow-hidden block">
         @if($movie->poster_url)
             <img src="{{ $movie->poster_url }}" alt="{{ $movie->title }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
         @else
@@ -22,13 +22,15 @@
         <div class="absolute top-3 left-3 bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
             Đang Chiếu
         </div>
-    </div>
+    </a>
 
     <!-- Movie Info -->
     <div class="p-5">
-        <h3 class="font-bold text-lg line-clamp-2 text-white mb-2 group-hover:text-primary transition-colors">
-            {{ $movie->title }}
-        </h3>
+        <a href="{{ route('movies.show', $movie->id) }}">
+            <h3 class="font-bold text-lg line-clamp-2 text-white mb-2 group-hover:text-primary transition-colors">
+                {{ $movie->title }}
+            </h3>
+        </a>
 
         <!-- Director & Duration -->
         <div class="space-y-2 mb-4 text-sm text-slate-300">
@@ -84,8 +86,13 @@
         @endif
 
         <!-- Book Button -->
+<<<<<<< HEAD
         <a href="{{ route('booking.select-cinema', $movie) }}" class="w-full bg-primary hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition-all transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg shadow-red-500/30">
             <i class="fas fa-ticket-alt"></i> Đặt Vé
+=======
+        <a href="{{ route('movies.show', $movie->id) }}" class="w-full bg-primary hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition-all transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg shadow-red-500/30">
+            <i class="fas fa-ticket-alt"></i> Đặt Vé / Chi Tiết
+>>>>>>> 9ef07e990084bde7a873402b772f92789b1db85f
         </a>
     </div>
 </div>
