@@ -45,6 +45,35 @@
     </div>
 @endif
 
+<!-- Search Form -->
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body p-3">
+        <form action="{{ route('admin.rooms.index') }}" method="GET" class="row align-items-center g-3">
+            <div class="col-12 col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Nhập tên phòng hoặc tên rạp để tìm kiếm..." value="{{ request('search') }}">
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <select name="status" class="form-select">
+                    <option value="">-- Tất cả trạng thái --</option>
+                    <option value="ACTIVE" {{ request('status') == 'ACTIVE' ? 'selected' : '' }}>Hoạt động (Active)</option>
+                    <option value="INACTIVE" {{ request('status') == 'INACTIVE' ? 'selected' : '' }}>Không HĐ (Inactive)</option>
+                    <option value="MAINTENANCE" {{ request('status') == 'MAINTENANCE' ? 'selected' : '' }}>Bảo Trì</option>
+                    <option value="CLOSED" {{ request('status') == 'CLOSED' ? 'selected' : '' }}>Đóng Cửa</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-auto d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Lọc</button>
+                @if((request()->has('search') && request('search') != '') || (request()->has('status') && request('status') != ''))
+                    <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary">Xóa bộ lọc</a>
+                @endif
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Rooms Table -->
 <div class="card">
     <div class="card-header">
@@ -125,8 +154,8 @@
                 @empty
                 <tr>
                     <td colspan="9" class="text-center py-4">
-                        <i class="fas fa-inbox" style="font-size: 2rem; color: #ccc;"></i>
-                        <p class="text-muted mt-2">Chưa có phòng nào.</p>
+                        <i class="{{ request('search') ? 'fas fa-search-minus' : 'fas fa-inbox' }}" style="font-size: 2rem; color: #ccc;"></i>
+                        <p class="text-muted mt-2">{{ request('search') ? 'Không tìm thấy phòng/rạp nào phù hợp với từ khóa đo.' : 'Chưa có phòng chiếu nào trong hệ thống.' }}</p>
                     </td>
                 </tr>
                 @endforelse
