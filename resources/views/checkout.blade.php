@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Thanh Toán - movieGo</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -22,92 +22,220 @@
     </script>
     <style>
         body { font-family: 'Outfit', sans-serif; }
+        /* Ticket edge effect */
+        .ticket-edge {
+            mask-image: radial-gradient(circle at 10px 10px, transparent 10px, black 11px);
+            mask-size: 20px 20px;
+            mask-position: -10px -10px;
+        }
+        .payment-radio:checked + div {
+            border-color: #e50914;
+            background-color: rgba(229, 9, 20, 0.05);
+        }
+        .payment-radio:checked + div .check-icon {
+            opacity: 1;
+            transform: scale(1);
+        }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-200 antialiased pt-10">
+<body class="bg-slate-950 text-slate-200 antialiased pt-10 pb-20">
 
     <div class="max-w-6xl mx-auto px-4">
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold text-white"><i class="fas fa-credit-card text-primary mr-2"></i> Thanh Toán Vé</h1>
-            <p class="text-slate-400">Kiểm tra lại thông tin, áp dụng mã giảm giá và giữ ghế trước khi thanh toán.</p>
+        <div class="mb-10 text-center">
+            <h1 class="text-4xl font-bold text-white mb-2"><i class="fas fa-ticket-alt text-primary mr-3"></i>Thanh Toán Vé</h1>
+            <p class="text-slate-400">Hoàn tất các bước cuối cùng để thưởng thức bộ phim của bạn.</p>
         </div>
 
         @if(!$showtime || empty($seatSummary))
-            <div class="rounded-3xl bg-slate-800 border border-slate-700 p-8 text-center">
+            <div class="rounded-3xl bg-slate-900 border border-slate-800 p-12 text-center max-w-2xl mx-auto shadow-2xl">
+                <div class="text-6xl text-slate-700 mb-6"><i class="fas fa-ticket-alt"></i></div>
                 <h2 class="text-2xl font-semibold text-white mb-4">Không có dữ liệu thanh toán</h2>
-                <p class="text-slate-400 mb-6">Vui lòng chọn ghế từ trang đặt vé trước khi vào trang thanh toán.</p>
-                <a href="{{ url()->previous() }}" class="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-white font-semibold hover:bg-red-600 transition">
+                <p class="text-slate-400 mb-8">Vui lòng quay lại trang chọn ghế để tiếp tục quá trình đặt vé.</p>
+                <a href="{{ url()->previous() }}" class="inline-flex items-center justify-center rounded-full bg-primary px-8 py-4 text-white font-semibold hover:bg-red-600 transition shadow-lg shadow-primary/30">
                     <i class="fas fa-arrow-left mr-2"></i> Quay lại chọn ghế
                 </a>
             </div>
         @else
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div class="lg:col-span-2 space-y-6">
-                    <div class="rounded-3xl bg-slate-800 border border-slate-700 p-8 shadow-xl">
-                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                            <div>
-                                <h2 class="text-2xl font-semibold text-white">Thông tin suất chiếu</h2>
-                                <p class="text-slate-400 mt-2">
-                                    <strong>{{ $showtime->movie->title }}</strong><br>
-                                    {{ $showtime->room->cinema->name }} - {{ $showtime->room->name }}<br>
-                                    {{ $showtime->start_time->format('H:i d/m/Y') }}
-                                </p>
-                            </div>
-                            <div class="rounded-3xl bg-slate-900 border border-slate-700 px-5 py-4 text-center">
-                                <div class="text-slate-400 text-sm">Phụ thu/suất chiếu</div>
-                                <div class="text-xl font-semibold text-white">{{ number_format($surcharge, 0, ',', '.') }} đ</div>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- Left Column (Main Info) -->
+                <div class="lg:col-span-8 space-y-8">
+                    
+                    <!-- Ticket Info -->
+                    <div class="rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden relative">
+                        <!-- Decorative top edge -->
+                        <div class="h-3 w-full bg-gradient-to-r from-primary to-red-800"></div>
+                        <div class="p-8">
+                            <h2 class="text-xl font-bold text-white mb-6 uppercase tracking-wider text-slate-400"><i class="fas fa-film mr-2 text-primary"></i> Thông Tin Phim</h2>
+                            <div class="flex flex-col md:flex-row gap-6 items-start md:items-center">
+                                @if($showtime->movie->poster_url)
+                                    <div class="w-24 h-36 rounded-xl overflow-hidden shadow-lg flex-shrink-0 border border-slate-700">
+                                        <img src="{{ asset('storage/' . $showtime->movie->poster_url) }}" alt="Poster" class="w-full h-full object-cover">
+                                    </div>
+                                @endif
+                                <div class="flex-1">
+                                    <h3 class="text-3xl font-bold text-white mb-2">{{ $showtime->movie->title }}</h3>
+                                    <div class="flex flex-wrap gap-4 text-sm text-slate-300 mb-4">
+                                        <span class="bg-slate-800 px-3 py-1 rounded-full"><i class="fas fa-calendar-alt mr-1 text-slate-400"></i> {{ $showtime->start_time->format('d/m/Y') }}</span>
+                                        <span class="bg-slate-800 px-3 py-1 rounded-full"><i class="fas fa-clock mr-1 text-slate-400"></i> {{ $showtime->start_time->format('H:i') }}</span>
+                                        <span class="bg-slate-800 px-3 py-1 rounded-full"><i class="fas fa-map-marker-alt mr-1 text-slate-400"></i> {{ $showtime->room->cinema->name }}</span>
+                                    </div>
+                                    <p class="text-slate-400 font-medium">Phòng chiếu: <span class="text-white">{{ $showtime->room->name }}</span></p>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="space-y-4">
-                            @foreach($seatSummary as $seat)
-                                <div class="rounded-3xl bg-slate-900 border border-slate-700 p-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                                    <div>
-                                        <div class="text-white font-semibold">Ghế {{ $seat['code'] }} ({{ $seat['type'] }})</div>
-                                        <div class="text-slate-400 text-sm">Giá cơ bản: {{ number_format($seat['base_price'], 0, ',', '.') }} đ</div>
+                        <!-- Dotted Divider -->
+                        <div class="relative flex items-center px-4">
+                            <div class="w-6 h-6 rounded-full bg-slate-950 absolute left-0 -ml-3"></div>
+                            <div class="w-full border-t-2 border-dashed border-slate-700"></div>
+                            <div class="w-6 h-6 rounded-full bg-slate-950 absolute right-0 -mr-3"></div>
+                        </div>
+
+                        <div class="p-8 bg-slate-900/50">
+                            <h2 class="text-xl font-bold text-white mb-4 uppercase tracking-wider text-slate-400"><i class="fas fa-chair mr-2 text-primary"></i> Ghế Đã Chọn</h2>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                @foreach($seatSummary as $seat)
+                                    <div class="rounded-2xl bg-slate-800/50 border border-slate-700/50 p-4 flex justify-between items-center group hover:bg-slate-800 transition">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-primary font-bold shadow-inner">
+                                                {{ $seat['code'] }}
+                                            </div>
+                                            <div>
+                                                <div class="text-white font-medium capitalize">{{ strtolower($seat['type']) }}</div>
+                                                <div class="text-slate-400 text-xs mt-0.5">Giá: {{ number_format($seat['base_price'], 0, ',', '.') }} đ</div>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-white font-bold">{{ number_format($seat['final_price'], 0, ',', '.') }} đ</div>
+                                        </div>
                                     </div>
-                                    <div class="text-right">
-                                        <div class="text-slate-400 text-sm">Phụ thu</div>
-                                        <div class="text-white font-semibold">{{ number_format($seat['surcharge'], 0, ',', '.') }} đ</div>
-                                        <div class="text-slate-300 text-sm">Tổng: {{ number_format($seat['final_price'], 0, ',', '.') }} đ</div>
-                                    </div>
-                                </div>
-                            @endforeach
+                                @endforeach
+                            </div>
                         </div>
                     </div>
 
-                    <div class="rounded-3xl bg-slate-800 border border-slate-700 p-8 shadow-xl">
-                        <h2 class="text-2xl font-semibold text-white mb-4">Áp dụng mã giảm giá</h2>
-                        <div class="grid gap-4">
-                            <input id="coupon_code" type="text" placeholder="Nhập mã giảm giá" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-5 py-4 text-white outline-none focus:border-primary" />
-                            <button id="apply-coupon" class="inline-flex items-center justify-center rounded-3xl bg-primary px-6 py-4 text-white font-semibold hover:bg-red-600 transition">Áp dụng mã</button>
-                            <div id="coupon-result" class="text-sm"></div>
+                    <!-- Combos -->
+                    <div class="rounded-3xl bg-slate-900 border border-slate-800 shadow-xl p-8">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-2xl font-bold text-white"><i class="fas fa-popcorn mr-2 text-amber-500"></i> Combo Bắp Nước</h2>
+                            <span class="text-sm bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">Tùy chọn</span>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            @forelse($combos as $combo)
+                                <div class="flex flex-col sm:flex-row items-center gap-6 bg-slate-950/50 hover:bg-slate-800/80 p-5 rounded-2xl border border-slate-800/80 hover:border-slate-600 transition-all duration-300 group">
+                                    <div class="w-20 h-20 bg-slate-800 rounded-xl overflow-hidden flex-shrink-0 border border-slate-700 group-hover:border-slate-500 transition shadow-lg">
+                                        @if($combo->image)
+                                            <img src="{{ asset('storage/' . $combo->image) }}" alt="{{ $combo->name }}" class="w-full h-full object-cover">
+                                        @else
+                                            <div class="w-full h-full flex items-center justify-center text-slate-500 text-2xl"><i class="fas fa-hamburger"></i></div>
+                                        @endif
+                                    </div>
+                                    <div class="flex-1 text-center sm:text-left">
+                                        <h3 class="text-lg text-white font-bold mb-1">{{ $combo->name }}</h3>
+                                        <p class="text-slate-400 text-sm mb-2 line-clamp-2">{{ $combo->description }}</p>
+                                        <p class="text-primary font-bold text-lg" data-price="{{ $combo->price }}">{{ number_format($combo->price, 0, ',', '.') }} đ</p>
+                                    </div>
+                                    <div class="flex items-center gap-4 bg-slate-900 rounded-full px-2 py-1 border border-slate-700">
+                                        <button type="button" class="btn-decrease-combo w-10 h-10 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 active:bg-slate-600 flex items-center justify-center transition" data-id="{{ $combo->id }}">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                        <span class="combo-quantity font-bold text-white w-6 text-center text-lg" data-id="{{ $combo->id }}" data-name="{{ $combo->name }}" data-price="{{ $combo->price }}">0</span>
+                                        <button type="button" class="btn-increase-combo w-10 h-10 rounded-full text-primary hover:text-white hover:bg-primary active:bg-red-700 flex items-center justify-center transition" data-id="{{ $combo->id }}">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-center py-8 border-2 border-dashed border-slate-800 rounded-2xl">
+                                    <div class="text-4xl text-slate-600 mb-3"><i class="fas fa-box-open"></i></div>
+                                    <p class="text-slate-400">Hiện không có combo nào.</p>
+                                </div>
+                            @endforelse
+                        </div>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="rounded-3xl bg-slate-900 border border-slate-800 shadow-xl p-8">
+                        <h2 class="text-2xl font-bold text-white mb-6"><i class="fas fa-wallet mr-2 text-emerald-500"></i> Phương Thức Thanh Toán</h2>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <label class="relative cursor-pointer group">
+                                <input type="radio" name="payment" value="MOMO" class="peer payment-radio hidden" checked>
+                                <div class="border-2 border-slate-700 rounded-2xl p-6 transition-all duration-300 hover:border-slate-500 flex flex-col items-center gap-3 bg-slate-950/30">
+                                    <div class="absolute top-4 right-4 text-primary opacity-0 scale-50 transition-all duration-300 check-icon">
+                                        <i class="fas fa-check-circle text-xl"></i>
+                                    </div>
+                                    <div class="w-16 h-16 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-500 text-3xl mb-2">
+                                        <i class="fas fa-qrcode"></i>
+                                    </div>
+                                    <span class="text-white font-semibold text-lg">Ví điện tử MoMo</span>
+                                </div>
+                            </label>
+                            
+                            <label class="relative cursor-pointer group">
+                                <input type="radio" name="payment" value="ATM" class="peer payment-radio hidden">
+                                <div class="border-2 border-slate-700 rounded-2xl p-6 transition-all duration-300 hover:border-slate-500 flex flex-col items-center gap-3 bg-slate-950/30">
+                                    <div class="absolute top-4 right-4 text-primary opacity-0 scale-50 transition-all duration-300 check-icon">
+                                        <i class="fas fa-check-circle text-xl"></i>
+                                    </div>
+                                    <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 text-3xl mb-2">
+                                        <i class="fas fa-credit-card"></i>
+                                    </div>
+                                    <span class="text-white font-semibold text-lg">Thẻ ATM / Visa</span>
+                                </div>
+                            </label>
                         </div>
                     </div>
                 </div>
 
-                <div class="rounded-3xl bg-slate-800 border border-slate-700 p-8 shadow-xl sticky top-10">
-                    <h2 class="text-2xl font-semibold text-white mb-6">Tóm tắt đơn hàng</h2>
-                    <div class="space-y-4 text-sm text-slate-300">
-                        <div class="flex justify-between">
-                            <span>Ghế đã chọn</span>
-                            <span>{{ count($seatSummary) }} ghế</span>
+                <!-- Right Column (Summary) -->
+                <div class="lg:col-span-4">
+                    <div class="rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-6 sticky top-10">
+                        <h2 class="text-xl font-bold text-white mb-6 border-b border-slate-800 pb-4">Tóm tắt đơn hàng</h2>
+                        
+                        <!-- Details -->
+                        <div class="space-y-4 mb-6 text-sm">
+                            <div class="flex justify-between items-center text-slate-300">
+                                <span class="flex items-center"><i class="fas fa-chair text-slate-500 w-5"></i> Ghế đã chọn ({{ count($seatSummary) }})</span>
+                                <span class="font-medium text-white">{{ number_format($subtotal + $surcharge * count($seatSummary), 0, ',', '.') }} đ</span>
+                            </div>
+                            
+                            <div id="selected_combos_container" class="space-y-3 pl-5 border-l-2 border-slate-800 ml-2 mt-2 hidden">
+                                <!-- JS Populated -->
+                            </div>
                         </div>
-                        <div class="flex justify-between">
-                            <span>Tạm tính</span>
-                            <span>{{ number_format($subtotal, 0, ',', '.') }} đ</span>
+
+                        <!-- Coupon Code -->
+                        <div class="mb-6 bg-slate-950 p-2 rounded-2xl flex gap-2 border border-slate-800 focus-within:border-primary transition-colors">
+                            <div class="flex-1 relative">
+                                <i class="fas fa-ticket-alt absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                                <input id="coupon_code" type="text" placeholder="Mã giảm giá" class="w-full bg-transparent px-4 py-3 pl-11 text-white outline-none text-sm uppercase placeholder-slate-500" />
+                            </div>
+                            <button id="apply-coupon" class="bg-primary hover:bg-red-600 text-white px-5 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap">Áp dụng</button>
                         </div>
-                        <div class="flex justify-between">
-                            <span>Phụ thu suất chiếu</span>
-                            <span>{{ number_format($surcharge, 0, ',', '.') }} đ / ghế</span>
+                        <div id="coupon-result" class="text-sm mb-6 hidden"></div>
+
+                        <div id="discount_row" class="flex justify-between items-center text-sm text-emerald-400 mb-6 hidden">
+                            <span class="flex items-center"><i class="fas fa-tag mr-2"></i> Giảm giá</span>
+                            <span id="discount_display" class="font-bold">-0 đ</span>
                         </div>
-                        <div class="border-t border-slate-700 pt-4 flex justify-between items-center">
-                            <span class="font-semibold text-white">Tổng thanh toán</span>
-                            <span id="final-total" class="text-2xl font-bold text-primary">{{ number_format($total, 0, ',', '.') }} đ</span>
+
+                        <!-- Total -->
+                        <div class="border-t border-slate-800 pt-6 mb-6">
+                            <div class="flex justify-between items-end">
+                                <span class="text-slate-400 font-medium mb-1">Tổng thanh toán</span>
+                                <span id="final-total" class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-red-500">{{ number_format($total, 0, ',', '.') }} đ</span>
+                            </div>
                         </div>
+
+                        <!-- Action -->
+                        <button id="confirm-reservation" class="w-full rounded-2xl bg-gradient-to-r from-primary to-red-600 px-6 py-4 text-white text-lg font-bold hover:shadow-lg hover:shadow-primary/30 transition-all hover:-translate-y-1 flex items-center justify-center gap-3">
+                            <span>Thanh toán ngay</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                        <p class="mt-4 text-center text-xs text-slate-500">Ghế của bạn sẽ được giữ trong <span class="text-slate-300 font-medium"><i class="far fa-clock"></i> {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES }} phút</span></p>
                     </div>
-                    <button id="confirm-reservation" class="mt-8 w-full rounded-3xl bg-primary px-6 py-4 text-white font-semibold hover:bg-red-600 transition">Giữ ghế & thanh toán</button>
-                    <p class="mt-4 text-xs text-slate-500">Ghế sẽ được giữ trong <strong>{{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES }} phút</strong>.</p>
                 </div>
             </div>
         @endif
@@ -115,71 +243,184 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            @if(!$showtime || empty($seatSummary))
+                return;
+            @endif
+
             const showtimeId = @json($showtimeId ?? '');
             const seatIds = @json($seatIds ?? '');
-            const totalPrice = {{ $total ?? 0 }};
-            const apiApplyCoupon = @json(route('api.apply-coupon'));
-            const reserveUrl = @json(route('checkout.reserve'));
-            const successUrl = @json(route('checkout.success'));
+            const ticketTotal = {{ $total ?? 0 }}; // Tiền vé đã bao gồm phụ thu
+            const apiApplyCoupon = @json(route('api.apply-coupon', [], false));
+            const reserveUrl = @json(route('checkout.reserve', [], false));
+            const successUrl = @json(route('checkout.success', [], false));
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            let combosTotal = 0;
+            let currentDiscount = 0;
+            let finalTotal = ticketTotal; 
+            
+            // Format money function
+            const formatMoney = (amount) => {
+                return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
+            };
 
-            const applyCouponButton = document.getElementById('apply-coupon');
-            const confirmReservationButton = document.getElementById('confirm-reservation');
+            const selectedCombos = {};
+            
             const couponCodeInput = document.getElementById('coupon_code');
+            const applyCouponButton = document.getElementById('apply-coupon');
             const couponResult = document.getElementById('coupon-result');
-            const finalTotalElement = document.getElementById('final-total');
+            const discountRow = document.getElementById('discount_row');
+            const discountDisplay = document.getElementById('discount_display');
+            const combosContainer = document.getElementById('selected_combos_container');
+            const finalTotalDisplay = document.getElementById('final-total');
+            const confirmReservationButton = document.getElementById('confirm-reservation');
 
+            const updateOrderSummary = () => {
+                combosTotal = 0;
+                combosContainer.innerHTML = '';
+                
+                let hasCombos = false;
+                Object.values(selectedCombos).forEach(combo => {
+                    if (combo.qty > 0) {
+                        hasCombos = true;
+                        combosTotal += combo.price * combo.qty;
+                        const div = document.createElement('div');
+                        div.className = 'flex justify-between items-center text-slate-400';
+                        div.innerHTML = `
+                            <span><span class="text-amber-500 font-medium">${combo.qty}x</span> ${combo.name}</span>
+                            <span>${formatMoney(combo.price * combo.qty)}</span>
+                        `;
+                        combosContainer.appendChild(div);
+                    }
+                });
+
+                if (hasCombos) {
+                    combosContainer.classList.remove('hidden');
+                } else {
+                    combosContainer.classList.add('hidden');
+                }
+
+                let subtotal = ticketTotal + combosTotal;
+                
+                finalTotal = subtotal - currentDiscount;
+                if(finalTotal < 0) finalTotal = 0;
+                
+                finalTotalDisplay.textContent = formatMoney(finalTotal);
+            };
+
+            // Combo buttons
+            document.querySelectorAll('.btn-decrease-combo').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    const span = document.querySelector(`.combo-quantity[data-id="${id}"]`);
+                    let qty = parseInt(span.textContent);
+                    if (qty > 0) {
+                        qty--;
+                        span.textContent = qty;
+                        selectedCombos[id].qty = qty;
+                        updateOrderSummary();
+                    }
+                });
+            });
+
+            document.querySelectorAll('.btn-increase-combo').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    const span = document.querySelector(`.combo-quantity[data-id="${id}"]`);
+                    let qty = parseInt(span.textContent);
+                    qty++;
+                    span.textContent = qty;
+                    
+                    if (!selectedCombos[id]) {
+                        selectedCombos[id] = {
+                            name: span.getAttribute('data-name'),
+                            price: parseFloat(span.getAttribute('data-price')),
+                            qty: 0
+                        };
+                    }
+                    selectedCombos[id].qty = qty;
+                    updateOrderSummary();
+                });
+            });
+
+            // Apply Coupon
             if (applyCouponButton) {
                 applyCouponButton.addEventListener('click', function() {
-                    const code = couponCodeInput.value.trim();
+                    const code = couponCodeInput.value.trim().toUpperCase();
                     if (!code) {
-                        couponResult.innerHTML = '<div class="text-sm text-rose-400">Vui lòng nhập mã giảm giá.</div>';
+                        couponResult.className = 'text-sm mb-6 text-rose-400 block';
+                        couponResult.innerHTML = '<i class="fas fa-exclamation-circle mr-1"></i> Vui lòng nhập mã giảm giá.';
+                        couponResult.classList.remove('hidden');
                         return;
                     }
 
                     applyCouponButton.disabled = true;
-                    applyCouponButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang áp dụng';
+                    applyCouponButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    couponResult.classList.add('hidden');
 
-                    fetch(apiApplyCoupon, {
+                    let orderTotalForCoupon = ticketTotal + combosTotal;
+
+                    fetch('/api/apply-coupon', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': csrfToken,
                             'Accept': 'application/json'
                         },
-                        body: JSON.stringify({ code, order_total: totalPrice })
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            applyCouponButton.disabled = false;
-                            applyCouponButton.innerHTML = 'Áp dụng mã';
-
-                            if (data.success) {
-                                couponResult.innerHTML = '<div class="text-sm text-emerald-400">' + data.message + '</div>';
-                                finalTotalElement.textContent = new Intl.NumberFormat('vi-VN').format(data.data.final_total) + ' đ';
-                            } else {
-                                couponResult.innerHTML = '<div class="text-sm text-rose-400">' + data.message + '</div>';
-                                finalTotalElement.textContent = new Intl.NumberFormat('vi-VN').format(totalPrice) + ' đ';
-                            }
+                        body: JSON.stringify({
+                            code: code,
+                            order_total: orderTotalForCoupon
                         })
-                        .catch(() => {
-                            applyCouponButton.disabled = false;
-                            applyCouponButton.innerHTML = 'Áp dụng mã';
-                            couponResult.innerHTML = '<div class="text-sm text-rose-400">Không thể kết nối tới server.</div>';
-                        });
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        applyCouponButton.disabled = false;
+                        applyCouponButton.innerHTML = 'Áp dụng';
+                        couponResult.classList.remove('hidden');
+
+                        if(data.success) {
+                            couponResult.className = 'text-sm mb-6 text-emerald-400 block';
+                            couponResult.innerHTML = `<i class="fas fa-check-circle mr-1"></i> ${data.message}`;
+                            
+                            currentDiscount = data.data.discount_amount;
+                            discountRow.classList.remove('hidden');
+                            discountDisplay.textContent = '-' + formatMoney(currentDiscount);
+                            
+                            updateOrderSummary();
+                            
+                            couponCodeInput.disabled = true;
+                            applyCouponButton.classList.add('hidden'); 
+                        } else {
+                            couponResult.className = 'text-sm mb-6 text-rose-400 block';
+                            couponResult.innerHTML = `<i class="fas fa-exclamation-circle mr-1"></i> ${data.message}`;
+                            currentDiscount = 0;
+                            discountRow.classList.add('hidden');
+                            updateOrderSummary();
+                        }
+                    })
+                    .catch(() => {
+                        applyCouponButton.disabled = false;
+                        applyCouponButton.innerHTML = 'Áp dụng';
+                        couponResult.className = 'text-sm mb-6 text-rose-400 block';
+                        couponResult.innerHTML = '<i class="fas fa-wifi mr-1"></i> Không thể kết nối tới server.';
+                        couponResult.classList.remove('hidden');
+                    });
                 });
             }
 
+            // Confirm Reservation
             if (confirmReservationButton) {
                 confirmReservationButton.addEventListener('click', function() {
                     if (!showtimeId || !seatIds) {
-                        window.location.href = '{{ url('/') }}';
+                        window.location.href = '/';
                         return;
                     }
 
-                    confirmReservationButton.disabled = true;
-                    confirmReservationButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang giữ ghế';
+                    const selectedPayment = document.querySelector('input[name="payment"]:checked').value;
 
+                    confirmReservationButton.disabled = true;
+                    confirmReservationButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Đang xử lý...';
+                    
                     fetch(reserveUrl, {
                         method: 'POST',
                         headers: {
@@ -190,26 +431,34 @@
                         body: JSON.stringify({
                             showtime_id: showtimeId,
                             seat_ids: seatIds,
-                            payment_method: 'ONLINE'
+                            payment_method: selectedPayment,
+                            // Add combo mapping if backend supports it (for future)
                         })
                     })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                window.location.href = successUrl + '?booking_id=' + data.data.booking_id;
-                            } else {
-                                confirmReservationButton.disabled = false;
-                                confirmReservationButton.innerHTML = 'Giữ ghế & thanh toán';
-                                couponResult.innerHTML = '<div class="text-sm text-rose-400">' + data.message + '</div>';
-                            }
-                        })
-                        .catch(() => {
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.href = successUrl + '?booking_id=' + data.data.booking_id;
+                        } else {
                             confirmReservationButton.disabled = false;
-                            confirmReservationButton.innerHTML = 'Giữ ghế & thanh toán';
-                            couponResult.innerHTML = '<div class="text-sm text-rose-400">Không thể kết nối tới server.</div>';
-                        });
+                            confirmReservationButton.innerHTML = 'Thanh toán ngay <i class="fas fa-arrow-right ml-2"></i>';
+                            couponResult.className = 'text-sm mb-6 text-rose-400 block';
+                            couponResult.innerHTML = `<i class="fas fa-exclamation-triangle mr-1"></i> ${data.message}`;
+                            couponResult.classList.remove('hidden');
+                        }
+                    })
+                    .catch(() => {
+                        confirmReservationButton.disabled = false;
+                        confirmReservationButton.innerHTML = 'Thanh toán ngay <i class="fas fa-arrow-right ml-2"></i>';
+                        couponResult.className = 'text-sm mb-6 text-rose-400 block';
+                        couponResult.innerHTML = '<i class="fas fa-wifi mr-1"></i> Lỗi kết nối, vui lòng thử lại.';
+                        couponResult.classList.remove('hidden');
+                    });
                 });
             }
+            
+            // Khởi tạo tính toán ban đầu
+            updateOrderSummary();
         });
     </script>
 </body>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Combo;
 use App\Models\Coupon;
 use App\Models\Seat;
 use App\Models\Showtime;
@@ -73,6 +74,8 @@ class CheckoutController extends Controller
             $surcharge = (float) $showtime->surcharge;
         }
 
+        $combos = Combo::where('status', 'ACTIVE')->get();
+
         return view('checkout', compact(
             'showtime',
             'selectedSeats',
@@ -82,7 +85,8 @@ class CheckoutController extends Controller
             'surcharge',
             'total',
             'seatIds',
-            'showtimeId'
+            'showtimeId',
+            'combos'
         ));
     }
 
