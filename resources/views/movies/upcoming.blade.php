@@ -65,7 +65,7 @@
                             <!-- Poster Section -->
                             <div class="relative h-72 overflow-hidden">
                                 @if($movie->poster_url)
-                                    <img src="{{ $movie->poster_url }}" alt="{{ $movie->title }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                                    <img src="{{ asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
                                 @else
                                     <div class="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
                                         <i class="fas fa-film text-slate-500 text-5xl"></i>
