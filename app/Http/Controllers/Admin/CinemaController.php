@@ -30,9 +30,13 @@ class CinemaController extends AdminController
             });
         }
 
-        // Lọc theo trạng thái bị xóa mềm (trashed)
+        // Lọc theo trạng thái bị xóa mềm (trashed) hoặc status
         if ($request->has('trashed') && $request->trashed == 'true') {
             $query->onlyTrashed();
+        } else {
+            if ($request->has('status') && in_array($request->status, ['ACTIVE', 'INACTIVE'])) {
+                $query->where('status', $request->status);
+            }
         }
 
         $cinemas = $query->orderBy('created_at', 'desc')->paginate(10);

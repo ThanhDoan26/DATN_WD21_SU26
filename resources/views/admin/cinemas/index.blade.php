@@ -70,6 +70,6 @@ function deleteRecord(deleteUrl) {
 </script>
 @endsection
 
-@push('scripts')
+@section('extra_js')
     @vite(['resources/js/app.js'])
-@endpush
+@endsection

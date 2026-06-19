@@ -7,7 +7,9 @@
               <input type="text" class="form-control form-control-sm" v-model="searchQuery" @input="debouncedFetch" placeholder="Tìm tên, địa chỉ..." style="width: 200px;">
               
               <select class="form-select form-select-sm" v-model="filterStatus" @change="fetchCinemas" style="width: 150px;">
+                  <option value="">Tất cả trạng thái</option>
                   <option value="ACTIVE">Đang hoạt động</option>
+                  <option value="INACTIVE">Ngừng hoạt động</option>
                   <option value="TRASHED">Đã xóa (Ẩn)</option>
               </select>
           </div>
@@ -122,6 +124,7 @@ export default {
                   params: {
                       page: page,
                       search: this.searchQuery,
+                      status: this.filterStatus !== 'TRASHED' ? this.filterStatus : null,
                       trashed: this.filterStatus === 'TRASHED' ? 'true' : 'false'
                   },
                   headers: {
