@@ -68,7 +68,7 @@
             @if($cinemas->count() > 0)
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @foreach($cinemas as $cinema)
-                        <div class="bg-slate-800 rounded-lg overflow-hidden hover:bg-slate-700 transition-all duration-300 cursor-pointer group"
+                        <div class="bg-slate-800 rounded-xl overflow-hidden hover:bg-slate-700 transition-all duration-300 cursor-pointer group hover:-translate-y-2 hover:shadow-xl hover:shadow-primary/20 border border-slate-700 hover:border-primary"
                              onclick="selectCinema({{ $cinema->id }}, '{{ $cinema->name }}')">
                             <div class="p-6">
                                 <!-- Cinema Header -->

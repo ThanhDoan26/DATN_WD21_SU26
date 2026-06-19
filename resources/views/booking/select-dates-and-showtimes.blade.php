@@ -34,16 +34,16 @@
     <style>
         body { font-family: 'Outfit', sans-serif; }
         .date-item {
-            @apply p-4 rounded-lg border-2 border-slate-700 cursor-pointer transition-all hover:border-primary hover:bg-slate-700;
+            @apply p-4 rounded-xl border-2 border-slate-700 cursor-pointer transition-all duration-300 hover:border-primary hover:bg-slate-800 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/20;
         }
         .date-item.active {
-            @apply bg-primary border-primary;
+            @apply bg-primary border-primary shadow-lg shadow-primary/40 transform -translate-y-1;
         }
         .showtime-item {
-            @apply p-4 rounded-lg border-2 border-slate-700 cursor-pointer transition-all hover:border-primary hover:bg-slate-700;
+            @apply p-5 rounded-xl border-2 border-slate-700 cursor-pointer transition-all duration-300 hover:border-primary hover:bg-slate-800 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/20;
         }
         .showtime-item.active {
-            @apply bg-primary border-primary;
+            @apply bg-primary border-primary shadow-lg shadow-primary/40 transform -translate-y-1;
         }
         .showtime-item.disabled {
             @apply opacity-50 cursor-not-allowed hover:border-slate-700 hover:bg-slate-800;
