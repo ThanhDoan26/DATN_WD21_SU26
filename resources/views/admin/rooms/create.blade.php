@@ -34,10 +34,14 @@
                     <div class="mb-3">
                         <label for="cinema_id" class="form-label">Rạp *</label>
                         <select class="form-select @error('cinema_id') is-invalid @enderror"
-                                id="cinema_id" name="cinema_id" required>
+                                id="cinema_id" name="cinema_id" required onchange="showCinemaInfo()">
                             <option value="">-- Chọn Rạp --</option>
                             @forelse($cinemas as $cinema)
-                                <option value="{{ $cinema->id }}" {{ old('cinema_id') === (string)$cinema->id ? 'selected' : '' }}>
+                                <option value="{{ $cinema->id }}" 
+                                        data-address="{{ $cinema->address }}"
+                                        data-city="{{ $cinema->city }}"
+                                        data-phone="{{ $cinema->phone }}"
+                                        {{ old('cinema_id') === (string)$cinema->id ? 'selected' : '' }}>
                                     {{ $cinema->name }}
                                 </option>
                             @empty
@@ -47,6 +51,12 @@
                         @error('cinema_id')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
+                        
+                        <!-- Hiển thị thông tin rạp tương ứng -->
+                        <div id="cinema_info" class="mt-2 p-2 border rounded bg-light" style="display: none; font-size: 0.9em;">
+                            <strong>Địa chỉ:</strong> <span id="c_address"></span>, <span id="c_city"></span><br>
+                            <strong>SĐT:</strong> <span id="c_phone"></span>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -64,9 +74,14 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="mb-3">
-                        <label for="format" class="form-label">Format *</label>
-                        <input type="text" class="form-control @error('format') is-invalid @enderror"
-                               id="format" name="format" value="{{ old('format') }}" placeholder="vd: 2D, 3D, IMAX" required>
+                        <label for="format" class="form-label">Phân loại phòng (Format) *</label>
+                        <select class="form-select @error('format') is-invalid @enderror" id="format" name="format" required>
+                            <option value="">-- Chọn phân loại --</option>
+                            <option value="2D" {{ old('format') == '2D' ? 'selected' : '' }}>2D</option>
+                            <option value="3D" {{ old('format') == '3D' ? 'selected' : '' }}>3D</option>
+                            <option value="IMAX" {{ old('format') == 'IMAX' ? 'selected' : '' }}>IMAX</option>
+                            <option value="4DX" {{ old('format') == '4DX' ? 'selected' : '' }}>4DX</option>
+                        </select>
                         @error('format')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -117,3 +132,32 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    function showCinemaInfo() {
+        const select = document.getElementById('cinema_id');
+        const selectedOption = select.options[select.selectedIndex];
+        const infoDiv = document.getElementById('cinema_info');
+        
+        if (selectedOption.value) {
+            const address = selectedOption.getAttribute('data-address');
+            const city = selectedOption.getAttribute('data-city');
+            const phone = selectedOption.getAttribute('data-phone');
+            
+            document.getElementById('c_address').innerText = address || 'N/A';
+            document.getElementById('c_city').innerText = city || 'N/A';
+            document.getElementById('c_phone').innerText = phone || 'N/A';
+            
+            infoDiv.style.display = 'block';
+        } else {
+            infoDiv.style.display = 'none';
+        }
+    }
+    
+    // Gọi hàm ngay khi load trang để xử lý trường hợp có old('cinema_id')
+    document.addEventListener('DOMContentLoaded', function() {
+        showCinemaInfo();
+    });
+</script>
+@endpush

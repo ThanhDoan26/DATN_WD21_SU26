@@ -14,7 +14,9 @@ use App\Http\Controllers\Admin\UserController;
  * Yêu cầu authentication và admin role
  */
 
-Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
+    // Phân quyền cho ADMIN và MANAGER
+    Route::middleware(['role:ADMIN,MANAGER'])->group(function () {
 
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');
@@ -27,6 +29,7 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::get('cinemas/{cinema}/edit', [CinemaController::class, 'edit'])->name('admin.cinemas.edit');
     Route::put('cinemas/{cinema}', [CinemaController::class, 'update'])->name('admin.cinemas.update');
     Route::delete('cinemas/{cinema}', [CinemaController::class, 'destroy'])->name('admin.cinemas.destroy');
+    Route::post('cinemas/{id}/restore', [CinemaController::class, 'restore'])->name('admin.cinemas.restore');
 
     // Rooms
     Route::get('rooms', [RoomController::class, 'index'])->name('admin.rooms.index');
@@ -61,12 +64,17 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
         return view('admin.bookings.index');
     })->name('admin.bookings.index');
 
-    // Users
-    Route::get('users', [UserController::class, 'index'])->name('admin.users.index');
-    Route::get('users/create', [UserController::class, 'create'])->name('admin.users.create');
-    Route::post('users', [UserController::class, 'store'])->name('admin.users.store');
-    Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('admin.users.edit');
-    Route::put('users/{user}', [UserController::class, 'update'])->name('admin.users.update');
-    Route::delete('users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
+    });
 
+    // Phân quyền chỉ cho ADMIN
+    Route::middleware(['role:ADMIN'])->group(function () {
+        // Users
+        Route::get('users', [UserController::class, 'index'])->name('admin.users.index');
+        Route::get('users/create', [UserController::class, 'create'])->name('admin.users.create');
+        Route::post('users', [UserController::class, 'store'])->name('admin.users.store');
+        Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('admin.users.edit');
+        Route::put('users/{user}', [UserController::class, 'update'])->name('admin.users.update');
+        Route::delete('users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
+        Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
+    });
 });
