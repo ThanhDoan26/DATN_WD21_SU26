@@ -26,181 +26,190 @@
 </head>
 <body class="bg-slate-900 text-slate-200 antialiased pt-10">
 
-    <div class="max-w-4xl mx-auto px-4">
-        <h1 class="text-3xl font-bold mb-8 text-white"><i class="fas fa-shopping-cart text-primary mr-2"></i>Thanh Toán Đơn Hàng</h1>
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            <!-- Left col: Chi tiết vé -->
-            <div class="md:col-span-2 space-y-6">
-                <div class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-white">Vé Phim Của Bạn</h2>
-                    
-                    <div class="flex gap-4 mb-4 pb-4 border-b border-slate-700">
-                        <div class="w-24 h-32 bg-slate-700 rounded-lg overflow-hidden flex-shrink-0">
-                            <!-- Placeholder Movie Image -->
-                            <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" class="w-full h-full object-cover" alt="Movie">
-                        </div>
-                        <div class="flex-1">
-                            <h3 class="text-lg font-bold text-white mb-1">Avatar: The Way of Water</h3>
-                            <p class="text-slate-400 text-sm mb-2"><i class="fas fa-map-marker-alt mr-1"></i> movieGo Vincom Metropolis</p>
-                            <p class="text-slate-400 text-sm mb-2"><i class="fas fa-clock mr-1"></i> 19:30 - Hôm nay</p>
-                            <div class="mt-2 flex gap-2">
-                                <span class="bg-primary/20 text-red-400 px-2 py-1 rounded text-xs font-semibold">Phòng 01</span>
-                                <span class="bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs font-semibold">Ghế: G10, G11</span>
+    <div class="max-w-6xl mx-auto px-4">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-white"><i class="fas fa-credit-card text-primary mr-2"></i> Thanh Toán Vé</h1>
+            <p class="text-slate-400">Kiểm tra lại thông tin, áp dụng mã giảm giá và giữ ghế trước khi thanh toán.</p>
+        </div>
+
+        @if(!$showtime || empty($seatSummary))
+            <div class="rounded-3xl bg-slate-800 border border-slate-700 p-8 text-center">
+                <h2 class="text-2xl font-semibold text-white mb-4">Không có dữ liệu thanh toán</h2>
+                <p class="text-slate-400 mb-6">Vui lòng chọn ghế từ trang đặt vé trước khi vào trang thanh toán.</p>
+                <a href="{{ url()->previous() }}" class="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-white font-semibold hover:bg-red-600 transition">
+                    <i class="fas fa-arrow-left mr-2"></i> Quay lại chọn ghế
+                </a>
+            </div>
+        @else
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="rounded-3xl bg-slate-800 border border-slate-700 p-8 shadow-xl">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                            <div>
+                                <h2 class="text-2xl font-semibold text-white">Thông tin suất chiếu</h2>
+                                <p class="text-slate-400 mt-2">
+                                    <strong>{{ $showtime->movie->title }}</strong><br>
+                                    {{ $showtime->room->cinema->name }} - {{ $showtime->room->name }}<br>
+                                    {{ $showtime->start_time->format('H:i d/m/Y') }}
+                                </p>
+                            </div>
+                            <div class="rounded-3xl bg-slate-900 border border-slate-700 px-5 py-4 text-center">
+                                <div class="text-slate-400 text-sm">Phụ thu/suất chiếu</div>
+                                <div class="text-xl font-semibold text-white">{{ number_format($surcharge, 0, ',', '.') }} đ</div>
                             </div>
                         </div>
+
+                        <div class="space-y-4">
+                            @foreach($seatSummary as $seat)
+                                <div class="rounded-3xl bg-slate-900 border border-slate-700 p-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                                    <div>
+                                        <div class="text-white font-semibold">Ghế {{ $seat['code'] }} ({{ $seat['type'] }})</div>
+                                        <div class="text-slate-400 text-sm">Giá cơ bản: {{ number_format($seat['base_price'], 0, ',', '.') }} đ</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-slate-400 text-sm">Phụ thu</div>
+                                        <div class="text-white font-semibold">{{ number_format($seat['surcharge'], 0, ',', '.') }} đ</div>
+                                        <div class="text-slate-300 text-sm">Tổng: {{ number_format($seat['final_price'], 0, ',', '.') }} đ</div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
 
-                </div>
-
-                <div class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-white">Thông Tin Thanh Toán</h2>
-                    <p class="text-slate-400">Chọn phương thức thanh toán...</p>
-                    <!-- Form thanh toán dummy -->
-                    <div class="mt-4 flex gap-4">
-                        <label class="flex-1 border border-slate-600 rounded-xl p-4 cursor-pointer hover:border-primary transition-colors flex flex-col items-center gap-2">
-                            <input type="radio" name="payment" class="hidden" checked>
-                            <i class="fas fa-qrcode text-3xl text-pink-500"></i>
-                            <span class="text-sm font-medium">MoMo</span>
-                        </label>
-                        <label class="flex-1 border border-slate-600 rounded-xl p-4 cursor-pointer hover:border-primary transition-colors flex flex-col items-center gap-2">
-                            <input type="radio" name="payment" class="hidden">
-                            <i class="fas fa-credit-card text-3xl text-blue-500"></i>
-                            <span class="text-sm font-medium">Thẻ ATM</span>
-                        </label>
+                    <div class="rounded-3xl bg-slate-800 border border-slate-700 p-8 shadow-xl">
+                        <h2 class="text-2xl font-semibold text-white mb-4">Áp dụng mã giảm giá</h2>
+                        <div class="grid gap-4">
+                            <input id="coupon_code" type="text" placeholder="Nhập mã giảm giá" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-5 py-4 text-white outline-none focus:border-primary" />
+                            <button id="apply-coupon" class="inline-flex items-center justify-center rounded-3xl bg-primary px-6 py-4 text-white font-semibold hover:bg-red-600 transition">Áp dụng mã</button>
+                            <div id="coupon-result" class="text-sm"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Right col: Tóm tắt & Mã giảm giá -->
-            <div class="md:col-span-1">
-                <div class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl sticky top-10">
-                    <h2 class="text-xl font-semibold mb-6 text-white border-b border-slate-700 pb-2">Tóm Tắt Đơn Hàng</h2>
-                    
-                    <div class="space-y-3 text-sm mb-6">
-                        <div class="flex justify-content-between flex justify-between">
-                            <span class="text-slate-400">2x Ghế VIP</span>
-                            <span class="font-medium">200.000 đ</span>
+                <div class="rounded-3xl bg-slate-800 border border-slate-700 p-8 shadow-xl sticky top-10">
+                    <h2 class="text-2xl font-semibold text-white mb-6">Tóm tắt đơn hàng</h2>
+                    <div class="space-y-4 text-sm text-slate-300">
+                        <div class="flex justify-between">
+                            <span>Ghế đã chọn</span>
+                            <span>{{ count($seatSummary) }} ghế</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-slate-400">1x Bắp nước</span>
-                            <span class="font-medium">65.000 đ</span>
+                            <span>Tạm tính</span>
+                            <span>{{ number_format($subtotal, 0, ',', '.') }} đ</span>
                         </div>
-                        <div class="flex justify-between border-t border-slate-700 pt-3">
-                            <span class="text-slate-300 font-medium">Tạm tính</span>
-                            <span class="font-bold text-white" id="subtotal_display">265.000 đ</span>
+                        <div class="flex justify-between">
+                            <span>Phụ thu suất chiếu</span>
+                            <span>{{ number_format($surcharge, 0, ',', '.') }} đ / ghế</span>
                         </div>
-                        <!-- Hiển thị giảm giá -->
-                        <div class="flex justify-between text-emerald-400 hidden" id="discount_row">
-                            <span>Mã giảm giá</span>
-                            <span class="font-bold" id="discount_display">-0 đ</span>
+                        <div class="border-t border-slate-700 pt-4 flex justify-between items-center">
+                            <span class="font-semibold text-white">Tổng thanh toán</span>
+                            <span id="final-total" class="text-2xl font-bold text-primary">{{ number_format($total, 0, ',', '.') }} đ</span>
                         </div>
                     </div>
-
-                    <!-- Input Mã Giảm Giá -->
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-slate-400 mb-2">Mã Khuyến Mãi</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="coupon_code" placeholder="Nhập mã..." class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary uppercase transition-colors">
-                            <button id="btn_apply_coupon" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap">Áp dụng</button>
-                        </div>
-                        <div id="coupon_message" class="text-xs mt-2 hidden"></div>
-                    </div>
-
-                    <div class="border-t border-slate-700 pt-4 mb-6 flex justify-between items-end">
-                        <span class="text-slate-400 font-medium">Tổng Tiền</span>
-                        <span class="text-2xl font-bold text-primary" id="final_total_display">265.000 đ</span>
-                    </div>
-
-                    <button class="w-full bg-primary hover:bg-red-700 text-white py-3 rounded-xl font-bold text-lg shadow-lg shadow-primary/30 transition-all hover:-translate-y-1">
-                        Thanh Toán
-                    </button>
+                    <button id="confirm-reservation" class="mt-8 w-full rounded-3xl bg-primary px-6 py-4 text-white font-semibold hover:bg-red-600 transition">Giữ ghế & thanh toán</button>
+                    <p class="mt-4 text-xs text-slate-500">Ghế sẽ được giữ trong <strong>{{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES }} phút</strong>.</p>
                 </div>
             </div>
-
-        </div>
+        @endif
     </div>
 
-    <!-- Script xử lý Coupon -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Biến giả lập
-            const orderTotal = 265000; // 265.000 VNĐ
-            
-            const btnApply = document.getElementById('btn_apply_coupon');
-            const inputCode = document.getElementById('coupon_code');
-            const msgBox = document.getElementById('coupon_message');
-            const discountRow = document.getElementById('discount_row');
-            const discountDisplay = document.getElementById('discount_display');
-            const finalTotalDisplay = document.getElementById('final_total_display');
+            const showtimeId = @json($showtimeId ?? '');
+            const seatIds = @json($seatIds ?? '');
+            const totalPrice = {{ $total ?? 0 }};
+            const apiApplyCoupon = @json(route('api.apply-coupon'));
+            const reserveUrl = @json(route('checkout.reserve'));
+            const successUrl = @json(route('checkout.success'));
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-            // Format tiền tệ
-            const formatMoney = (amount) => {
-                return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
-            };
+            const applyCouponButton = document.getElementById('apply-coupon');
+            const confirmReservationButton = document.getElementById('confirm-reservation');
+            const couponCodeInput = document.getElementById('coupon_code');
+            const couponResult = document.getElementById('coupon-result');
+            const finalTotalElement = document.getElementById('final-total');
 
-            btnApply.addEventListener('click', function() {
-                const code = inputCode.value.trim().toUpperCase();
-                
-                if(!code) {
-                    msgBox.className = 'text-xs mt-2 text-red-400';
-                    msgBox.textContent = 'Vui lòng nhập mã giảm giá!';
-                    msgBox.classList.remove('hidden');
-                    return;
-                }
-
-                // Hiển thị loading
-                btnApply.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                btnApply.disabled = true;
-
-                // Call API
-                fetch('/api/apply-coupon', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        code: code,
-                        order_total: orderTotal
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    btnApply.innerHTML = 'Áp dụng';
-                    btnApply.disabled = false;
-                    msgBox.classList.remove('hidden');
-
-                    if(data.success) {
-                        // Thành công
-                        msgBox.className = 'text-xs mt-2 text-emerald-400';
-                        msgBox.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message}`;
-                        
-                        // Cập nhật giao diện
-                        discountRow.classList.remove('hidden');
-                        discountDisplay.textContent = '-' + formatMoney(data.data.discount_amount);
-                        finalTotalDisplay.textContent = formatMoney(data.data.final_total);
-                        inputCode.disabled = true;
-                        btnApply.classList.add('hidden'); // Ẩn nút áp dụng
-                    } else {
-                        // Thất bại
-                        msgBox.className = 'text-xs mt-2 text-red-400';
-                        msgBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${data.message}`;
-                        discountRow.classList.add('hidden');
-                        finalTotalDisplay.textContent = formatMoney(orderTotal);
+            if (applyCouponButton) {
+                applyCouponButton.addEventListener('click', function() {
+                    const code = couponCodeInput.value.trim();
+                    if (!code) {
+                        couponResult.innerHTML = '<div class="text-sm text-rose-400">Vui lòng nhập mã giảm giá.</div>';
+                        return;
                     }
-                })
-                .catch(error => {
-                    btnApply.innerHTML = 'Áp dụng';
-                    btnApply.disabled = false;
-                    msgBox.className = 'text-xs mt-2 text-red-400';
-                    msgBox.textContent = 'Có lỗi xảy ra, vui lòng thử lại sau.';
-                    msgBox.classList.remove('hidden');
-                    console.error('Error:', error);
+
+                    applyCouponButton.disabled = true;
+                    applyCouponButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang áp dụng';
+
+                    fetch(apiApplyCoupon, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ code, order_total: totalPrice })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            applyCouponButton.disabled = false;
+                            applyCouponButton.innerHTML = 'Áp dụng mã';
+
+                            if (data.success) {
+                                couponResult.innerHTML = '<div class="text-sm text-emerald-400">' + data.message + '</div>';
+                                finalTotalElement.textContent = new Intl.NumberFormat('vi-VN').format(data.data.final_total) + ' đ';
+                            } else {
+                                couponResult.innerHTML = '<div class="text-sm text-rose-400">' + data.message + '</div>';
+                                finalTotalElement.textContent = new Intl.NumberFormat('vi-VN').format(totalPrice) + ' đ';
+                            }
+                        })
+                        .catch(() => {
+                            applyCouponButton.disabled = false;
+                            applyCouponButton.innerHTML = 'Áp dụng mã';
+                            couponResult.innerHTML = '<div class="text-sm text-rose-400">Không thể kết nối tới server.</div>';
+                        });
                 });
-            });
+            }
+
+            if (confirmReservationButton) {
+                confirmReservationButton.addEventListener('click', function() {
+                    if (!showtimeId || !seatIds) {
+                        window.location.href = '{{ url('/') }}';
+                        return;
+                    }
+
+                    confirmReservationButton.disabled = true;
+                    confirmReservationButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang giữ ghế';
+
+                    fetch(reserveUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            showtime_id: showtimeId,
+                            seat_ids: seatIds,
+                            payment_method: 'ONLINE'
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                window.location.href = successUrl + '?booking_id=' + data.data.booking_id;
+                            } else {
+                                confirmReservationButton.disabled = false;
+                                confirmReservationButton.innerHTML = 'Giữ ghế & thanh toán';
+                                couponResult.innerHTML = '<div class="text-sm text-rose-400">' + data.message + '</div>';
+                            }
+                        })
+                        .catch(() => {
+                            confirmReservationButton.disabled = false;
+                            confirmReservationButton.innerHTML = 'Giữ ghế & thanh toán';
+                            couponResult.innerHTML = '<div class="text-sm text-rose-400">Không thể kết nối tới server.</div>';
+                        });
+                });
+            }
         });
     </script>
 </body>

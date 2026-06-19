@@ -45,6 +45,11 @@ Route::prefix('api/booking')->controller(\App\Http\Controllers\BookingController
 
 // Frontend API/AJAX routes
 Route::post('/api/apply-coupon', [\App\Http\Controllers\CheckoutController::class, 'applyCoupon'])->name('api.apply-coupon');
-Route::get('/checkout', [\App\Http\Controllers\CheckoutController::class, 'index'])->name('checkout');
+
+Route::middleware('auth')->group(function () {
+    Route::post('/checkout/reserve', [\App\Http\Controllers\CheckoutController::class, 'reserve'])->name('checkout.reserve');
+    Route::get('/checkout', [\App\Http\Controllers\CheckoutController::class, 'index'])->name('checkout');
+    Route::get('/checkout/success', [\App\Http\Controllers\CheckoutController::class, 'success'])->name('checkout.success');
+});
 
 require __DIR__.'/auth.php';

@@ -325,6 +325,7 @@
                                                 class="seat {{ $seatClass }}"
                                                 data-seat-id="{{ $seat->id }}"
                                                 data-seat-code="{{ $seat->getSeatCode() }}"
+                                                data-seat-type="{{ $seat->seat_type }}"
                                                 title="{{ $seat->getSeatCode() }}"
                                                 {{ $isBooked ? 'disabled' : '' }}>
                                                 {{ $seat->seat_number }}
@@ -408,8 +409,9 @@
 
     <script>
         const showtimeId = {{ $showtime->id }};
+        const surcharge = {{ $showtime->surcharge ?? 0 }};
         const selectedSeats = new Set();
-        const ticketPrices = @json($ticketPrices->pluck('price'));
+        const ticketPrices = @json($ticketPrices->mapWithKeys(fn($price) => [$price->seat_type => (float) $price->price]));
 
         function toggleSeat(seatId, button) {
             if (button.classList.contains('booked')) {
@@ -443,9 +445,15 @@
                 document.getElementById('selectedSeatsDisplay').innerHTML = `<span class="text-white font-bold">${codes}</span>`;
                 document.getElementById('checkoutButton').disabled = false;
 
-                // Calculate total (using first ticket price for now)
-                const basePrice = ticketPrices[0] || 0;
-                const total = count * basePrice;
+                let total = 0;
+                Array.from(selectedSeats).forEach(id => {
+                    const button = document.querySelector(`[data-seat-id="${id}"]`);
+                    if (!button) return;
+                    const seatType = button.getAttribute('data-seat-type');
+                    const basePrice = ticketPrices[seatType] || 0;
+                    total += basePrice + surcharge;
+                });
+
                 document.getElementById('totalPrice').textContent = number_format(total) + '₫';
             }
         }
