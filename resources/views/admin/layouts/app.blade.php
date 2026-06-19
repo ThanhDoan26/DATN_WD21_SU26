@@ -416,10 +416,17 @@
                 </a>
             </li>
             <li>
+                <a href="{{ route('admin.coupons.index') }}"
+                   class="@if(request()->routeIs('admin.coupons.*')) active @endif">
+                    <i class="fas fa-tags"></i>
+                    <span>Mã giảm giá</span>
+                </a>
+            </li>
+            <li>
                 <a href="{{ route('admin.users.index') }}"
                    class="@if(request()->routeIs('admin.users.*')) active @endif">
                     <i class="fas fa-users"></i>
-                    <span>Users</span>
+                    <span>Người dùng</span>
                 </a>
             </li>
         </ul>
