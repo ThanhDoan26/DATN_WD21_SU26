@@ -107,6 +107,9 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::delete('users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
 
     // Coupons
+    Route::get('coupons/trashed', [CouponController::class, 'trashed'])->name('admin.coupons.trashed');
+    Route::post('coupons/{coupon}/restore', [CouponController::class, 'restore'])->name('admin.coupons.restore');
+    Route::delete('coupons/{coupon}/force-delete', [CouponController::class, 'forceDelete'])->name('admin.coupons.forceDelete');
     Route::resource('coupons', CouponController::class, ['as' => 'admin']);
 
 });
