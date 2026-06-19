@@ -78,7 +78,7 @@
                         @endif
                     </td>
                     <td>
-                        <small class="text-muted">{{ $cinema->created_at->format('d/m/Y H:i') }}</small>
+                        {{ $cinema->created_at?->format('d/m/Y H:i') ?? 'Chưa có dữ liệu' }}
                     </td>
                     <td>
                         <a href="{{ route('admin.cinemas.show', $cinema->id) }}" class="btn btn-sm btn-info" title="Xem chi tiết">
