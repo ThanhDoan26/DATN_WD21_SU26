@@ -196,6 +196,5 @@
             <p>&copy; 2026 movieGo. Bảo lưu mọi quyền.</p>
         </div>
     </footer>
-
 </body>
 </html>

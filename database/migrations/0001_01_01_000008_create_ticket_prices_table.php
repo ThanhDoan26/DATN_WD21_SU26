@@ -48,7 +48,7 @@ return new class extends Migration
             //    - ticket_prices cần có giá cho mỗi loại ghế (không cần biết seat_id cụ thể)
             //    - Giảm complexity của query
             //    - Dễ thêm loại ghế mới
-            $table->string('seat_type');
+            $table->string('seat_type', 20);
             
             // Giá vé (DECIMAL: precision=10, scale=2 = 99,999,999.99)
             // VNĐ không có số lẻ, nhưng DECIMAL(10,2) là standard

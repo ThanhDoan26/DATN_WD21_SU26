@@ -85,9 +85,8 @@
             </div>
         @endif
 
-        <!-- Book Button -->
-        <a href="{{ route('movies.show', $movie->id) }}" class="w-full bg-primary hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition-all transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg shadow-red-500/30">
-            <i class="fas fa-ticket-alt"></i> Đặt Vé / Chi Tiết
+        <a href="{{ route('booking.select-cinema', $movie) }}" class="w-full bg-primary hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition-all transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg shadow-red-500/30">
+            <i class="fas fa-ticket-alt"></i> Đặt Vé
         </a>
     </div>
 </div>

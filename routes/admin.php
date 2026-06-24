@@ -9,6 +9,8 @@ use App\Http\Controllers\Admin\SeatController;
 use App\Http\Controllers\Admin\ShowtimeController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\BookingController;
+use App\Http\Controllers\Admin\CouponController;
+use App\Http\Controllers\Admin\ComboController;
 
 /**
  * Admin Routes
@@ -107,5 +109,11 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('admin.users.edit');
     Route::put('users/{user}', [UserController::class, 'update'])->name('admin.users.update');
     Route::delete('users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
+
+    // Coupons
+    Route::resource('coupons', CouponController::class, ['as' => 'admin']);
+
+    // Combos
+    Route::resource('combos', ComboController::class, ['as' => 'admin']);
 
 });

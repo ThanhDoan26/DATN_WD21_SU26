@@ -28,11 +28,12 @@ class Showtime extends Model
         self::STATUS_CANCELLED,
     ];
 
-    protected $fillable = ['movie_id', 'room_id', 'start_time', 'end_time', 'status'];
+    protected $fillable = ['movie_id', 'room_id', 'start_time', 'end_time', 'status', 'surcharge'];
 
     protected $casts = [
         'start_time' => 'datetime',
         'end_time' => 'datetime',
+        'surcharge' => 'decimal:2',
     ];
 
     public function movie(): BelongsTo

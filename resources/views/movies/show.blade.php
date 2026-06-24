@@ -127,7 +127,7 @@
 
                     <!-- Action Buttons -->
                     <div class="flex flex-wrap gap-4 mt-4">
-                        <a href="#showtimes-section" class="bg-primary hover:bg-red-700 text-white px-8 py-3.5 rounded-full font-bold text-lg transition-all transform hover:-translate-y-1 shadow-lg shadow-red-500/30 flex items-center gap-2">
+                        <a href="{{ route('booking.select-cinema', $movie->id) }}" class="bg-primary hover:bg-red-700 text-white px-8 py-3.5 rounded-full font-bold text-lg transition-all transform hover:-translate-y-1 shadow-lg shadow-red-500/30 flex items-center gap-2">
                             <i class="fas fa-ticket-alt"></i> Đặt Vé Ngay
                         </a>
                         <a href="#trailer-section" class="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 hover:border-slate-500 px-8 py-3.5 rounded-full font-bold text-lg transition-all flex items-center gap-2">
@@ -277,10 +277,10 @@
                                                     <div class="p-4 bg-slate-800/30">
                                                         <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
                                                             @foreach($showtimes as $showtime)
-                                                                <a href="/booking/{{ $showtime->id }}" 
-                                                                   class="flex flex-col items-center justify-center py-2 px-1 bg-slate-700/80 hover:bg-primary border border-slate-600 hover:border-primary text-slate-200 hover:text-white rounded-lg transition-all shadow-sm group">
-                                                                    <span class="font-bold text-[15px]">{{ \Carbon\Carbon::parse($showtime->start_time)->format('H:i') }}</span>
-                                                                    <span class="text-[10px] text-slate-400 group-hover:text-red-200 uppercase tracking-widest mt-0.5">
+                                                                <a href="{{ route('booking.select-seats', ['showtime' => $showtime->id]) }}" 
+                                                                   class="flex flex-col items-center justify-center py-3 px-2 bg-slate-700 hover:bg-primary border-2 border-slate-600 hover:border-primary text-slate-200 hover:text-white rounded-xl transition-all shadow-md group transform hover:-translate-y-1">
+                                                                    <span class="font-bold text-lg">{{ \Carbon\Carbon::parse($showtime->start_time)->format('H:i') }}</span>
+                                                                    <span class="text-[11px] text-slate-400 group-hover:text-red-100 uppercase tracking-widest mt-1 font-semibold">
                                                                         {{ $showtime->room->name ?? 'Phòng' }}
                                                                     </span>
                                                                 </a>

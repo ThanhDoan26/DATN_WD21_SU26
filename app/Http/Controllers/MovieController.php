@@ -51,7 +51,7 @@ class MovieController extends Controller
         // Upcoming movies
         $upcomingMovies = Movie::where('status', 'COMING_SOON')
             ->with(['showtimes' => function ($query) {
-                $query->where('status', Showtime::STATUS_SCHEDULED)
+                $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
                       ->orderBy('start_time');
             }, 'categories'])
             ->orderBy('created_at', 'desc')
@@ -103,7 +103,7 @@ class MovieController extends Controller
     {
         $movies = Movie::where('status', 'COMING_SOON')
             ->with(['showtimes' => function ($query) {
-                $query->where('status', Showtime::STATUS_SCHEDULED)
+                $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
                       ->with(['room' => function ($q) {
                           $q->with('cinema');
                       }])
