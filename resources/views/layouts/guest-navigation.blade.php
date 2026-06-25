@@ -16,8 +16,10 @@
                 <a href="/" class="{{ request()->is('/') ? 'text-primary font-bold' : 'text-slate-300 hover:text-white font-medium' }} transition-colors">Trang chủ</a>
                 <a href="{{ route('movies.current') }}" class="{{ request()->routeIs('movies.current') ? 'text-primary font-bold' : 'text-slate-300 hover:text-white font-medium' }} transition-colors">Phim Đang Chiếu</a>
                 <a href="{{ route('movies.upcoming') }}" class="{{ request()->routeIs('movies.upcoming') ? 'text-primary font-bold' : 'text-slate-300 hover:text-white font-medium' }} transition-colors">Phim Sắp Chiếu</a>
-                <a href="#" class="text-slate-300 hover:text-white transition-colors font-medium">Cụm Rạp</a>
                 <a href="#" class="text-slate-300 hover:text-white transition-colors font-medium">Khuyến Mãi</a>
+                @auth
+                    <a href="{{ route('booking.history') }}" class="{{ request()->routeIs('booking.history*') ? 'text-primary font-bold' : 'text-slate-300 hover:text-white font-medium' }} transition-colors">Lịch sử đặt vé</a>
+                @endauth
             </div>
 
             <!-- Auth / User Actions -->
