@@ -12,6 +12,8 @@ use App\Services\BookingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\TicketConfirmationMail;
 
 class CheckoutController extends Controller
 {
@@ -203,5 +205,73 @@ class CheckoutController extends Controller
                 'final_total' => max(0, $orderTotal - $discountAmount)
             ]
         ]);
+    public function cancel(Request $request)
+    {
+        $request->validate([
+            'booking_id' => 'required|integer|exists:bookings,id',
+        ]);
+
+        $booking = Booking::where('id', $request->booking_id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$booking) {
+            return back()->with('error', 'Đơn vé không tồn tại hoặc không thuộc về bạn.');
+        }
+
+        if ($booking->status !== 'Pending') {
+            return back()->with('error', 'Chỉ có thể hủy đơn vé đang chờ thanh toán.');
+        }
+
+        try {
+            $bookingService = new BookingService();
+            $bookingService->cancelBooking($booking->id, 'Người dùng tự hủy đơn');
+            
+            return redirect()->route('home')->with('success', 'Đã hủy đơn vé và giải phóng ghế thành công.');
+        } catch (\Exception $e) {
+            Log::error('Cancel booking failed: ' . $e->getMessage());
+            return back()->with('error', 'Có lỗi xảy ra khi hủy đơn vé.');
+        }
+    }
+
+    public function mockPayment(Request $request)
+    {
+        $request->validate([
+            'booking_id' => 'required|integer|exists:bookings,id',
+        ]);
+
+        $booking = Booking::where('id', $request->booking_id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$booking) {
+            return back()->with('error', 'Đơn vé không tồn tại hoặc không thuộc về bạn.');
+        }
+
+        if ($booking->status !== 'Pending') {
+            return back()->with('error', 'Đơn vé này không ở trạng thái chờ thanh toán.');
+        }
+
+        try {
+            $bookingService = new BookingService();
+            
+            // Đánh dấu thanh toán thành công
+            $bookingService->completePayment($booking->id, $booking->payment_method ?? 'MOCK_PAYMENT');
+            
+            // Lấy thông tin chi tiết để gửi email
+            $bookingDetails = $bookingService->getBookingDetails($booking->id);
+            $showtime = Showtime::with(['movie', 'room.cinema'])->find($booking->showtime_id);
+            
+            // Gửi email xác nhận
+            if (Auth::user() && Auth::user()->email) {
+                Mail::to(Auth::user()->email)->send(new TicketConfirmationMail($bookingDetails, $showtime));
+            }
+            
+            return redirect()->route('checkout.success', ['booking_id' => $booking->id])
+                             ->with('success', 'Thanh toán thành công. Email xác nhận đã được gửi đến bạn.');
+        } catch (\Exception $e) {
+            Log::error('Mock payment failed: ' . $e->getMessage());
+            return back()->with('error', 'Có lỗi xảy ra khi xử lý thanh toán: ' . $e->getMessage());
+        }
     }
 }

@@ -50,6 +50,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/checkout/reserve', [\App\Http\Controllers\CheckoutController::class, 'reserve'])->name('checkout.reserve');
     Route::get('/checkout', [\App\Http\Controllers\CheckoutController::class, 'index'])->name('checkout');
     Route::get('/checkout/success', [\App\Http\Controllers\CheckoutController::class, 'success'])->name('checkout.success');
+    Route::post('/checkout/cancel', [\App\Http\Controllers\CheckoutController::class, 'cancel'])->name('checkout.cancel');
+    Route::post('/checkout/mock-payment', [\App\Http\Controllers\CheckoutController::class, 'mockPayment'])->name('checkout.mock-payment');
 });
 
 require __DIR__.'/auth.php';
