@@ -24,7 +24,7 @@
     <div class="relative min-h-[80vh] flex items-center pt-20">
         <!-- Background Banner -->
         <div class="absolute inset-0 z-0 overflow-hidden">
-            <img src="{{ $movie->poster_url ? asset('storage/' . $movie->poster_url) : 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80' }}" 
+            <img src="{{ $movie->poster_url ? (str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url)) : 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80' }}" 
                  alt="Background" 
                  class="w-full h-full object-cover blur-sm scale-105 opacity-40" />
             <div class="absolute inset-0 hero-gradient"></div>
@@ -37,7 +37,7 @@
                 <!-- Poster Left -->
                 <div class="w-full md:w-1/3 lg:w-1/4 flex-shrink-0">
                     <div class="rounded-xl overflow-hidden shadow-2xl shadow-primary/20 bg-slate-800 border border-slate-700/50 relative group">
-                        <img src="{{ $movie->poster_url ? asset('storage/' . $movie->poster_url) : 'https://via.placeholder.com/600x900?text=No+Poster' }}" 
+                        <img src="{{ $movie->poster_url ? (str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url)) : 'https://via.placeholder.com/600x900?text=No+Poster' }}" 
                             alt="{{ $movie->title }}" 
                             class="w-full h-auto object-cover aspect-[2/3]"
                             onerror="this.src='https://via.placeholder.com/600x900?text={{ urlencode($movie->title) }}'">

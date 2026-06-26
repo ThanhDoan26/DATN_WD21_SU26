@@ -20,7 +20,7 @@
         <div class="max-w-7xl mx-auto">
             <!-- Movie Info Bar -->
             <div class="bg-slate-800 rounded-lg p-6 mb-8 flex items-center gap-4">
-                <img src="{{ $movie->poster_url }}" alt="{{ $movie->title }}" class="w-20 h-28 rounded-lg object-cover">
+                <img src="{{ str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="w-20 h-28 rounded-lg object-cover shadow-lg border border-slate-700">
                 <div class="flex-1">
                     <h2 class="text-3xl font-bold mb-2">{{ $movie->title }}</h2>
                     <p class="text-slate-300">{{ $movie->description }}</p>

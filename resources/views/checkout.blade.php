@@ -50,7 +50,7 @@
                             <div class="flex flex-col md:flex-row gap-6 items-start md:items-center">
                                 @if($showtime->movie->poster_url)
                                     <div class="w-24 h-36 rounded-xl overflow-hidden shadow-lg flex-shrink-0 border border-slate-700">
-                                        <img src="{{ asset('storage/' . $showtime->movie->poster_url) }}" alt="Poster" class="w-full h-full object-cover">
+                                        <img src="{{ str_starts_with($showtime->movie->poster_url, 'http') ? $showtime->movie->poster_url : asset('storage/' . $showtime->movie->poster_url) }}" alt="Poster" class="w-full h-full object-cover">
                                     </div>
                                 @endif
                                 <div class="flex-1">
