@@ -1,50 +1,14 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>movieGo - Đỉnh Cao Điện Ảnh</title>
+@extends('layouts.frontend')
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+@push('styles')
+<style>
+    .hero-gradient {
+        background: linear-gradient(to top, #0f172a 0%, rgba(15, 23, 42, 0.4) 100%);
+    }
+</style>
+@endpush
 
-    <!-- Styles / Scripts -->
-    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @else
-        <!-- Fallback if Vite is not running, using CDN for preview -->
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script>
-            tailwind.config = {
-                darkMode: 'class',
-                theme: {
-                    extend: {
-                        fontFamily: {
-                            sans: ['Outfit', 'sans-serif'],
-                        },
-                        colors: {
-                            primary: '#e50914',
-                        }
-                    }
-                }
-            }
-        </script>
-    @endif
-    
-    <style>
-        body { font-family: 'Outfit', sans-serif; }
-        .hero-gradient {
-            background: linear-gradient(to top, #0f172a 0%, rgba(15, 23, 42, 0.4) 100%);
-        }
-    </style>
-</head>
-<body class="bg-slate-900 text-white antialiased selection:bg-primary selection:text-white">
-
-    <!-- Navigation Bar -->
-    @include('layouts.guest-navigation')
+@section('content')
 
     <!-- Hero Section -->
     <div class="relative min-h-screen flex items-center justify-center pt-20">
@@ -210,6 +174,4 @@
     </section>
     @endif
     @endif
-
-</body>
-</html>
+@endsection

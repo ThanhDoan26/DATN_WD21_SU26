@@ -1,27 +1,7 @@
-<!DOCTYPE html>
-<html lang="vi" class="dark">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Thanh Toán - movieGo</title>
+@extends('layouts.frontend')
 
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Outfit', 'sans-serif'] },
-                    colors: { primary: '#e50914' }
-                }
-            }
-        }
-    </script>
+@push('styles')
     <style>
-        body { font-family: 'Outfit', sans-serif; }
         /* Ticket edge effect */
         .ticket-edge {
             mask-image: radial-gradient(circle at 10px 10px, transparent 10px, black 11px);
@@ -37,10 +17,11 @@
             transform: scale(1);
         }
     </style>
-</head>
-<body class="bg-slate-950 text-slate-200 antialiased pt-10 pb-20">
+@endpush
 
-    <div class="max-w-6xl mx-auto px-4">
+@section('content')
+
+    <div class="max-w-6xl mx-auto px-4 pt-32 pb-20">
         <div class="mb-10 text-center">
             <h1 class="text-4xl font-bold text-white mb-2"><i class="fas fa-ticket-alt text-primary mr-3"></i>Thanh Toán Vé</h1>
             <p class="text-slate-400">Hoàn tất các bước cuối cùng để thưởng thức bộ phim của bạn.</p>
@@ -276,11 +257,16 @@
                             </div>
                         </div>
 
-                        <!-- Action -->
-                        <button id="confirm-reservation" class="w-full rounded-2xl bg-gradient-to-r from-primary to-red-600 px-6 py-4 text-white text-lg font-bold hover:shadow-lg hover:shadow-primary/30 transition-all hover:-translate-y-1 flex items-center justify-center gap-3">
-                            <span>Thanh toán ngay</span>
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
+                        <div class="space-y-3">
+                            <button id="confirm-reservation" class="w-full rounded-2xl bg-[#e50914] px-6 py-4 text-white text-lg font-bold hover:bg-[#b80710] hover:shadow-lg hover:shadow-red-500/40 transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-3">
+                                <span>Thanh toán ngay</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                            <a href="{{ url()->previous() }}" class="w-full rounded-2xl bg-slate-800/50 border border-slate-700 px-6 py-3 text-slate-300 text-base font-bold hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2">
+                                <i class="fas fa-arrow-left"></i>
+                                <span>Quay lại</span>
+                            </a>
+                        </div>
                         <p class="mt-4 text-center text-xs text-slate-500">Ghế của bạn sẽ được giữ trong <span class="text-slate-300 font-medium"><i class="far fa-clock"></i> {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES }} phút</span></p>
                     </div>
                 </div>
@@ -288,6 +274,9 @@
         @endif
     </div>
 
+@endsection
+
+@push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             @if(!$showtime || empty($seatSummary))
@@ -512,5 +501,4 @@
             updateOrderSummary();
         });
     </script>
-</body>
-</html>
+@endpush

@@ -1,38 +1,7 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Chọn Suất Chiếu - movieGo</title>
+@extends('layouts.frontend')
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @else
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script>
-            tailwind.config = {
-                darkMode: 'class',
-                theme: {
-                    extend: {
-                        fontFamily: {
-                            sans: ['Outfit', 'sans-serif'],
-                        },
-                        colors: {
-                            primary: '#e50914',
-                        }
-                    }
-                }
-            }
-        </script>
-    @endif
-
+@push('styles')
     <style>
-        body { font-family: 'Outfit', sans-serif; }
         .date-item {
             @apply p-4 rounded-xl border-2 border-slate-700 cursor-pointer transition-all duration-300 hover:border-primary hover:bg-slate-800 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/20;
         }
@@ -49,10 +18,9 @@
             @apply opacity-50 cursor-not-allowed hover:border-slate-700 hover:bg-slate-800;
         }
     </style>
-</head>
-<body class="bg-slate-900 text-white antialiased selection:bg-primary selection:text-white">
+@endpush
 
-    @include('layouts.guest-navigation')
+@section('content')
 
     <!-- Page Header -->
     <div class="bg-gradient-to-b from-slate-800 to-slate-900 pt-32 pb-16 px-4">
@@ -134,20 +102,9 @@
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="bg-slate-800 border-t border-slate-700 py-12 px-4 mt-16">
-        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-                <div class="flex items-center gap-2 mb-4">
-                    <div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white font-bold">
-                        <i class="fas fa-ticket-alt"></i>
-                    </div>
-                    <span class="font-bold text-xl">movie<span class="text-primary">Go</span></span>
-                </div>
-            </div>
-        </div>
-    </footer>
+@endsection
 
+@push('scripts')
     <script>
         const movieId = {{ $movie->id }};
         const cinemaId = {{ $cinema->id }};
@@ -311,5 +268,4 @@
             }
         }
     </script>
-</body>
-</html>
+@endpush
