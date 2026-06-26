@@ -109,4 +109,12 @@ class User extends Authenticatable
     {
         return $this->status === 'ACTIVE';
     }
+
+    /**
+     * Override default password reset notification for demo purposes.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        session()->flash('demo_reset_token', $token);
+    }
 }
