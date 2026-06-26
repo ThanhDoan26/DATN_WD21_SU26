@@ -41,7 +41,8 @@ class BookingService
         int $showtimeId,
         array $selectedSeatIds,
         ?string $paymentMethod = null,
-        ?string $couponCode = null
+        ?string $couponCode = null,
+        array $combos = []
     ): int {
         if (empty($selectedSeatIds)) {
             throw new Exception('Vui lòng chọn ít nhất 1 ghế');
@@ -50,7 +51,7 @@ class BookingService
         try {
             $this->cleanupExpiredPendingBookings();
 
-            return DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod) {
+            return DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos) {
 
                 // ================================================================
                 // Step 1: Lock các hàng ghế (chỉ 1 request được giữ lock)
@@ -146,6 +147,27 @@ class BookingService
                     ];
                 }
 
+                $comboDetails = [];
+                if (!empty($combos)) {
+                    $comboIds = array_keys($combos);
+                    $dbCombos = DB::table('combos')->whereIn('id', $comboIds)->get()->keyBy('id');
+                    foreach ($combos as $comboId => $comboData) {
+                        $qty = (int) ($comboData['qty'] ?? 0);
+                        if ($qty > 0) {
+                            if (!isset($dbCombos[$comboId])) {
+                                throw new Exception("Combo không tồn tại");
+                            }
+                            $comboPrice = (float) $dbCombos[$comboId]->price;
+                            $totalPrice += ($comboPrice * $qty);
+                            $comboDetails[] = [
+                                'combo_id' => $comboId,
+                                'quantity' => $qty,
+                                'price' => $comboPrice,
+                            ];
+                        }
+                    }
+                }
+
                 // ================================================================
                 // Step 5.1: Xử lý Mã giảm giá (nếu có)
                 // ================================================================
@@ -201,6 +223,20 @@ class BookingService
                         'price_at_booking' => $detail['price_at_booking'],
                         'status' => 'RESERVED',
                         'qr_code' => $this->generateQRCode($bookingCode, $detail['seat_row'], $detail['seat_number']),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                // ================================================================
+                // Step 7.1: Insert booking_combos
+                // ================================================================
+                foreach ($comboDetails as $cd) {
+                    DB::table('booking_combos')->insert([
+                        'booking_id' => $bookingId,
+                        'combo_id' => $cd['combo_id'],
+                        'quantity' => $cd['quantity'],
+                        'price' => $cd['price'],
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);

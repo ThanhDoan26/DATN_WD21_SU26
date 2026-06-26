@@ -471,6 +471,7 @@
                         body: JSON.stringify({
                             showtime_id: showtimeId,
                             seat_ids: seatIds,
+                            combos: selectedCombos,
                             payment_method: selectedPayment,
                             coupon_code: document.querySelector('input[name="coupon"]:checked') ? document.querySelector('input[name="coupon"]:checked').value : null,
                         })

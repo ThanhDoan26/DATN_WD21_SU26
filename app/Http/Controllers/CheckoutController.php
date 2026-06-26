@@ -97,6 +97,7 @@ class CheckoutController extends Controller
         $request->validate([
             'showtime_id' => 'required|exists:showtimes,id',
             'seat_ids' => 'required|string',
+            'combos' => 'nullable|array',
             'payment_method' => 'nullable|string|max:100',
             'coupon_code' => 'nullable|string|max:50',
         ]);
@@ -114,7 +115,8 @@ class CheckoutController extends Controller
                 (int) $request->input('showtime_id'),
                 $seatIds,
                 $request->input('payment_method', 'ONLINE'),
-                $request->input('coupon_code')
+                $request->input('coupon_code'),
+                $request->input('combos', [])
             );
 
             $bookingDetails = $bookingService->getBookingDetails($bookingId);

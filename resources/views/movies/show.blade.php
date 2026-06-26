@@ -303,7 +303,7 @@
                                                 <button type="button" @click="rating = 3" @mouseenter="hoverRating = 3" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 3 || (hoverRating === 0 && rating >= 3)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
                                                 <button type="button" @click="rating = 4" @mouseenter="hoverRating = 4" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 4 || (hoverRating === 0 && rating >= 4)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
                                                 <button type="button" @click="rating = 5" @mouseenter="hoverRating = 5" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 5 || (hoverRating === 0 && rating >= 5)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
-                                                <input type="hidden" name="rating" x-model="rating">
+                                                <input type="hidden" name="rating" :value="rating">
                                             </div>
                                             @error('rating')
                                                 <p class="text-red-400 text-sm mt-1">{{ $message }}</p>

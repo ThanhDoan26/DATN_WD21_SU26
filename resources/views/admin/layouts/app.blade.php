@@ -64,7 +64,7 @@
 
         .sidebar-menu {
             list-style: none;
-            padding: 20px 0;
+            padding: 20px 0 80px 0;
         }
 
         .sidebar-menu li {
@@ -100,27 +100,9 @@
             font-size: 1.1rem;
         }
 
-        .sidebar-user {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            padding: 15px 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            background-color: rgba(0, 0, 0, 0.1);
-        }
-
-        .sidebar-user a {
-            color: rgba(255, 255, 255, 0.8);
-            text-decoration: none;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            border: none;
-        }
-
-        .sidebar-user a:hover {
-            color: #fff;
-            background: none;
+        .topbar-right .dropdown:hover .dropdown-menu {
+            display: block;
+            margin-top: 0;
         }
 
         /* ========== MAIN CONTENT ========== */
@@ -430,30 +412,22 @@
                 </a>
             </li>
             <li>
-                <a href="{{ route('admin.users.index') }}"
-                   class="@if(request()->routeIs('admin.users.*')) active @endif">
-                    <i class="fas fa-users"></i>
-                    <span>Người dùng</span>
-                </a>
-            </li>
-            <li>
                 <a href="{{ route('admin.combos.index') }}"
                    class="@if(request()->routeIs('admin.combos.*')) active @endif">
                     <i class="fas fa-utensils"></i>
                     <span>Combo Bắp Nước</span>
                 </a>
             </li>
+            <li>
+                <a href="{{ route('admin.users.index') }}"
+                   class="@if(request()->routeIs('admin.users.*')) active @endif">
+                    <i class="fas fa-users"></i>
+                    <span>Người dùng</span>
+                </a>
+            </li>
         </ul>
 
-        <!-- Sidebar User -->
-        <div class="sidebar-user">
-            <form method="POST" action="{{ route('logout') }}" style="margin: 0;">
-                @csrf
-                <button type="submit" class="btn btn-link" style="width: 100%; text-align: left; padding: 0;">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </button>
-            </form>
-        </div>
+
     </aside>
 
     <!-- MAIN CONTENT -->
@@ -462,14 +436,32 @@
         <div class="topbar">
             <h5>@yield('page_title', 'Dashboard')</h5>
             <div class="topbar-right">
-                <div class="user-info">
-                    <div>
-                        <small style="color: #999;">Welcome</small><br>
-                        <strong style="color: #333;">{{ Auth::user()->name }}</strong>
+                <div class="dropdown">
+                    <div class="user-info dropdown-toggle" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
+                        <div class="text-end">
+                            <small style="color: #999;">Welcome</small><br>
+                            <strong style="color: #333;">{{ Auth::user()->name }}</strong>
+                        </div>
+                        <div class="user-avatar ms-2">
+                            {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
+                        </div>
                     </div>
-                    <div class="user-avatar">
-                        {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
-                    </div>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="userDropdown">
+                        <li>
+                            <a class="dropdown-item py-2" href="{{ route('profile.edit') }}">
+                                <i class="fas fa-user-circle me-2 text-primary"></i> Profile
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="POST" action="{{ route('logout') }}" class="m-0">
+                                @csrf
+                                <button type="submit" class="dropdown-item py-2 text-danger">
+                                    <i class="fas fa-sign-out-alt me-2"></i> Logout
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
