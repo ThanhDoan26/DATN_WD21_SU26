@@ -78,18 +78,36 @@
                     @error('password')
                         <p class="mt-2 text-sm text-[#e50914]">{{ $message }}</p>
                     @enderror
+                    <!-- Show Password Checkbox -->
+                    <div class="flex items-center mt-2">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="show-password" onclick="togglePasswordVisibility()" class="w-4 h-4 rounded border-slate-700 bg-slate-800/50 text-[#e50914] focus:ring-[#e50914]">
+                            <span class="ml-2 text-xs text-slate-400 hover:text-slate-300 transition-colors">Hiển thị mật khẩu</span>
+                        </label>
+                    </div>
                 </div>
 
-                <!-- Remember Me & Forgot Password -->
-                <div class="flex items-center justify-between">
-                    <label class="flex items-center cursor-pointer">
-                        <input type="checkbox" name="remember" class="w-4 h-4 rounded border-slate-700 bg-slate-800/50 text-[#e50914] focus:ring-[#e50914]" {{ old('remember') ? 'checked' : '' }}>
-                        <span class="ml-2 text-sm text-slate-300 hover:text-white transition-colors">Ghi nhớ tôi</span>
-                    </label>
-                    @if (Route::has('password.request'))
+                <script>
+                function togglePasswordVisibility() {
+                    var passwordField = document.getElementById("password");
+                    var checkbox = document.getElementById("show-password");
+                    if (checkbox.checked) {
+                        passwordField.type = "text";
+                    } else {
+                        passwordField.type = "password";
+                    }
+                }
+                </script>
+
+                <!-- Hidden Remember Me (Auto-enabled) -->
+                <input type="hidden" name="remember" value="1">
+
+                <!-- Forgot Password Link -->
+                @if (Route::has('password.request'))
+                    <div class="text-right">
                         <a href="{{ route('password.request') }}" class="text-sm text-[#e50914] hover:text-red-400 transition-colors">Quên mật khẩu?</a>
-                    @endif
-                </div>
+                    </div>
+                @endif
 
                 <!-- Submit Button -->
                 <button type="submit" class="w-full bg-[#e50914] hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition-all transform hover:scale-[1.02] shadow-lg shadow-red-500/30 flex justify-center items-center gap-2">

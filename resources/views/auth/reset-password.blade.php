@@ -10,7 +10,7 @@
         @csrf
 
         <!-- Hidden Token -->
-        <input type="hidden" name="token" value="{{ $request->route('token') }}">
+        <input type="hidden" name="token" value="{{ $request->route('token') ?? $request->token }}">
 
         <!-- Email -->
         <div class="form-group">
@@ -27,9 +27,6 @@
                     class="form-input"
                     placeholder="you@example.com"
                 />
-                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                </svg>
             </div>
             @error('email')
                 <div class="form-error">{{ $message }}</div>
@@ -49,9 +46,6 @@
                     class="form-input"
                     placeholder="Nhập mật khẩu mới"
                 />
-                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                </svg>
             </div>
             <p class="form-hint">Tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường và số</p>
             @error('password')
@@ -72,13 +66,16 @@
                     class="form-input"
                     placeholder="Nhập lại mật khẩu"
                 />
-                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
             </div>
             @error('password_confirmation')
                 <div class="form-error">{{ $message }}</div>
             @enderror
+        </div>
+
+        <!-- Show Password Checkbox -->
+        <div style="margin-top: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="show-password" onclick="togglePasswordVisibility()" style="cursor: pointer; width: 16px; height: 16px;">
+            <label for="show-password" style="cursor: pointer; font-size: 14px; color: #9ca3af; user-select: none;">Hiển thị mật khẩu</label>
         </div>
 
         <!-- Submit Button -->
@@ -89,4 +86,20 @@
             </svg>
         </button>
     </form>
+
+    <script>
+    function togglePasswordVisibility() {
+        var passwordField = document.getElementById("password");
+        var confirmField = document.getElementById("password_confirmation");
+        var checkbox = document.getElementById("show-password");
+        
+        if (checkbox.checked) {
+            passwordField.type = "text";
+            confirmField.type = "text";
+        } else {
+            passwordField.type = "password";
+            confirmField.type = "password";
+        }
+    }
+    </script>
 </x-guest-layout>

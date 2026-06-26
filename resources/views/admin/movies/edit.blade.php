@@ -48,17 +48,37 @@
 
                 <div class="col-md-4">
                     <div class="mb-3">
-                        <label for="poster" class="form-label">Poster Phim (Upload mới nếu muốn đổi)</label>
-                        <input class="form-control @error('poster') is-invalid @enderror" type="file" id="poster" name="poster" accept="image/*" onchange="previewImage(this)">
-                        @error('poster') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        
-                        <div class="mt-2 text-center">
-                            @if($movie->poster_url)
-                                <img id="poster_preview" src="{{ Str::startsWith($movie->poster_url, ['http://', 'https://']) ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" alt="Preview" style="max-width: 100%; height: auto; border-radius: 8px;" class="img-thumbnail">
-                            @else
-                                <img id="poster_preview" src="#" alt="Preview" style="max-width: 100%; height: auto; display: none; border-radius: 8px;" class="img-thumbnail">
-                            @endif
+                        <label class="form-label fw-bold">Poster Phim</label>
+                        <div class="poster-upload-wrapper">
+                            <input class="form-control @error('poster') is-invalid @enderror" type="file" id="poster" name="poster" accept="image/*" onchange="previewImage(this)" style="display: none;">
+                            <label for="poster" class="poster-upload-area d-flex flex-column align-items-center justify-content-center border border-2 rounded-3 bg-light text-muted position-relative" style="cursor: pointer; min-height: 280px; border-style: dashed !important; transition: all 0.3s ease; overflow: hidden;">
+                                <div id="poster_placeholder" class="text-center p-4" style="{{ $movie->poster_url ? 'display: none;' : '' }}">
+                                    <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-primary opacity-75"></i>
+                                    <h6 class="mb-1 fw-bold text-dark">Nhấn để chọn ảnh mới</h6>
+                                    <small class="text-muted">Định dạng: JPG, PNG, GIF (Tối đa 2MB)</small>
+                                </div>
+                                
+                                @if($movie->poster_url)
+                                    <img id="poster_preview" src="{{ Str::startsWith($movie->poster_url, ['http://', 'https://']) ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" alt="Preview" class="position-absolute w-100 h-100" style="object-fit: cover; top: 0; left: 0;">
+                                @else
+                                    <img id="poster_preview" src="#" alt="Preview" class="position-absolute w-100 h-100" style="object-fit: cover; display: none; top: 0; left: 0;">
+                                @endif
+                                
+                                <div id="poster_overlay" class="position-absolute w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50 text-white fw-bold" style="{{ $movie->poster_url ? 'display: flex;' : 'display: none;' }} top: 0; left: 0; opacity: 0; transition: opacity 0.3s;">
+                                    <i class="fas fa-sync-alt me-2"></i> Đổi ảnh khác
+                                </div>
+                            </label>
+                            @error('poster') <div class="invalid-feedback d-block mt-2">{{ $message }}</div> @enderror
                         </div>
+                        <style>
+                            .poster-upload-area:hover {
+                                background-color: #f1f3f5 !important;
+                                border-color: #0d6efd !important;
+                            }
+                            .poster-upload-area:hover #poster_overlay {
+                                opacity: 1 !important;
+                            }
+                        </style>
                     </div>
 
                     <div class="mb-3">
@@ -134,7 +154,9 @@
             var reader = new FileReader();
             reader.onload = function (e) {
                 document.getElementById('poster_preview').src = e.target.result;
-                document.getElementById('poster_preview').style.display = 'inline-block';
+                document.getElementById('poster_preview').style.display = 'block';
+                document.getElementById('poster_placeholder').style.display = 'none';
+                document.getElementById('poster_overlay').style.display = 'flex';
             }
             reader.readAsDataURL(input.files[0]);
         }

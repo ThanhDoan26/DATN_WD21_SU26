@@ -35,13 +35,16 @@
                     class="form-input"
                     placeholder="Nhập mật khẩu của bạn"
                 />
-                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                </svg>
             </div>
             @error('password')
                 <div class="form-error">{{ $message }}</div>
             @enderror
+        </div>
+
+        <!-- Show Password Checkbox -->
+        <div style="margin-top: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="show-password" onclick="togglePasswordVisibility()" style="cursor: pointer; width: 16px; height: 16px;">
+            <label for="show-password" style="cursor: pointer; font-size: 14px; color: #9ca3af; user-select: none;">Hiển thị mật khẩu</label>
         </div>
 
         <!-- Submit Button -->
@@ -52,4 +55,16 @@
             </svg>
         </button>
     </form>
+
+    <script>
+    function togglePasswordVisibility() {
+        var passwordField = document.getElementById("password");
+        var checkbox = document.getElementById("show-password");
+        if (checkbox.checked) {
+            passwordField.type = "text";
+        } else {
+            passwordField.type = "password";
+        }
+    }
+    </script>
 </x-guest-layout>

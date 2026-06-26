@@ -1,44 +1,14 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $movie->title }} - movieGo</title>
+@extends('layouts.frontend')
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+@section('title', $movie->title . ' - movieGo')
 
-    <!-- Styles / Scripts -->
-    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @else
-        <!-- Fallback if Vite is not running -->
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script>
-            tailwind.config = {
-                darkMode: 'class',
-                theme: {
-                    extend: {
-                        fontFamily: {
-                            sans: ['Outfit', 'sans-serif'],
-                        },
-                        colors: {
-                            primary: '#e50914',
-                        }
-                    }
-                }
-            }
-        </script>
-    @endif
-    
+@push('scripts')
     <!-- AlpineJS for Tab State -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+@endpush
 
+@push('styles')
     <style>
-        body { font-family: 'Outfit', sans-serif; }
         .hero-gradient {
             background: linear-gradient(to top, #0f172a 0%, rgba(15, 23, 42, 0.6) 50%, rgba(15, 23, 42, 0.9) 100%);
         }
@@ -46,17 +16,15 @@
             background: linear-gradient(to right, #0f172a 0%, rgba(15, 23, 42, 0.8) 50%, rgba(15, 23, 42, 0.2) 100%);
         }
     </style>
-</head>
-<body class="bg-slate-900 text-white antialiased selection:bg-primary selection:text-white">
+@endpush
 
-    <!-- Navigation Bar -->
-    @include('layouts.guest-navigation')
+@section('content')
 
     <!-- HERO SECTION -->
     <div class="relative min-h-[80vh] flex items-center pt-20">
         <!-- Background Banner -->
         <div class="absolute inset-0 z-0 overflow-hidden">
-            <img src="{{ $movie->poster_url ? asset('storage/' . $movie->poster_url) : 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80' }}" 
+            <img src="{{ $movie->poster_url ? (str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url)) : 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80' }}" 
                  alt="Background" 
                  class="w-full h-full object-cover blur-sm scale-105 opacity-40" />
             <div class="absolute inset-0 hero-gradient"></div>
@@ -69,7 +37,7 @@
                 <!-- Poster Left -->
                 <div class="w-full md:w-1/3 lg:w-1/4 flex-shrink-0">
                     <div class="rounded-xl overflow-hidden shadow-2xl shadow-primary/20 bg-slate-800 border border-slate-700/50 relative group">
-                        <img src="{{ $movie->poster_url ? asset('storage/' . $movie->poster_url) : 'https://via.placeholder.com/600x900?text=No+Poster' }}" 
+                        <img src="{{ $movie->poster_url ? (str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url)) : 'https://via.placeholder.com/600x900?text=No+Poster' }}" 
                             alt="{{ $movie->title }}" 
                             class="w-full h-auto object-cover aspect-[2/3]"
                             onerror="this.src='https://via.placeholder.com/600x900?text={{ urlencode($movie->title) }}'">
@@ -299,6 +267,106 @@
                 </div>
             </div>
 
+            <!-- Section 4.5: ĐÁNH GIÁ & BÌNH LUẬN -->
+            <section class="mt-20 border-t border-slate-800 pt-16" id="reviews-section">
+                <div class="flex flex-col lg:flex-row gap-12">
+                    <div class="w-full lg:w-2/3">
+                        <h2 class="text-3xl font-bold text-white flex items-center gap-3 mb-8">
+                            <span class="w-1.5 h-8 bg-primary rounded"></span> Đánh Giá & Bình Luận
+                        </h2>
+
+                        <!-- Review Form -->
+                        @auth
+                            @if($userReview)
+                                <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50 mb-8">
+                                    <h3 class="text-xl font-bold mb-4">Đánh giá của bạn</h3>
+                                    <div class="flex items-center gap-2 mb-2 text-yellow-400 text-lg">
+                                        @for($i = 1; $i <= 5; $i++)
+                                            <i class="fas fa-star {{ $i <= $userReview->rating ? '' : 'text-slate-600' }}"></i>
+                                        @endfor
+                                    </div>
+                                    <p class="text-slate-300">{{ $userReview->comment }}</p>
+                                    @if($userReview->status === 'HIDDEN')
+                                        <p class="text-red-400 text-sm mt-4"><i class="fas fa-eye-slash"></i> Đánh giá của bạn đã bị ẩn bởi quản trị viên.</p>
+                                    @endif
+                                </div>
+                            @elseif($canReview)
+                                <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 mb-8 shadow-xl">
+                                    <h3 class="text-xl font-bold mb-4">Gửi đánh giá của bạn</h3>
+                                    <form action="{{ route('movies.reviews.store', $movie->id) }}" method="POST">
+                                        @csrf
+                                        <div class="mb-4">
+                                            <label class="block text-slate-400 mb-2 font-medium">Chất lượng phim (1-5 sao)</label>
+                                            <div class="flex gap-2" x-data="{ rating: 5, hoverRating: 0 }">
+                                                <button type="button" @click="rating = 1" @mouseenter="hoverRating = 1" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 1 || (hoverRating === 0 && rating >= 1)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                <button type="button" @click="rating = 2" @mouseenter="hoverRating = 2" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 2 || (hoverRating === 0 && rating >= 2)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                <button type="button" @click="rating = 3" @mouseenter="hoverRating = 3" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 3 || (hoverRating === 0 && rating >= 3)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                <button type="button" @click="rating = 4" @mouseenter="hoverRating = 4" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 4 || (hoverRating === 0 && rating >= 4)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                <button type="button" @click="rating = 5" @mouseenter="hoverRating = 5" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 5 || (hoverRating === 0 && rating >= 5)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                <input type="hidden" name="rating" :value="rating">
+                                            </div>
+                                            @error('rating')
+                                                <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+                                        <div class="mb-4">
+                                            <label for="comment" class="block text-slate-400 mb-2 font-medium">Bình luận của bạn</label>
+                                            <textarea id="comment" name="comment" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-white placeholder-slate-500 focus:ring-primary focus:border-primary" placeholder="Nhập cảm nhận của bạn về bộ phim này..."></textarea>
+                                            @error('comment')
+                                                <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+                                        <button type="submit" class="bg-primary hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full transition-all">
+                                            Gửi Đánh Giá
+                                        </button>
+                                    </form>
+                                </div>
+                            @else
+                                <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50 mb-8 text-center">
+                                    <i class="fas fa-ticket-alt text-4xl text-slate-500 mb-3"></i>
+                                    <p class="text-slate-300">Bạn chỉ có thể đánh giá sau khi đã mua vé hoặc xem phim này.</p>
+                                </div>
+                            @endif
+                        @else
+                            <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50 mb-8 text-center flex flex-col items-center justify-center">
+                                <i class="fas fa-lock text-4xl text-slate-500 mb-3"></i>
+                                <p class="text-slate-300 mb-4">Vui lòng đăng nhập để gửi đánh giá phim.</p>
+                                <a href="{{ route('login') }}" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-2 rounded-full font-bold transition">Đăng nhập ngay</a>
+                            </div>
+                        @endauth
+
+                        <!-- Reviews List -->
+                        <div class="space-y-6">
+                            @forelse($reviews as $review)
+                                <div class="bg-slate-800/30 p-6 rounded-2xl border border-slate-700/30 flex gap-4">
+                                    <div class="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center text-xl font-bold text-slate-300 flex-shrink-0">
+                                        {{ substr($review->user->name, 0, 1) }}
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <h4 class="font-bold text-white">{{ $review->user->name }}</h4>
+                                            <span class="text-xs text-slate-500">{{ $review->created_at->diffForHumans() }}</span>
+                                        </div>
+                                        <div class="flex text-yellow-400 text-sm mb-3">
+                                            @for($i = 1; $i <= 5; $i++)
+                                                <i class="fas fa-star {{ $i <= $review->rating ? '' : 'text-slate-600' }}"></i>
+                                            @endfor
+                                        </div>
+                                        <p class="text-slate-300 leading-relaxed">{{ $review->comment }}</p>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-center py-10">
+                                    <i class="far fa-comments text-5xl text-slate-600 mb-4"></i>
+                                    <p class="text-slate-400 text-lg">Chưa có đánh giá nào cho phim này.</p>
+                                    <p class="text-slate-500 text-sm mt-1">Hãy là người đầu tiên để lại nhận xét!</p>
+                                </div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Section 5: PHIM LIÊN QUAN -->
             @if(isset($relatedMovies) && $relatedMovies->count() > 0)
                 <section class="mt-20 border-t border-slate-800 pt-16">
@@ -319,5 +387,4 @@
         </div>
     </div>
 
-</body>
-</html>
+@endsection

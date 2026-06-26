@@ -75,6 +75,7 @@ class CheckoutController extends Controller
         }
 
         $combos = Combo::where('status', 'ACTIVE')->get();
+        $coupons = Coupon::where('status', 'ACTIVE')->get();
 
         return view('checkout', compact(
             'showtime',
@@ -86,7 +87,8 @@ class CheckoutController extends Controller
             'total',
             'seatIds',
             'showtimeId',
-            'combos'
+            'combos',
+            'coupons'
         ));
     }
 
@@ -95,7 +97,9 @@ class CheckoutController extends Controller
         $request->validate([
             'showtime_id' => 'required|exists:showtimes,id',
             'seat_ids' => 'required|string',
+            'combos' => 'nullable|array',
             'payment_method' => 'nullable|string|max:100',
+            'coupon_code' => 'nullable|string|max:50',
         ]);
 
         $seatIds = array_filter(array_map('intval', explode(',', $request->input('seat_ids'))));
@@ -110,7 +114,9 @@ class CheckoutController extends Controller
                 Auth::id(),
                 (int) $request->input('showtime_id'),
                 $seatIds,
-                $request->input('payment_method', 'ONLINE')
+                $request->input('payment_method', 'ONLINE'),
+                $request->input('coupon_code'),
+                $request->input('combos', [])
             );
 
             $bookingDetails = $bookingService->getBookingDetails($bookingId);

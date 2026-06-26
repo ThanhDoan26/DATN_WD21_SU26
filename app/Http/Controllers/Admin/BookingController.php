@@ -111,7 +111,7 @@ class BookingController extends AdminController
     public function create()
     {
         $users = User::where('status', 'ACTIVE')->get();
-        $showtimes = Showtime::with(['movie', 'room'])->where('status', 'SCHEDULED')->get();
+        $showtimes = Showtime::with(['movie', 'room'])->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])->get();
         return view('admin.bookings.create', compact('users', 'showtimes'));
     }
 
@@ -157,8 +157,15 @@ class BookingController extends AdminController
      */
     public function edit(Booking $booking)
     {
-        $users = User::where('status', 'ACTIVE')->get();
-        $showtimes = Showtime::with(['movie', 'room'])->where('status', 'SCHEDULED')->get();
+        $users = User::where('status', 'ACTIVE')
+            ->orWhere('id', $booking->user_id)
+            ->get();
+            
+        $showtimes = Showtime::with(['movie', 'room'])
+            ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+            ->orWhere('id', $booking->showtime_id)
+            ->get();
+            
         return view('admin.bookings.edit', compact('booking', 'users', 'showtimes'));
     }
 

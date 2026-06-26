@@ -85,8 +85,30 @@
                 <!-- Confirm Password -->
                 <div>
                     <label for="password_confirmation" class="block text-sm font-medium text-slate-300 mb-2">Xác nhận mật khẩu <span class="text-[#e50914]">*</span></label>
-                    <input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#e50914] focus:ring-1 focus:ring-[#e50914] transition-colors" placeholder="Nhập lại mật khẩu">
+                    <input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-[#e50914] focus:ring-1 focus:ring-[#e50914] transition-colors" placeholder="Nhập lại mật khẩu">
+                    <!-- Show Password Checkbox -->
+                    <div class="flex items-center mt-2">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="show-password" onclick="togglePasswordVisibility()" class="w-4 h-4 rounded border-slate-700 bg-slate-800/50 text-[#e50914] focus:ring-[#e50914]">
+                            <span class="ml-2 text-xs text-slate-400 hover:text-slate-300 transition-colors">Hiển thị mật khẩu</span>
+                        </label>
+                    </div>
                 </div>
+
+                <script>
+                function togglePasswordVisibility() {
+                    var passwordField = document.getElementById("password");
+                    var confirmField = document.getElementById("password_confirmation");
+                    var checkbox = document.getElementById("show-password");
+                    if (checkbox.checked) {
+                        passwordField.type = "text";
+                        confirmField.type = "text";
+                    } else {
+                        passwordField.type = "password";
+                        confirmField.type = "password";
+                    }
+                }
+                </script>
 
                 <!-- Terms -->
                 <div class="flex items-start mt-4">
