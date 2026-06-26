@@ -429,6 +429,13 @@
                     <span>Người dùng</span>
                 </a>
             </li>
+            <li>
+                <a href="{{ route('admin.combos.index') }}"
+                   class="@if(request()->routeIs('admin.combos.*')) active @endif">
+                    <i class="fas fa-utensils"></i>
+                    <span>Combo Bắp Nước</span>
+                </a>
+            </li>
         </ul>
 
         <!-- Sidebar User -->

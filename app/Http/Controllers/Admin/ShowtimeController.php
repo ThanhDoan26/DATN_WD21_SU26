@@ -54,6 +54,7 @@ class ShowtimeController extends AdminController
             ],
             'end_time' => 'required|date|after:start_time',
             'status' => ['required', Rule::in(Showtime::STATUSES)],
+            'surcharge' => 'nullable|numeric|min:0',
             'ticket_prices' => 'required|array',
             'ticket_prices.*' => 'required|numeric|min:0',
         ], [
@@ -116,6 +117,7 @@ class ShowtimeController extends AdminController
             ],
             'end_time' => 'required|date|after:start_time',
             'status' => ['required', Rule::in(Showtime::STATUSES)],
+            'surcharge' => 'nullable|numeric|min:0',
             'ticket_prices' => 'required|array',
             'ticket_prices.*' => 'required|numeric|min:0',
         ], [

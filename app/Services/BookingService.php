@@ -24,6 +24,8 @@ use Exception;
  */
 class BookingService
 {
+    public const PENDING_PAYMENT_TIMEOUT_MINUTES = 10;
+
     /**
      * Tạo booking với protection chống race condition
      *
@@ -45,6 +47,8 @@ class BookingService
         }
 
         try {
+            $this->cleanupExpiredPendingBookings();
+
             return DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod) {
 
                 // ================================================================
@@ -90,14 +94,25 @@ class BookingService
                 }
 
                 // ================================================================
-                // Step 4: Lấy giá vé từ ticket_prices
+                // Step 4: Lấy thông tin suất chiếu và giá vé từ ticket_prices
                 // ================================================================
+                $showtime = DB::table('showtimes')
+                    ->where('id', $showtimeId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$showtime) {
+                    throw new Exception("Suất chiếu $showtimeId không tồn tại");
+                }
+
                 $ticketPrices = DB::table('ticket_prices')
                     ->where('showtime_id', $showtimeId)
                     ->where('status', 'ACTIVE')
                     ->lockForUpdate()
                     ->get()
                     ->keyBy('seat_type');
+
+                $surcharge = isset($showtime->surcharge) ? (float) $showtime->surcharge : 0;
 
                 // ================================================================
                 // Step 5: Tính tổng giá
@@ -119,13 +134,14 @@ class BookingService
                     }
 
                     $price = (float) $priceRow->price;
-                    $totalPrice += $price;
+                    $finalPrice = $price + $surcharge;
+                    $totalPrice += $finalPrice;
 
                     $seatDetails[] = [
                         'seat_id' => $seatId,
                         'seat_row' => $seat->row_name,
                         'seat_number' => $seat->seat_number,
-                        'price_at_booking' => $price,
+                        'price_at_booking' => $finalPrice,
                     ];
                 }
 
@@ -175,6 +191,46 @@ class BookingService
             }
             throw $e;
         }
+    }
+
+    /**
+     * Hủy các booking Pending quá hạn thanh toán và giải phóng ghế.
+     *
+     * @return int
+     */
+    public function cleanupExpiredPendingBookings(): int
+    {
+        return DB::transaction(function () {
+            $expiredAt = now()->subMinutes(self::PENDING_PAYMENT_TIMEOUT_MINUTES);
+
+            $expiredBookingIds = DB::table('bookings')
+                ->where('status', 'Pending')
+                ->where('booking_time', '<', $expiredAt)
+                ->pluck('id')
+                ->toArray();
+
+            if (empty($expiredBookingIds)) {
+                return 0;
+            }
+
+            DB::table('bookings')
+                ->whereIn('id', $expiredBookingIds)
+                ->update([
+                    'status' => 'Cancelled',
+                    'cancellation_reason' => 'Payment timeout expired',
+                    'cancelled_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+            DB::table('booked_seats')
+                ->whereIn('booking_id', $expiredBookingIds)
+                ->update([
+                    'status' => 'CANCELLED',
+                    'updated_at' => now(),
+                ]);
+
+            return count($expiredBookingIds);
+        });
     }
 
     /**
