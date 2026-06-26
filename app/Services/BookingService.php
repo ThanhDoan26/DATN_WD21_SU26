@@ -40,7 +40,8 @@ class BookingService
         ?int $userId,
         int $showtimeId,
         array $selectedSeatIds,
-        ?string $paymentMethod = null
+        ?string $paymentMethod = null,
+        ?string $couponCode = null
     ): int {
         if (empty($selectedSeatIds)) {
             throw new Exception('Vui lòng chọn ít nhất 1 ghế');
@@ -146,6 +147,32 @@ class BookingService
                 }
 
                 // ================================================================
+                // Step 5.1: Xử lý Mã giảm giá (nếu có)
+                // ================================================================
+                $couponId = null;
+                $discountAmount = 0;
+
+                if (!empty($couponCode)) {
+                    $coupon = \App\Models\Coupon::where('code', $couponCode)->lockForUpdate()->first();
+                    if (!$coupon) {
+                        throw new Exception("Mã giảm giá không hợp lệ hoặc không tồn tại.");
+                    }
+                    
+                    $validation = $coupon->isValid($totalPrice);
+                    if (!$validation['valid']) {
+                        throw new Exception($validation['message']);
+                    }
+
+                    $discountAmount = $coupon->calculateDiscount($totalPrice);
+                    $couponId = $coupon->id;
+
+                    // Tăng lượt sử dụng
+                    $coupon->increment('used_count');
+                }
+
+                $finalTotalPrice = max(0, $totalPrice - $discountAmount);
+
+                // ================================================================
                 // Step 6: Tạo Booking record
                 // ================================================================
                 $bookingCode = 'BK' . uniqid() . date('Ymd');
@@ -153,7 +180,9 @@ class BookingService
                 $bookingId = DB::table('bookings')->insertGetId([
                     'user_id' => $userId,
                     'showtime_id' => $showtimeId,
-                    'total_price' => $totalPrice,
+                    'total_price' => $finalTotalPrice,
+                    'coupon_id' => $couponId,
+                    'discount_amount' => $discountAmount,
                     'status' => 'Pending',
                     'payment_method' => $paymentMethod,
                     'booking_time' => now(),
@@ -211,6 +240,16 @@ class BookingService
 
             if (empty($expiredBookingIds)) {
                 return 0;
+            }
+
+            // Hoàn lại lượt dùng mã giảm giá
+            $bookingsWithCoupons = DB::table('bookings')
+                ->whereIn('id', $expiredBookingIds)
+                ->whereNotNull('coupon_id')
+                ->get();
+                
+            foreach ($bookingsWithCoupons as $b) {
+                DB::table('coupons')->where('id', $b->coupon_id)->where('used_count', '>', 0)->decrement('used_count');
             }
 
             DB::table('bookings')
@@ -313,6 +352,11 @@ class BookingService
                 throw new Exception(
                     "Không thể hủy booking này. Status: {$booking->status}"
                 );
+            }
+
+            // Hoàn lại lượt dùng mã giảm giá
+            if ($booking->coupon_id) {
+                DB::table('coupons')->where('id', $booking->coupon_id)->where('used_count', '>', 0)->decrement('used_count');
             }
 
             // Cập nhật booking status

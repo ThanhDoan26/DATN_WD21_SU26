@@ -201,10 +201,10 @@
                 const month = dateObj.getMonth() + 1;
 
                 return `
-                    <button onclick="selectDate('${date}', this)" class="date-item text-center">
-                        <div class="text-2xl font-bold">${dayNum}</div>
-                        <div class="text-xs text-slate-300">Th ${month}</div>
-                        <div class="text-xs text-slate-400">${dayName}</div>
+                    <button onclick="selectDate('${date}', this)" class="date-item w-full flex flex-col items-center justify-center p-4 rounded-xl border border-slate-700 bg-slate-800/50 cursor-pointer transition-all duration-300 hover:border-primary hover:bg-slate-800 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/20">
+                        <div class="text-2xl font-bold text-white mb-1">${dayNum}</div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Th ${month}</div>
+                        <div class="text-xs text-slate-500">${dayName}</div>
                     </button>
                 `;
             }).join('');
@@ -215,9 +215,11 @@
 
             // Update UI
             document.querySelectorAll('.date-item').forEach(el => {
-                el.classList.remove('active');
+                el.classList.remove('bg-primary', 'border-primary', 'shadow-lg', 'shadow-primary/40', '-translate-y-1');
+                el.classList.add('border-slate-700', 'bg-slate-800/50');
             });
-            button.classList.add('active');
+            button.classList.remove('border-slate-700', 'bg-slate-800/50');
+            button.classList.add('bg-primary', 'border-primary', 'shadow-lg', 'shadow-primary/40', '-translate-y-1');
 
             // Load showtimes
             loadShowtimes(date);
@@ -252,27 +254,36 @@
             const container = document.getElementById('showtimesContainer');
             container.innerHTML = showtimes.map(showtime => {
                 const isDisabled = showtime.available_seats <= 0;
+                
+                // Extra styling based on status
+                const baseClasses = "showtime-item w-full flex flex-col p-5 rounded-xl border border-slate-700 bg-slate-800/50 cursor-pointer transition-all duration-300";
+                const hoverClasses = isDisabled ? "opacity-50 cursor-not-allowed" : "hover:border-primary hover:bg-slate-800 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/20";
+                
                 return `
                     <button onclick="selectShowtime(${showtime.id}, this)"
-                            class="showtime-item ${isDisabled ? 'disabled' : ''}"
+                            class="${baseClasses} ${hoverClasses}"
                             ${isDisabled ? 'disabled' : ''}>
-                        <div class="flex justify-between items-start mb-3">
+                        <div class="flex justify-between items-start w-full mb-4">
                             <div class="text-left">
-                                <div class="text-2xl font-bold">${showtime.time}</div>
-                                <div class="text-xs text-slate-400">
-                                    ${new Date(showtime.start_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                <div class="text-3xl font-bold text-white mb-1">${showtime.time}</div>
+                                <div class="text-xs text-slate-400 font-medium bg-slate-900/50 inline-block px-2 py-0.5 rounded">
+                                    Kết thúc: ${new Date(showtime.start_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                                 </div>
                             </div>
-                            <span class="text-xs bg-slate-900 px-2 py-1 rounded">${showtime.room_format}</span>
+                            <span class="text-[10px] font-bold uppercase tracking-widest text-primary border border-primary/30 bg-primary/10 px-3 py-1 rounded-full">
+                                ${showtime.room_format}
+                            </span>
                         </div>
-                        <div class="text-left space-y-1">
-                            <div class="text-sm">
-                                <i class="fas fa-door-open text-slate-400 w-4"></i>
-                                <span>${showtime.room_name}</span>
+                        <div class="flex justify-between items-center w-full pt-4 border-t border-slate-700/50">
+                            <div class="flex items-center gap-2 text-sm text-slate-300">
+                                <i class="fas fa-door-open text-slate-500"></i>
+                                <span class="font-semibold">${showtime.room_name}</span>
                             </div>
-                            <div class="text-sm">
-                                <i class="fas fa-chair text-slate-400 w-4"></i>
-                                <span>${showtime.available_seats} ghế trống</span>
+                            <div class="flex items-center gap-2 text-sm">
+                                <i class="fas fa-chair text-slate-500"></i>
+                                <span class="${showtime.available_seats > 10 ? 'text-green-400' : 'text-orange-400'} font-semibold">
+                                    ${showtime.available_seats} ghế
+                                </span>
                             </div>
                         </div>
                     </button>
@@ -284,9 +295,12 @@
             selectedShowtime = showtimeId;
 
             document.querySelectorAll('.showtime-item').forEach(el => {
-                el.classList.remove('active');
+                el.classList.remove('bg-primary', 'border-primary', 'shadow-lg', 'shadow-primary/40', '-translate-y-1');
+                el.classList.add('border-slate-700', 'bg-slate-800/50');
             });
-            button.classList.add('active');
+            
+            button.classList.remove('border-slate-700', 'bg-slate-800/50');
+            button.classList.add('bg-primary', 'border-primary', 'shadow-lg', 'shadow-primary/40', '-translate-y-1');
 
             document.getElementById('nextButton').disabled = false;
         }
