@@ -9,6 +9,10 @@ Route::get('/phim-dang-chieu', [MovieController::class, 'currentMovies'])->name(
 Route::get('/phim-sap-chieu', [MovieController::class, 'upcomingMovies'])->name('movies.upcoming');
 Route::get('/phim/{id}', [MovieController::class, 'show'])->name('movies.show');
 
+Route::middleware('auth')->group(function () {
+    Route::post('/movies/{movie}/reviews', [\App\Http\Controllers\ReviewController::class, 'store'])->name('movies.reviews.store');
+});
+
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');

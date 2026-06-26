@@ -201,7 +201,7 @@
                 const month = dateObj.getMonth() + 1;
 
                 return `
-                    <button onclick="selectDate('${date}')" class="date-item text-center">
+                    <button onclick="selectDate('${date}', this)" class="date-item text-center">
                         <div class="text-2xl font-bold">${dayNum}</div>
                         <div class="text-xs text-slate-300">Th ${month}</div>
                         <div class="text-xs text-slate-400">${dayName}</div>
@@ -210,14 +210,14 @@
             }).join('');
         }
 
-        function selectDate(date) {
+        function selectDate(date, button) {
             selectedDate = date;
 
             // Update UI
             document.querySelectorAll('.date-item').forEach(el => {
                 el.classList.remove('active');
             });
-            event.target.closest('.date-item').classList.add('active');
+            button.classList.add('active');
 
             // Load showtimes
             loadShowtimes(date);

@@ -11,8 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('coupons', function (Blueprint $table) {
-            $table->id();
+        if (!Schema::hasTable('coupons')) {
+            Schema::create('coupons', function (Blueprint $table) {
+                $table->id();
             $table->string('code')->unique();
             $table->enum('type', ['PERCENT', 'FIXED'])->default('PERCENT');
             $table->decimal('value', 10, 2);
@@ -25,7 +26,8 @@ return new class extends Migration
             $table->enum('status', ['ACTIVE', 'INACTIVE'])->default('ACTIVE');
             $table->timestamps();
             $table->softDeletes();
-        });
+            });
+        }
     }
 
     /**

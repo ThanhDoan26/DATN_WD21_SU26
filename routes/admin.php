@@ -119,4 +119,9 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     // Combos
     Route::resource('combos', ComboController::class, ['as' => 'admin']);
 
+    // Reviews
+    Route::get('reviews', [\App\Http\Controllers\Admin\ReviewController::class, 'index'])->name('admin.reviews.index');
+    Route::patch('reviews/{review}/toggle-status', [\App\Http\Controllers\Admin\ReviewController::class, 'toggleStatus'])->name('admin.reviews.toggleStatus');
+    Route::delete('reviews/{review}', [\App\Http\Controllers\Admin\ReviewController::class, 'destroy'])->name('admin.reviews.destroy');
+
 });

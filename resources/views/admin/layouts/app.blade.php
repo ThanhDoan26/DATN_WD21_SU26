@@ -416,6 +416,13 @@
                 </a>
             </li>
             <li>
+                <a href="{{ route('admin.reviews.index') }}"
+                   class="@if(request()->routeIs('admin.reviews.*')) active @endif">
+                    <i class="fas fa-comments"></i>
+                    <span>Đánh Giá</span>
+                </a>
+            </li>
+            <li>
                 <a href="{{ route('admin.coupons.index') }}"
                    class="@if(request()->routeIs('admin.coupons.*')) active @endif">
                     <i class="fas fa-tags"></i>
