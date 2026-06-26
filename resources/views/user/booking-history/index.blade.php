@@ -81,9 +81,14 @@
                                     {{ $booking->booking_time->format('d/m/Y H:i') }}
                                 </td>
                                 <td class="px-6 py-5 text-right">
-                                    <a href="{{ route('booking.history.show', $booking->booking_code) }}" class="inline-flex items-center gap-2 bg-slate-700 hover:bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg transition-all transform hover:scale-105">
-                                        Chi tiết <i class="fas fa-chevron-right text-[10px]"></i>
-                                    </a>
+                                    <div class="flex items-center justify-end gap-2">
+                                        <a href="{{ route('booking.history.show', $booking->booking_code) }}" class="inline-flex items-center gap-2 bg-slate-700 hover:bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg transition-all transform hover:scale-105">
+                                            Chi tiết <i class="fas fa-chevron-right text-[10px]"></i>
+                                        </a>
+                                        @if($booking->status === 'Pending')
+                                            {{-- TODO: Để trống phần xử lý nút hủy vé cho khách chưa thanh toán để thành viên khác phát triển --}}
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
