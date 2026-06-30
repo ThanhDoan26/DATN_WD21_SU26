@@ -71,7 +71,7 @@
                         @endif
                     </td>
                     <td>
-                        <span class="badge bg-light text-dark border">{{ $user->cinema->name ?? 'N/A' }}</span>
+                        <span class="badge bg-light text-dark border">{{ $user->cinema?->name ?? 'N/A' }}</span>
                     </td>
                     <td>
                         @if($user->status === 'ACTIVE')

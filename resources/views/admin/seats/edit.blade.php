@@ -35,7 +35,7 @@
                     <div class="mb-3">
                         <label for="room" class="form-label">Phòng</label>
                         <input type="text" class="form-control" id="room"
-                               value="{{ $seat->room->cinema->name }} - {{ $seat->room->name }}" disabled>
+                               value="{{ $seat->room?->cinema?->name ?? 'N/A' }} - {{ $seat->room?->name ?? 'N/A' }}" disabled>
                     </div>
                 </div>
                 <div class="col-md-6">

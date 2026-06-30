@@ -80,7 +80,7 @@
                             <th>Thuộc Rạp</th>
                             <td>
                                 @if($room->cinema)
-                                    <span class="badge bg-secondary">{{ $room->cinema->name }}</span>
+                                    <span class="badge bg-secondary">{{ $room->cinema?->name ?? 'N/A' }}</span>
                                 @else
                                     <span class="text-muted">Không xác định</span>
                                 @endif
@@ -130,17 +130,20 @@
                 <div class="stat-box border h-100">
                     <div class="stat-number text-primary">{{ $room->seats->count() }}</div>
                     <div class="stat-label">Ghế đã thiết lập</div>
-                    <a href="#seat-map-section" class="btn btn-sm btn-outline-primary mt-2">Xem Sơ đồ ghế</a>
+                    <a href="#seatMapSection" class="btn btn-sm btn-outline-primary mt-2">Xem Sơ đồ ghế</a>
                 </div>
             </div>
             
             <!-- Box 2 -->
             <div class="col-6 mb-3">
                 <div class="stat-box border h-100">
-                    <div class="stat-number text-success">{{ $room->showtimes->count() }}</div>
-                    <div class="stat-label">Lịch Chiếu (Tất cả)</div>
+                    @php
+                        $activeShowtimes = $room->getActiveShowtimesCount();
+                    @endphp
+                    <div class="stat-number text-warning">{{ $activeShowtimes }}</div>
+                    <div class="stat-label">Suất Chiếu Hợp Lệ</div>
                     <!-- Assuming showtimes.index takes room_id in future implementation -->
-                    <a href="{{ route('admin.showtimes.index') }}?room_id={{ $room->id }}" class="btn btn-sm btn-outline-success mt-2">Lọc Lịch Chiếu</a>
+                    <a href="{{ route('admin.showtimes.index') }}?room_id={{ $room->id }}" class="btn btn-sm btn-outline-warning mt-2">Xem Chi Tiết</a>
                 </div>
             </div>
         </div>
@@ -149,107 +152,139 @@
             <div class="card-header bg-light text-dark">
                 <i class="fas fa-cogs"></i> Hành Động Nhanh
             </div>
-            <div class="card-body text-center">
-                <form action="{{ route('admin.rooms.destroy', $room->id) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa phòng chiếu này? Mọi ghế và lịch chiếu liên quan có thể bị ảnh hưởng.');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash"></i> Xóa Phòng Chiếu Này
-                    </button>
-                </form>
+            <div class="card-body">
+                @php
+                    $activeShowtimes = $room->getActiveShowtimesCount();
+                @endphp
+
+                @if($activeShowtimes > 0)
+                    <div class="alert alert-warning mb-3" role="alert">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Không thể xóa phòng</strong> - Phòng đang có <strong>{{ $activeShowtimes }} suất chiếu</strong> hợp lệ.
+                        Vui lòng xóa hoặc hủy tất cả suất chiếu trước khi xóa phòng này.
+                    </div>
+                    <a href="{{ route('admin.showtimes.index') }}?room_id={{ $room->id }}" class="btn btn-warning w-100">
+                        <i class="fas fa-film"></i> Quản Lý Suất Chiếu
+                    </a>
+                @else
+                    <p class="text-muted mb-3">Phòng không có suất chiếu hợp lệ. Bạn có thể xóa phòng này.</p>
+                    <form action="{{ route('admin.rooms.destroy', $room->id) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa phòng chiếu này?');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="fas fa-trash"></i> Xóa Phòng Chiếu Này
+                        </button>
+                    </form>
+                @endif
             </div>
         </div>
     </div>
 </div>
 
-<!-- Seats Map Section -->
-<div id="seat-map-section" class="card mt-4">
+<!-- ========== SƠ ĐỒ GHẾ ========== -->
+<div class="card mt-4" id="seatMapSection">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="fas fa-th"></i> Sơ đồ Ghế vật lý</span>
-        <span class="badge bg-light text-primary fw-bold px-3 py-2">{{ $room->name }}</span>
+        <span><i class="fas fa-th"></i> Sơ Đồ Ghế Phòng Chiếu</span>
+        <span class="badge bg-light text-dark">
+            Tổng: <strong id="totalSeatCount">{{ $room->seats->count() }}</strong> ghế
+        </span>
     </div>
-    <div class="card-body text-center">
+    <div class="card-body">
+        <!-- Thống kê ghế theo loại -->
+        <div class="row mb-4">
+            <div class="col-md-3 col-6 mb-2">
+                <div class="stat-box border-start border-4 border-info py-3">
+                    <div class="stat-number text-info" id="regularCount">0</div>
+                    <div class="stat-label"><i class="fas fa-chair"></i> Regular</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-2">
+                <div class="stat-box border-start border-4 border-warning py-3">
+                    <div class="stat-number text-warning" id="vipCount">0</div>
+                    <div class="stat-label"><i class="fas fa-crown"></i> VIP</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-2">
+                <div class="stat-box border-start border-4 border-danger py-3">
+                    <div class="stat-number text-danger" id="sweetboxCount">0</div>
+                    <div class="stat-label"><i class="fas fa-heart"></i> Sweetbox</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-2">
+                <div class="stat-box border-start border-4 border-success py-3">
+                    <div class="stat-number text-success" id="availableCount">0</div>
+                    <div class="stat-label"><i class="fas fa-check-circle"></i> Available</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Legend -->
         <div class="seat-legend">
-            <div class="legend-item"><div class="legend-box" style="background: #0ea5e9;">R</div><span>Regular</span></div>
-            <div class="legend-item"><div class="legend-box" style="background: #f59e0b; color: #1e293b;">V</div><span>VIP</span></div>
-            <div class="legend-item"><div class="legend-box" style="background: #ec4899; width: 45px;">S</div><span>Sweetbox</span></div>
-            <div class="legend-item"><div class="legend-box" style="background: #10b981;"><i class="fas fa-check"></i></div><span>Available</span></div>
-            <div class="legend-item"><div class="legend-box" style="background: #94a3b8;"><i class="fas fa-wrench"></i></div><span>Unavailable</span></div>
+            <div class="legend-item">
+                <div class="legend-box bg-sky">R</div>
+                <span>Regular</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box bg-gold">V</div>
+                <span>VIP</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box bg-pink">S</div>
+                <span>Sweetbox</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background-color: #cbd5e1; color: #64748b;">
+                    <i class="fas fa-wrench" style="font-size: 0.55rem;"></i>
+                </div>
+                <span>Unavailable</span>
+            </div>
         </div>
 
-        <!-- Seats Map Wrapper -->
+        <!-- Seat Map -->
         <div class="seat-map-wrapper">
-            <div class="cinema-screen" id="screenLabel">Màn hình chiếu</div>
-            <div id="seatsGrid" class="w-100"></div>
-
-            <!-- Seat Detail Card Inside Map -->
-            <div class="w-100 mt-4" id="seatDetailContainer" style="display: none; max-width: 700px; text-align: left; margin: 0 auto;">
-                <div class="card border-primary" style="background-color: #f8fafc; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);">
-                    <div class="card-body py-3">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="text-primary m-0 fw-bold"><i class="fas fa-info-circle me-1"></i> Chi tiết Ghế được chọn</h6>
-                            <button type="button" class="btn-close" aria-label="Close" onclick="closeSeatDetail()"></button>
-                        </div>
-                        <div class="row align-items-center">
-                            <div class="col-md-2 col-3 text-center">
-                                <div id="detailSeatIcon" class="seat regular" style="width: 55px; height: 55px; font-size: 0.95rem; margin: 0 auto; pointer-events: none;">A1</div>
-                            </div>
-                            <div class="col-md-10 col-9">
-                                <div class="row">
-                                    <div class="col-sm-3 col-6 mb-2">
-                                        <div class="text-muted small">Mã Ghế ID</div>
-                                        <strong id="detailSeatId">#123</strong>
-                                    </div>
-                                    <div class="col-sm-3 col-6 mb-2">
-                                        <div class="text-muted small">Vị trí</div>
-                                        <span id="detailSeatPos" class="badge bg-primary text-white fw-bold">A1</span>
-                                    </div>
-                                    <div class="col-sm-3 col-6 mb-2">
-                                        <div class="text-muted small">Loại Ghế</div>
-                                        <span id="detailSeatType" class="badge bg-sky">Regular</span>
-                                    </div>
-                                    <div class="col-sm-3 col-6 mb-2">
-                                        <div class="text-muted small">Trạng thái</div>
-                                        <span id="detailSeatStatus" class="badge bg-success">Available</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Màn hình -->
+            <div class="cinema-screen">
+                <i class="fas fa-tv"></i> MÀN HÌNH
             </div>
+
+            <!-- Grid ghế -->
+            <div id="seatsGrid"></div>
         </div>
+    </div>
+</div>
 
-        <!-- Stats -->
-        <div class="row mt-4">
-            <div class="col-md-3 col-6">
-                <div class="stat-box">
-                    <i class="fas fa-chair" style="font-size: 1.5rem; color: #0ea5e9;"></i>
-                    <div class="stat-number" id="regularCount">0</div>
-                    <div class="stat-label">Regular</div>
-                </div>
+<!-- ========== CHI TIẾT GHẾ KHI CLICK ========== -->
+<div id="seatDetailContainer" class="card mt-3" style="display: none;">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-info-circle"></i> Chi Tiết Ghế</span>
+        <button type="button" class="btn btn-sm btn-light" onclick="closeSeatDetail()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <div id="detailSeatIcon" class="seat" style="width: 56px; height: 56px; font-size: 1rem; pointer-events: none;"></div>
             </div>
-            <div class="col-md-3 col-6">
-                <div class="stat-box">
-                    <i class="fas fa-crown" style="font-size: 1.5rem; color: #f59e0b;"></i>
-                    <div class="stat-number" id="vipCount">0</div>
-                    <div class="stat-label">VIP</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="stat-box">
-                    <i class="fas fa-heart" style="font-size: 1.5rem; color: #ec4899;"></i>
-                    <div class="stat-number" id="sweetboxCount">0</div>
-                    <div class="stat-label">Sweetbox</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="stat-box">
-                    <i class="fas fa-check-circle" style="font-size: 1.5rem; color: #10b981;"></i>
-                    <div class="stat-number" id="availableCount">0</div>
-                    <div class="stat-label">Available</div>
-                </div>
+            <div class="col">
+                <table class="table table-sm table-bordered mb-0">
+                    <tr>
+                        <th style="width: 120px;">ID</th>
+                        <td id="detailSeatId">-</td>
+                    </tr>
+                    <tr>
+                        <th>Vị Trí</th>
+                        <td id="detailSeatPos">-</td>
+                    </tr>
+                    <tr>
+                        <th>Loại Ghế</th>
+                        <td><span id="detailSeatType" class="badge bg-secondary">-</span></td>
+                    </tr>
+                    <tr>
+                        <th>Trạng Thái</th>
+                        <td><span id="detailSeatStatus" class="badge bg-secondary">-</span></td>
+                    </tr>
+                </table>
             </div>
         </div>
     </div>

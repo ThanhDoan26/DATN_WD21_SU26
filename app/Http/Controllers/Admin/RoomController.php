@@ -16,13 +16,26 @@ class RoomController extends AdminController
     /**
      * Display a listing of rooms
      */
-    public function index()
+    public function index(Request $request)
     {
-        $rooms = Room::with('cinema')
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
+        $search = $request->query('search');
+        $status = $request->query('status');
 
-        return view('admin.rooms.index', ['rooms' => $rooms]);
+        $rooms = Room::with('cinema')
+            ->when($search, function ($query, $search) {
+                return $query->where('name', 'like', '%' . $search . '%')
+                             ->orWhereHas('cinema', function ($q) use ($search) {
+                                 $q->where('name', 'like', '%' . $search . '%');
+                             });
+            })
+            ->when($status, function ($query, $status) {
+                return $query->where('status', $status);
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('admin.rooms.index', compact('rooms', 'search', 'status'));
     }
 
     /**
@@ -152,6 +165,77 @@ class RoomController extends AdminController
             'status' => 'required|in:ACTIVE,INACTIVE,MAINTENANCE,CLOSED',
         ]);
 
+        $oldTotalSeats = (int) $room->total_seats;
+
+        // Hỗ trợ lấy total_rows và total_cols từ request (nếu form có), nếu không có thì tự tính dựa trên total_seats
+        $totalRows = (int) $request->input('total_rows');
+        $totalCols = (int) $request->input('total_cols');
+
+        if (!$totalRows || !$totalCols) {
+            $totalSeats = $validated['total_seats'] ?? 120;
+            $totalCols = 12; // Cố định 12 cột chuẩn
+            $totalRows = ceil($totalSeats / $totalCols);
+            $validated['total_seats'] = $totalSeats; 
+        } else {
+            $totalSeats = $totalRows * $totalCols;
+            $validated['total_seats'] = $totalSeats;
+        }
+
+        // Check if total seats has changed to recreate the seat map
+        if ($totalSeats !== $oldTotalSeats) {
+            if ($room->hasActiveShowtimes()) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Không thể thay đổi số lượng ghế vì phòng đang có suất chiếu hoạt động. Vui lòng hủy suất chiếu trước khi thay đổi sơ đồ ghế.');
+            }
+
+            // Xóa ghế cũ
+            $room->seats()->delete();
+
+            // Khởi tạo ghế mới tự động theo công thức
+            if ($totalSeats > 0) {
+                $seatsData = [];
+                $now = now();
+                $seatCount = 0;
+
+                for ($r = 1; $r <= $totalRows; $r++) {
+                    $rowIndex = $r - 1;
+                    $rowName = chr(65 + $rowIndex);
+                    if ($rowIndex >= 26) {
+                        $rowName = chr(65 + floor($rowIndex / 26) - 1) . chr(65 + ($rowIndex % 26));
+                    }
+
+                    if ($r == $totalRows) {
+                        $seatType = 'Sweetbox';
+                    } elseif ($r <= 3) {
+                        $seatType = 'Regular';
+                    } else {
+                        $seatType = 'VIP';
+                    }
+
+                    for ($c = 1; $c <= $totalCols; $c++) {
+                        if ($seatCount >= $totalSeats) {
+                            break 2;
+                        }
+
+                        $seatsData[] = [
+                            'room_id'     => $room->id,
+                            'row_name'    => $rowName,
+                            'seat_number' => $c,
+                            'seat_type'   => $seatType, 
+                            'status'      => 'AVAILABLE', 
+                            'created_at'  => $now,
+                            'updated_at'  => $now,
+                        ];
+                        
+                        $seatCount++;
+                    }
+                }
+
+                \App\Models\Seat::insert($seatsData);
+            }
+        }
+
         $room->update($validated);
 
         return redirect()->route('admin.rooms.index')
@@ -159,13 +243,56 @@ class RoomController extends AdminController
     }
 
     /**
-     * Delete a room from storage
+     * Delete a room from storage (soft delete)
      */
     public function destroy(Room $room)
     {
+        // Kiểm tra phòng có suất chiếu hợp lệ
+        if ($room->hasActiveShowtimes()) {
+            $activeCount = $room->getActiveShowtimesCount();
+            return redirect()->route('admin.rooms.index')
+                             ->with('error', "Không thể xóa phòng '$room->name' vì phòng đang có $activeCount suất chiếu hợp lệ. Vui lòng xóa hoặc hủy tất cả suất chiếu trước.");
+        }
+
         $room->delete();
 
         return redirect()->route('admin.rooms.index')
-                         ->with('success', 'Xóa phòng chiếu thành công!');
+                         ->with('success', 'Xóa phòng chiếu thành công! Bạn có thể khôi phục nó từ danh sách phòng đã xóa.');
     }
-}
+
+    /**
+     * Display a listing of trashed rooms
+     */
+    public function trashed()
+    {
+        $rooms = Room::onlyTrashed()
+            ->with('cinema')
+            ->orderBy('deleted_at', 'desc')
+            ->paginate(10);
+
+        return view('admin.rooms.trashed', ['rooms' => $rooms]);
+    }
+
+    /**
+     * Restore a trashed room
+     */
+    public function restore($id)
+    {
+        $room = Room::onlyTrashed()->findOrFail($id);
+        $room->restore();
+
+        return redirect()->route('admin.rooms.index')
+                         ->with('success', 'Khôi phục phòng chiếu thành công!');
+    }
+
+    /**
+     * Permanently delete a trashed room
+     */
+    public function forceDelete($id)
+    {
+        $room = Room::onlyTrashed()->findOrFail($id);
+        $room->forceDelete();
+
+        return redirect()->route('admin.rooms.trashed')
+                         ->with('success', 'Xóa vĩnh viễn phòng chiếu thành công!');
+    }}

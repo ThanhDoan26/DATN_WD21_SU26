@@ -6,7 +6,11 @@ use App\Http\Controllers\Admin\CinemaController;
 use App\Http\Controllers\Admin\MovieController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\SeatController;
+use App\Http\Controllers\Admin\ShowtimeController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\BookingController;
+use App\Http\Controllers\Admin\CouponController;
+use App\Http\Controllers\Admin\ComboController;
 
 /**
  * Admin Routes
@@ -45,10 +49,13 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::get('rooms', [RoomController::class, 'index'])->name('admin.rooms.index');
     Route::get('rooms/create', [RoomController::class, 'create'])->name('admin.rooms.create');
     Route::post('rooms', [RoomController::class, 'store'])->name('admin.rooms.store');
+    Route::get('rooms/trashed', [RoomController::class, 'trashed'])->name('admin.rooms.trashed');
     Route::get('rooms/{room}', [RoomController::class, 'show'])->name('admin.rooms.show');
     Route::get('rooms/{room}/edit', [RoomController::class, 'edit'])->name('admin.rooms.edit');
     Route::put('rooms/{room}', [RoomController::class, 'update'])->name('admin.rooms.update');
     Route::delete('rooms/{room}', [RoomController::class, 'destroy'])->name('admin.rooms.destroy');
+    Route::post('rooms/{id}/restore', [RoomController::class, 'restore'])->name('admin.rooms.restore');
+    Route::delete('rooms/{id}/force-delete', [RoomController::class, 'forceDelete'])->name('admin.rooms.forceDelete');
 
     // Seats
     Route::get('seats', [SeatController::class, 'index'])->name('admin.seats.index');
@@ -57,7 +64,6 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::get('seats/by-room/{roomId}', [SeatController::class, 'getBySeatsByRoom'])->name('admin.seats.by-room');
     Route::get('seats/{seat}/edit', [SeatController::class, 'edit'])->name('admin.seats.edit');
     Route::put('seats/{seat}', [SeatController::class, 'update'])->name('admin.seats.update');
-
     Route::delete('seats/{seat}', [SeatController::class, 'destroy'])->name('admin.seats.destroy');
 
     // Categories
@@ -77,18 +83,29 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::put('movies/{movie}', [\App\Http\Controllers\Admin\MovieController::class, 'update'])->name('admin.movies.update');
     Route::delete('movies/{movie}', [\App\Http\Controllers\Admin\MovieController::class, 'destroy'])->name('admin.movies.destroy');
 
+    // Showtimes
+    Route::get('showtimes', [ShowtimeController::class, 'index'])->name('admin.showtimes.index');
+    Route::get('showtimes/create', [ShowtimeController::class, 'create'])->name('admin.showtimes.create');
+    Route::post('showtimes', [ShowtimeController::class, 'store'])->name('admin.showtimes.store');
+    Route::get('showtimes/{showtime}/edit', [ShowtimeController::class, 'edit'])->name('admin.showtimes.edit');
+    Route::get('showtimes/trashed', [ShowtimeController::class, 'trashed'])->name('admin.showtimes.trashed');
+    Route::get('showtimes/{showtime}', [ShowtimeController::class, 'show'])->name('admin.showtimes.show');
+    Route::put('showtimes/{showtime}', [ShowtimeController::class, 'update'])->name('admin.showtimes.update');
+    Route::delete('showtimes/{showtime}', [ShowtimeController::class, 'destroy'])->name('admin.showtimes.destroy');
+    Route::post('showtimes/{showtime}/restore', [ShowtimeController::class, 'restore'])->name('admin.showtimes.restore');
+    Route::delete('showtimes/{showtime}/force-delete', [ShowtimeController::class, 'forceDelete'])->name('admin.showtimes.forceDelete');
 
-    // Showtimes (placeholder)
-    Route::get('showtimes', function () {
-        return view('admin.showtimes.index');
-    })->name('admin.showtimes.index');
-
-    // Bookings (placeholder)
-    Route::get('bookings', function () {
-        return view('admin.bookings.index');
-    })->name('admin.bookings.index');
+    // Bookings
+    Route::get('bookings', [BookingController::class, 'index'])->name('admin.bookings.index');
+    Route::get('bookings/create', [BookingController::class, 'create'])->name('admin.bookings.create');
+    Route::post('bookings', [BookingController::class, 'store'])->name('admin.bookings.store');
+    Route::get('bookings/{booking}', [BookingController::class, 'show'])->name('admin.bookings.show');
+    Route::get('bookings/{booking}/edit', [BookingController::class, 'edit'])->name('admin.bookings.edit');
+    Route::put('bookings/{booking}', [BookingController::class, 'update'])->name('admin.bookings.update');
+    Route::delete('bookings/{booking}', [BookingController::class, 'destroy'])->name('admin.bookings.destroy');
 
     });
+
 
     // Phân quyền chỉ cho ADMIN
     Route::middleware(['role:ADMIN'])->group(function () {
@@ -100,5 +117,13 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
         Route::put('users/{user}', [UserController::class, 'update'])->name('admin.users.update');
         Route::delete('users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
         Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
-    });
+
+    // Coupons
+    Route::resource('coupons', CouponController::class, ['as' => 'admin']);
+
+    // Combos
+    Route::resource('combos', ComboController::class, ['as' => 'admin']);
+
 });
+});
+
