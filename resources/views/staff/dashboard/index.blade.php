@@ -50,7 +50,7 @@
 
 @section('content')
 <div class="container-fluid p-0">
-    <!-- Cặp Card Placeholder -->
+    <!-- Cặp Card Metrics -->
     <div class="row">
         <!-- Vé đã check-in hôm nay -->
         <div class="col-md-4 col-sm-12">
@@ -59,7 +59,7 @@
                     <i class="fas fa-clipboard-check"></i>
                 </div>
                 <div class="metric-info">
-                    <h3>...</h3>
+                    <h3>{{ number_format($checkedInToday) }}</h3>
                     <p>Vé check-in hôm nay</p>
                 </div>
             </div>
@@ -72,8 +72,8 @@
                     <i class="fas fa-ticket-alt"></i>
                 </div>
                 <div class="metric-info">
-                    <h3>...</h3>
-                    <p>Vé chưa sử dụng</p>
+                    <h3>{{ number_format($unusedTickets) }}</h3>
+                    <p>Vé chưa sử dụng (sẵn sàng)</p>
                 </div>
             </div>
         </div>
@@ -85,14 +85,14 @@
                     <i class="fas fa-check-double"></i>
                 </div>
                 <div class="metric-info">
-                    <h3>...</h3>
-                    <p>Vé đã sử dụng</p>
+                    <h3>{{ number_format($usedTickets) }}</h3>
+                    <p>Tổng vé đã check-in</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Scanner Placeholder -->
+    <!-- Scanner Section -->
     <div class="row mt-4">
         <div class="col-12">
             <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -100,11 +100,13 @@
                     <h5 class="mb-0 fw-bold"><i class="fas fa-qrcode text-warning me-2"></i> Quét mã nhanh</h5>
                 </div>
                 <div class="card-body text-center py-5 bg-light">
-                    <div style="width: 200px; height: 200px; border: 3px dashed #cbd5e1; margin: 0 auto; display: flex; align-items: center; justify-content: center; border-radius: 20px;">
-                        <i class="fas fa-camera text-secondary" style="font-size: 40px;"></i>
-                    </div>
-                    <h5 class="mt-4 text-dark">Khu vực Camera (Coming Soon)</h5>
-                    <p class="text-muted">Chức năng quét vé tự động sẽ sớm được cập nhật tại đây.</p>
+                    <a href="{{ route('staff.ticket.search', ['scan' => 1]) }}" class="text-decoration-none d-inline-block">
+                        <div class="scanner-btn" style="width: 200px; height: 200px; border: 3px dashed #ca8a04; margin: 0 auto; display: flex; align-items: center; justify-content: center; border-radius: 20px; background: #fff; cursor: pointer; transition: all 0.3s;">
+                            <i class="fas fa-camera text-warning" style="font-size: 50px;"></i>
+                        </div>
+                    </a>
+                    <h5 class="mt-4 text-dark fw-bold">Mở máy ảnh quét mã QR</h5>
+                    <p class="text-muted">Bấm vào nút trên để kích hoạt Camera quét mã QR vé của khách hàng trực tiếp.</p>
                 </div>
             </div>
         </div>
