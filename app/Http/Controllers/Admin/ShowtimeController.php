@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Models\Movie;
 use App\Models\Room;
 use App\Models\Showtime;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -52,7 +53,26 @@ class ShowtimeController extends AdminController
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id'))),
             ],
-            'end_time' => 'required|date|after:start_time',
+            'end_time' => [
+                'required',
+                'date',
+                'after:start_time',
+                function ($attribute, $value, $fail) use ($request) {
+                    if (! $request->filled('movie_id') || ! $request->filled('start_time')) {
+                        return;
+                    }
+
+                    $movie = Movie::find($request->movie_id);
+                    if (! $movie || ! $movie->duration) {
+                        return;
+                    }
+
+                    $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15);
+                    if (! Carbon::parse($value)->equalTo($expected)) {
+                        $fail("Thời gian kết thúc phải bằng thời gian bắt đầu + {$movie->duration} phút phim + 15 phút dọn phòng.");
+                    }
+                },
+            ],
             'status' => ['required', Rule::in(Showtime::STATUSES)],
             'surcharge' => 'nullable|numeric|min:0',
             'ticket_prices' => 'required|array',
@@ -115,7 +135,26 @@ class ShowtimeController extends AdminController
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id')))
                     ->ignore($showtime->id),
             ],
-            'end_time' => 'required|date|after:start_time',
+            'end_time' => [
+                'required',
+                'date',
+                'after:start_time',
+                function ($attribute, $value, $fail) use ($request) {
+                    if (! $request->filled('movie_id') || ! $request->filled('start_time')) {
+                        return;
+                    }
+
+                    $movie = Movie::find($request->movie_id);
+                    if (! $movie || ! $movie->duration) {
+                        return;
+                    }
+
+                    $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15);
+                    if (! Carbon::parse($value)->equalTo($expected)) {
+                        $fail("Thời gian kết thúc phải bằng thời gian bắt đầu + {$movie->duration} phút phim + 15 phút dọn phòng.");
+                    }
+                },
+            ],
             'status' => ['required', Rule::in(Showtime::STATUSES)],
             'surcharge' => 'nullable|numeric|min:0',
             'ticket_prices' => 'required|array',
