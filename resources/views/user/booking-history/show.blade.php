@@ -160,7 +160,7 @@
             <div class="bg-slate-900/50 p-6 border-t border-slate-700/50 text-center flex flex-col items-center justify-center gap-2">
                 @if($booking->status === 'Paid')
                     <p class="text-slate-500 text-xs">
-                        <i class="fas fa-info-circle mr-2"></i>Vé đã thanh toán không thể hoàn trả hoặc đổi trả theo quy chuẩn nghiệp vụ của rạp movieGo.
+                        <i class="fas fa-info-circle mr-2"></i>Vé đã thanh toán không thể hoàn trả hoặc đổi trả theo quy chuẩn nghiệp vụ của MovieGo.
                     </p>
                 @elseif($booking->status === 'Pending')
                     {{-- TODO: Thêm nút và logic hủy vé cho khách hàng chưa thanh toán ở đây (Dành cho thành viên khác phát triển) --}}

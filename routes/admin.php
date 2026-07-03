@@ -20,8 +20,8 @@ use App\Http\Controllers\Admin\ComboController;
  */
 
 Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
-    // Phân quyền cho ADMIN và MANAGER
-    Route::middleware(['role:ADMIN,MANAGER'])->group(function () {
+    // Phân quyền đặc quyền cho ADMIN tuyệt đối, tách riêng Manager theo yêu cầu bảo mật mới
+    Route::middleware(['role:ADMIN'])->group(function () {
 
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');

@@ -27,6 +27,12 @@ Route::middleware('auth')->group(function () {
 // Load admin routes
 require __DIR__.'/admin.php';
 
+// Load manager routes
+require __DIR__.'/manager.php';
+
+// Load staff routes
+require __DIR__.'/staff.php';
+
 // Booking routes
 Route::controller(\App\Http\Controllers\BookingController::class)->group(function () {
     // Bước 1: Chọn cụm rạp

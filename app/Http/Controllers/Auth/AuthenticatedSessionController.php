@@ -30,8 +30,15 @@ class AuthenticatedSessionController extends Controller
 
         // Kiểm tra role user và redirect tương ứng
         $user = auth()->user();
-        if ($user && $user->isAdmin()) {
-            return redirect()->intended(route('admin.dashboard', absolute: false));
+        
+        if ($user) {
+            if ($user->isAdmin()) {
+                return redirect()->intended(route('admin.dashboard', absolute: false));
+            } elseif ($user->isManager()) {
+                return redirect()->intended(route('manager.dashboard', absolute: false));
+            } elseif ($user->isStaff()) {
+                return redirect()->intended(route('staff.dashboard', absolute: false));
+            }
         }
 
         return redirect()->intended('/');
