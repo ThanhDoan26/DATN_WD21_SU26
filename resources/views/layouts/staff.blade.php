@@ -108,18 +108,8 @@
                 </a>
             </li>
             <li>
-                <a href="#" class="">
-                    <i class="fas fa-search"></i> <span>Tra cứu vé</span>
-                </a>
-            </li>
-            <li>
-                <a href="#" class="">
-                    <i class="fas fa-qrcode"></i> <span>Quét QR</span>
-                </a>
-            </li>
-            <li>
-                <a href="#" class="">
-                    <i class="fas fa-check-circle"></i> <span>Check-in vé</span>
+                <a href="{{ route('staff.ticket.search') }}" class="@if(request()->routeIs('staff.ticket.search')) active @endif">
+                    <i class="fas fa-ticket-alt"></i> <span>Tra cứu & Check-in vé</span>
                 </a>
             </li>
         </ul>
