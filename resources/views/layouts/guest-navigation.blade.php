@@ -28,6 +28,8 @@
                     @auth
                         @if(auth()->user()->isAdmin() || auth()->user()->isManager())
                             <a href="{{ route('admin.dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium">Bảng điều khiển</a>
+                        @elseif(auth()->user()->isStaff())
+                            <a href="{{ route('staff.dashboard') }}" class="text-[#ca8a04] hover:text-[#eab308] transition-colors font-medium"><i class="fas fa-user-shield me-1"></i> Staff Portal</a>
                         @endif
 
                         <form method="POST" action="{{ route('logout') }}" class="inline">

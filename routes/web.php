@@ -94,4 +94,6 @@ Route::get('/quick-login-staff', function () {
         return redirect()->route('staff.dashboard');
     }
     return redirect()->route('login')->with('error', 'Không tìm thấy tài khoản Staff.');
+
 })->name('staff.quick-login');
+

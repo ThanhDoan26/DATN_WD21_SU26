@@ -2,4 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 
-// Các route dành cho Manager
+use App\Http\Controllers\CinemaManagerDashboardController;
+
+Route::middleware(['auth', 'role:MANAGER'])->prefix('manager')->name('manager.')->group(function () {
+    Route::get('/dashboard', [CinemaManagerDashboardController::class, 'index'])->name('dashboard');
+});
+

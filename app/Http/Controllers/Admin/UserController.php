@@ -18,15 +18,61 @@ use App\Http\Requests\Admin\UpdateUserRequest;
 class UserController extends AdminController
 {
     /**
-     * Display a listing of users
+     * Display a listing of users with search & filter
      */
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with(['role', 'cinema'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
+        $query = User::with(['role', 'cinema']);
 
-        return view('admin.users.index', compact('users'));
+        // Tìm kiếm theo tên, email, số điện thoại
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        // Lọc theo vai trò
+        if ($roleId = $request->input('role_id')) {
+            $query->where('role_id', $roleId);
+        }
+
+        // Lọc theo trạng thái
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        $users = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
+
+        $roles         = Role::all();
+        $totalUsers    = User::count();
+        $activeUsers   = User::where('status', 'ACTIVE')->count();
+        $inactiveUsers = User::where('status', 'INACTIVE')->count();
+
+        return view('admin.users.index', compact('users', 'roles', 'totalUsers', 'activeUsers', 'inactiveUsers'));
+    }
+
+    /**
+     * Xem chi tiết người dùng
+     */
+    public function show(User $user)
+    {
+        $user->load(['role', 'cinema', 'bookings.showtime.movie', 'reviews']);
+
+        $totalBookings  = $user->bookings()->count();
+        $paidBookings   = $user->bookings()->where('status', 'PAID')->count();
+        $totalSpent     = $user->bookings()->where('status', 'PAID')->sum('total_price');
+        $totalReviews   = $user->reviews()->count();
+        $recentBookings = $user->bookings()
+                               ->with('showtime.movie')
+                               ->orderBy('created_at', 'desc')
+                               ->limit(5)
+                               ->get();
+
+        return view('admin.users.show', compact(
+            'user', 'totalBookings', 'paidBookings', 'totalSpent', 'totalReviews', 'recentBookings'
+        ));
     }
 
     /**
@@ -34,7 +80,7 @@ class UserController extends AdminController
      */
     public function create()
     {
-        $roles = Role::all();
+        $roles   = Role::all();
         $cinemas = Cinema::where('status', 'ACTIVE')->get();
         return view('admin.users.create', compact('roles', 'cinemas'));
     }
@@ -45,9 +91,7 @@ class UserController extends AdminController
     public function store(StoreUserRequest $request)
     {
         $validated = $request->validated();
-        
         $validated['password'] = Hash::make($validated['password']);
-
         User::create($validated);
 
         return redirect()->route('admin.users.index')
@@ -59,7 +103,7 @@ class UserController extends AdminController
      */
     public function edit(User $user)
     {
-        $roles = Role::all();
+        $roles   = Role::all();
         $cinemas = Cinema::where('status', 'ACTIVE')->get();
         return view('admin.users.edit', compact('user', 'roles', 'cinemas'));
     }
@@ -88,7 +132,6 @@ class UserController extends AdminController
      */
     public function destroy(User $user)
     {
-        // Tuỳ rules nghiệp vụ, admin có thể xóa logic hoặc xóa cứng
         $user->delete();
 
         return redirect()->route('admin.users.index')
@@ -101,7 +144,10 @@ class UserController extends AdminController
     public function toggleStatus(User $user)
     {
         if ($user->id === auth()->id()) {
-            return response()->json(['success' => false, 'message' => 'Không thể khóa tài khoản của chính mình!'], 400);
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể khóa tài khoản của chính mình!'
+            ], 400);
         }
 
         $user->status = $user->status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
@@ -109,7 +155,7 @@ class UserController extends AdminController
 
         return response()->json([
             'success' => true,
-            'status' => $user->status,
+            'status'  => $user->status,
             'message' => $user->status === 'ACTIVE' ? 'Đã mở khóa tài khoản' : 'Đã khóa tài khoản'
         ]);
     }

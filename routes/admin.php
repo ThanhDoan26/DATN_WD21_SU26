@@ -20,8 +20,8 @@ use App\Http\Controllers\Admin\ComboController;
  */
 
 Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
-    // Phân quyền cho ADMIN và MANAGER
-    Route::middleware(['role:ADMIN,MANAGER'])->group(function () {
+    // Phân quyền đặc quyền cho ADMIN tuyệt đối, tách riêng Manager theo yêu cầu bảo mật mới
+    Route::middleware(['role:ADMIN'])->group(function () {
 
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');
@@ -128,6 +128,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
         Route::get('users', [UserController::class, 'index'])->name('admin.users.index');
         Route::get('users/create', [UserController::class, 'create'])->name('admin.users.create');
         Route::post('users', [UserController::class, 'store'])->name('admin.users.store');
+        Route::get('users/{user}', [UserController::class, 'show'])->name('admin.users.show');
         Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('admin.users.edit');
         Route::put('users/{user}', [UserController::class, 'update'])->name('admin.users.update');
         Route::delete('users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
