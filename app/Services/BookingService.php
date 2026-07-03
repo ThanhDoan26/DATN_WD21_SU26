@@ -179,7 +179,7 @@ class BookingService
                     if (!$coupon) {
                         throw new Exception("Mã giảm giá không hợp lệ hoặc không tồn tại.");
                     }
-                    
+
                     $validation = $coupon->isValid($totalPrice);
                     if (!$validation['valid']) {
                         throw new Exception($validation['message']);
@@ -283,7 +283,7 @@ class BookingService
                 ->whereIn('id', $expiredBookingIds)
                 ->whereNotNull('coupon_id')
                 ->get();
-                
+
             foreach ($bookingsWithCoupons as $b) {
                 DB::table('coupons')->where('id', $b->coupon_id)->where('used_count', '>', 0)->decrement('used_count');
             }
