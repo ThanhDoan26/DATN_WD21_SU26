@@ -6,6 +6,7 @@ use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -42,7 +43,18 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $credentials = $this->only('email', 'password');
+        $remember = $this->boolean('remember');
+
+        $user = Auth::getProvider()->retrieveByCredentials($credentials);
+
+        if ($user && $this->isLegacyPassword($user, $credentials['password'])) {
+            $user->forceFill([
+                'password' => Hash::make($credentials['password']),
+            ])->save();
+        }
+
+        if (! Auth::attempt($credentials, $remember)) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -51,6 +63,29 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+    }
+
+    protected function isLegacyPassword($user, string $password): bool
+    {
+        if (! $user || empty($user->getAuthPassword())) {
+            return false;
+        }
+
+        $storedPassword = $user->getAuthPassword();
+
+        if (str_starts_with($storedPassword, '$2')) {
+            return false;
+        }
+
+        if ($storedPassword === $password) {
+            return true;
+        }
+
+        if (preg_match('/^[a-f0-9]{32}$/i', $storedPassword)) {
+            return md5($password) === $storedPassword || hash('md5', $password) === $storedPassword;
+        }
+
+        return false;
     }
 
     /**
