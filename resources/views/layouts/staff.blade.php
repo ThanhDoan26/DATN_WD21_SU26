@@ -108,17 +108,17 @@
                 </a>
             </li>
             <li>
-                <a href="#" class="">
+                <a href="{{ route('staff.ticket.search') }}" class="@if(request()->routeIs('staff.ticket.search') && !request()->has('scan')) active @endif">
                     <i class="fas fa-search"></i> <span>Tra cứu vé</span>
                 </a>
             </li>
             <li>
-                <a href="#" class="">
+                <a href="{{ route('staff.ticket.search', ['scan' => 1]) }}" class="@if(request()->routeIs('staff.ticket.search') && request()->has('scan')) active @endif">
                     <i class="fas fa-qrcode"></i> <span>Quét QR</span>
                 </a>
             </li>
             <li>
-                <a href="#" class="">
+                <a href="{{ route('staff.ticket.search') }}" class="@if(request()->routeIs('staff.ticket.search')) active @endif">
                     <i class="fas fa-check-circle"></i> <span>Check-in vé</span>
                 </a>
             </li>
