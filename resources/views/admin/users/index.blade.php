@@ -85,6 +85,16 @@
                     </td>
                     <td>
                         <div class="d-flex gap-2">
+                            <!-- Nút Khóa / Mở khóa -->
+                            @if(auth()->id() !== $user->id)
+                            <button type="button" class="btn btn-sm btn-{{ $user->status === 'ACTIVE' ? 'secondary' : 'success' }} toggle-status-btn" 
+                                    data-id="{{ $user->id }}" 
+                                    data-status="{{ $user->status }}"
+                                    title="{{ $user->status === 'ACTIVE' ? 'Khóa' : 'Mở khóa' }}">
+                                <i class="fas fa-{{ $user->status === 'ACTIVE' ? 'lock' : 'unlock' }}"></i>
+                            </button>
+                            @endif
+
                             <a href="{{ route('admin.users.edit', $user->id) }}" class="btn btn-sm btn-warning" title="Sửa">
                                 <i class="fas fa-edit"></i>
                             </a>
@@ -117,3 +127,45 @@
     @endif
 </div>
 @endsection
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const buttons = document.querySelectorAll('.toggle-status-btn');
+    
+    buttons.forEach(button => {
+        button.addEventListener('click', async function() {
+            const userId = this.getAttribute('data-id');
+            const currentStatus = this.getAttribute('data-status');
+            const actionText = currentStatus === 'ACTIVE' ? 'Khóa' : 'Mở khóa';
+            
+            if (!confirm(`Bạn có chắc muốn ${actionText.toLowerCase()} người dùng này không?`)) {
+                return;
+            }
+            
+            try {
+                // Hiển thị loading
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                this.disabled = true;
+                
+                const response = await axios.patch(`/admin/users/${userId}/toggle-status`, {}, {
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.data.success) {
+                    alert(response.data.message);
+                    window.location.reload(); // Hoặc cập nhật UI bằng JS thuần
+                }
+            } catch (error) {
+                alert(error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+                window.location.reload();
+            }
+        });
+    });
+});
+</script>
+@endpush

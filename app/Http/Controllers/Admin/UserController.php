@@ -94,4 +94,23 @@ class UserController extends AdminController
         return redirect()->route('admin.users.index')
                          ->with('success', 'Xóa người dùng thành công!');
     }
+
+    /**
+     * Toggle user status (khóa / mở khóa)
+     */
+    public function toggleStatus(User $user)
+    {
+        if ($user->id === auth()->id()) {
+            return response()->json(['success' => false, 'message' => 'Không thể khóa tài khoản của chính mình!'], 400);
+        }
+
+        $user->status = $user->status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'status' => $user->status,
+            'message' => $user->status === 'ACTIVE' ? 'Đã mở khóa tài khoản' : 'Đã khóa tài khoản'
+        ]);
+    }
 }

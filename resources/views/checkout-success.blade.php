@@ -1,26 +1,6 @@
-<!DOCTYPE html>
-<html lang="vi" class="dark">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Đặt vé thành công - movieGo</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Outfit', 'sans-serif'] },
-                    colors: { primary: '#e50914' }
-                }
-            }
-        }
-    </script>
-    <style>body { font-family: 'Outfit', sans-serif; }</style>
-</head>
-<body class="bg-slate-900 text-slate-200 antialiased">
+@extends('layouts.frontend')
+
+@section('content')
     <div class="max-w-4xl mx-auto px-4 py-16">
         <div class="bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 overflow-hidden">
             <div class="bg-gradient-to-r from-primary to-red-600 p-10 text-center">
@@ -102,5 +82,4 @@
             </div>
         </div>
     </div>
-</body>
-</html>
+@endsection

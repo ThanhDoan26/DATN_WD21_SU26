@@ -58,6 +58,14 @@ class User extends Authenticatable
         return $this->hasMany(Booking::class);
     }
 
+    /**
+     * Người dùng có nhiều đánh giá
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
     // ========================================
     // HELPER METHODS
     // ========================================
@@ -100,5 +108,13 @@ class User extends Authenticatable
     public function isActive(): bool
     {
         return $this->status === 'ACTIVE';
+    }
+
+    /**
+     * Override default password reset notification for demo purposes.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        session()->flash('demo_reset_token', $token);
     }
 }

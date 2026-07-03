@@ -225,8 +225,8 @@
                     </td>
                     <td>
                         <small>
-                            {{ $booking->showtime->movie->title ?? 'N/A' }}<br>
-                            <span class="text-muted">{{ $booking->showtime->start_time->format('d/m H:i') ?? 'N/A' }}</span>
+                            {{ $booking->showtime?->movie?->title ?? 'N/A' }}<br>
+                            <span class="text-muted">{{ $booking->showtime?->start_time?->format('d/m H:i') ?? 'N/A' }}</span>
                         </small>
                     </td>
                     <td>

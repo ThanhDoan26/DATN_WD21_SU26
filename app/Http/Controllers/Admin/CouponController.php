@@ -85,6 +85,35 @@ class CouponController extends Controller
         $coupon = \App\Models\Coupon::findOrFail($id);
         $coupon->delete();
 
-        return redirect()->route('admin.coupons.index')->with('success', 'Xóa mã giảm giá thành công!');
+        return redirect()->route('admin.coupons.index')->with('success', 'Xóa mã giảm giá thành công! Mã đã được chuyển vào thùng rác.');
+    }
+
+    public function trashed(Request $request)
+    {
+        $query = \App\Models\Coupon::onlyTrashed();
+
+        if ($request->filled('code')) {
+            $query->where('code', 'like', '%' . $request->code . '%');
+        }
+
+        $coupons = $query->orderBy('deleted_at', 'desc')->paginate(15)->withQueryString();
+
+        return view('admin.coupons.trashed', compact('coupons'));
+    }
+
+    public function restore(string $id)
+    {
+        $coupon = \App\Models\Coupon::onlyTrashed()->findOrFail($id);
+        $coupon->restore();
+
+        return redirect()->route('admin.coupons.trashed')->with('success', 'Khôi phục mã giảm giá thành công!');
+    }
+
+    public function forceDelete(string $id)
+    {
+        $coupon = \App\Models\Coupon::onlyTrashed()->findOrFail($id);
+        $coupon->forceDelete();
+
+        return redirect()->route('admin.coupons.trashed')->with('success', 'Xóa vĩnh viễn mã giảm giá thành công!');
     }
 }

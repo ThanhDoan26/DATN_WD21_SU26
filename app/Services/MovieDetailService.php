@@ -53,7 +53,29 @@ class MovieDetailService
             ->get();
         }
 
-        // 4. Logging phục vụ debug
+        // 4. Load reviews and check review permission
+        $reviews = $movie->reviews()->with('user')->where('status', 'ACTIVE')->orderBy('created_at', 'desc')->get();
+        
+        $canReview = false;
+        $userReview = null;
+        
+        if (auth()->check()) {
+            $userId = auth()->id();
+            
+            // Check if user has reviewed
+            $userReview = $movie->reviews()->where('user_id', $userId)->first();
+            
+            // If they haven't reviewed, check if they can review
+            if (!$userReview) {
+                $canReview = \App\Models\Booking::where('user_id', $userId)
+                    ->whereIn('status', ['Paid', 'Used'])
+                    ->whereHas('showtime', function ($query) use ($id) {
+                        $query->where('movie_id', $id);
+                    })->exists();
+            }
+        }
+
+        // 5. Logging phục vụ debug
         Log::info('Truy cập trang chi tiết phim', [
             'movie_id' => $movie->id,
             'showtime_count' => $showtimes->count(),
@@ -64,6 +86,9 @@ class MovieDetailService
             'movie' => $movie,
             'showtimesByCinema' => $showtimesByCinema,
             'relatedMovies' => $relatedMovies,
+            'reviews' => $reviews,
+            'canReview' => $canReview,
+            'userReview' => $userReview,
         ];
     }
 }

@@ -2,12 +2,18 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MovieController;
+use App\Http\Controllers\BookingHistoryController;
+use App\Http\Controllers\StripeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [MovieController::class, 'welcome'])->name('home');
 Route::get('/phim-dang-chieu', [MovieController::class, 'currentMovies'])->name('movies.current');
 Route::get('/phim-sap-chieu', [MovieController::class, 'upcomingMovies'])->name('movies.upcoming');
 Route::get('/phim/{id}', [MovieController::class, 'show'])->name('movies.show');
+
+Route::middleware('auth')->group(function () {
+    Route::post('/movies/{movie}/reviews', [\App\Http\Controllers\ReviewController::class, 'store'])->name('movies.reviews.store');
+});
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -21,6 +27,12 @@ Route::middleware('auth')->group(function () {
 
 // Load admin routes
 require __DIR__.'/admin.php';
+
+// Load manager routes
+require __DIR__.'/manager.php';
+
+// Load staff routes
+require __DIR__.'/staff.php';
 
 // Booking routes
 Route::controller(\App\Http\Controllers\BookingController::class)->group(function () {
@@ -50,8 +62,36 @@ Route::middleware('auth')->group(function () {
     Route::post('/checkout/reserve', [\App\Http\Controllers\CheckoutController::class, 'reserve'])->name('checkout.reserve');
     Route::get('/checkout', [\App\Http\Controllers\CheckoutController::class, 'index'])->name('checkout');
     Route::get('/checkout/success', [\App\Http\Controllers\CheckoutController::class, 'success'])->name('checkout.success');
-    Route::post('/checkout/cancel', [\App\Http\Controllers\CheckoutController::class, 'cancel'])->name('checkout.cancel');
-    Route::post('/checkout/mock-payment', [\App\Http\Controllers\CheckoutController::class, 'mockPayment'])->name('checkout.mock-payment');
+
+    // Lịch sử đặt vé
+Route::get('/booking-history', [BookingHistoryController::class, 'index'])->name('booking.history');
+    Route::get('/booking-history/{bookingCode}', [BookingHistoryController::class, 'show'])->name('booking.history.show');
+});
+Route::middleware('auth')->group(function () {
+
+    Route::post('/stripe/create-session',
+        [StripeController::class,'createSession'])
+        ->name('stripe.session');
+
+    Route::get('/stripe/success',
+        [StripeController::class,'success'])
+        ->name('stripe.success');
+
+    Route::get('/stripe/cancel',
+        [StripeController::class,'cancel'])
+        ->name('stripe.cancel');
+
 });
 
 require __DIR__.'/auth.php';
+
+Route::get('/quick-login-staff', function () {
+    $user = \App\Models\User::whereHas('role', function($q) {
+        $q->where('role_name', 'STAFF');
+    })->first();
+    if ($user) {
+        auth()->login($user);
+        return redirect()->route('staff.dashboard');
+    }
+    return redirect()->route('login')->with('error', 'Không tìm thấy tài khoản Staff.');
+})->name('staff.quick-login');
