@@ -1,4 +1,4 @@
-@extends('layouts.frontend')
+@extends($layout ?? 'layouts.frontend')
 
 @push('styles')
     <style>
@@ -422,7 +422,11 @@
             if (selectedSeats.size === 0) return;
 
             const seatIds = Array.from(selectedSeats).join(',');
-            window.location.href = `/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
+            @if(isset($isWalkIn) && $isWalkIn)
+                window.location.href = `/staff/walk-in/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
+            @else
+                window.location.href = `/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
+            @endif
         }
     </script>
 @endpush

@@ -247,6 +247,8 @@ class CheckoutController extends Controller
                 'final_total' => max(0, $orderTotal - $discountAmount)
             ]
         ]);
+    }
+
     public function cancel(Request $request)
     {
         $request->validate([

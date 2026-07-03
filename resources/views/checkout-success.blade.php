@@ -1,4 +1,4 @@
-@extends('layouts.frontend')
+@extends($layout ?? 'layouts.frontend')
 
 @section('content')
     <div class="max-w-4xl mx-auto px-4 py-16">
