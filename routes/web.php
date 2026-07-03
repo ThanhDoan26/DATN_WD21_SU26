@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MovieController;
 use App\Http\Controllers\BookingHistoryController;
+use App\Http\Controllers\StripeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [MovieController::class, 'welcome'])->name('home');
@@ -65,6 +66,21 @@ Route::middleware('auth')->group(function () {
     // Lịch sử đặt vé
     Route::get('/booking-history', [BookingHistoryController::class, 'index'])->name('booking.history');
     Route::get('/booking-history/{bookingCode}', [BookingHistoryController::class, 'show'])->name('booking.history.show');
+});
+Route::middleware('auth')->group(function () {
+
+    Route::post('/stripe/create-session',
+        [StripeController::class,'createSession'])
+        ->name('stripe.session');
+
+    Route::get('/stripe/success',
+        [StripeController::class,'success'])
+        ->name('stripe.success');
+
+    Route::get('/stripe/cancel',
+        [StripeController::class,'cancel'])
+        ->name('stripe.cancel');
+
 });
 
 require __DIR__.'/auth.php';

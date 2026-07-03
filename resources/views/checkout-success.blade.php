@@ -15,7 +15,7 @@
                         <div class="space-y-3 text-sm text-slate-300">
                             <div class="flex justify-between"><span>Mã booking:</span><span class="font-semibold text-white">{{ $booking['booking_code'] }}</span></div>
                             <div class="flex justify-between"><span>Trạng thái:</span><span class="font-semibold text-emerald-400">{{ $booking['status'] }}</span></div>
-                            <div class="flex justify-between"><span>Thời gian đặt:</span><span>{{ \\Carbon\\Carbon::parse($booking['booking_time'])->format('H:i d/m/Y') }}</span></div>
+                            <div class="flex justify-between"><span>Thời gian đặt:</span><span>{{ \Carbon\Carbon::parse($booking['booking_time'])->format('H:i d/m/Y') }}</span></div>
                             <div class="flex justify-between"><span>Tổng thanh toán:</span><span class="font-semibold text-white">{{ number_format($booking['total_price'], 0, ',', '.') }} đ</span></div>
                             <div class="flex justify-between"><span>Phương thức:</span><span>{{ $booking['payment_method'] ?? 'Chưa chọn' }}</span></div>
                         </div>

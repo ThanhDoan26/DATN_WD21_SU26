@@ -30,29 +30,58 @@ class CheckoutController extends Controller
         $showtimeId = $request->query('showtime_id');
         $seatIds = $request->query('seat_ids');
 
+        // Normalize showtimeId - handle array or string
         if (is_array($showtimeId)) {
             $showtimeId = $showtimeId[0] ?? null;
         }
+        if ($showtimeId !== null) {
+            $showtimeId = (int) $showtimeId;
+        }
 
+        // Normalize seatIds - handle array or string
         if (is_array($seatIds)) {
             $seatIds = implode(',', array_filter($seatIds, fn($item) => $item !== null && $item !== ''));
         }
 
-        if ($showtimeId && $seatIds) {
+        // Convert string to array of integers
+        if ($seatIds && is_string($seatIds)) {
             $seatIds = array_filter(array_map('intval', explode(',', $seatIds)));
+        } else {
+            $seatIds = [];
+        }
+
+        // Only proceed if we have both showtime and seat IDs
+        if ($showtimeId && !empty($seatIds)) {
             $showtime = Showtime::with('room.cinema')->find($showtimeId);
 
             if (!$showtime) {
                 abort(404, 'Suất chiếu không tồn tại.');
             }
 
+            // Check if showtime is still valid for booking
+            if (!in_array($showtime->status, [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])) {
+                abort(404, 'Suất chiếu này không còn khả dụng.');
+            }
+
+            if ($showtime->start_time <= now()) {
+                abort(404, 'Suất chiếu này đã bắt đầu hoặc kết thúc.');
+            }
+
+            // Get ticket prices for this showtime
             $ticketPrices = TicketPrice::where('showtime_id', $showtimeId)
                 ->where('status', 'ACTIVE')
                 ->get()
                 ->keyBy('seat_type');
 
+            // Get selected seats
             $selectedSeats = Seat::whereIn('id', $seatIds)->get();
 
+            // Verify all requested seats were found
+            if ($selectedSeats->count() !== count($seatIds)) {
+                abort(404, 'Một số ghế không tồn tại.');
+            }
+
+            // Build seat summary
             foreach ($selectedSeats as $seat) {
                 $priceRow = $ticketPrices[$seat->seat_type] ?? null;
                 $seatPrice = $priceRow ? (float) $priceRow->price : 0;
@@ -96,13 +125,20 @@ class CheckoutController extends Controller
     {
         $request->validate([
             'showtime_id' => 'required|exists:showtimes,id',
-            'seat_ids' => 'required|string',
+            'seat_ids' => 'required',
             'combos' => 'nullable|array',
             'payment_method' => 'nullable|string|max:100',
             'coupon_code' => 'nullable|string|max:50',
         ]);
 
-        $seatIds = array_filter(array_map('intval', explode(',', $request->input('seat_ids'))));
+        $seatIdsInput = $request->input('seat_ids');
+        if (is_string($seatIdsInput)) {
+            $seatIds = array_filter(array_map('intval', explode(',', $seatIdsInput)));
+        } elseif (is_array($seatIdsInput)) {
+            $seatIds = array_filter(array_map('intval', $seatIdsInput));
+        } else {
+            $seatIds = [];
+        }
 
         if (empty($seatIds)) {
             return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 ghế.'], 422);
