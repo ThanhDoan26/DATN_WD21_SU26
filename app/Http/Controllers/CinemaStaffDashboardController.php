@@ -18,32 +18,109 @@ class CinemaStaffDashboardController extends Controller
         $user = auth()->user();
         $cinemaId = $user->cinema_id;
 
-        // Base queries for booked seats
+        // Base queries
         $baseSeatsQuery = BookedSeat::query();
+        $baseBookingQuery = Booking::query();
 
         if ($cinemaId) {
             $baseSeatsQuery->whereHas('booking.showtime.room', function ($q) use ($cinemaId) {
                 $q->where('cinema_id', $cinemaId);
             });
+            $baseBookingQuery->whereHas('showtime.room', function ($q) use ($cinemaId) {
+                $q->where('cinema_id', $cinemaId);
+            });
         }
 
-        // 1. Vé check-in hôm nay (status = USED, checked_in_at là hôm nay)
+        // ── KPI Cards ──────────────────────────────────────────────
+        // Vé check-in hôm nay
         $checkedInToday = (clone $baseSeatsQuery)
             ->where('status', 'USED')
             ->whereDate('checked_in_at', today())
             ->count();
 
-        // 2. Vé chưa sử dụng (status = PAID)
+        // Vé chưa sử dụng (sẵn sàng check-in)
         $unusedTickets = (clone $baseSeatsQuery)
             ->where('status', 'PAID')
             ->count();
 
-        // 3. Vé đã sử dụng (status = USED)
+        // Tổng vé đã check-in
         $usedTickets = (clone $baseSeatsQuery)
             ->where('status', 'USED')
             ->count();
 
-        return view('staff.dashboard.index', compact('checkedInToday', 'unusedTickets', 'usedTickets'));
+        // Booking mới hôm nay
+        $bookingsToday = (clone $baseBookingQuery)
+            ->whereDate('created_at', today())
+            ->whereIn('status', ['Paid', 'Used'])
+            ->count();
+
+        // Doanh thu hôm nay
+        $revenueToday = (clone $baseBookingQuery)
+            ->whereDate('payment_time', today())
+            ->whereIn('status', ['Paid', 'Used'])
+            ->sum('total_price');
+
+        // ── Biểu đồ doanh thu 7 ngày ───────────────────────────────
+        $revenueChart = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = today()->subDays($i);
+            $dayRevenue = (clone $baseBookingQuery)
+                ->whereDate('payment_time', $date)
+                ->whereIn('status', ['Paid', 'Used'])
+                ->sum('total_price');
+            $revenueChart[] = [
+                'date'    => $date->format('d/m'),
+                'revenue' => (float) $dayRevenue,
+            ];
+        }
+
+        // ── Tỷ lệ check-in hôm nay ────────────────────────────────
+        $totalTicketsForToday = (clone $baseSeatsQuery)
+            ->whereHas('booking.showtime', function ($q) {
+                $q->whereDate('start_time', today());
+            })
+            ->whereIn('status', ['PAID', 'USED'])
+            ->count();
+        $checkinRate = $totalTicketsForToday > 0
+            ? round($checkedInToday / $totalTicketsForToday * 100)
+            : 0;
+
+        // ── Suất chiếu hôm nay ────────────────────────────────────
+        $todayShowtimes = Showtime::with(['movie', 'room'])
+            ->whereDate('start_time', today())
+            ->when($cinemaId, function ($q) use ($cinemaId) {
+                $q->whereHas('room', fn($r) => $r->where('cinema_id', $cinemaId));
+            })
+            ->orderBy('start_time')
+            ->limit(10)
+            ->get();
+
+        // ── Hoạt động gần đây (check-in) ─────────────────────────
+        $recentCheckIns = (clone $baseSeatsQuery)
+            ->with(['booking.user', 'booking.showtime.movie', 'seat'])
+            ->where('status', 'USED')
+            ->whereNotNull('checked_in_at')
+            ->orderByDesc('checked_in_at')
+            ->limit(8)
+            ->get();
+
+        // ── Vé sắp hết hạn (suất chiếu trong 2h tới) ─────────────
+        $expiringSoon = (clone $baseSeatsQuery)
+            ->with(['booking.showtime.movie', 'booking.showtime.room'])
+            ->where('status', 'PAID')
+            ->whereHas('booking.showtime', function ($q) {
+                $q->where('start_time', '>=', now())
+                  ->where('start_time', '<=', now()->addHours(2));
+            })
+            ->limit(5)
+            ->get();
+
+        return view('staff.dashboard.index', compact(
+            'checkedInToday', 'unusedTickets', 'usedTickets',
+            'bookingsToday', 'revenueToday',
+            'revenueChart', 'checkinRate',
+            'todayShowtimes', 'recentCheckIns', 'expiringSoon'
+        ));
     }
 
     /**
