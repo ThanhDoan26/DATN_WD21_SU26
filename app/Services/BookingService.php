@@ -40,7 +40,9 @@ class BookingService
         ?int $userId,
         int $showtimeId,
         array $selectedSeatIds,
-        ?string $paymentMethod = null
+        ?string $paymentMethod = null,
+        ?string $couponCode = null,
+        array $combos = []
     ): int {
         if (empty($selectedSeatIds)) {
             throw new Exception('Vui lòng chọn ít nhất 1 ghế');
@@ -49,7 +51,7 @@ class BookingService
         try {
             $this->cleanupExpiredPendingBookings();
 
-            return DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod) {
+            return DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos) {
 
                 // ================================================================
                 // Step 1: Lock các hàng ghế (chỉ 1 request được giữ lock)
@@ -145,6 +147,53 @@ class BookingService
                     ];
                 }
 
+                $comboDetails = [];
+                if (!empty($combos)) {
+                    $comboIds = array_keys($combos);
+                    $dbCombos = DB::table('combos')->whereIn('id', $comboIds)->get()->keyBy('id');
+                    foreach ($combos as $comboId => $comboData) {
+                        $qty = (int) ($comboData['qty'] ?? 0);
+                        if ($qty > 0) {
+                            if (!isset($dbCombos[$comboId])) {
+                                throw new Exception("Combo không tồn tại");
+                            }
+                            $comboPrice = (float) $dbCombos[$comboId]->price;
+                            $totalPrice += ($comboPrice * $qty);
+                            $comboDetails[] = [
+                                'combo_id' => $comboId,
+                                'quantity' => $qty,
+                                'price' => $comboPrice,
+                            ];
+                        }
+                    }
+                }
+
+                // ================================================================
+                // Step 5.1: Xử lý Mã giảm giá (nếu có)
+                // ================================================================
+                $couponId = null;
+                $discountAmount = 0;
+
+                if (!empty($couponCode)) {
+                    $coupon = \App\Models\Coupon::where('code', $couponCode)->lockForUpdate()->first();
+                    if (!$coupon) {
+                        throw new Exception("Mã giảm giá không hợp lệ hoặc không tồn tại.");
+                    }
+
+                    $validation = $coupon->isValid($totalPrice);
+                    if (!$validation['valid']) {
+                        throw new Exception($validation['message']);
+                    }
+
+                    $discountAmount = $coupon->calculateDiscount($totalPrice);
+                    $couponId = $coupon->id;
+
+                    // Tăng lượt sử dụng
+                    $coupon->increment('used_count');
+                }
+
+                $finalTotalPrice = max(0, $totalPrice - $discountAmount);
+
                 // ================================================================
                 // Step 6: Tạo Booking record
                 // ================================================================
@@ -153,7 +202,9 @@ class BookingService
                 $bookingId = DB::table('bookings')->insertGetId([
                     'user_id' => $userId,
                     'showtime_id' => $showtimeId,
-                    'total_price' => $totalPrice,
+                    'total_price' => $finalTotalPrice,
+                    'coupon_id' => $couponId,
+                    'discount_amount' => $discountAmount,
                     'status' => 'Pending',
                     'payment_method' => $paymentMethod,
                     'booking_time' => now(),
@@ -172,6 +223,20 @@ class BookingService
                         'price_at_booking' => $detail['price_at_booking'],
                         'status' => 'RESERVED',
                         'qr_code' => $this->generateQRCode($bookingCode, $detail['seat_row'], $detail['seat_number']),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                // ================================================================
+                // Step 7.1: Insert booking_combos
+                // ================================================================
+                foreach ($comboDetails as $cd) {
+                    DB::table('booking_combos')->insert([
+                        'booking_id' => $bookingId,
+                        'combo_id' => $cd['combo_id'],
+                        'quantity' => $cd['quantity'],
+                        'price' => $cd['price'],
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
@@ -211,6 +276,16 @@ class BookingService
 
             if (empty($expiredBookingIds)) {
                 return 0;
+            }
+
+            // Hoàn lại lượt dùng mã giảm giá
+            $bookingsWithCoupons = DB::table('bookings')
+                ->whereIn('id', $expiredBookingIds)
+                ->whereNotNull('coupon_id')
+                ->get();
+
+            foreach ($bookingsWithCoupons as $b) {
+                DB::table('coupons')->where('id', $b->coupon_id)->where('used_count', '>', 0)->decrement('used_count');
             }
 
             DB::table('bookings')
@@ -313,6 +388,11 @@ class BookingService
                 throw new Exception(
                     "Không thể hủy booking này. Status: {$booking->status}"
                 );
+            }
+
+            // Hoàn lại lượt dùng mã giảm giá
+            if ($booking->coupon_id) {
+                DB::table('coupons')->where('id', $booking->coupon_id)->where('used_count', '>', 0)->decrement('used_count');
             }
 
             // Cập nhật booking status

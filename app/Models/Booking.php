@@ -49,6 +49,11 @@ class Booking extends Model
         return $this->hasMany(BookedSeat::class);
     }
 
+    public function combos()
+    {
+        return $this->belongsToMany(Combo::class, 'booking_combos')->withPivot('quantity', 'price')->withTimestamps();
+    }
+
     /**
      * Helper: Kiểm tra booking đã thanh toán
      */

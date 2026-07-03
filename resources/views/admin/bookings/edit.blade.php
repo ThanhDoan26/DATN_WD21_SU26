@@ -38,7 +38,7 @@
                                 id="user_id" name="user_id">
                             <option value="">-- Khách Lẻ (Không có tài khoản) --</option>
                             @forelse($users as $user)
-                                <option value="{{ $user->id }}" {{ old('user_id', $booking->user_id) === (string)$user->id ? 'selected' : '' }}>
+                                <option value="{{ $user->id }}" {{ (string)old('user_id', $booking->user_id) === (string)$user->id ? 'selected' : '' }}>
                                     {{ $user->name }} ({{ $user->email }})
                                 </option>
                             @empty
@@ -67,7 +67,7 @@
                                 id="showtime_id" name="showtime_id" required>
                             <option value="">-- Chọn Suất Chiếu --</option>
                             @forelse($showtimes as $showtime)
-                                <option value="{{ $showtime->id }}" {{ old('showtime_id', $booking->showtime_id) === (string)$showtime->id ? 'selected' : '' }}>
+                                <option value="{{ $showtime->id }}" {{ (string)old('showtime_id', $booking->showtime_id) === (string)$showtime->id ? 'selected' : '' }}>
                                     {{ $showtime->movie->title }} - {{ $showtime->start_time->format('d/m H:i') }}
                                     ({{ $showtime->room->name }})
                                 </option>

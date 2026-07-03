@@ -7,9 +7,14 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Danh sách Mã Giảm Giá</h5>
-        <a href="{{ route('admin.coupons.create') }}" class="btn btn-primary btn-sm">
-            <i class="fas fa-plus"></i> Thêm mới
-        </a>
+        <div>
+            <a href="{{ route('admin.coupons.trashed') }}" class="btn btn-secondary btn-sm me-2">
+                <i class="fas fa-trash"></i> Thùng rác
+            </a>
+            <a href="{{ route('admin.coupons.create') }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Thêm mới
+            </a>
+        </div>
     </div>
     <div class="card-body">
         {{-- @if (session('success'))

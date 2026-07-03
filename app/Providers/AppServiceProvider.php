@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Hashing\LegacyBcryptHasher;
 use Illuminate\Hashing\HashManager;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Pagination\Paginator;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,8 +24,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->app['hash']->extend('bcrypt', function () {
-            return new LegacyBcryptHasher();
-        });
+        Paginator::useBootstrapFive();
     }
 }
