@@ -348,6 +348,12 @@
         <!-- Sidebar Menu -->
         <ul class="sidebar-menu">
             <li>
+                <a href="{{ url('/') }}">
+                    <i class="fas fa-home"></i>
+                    <span>Trang Chủ</span>
+                </a>
+            </li>
+            <li>
                 <a href="{{ route('admin.dashboard') }}"
                    class="@if(request()->routeIs('admin.dashboard')) active @endif">
                     <i class="fas fa-tachometer-alt"></i>
