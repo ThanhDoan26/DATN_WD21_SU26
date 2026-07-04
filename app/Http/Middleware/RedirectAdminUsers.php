@@ -22,17 +22,28 @@ class RedirectAdminUsers
         if (auth()->check()) {
             $user = auth()->user();
 
-            // Nếu user là admin
-            if ($user->isAdmin()) {
-                // Nếu user đang cố gắng truy cập dashboard bình thường → redirect admin dashboard
-                if ($request->path() === 'dashboard') {
+            // Nếu user đang cố gắng truy cập /dashboard → redirect về dashboard đúng role
+            if ($request->path() === 'dashboard') {
+                if ($user->isAdmin()) {
                     return redirect()->route('admin.dashboard');
                 }
-            } else {
-                // Nếu user không phải admin nhưng cố gắng truy cập /admin → redirect dashboard
-                if (str_starts_with($request->path(), 'admin')) {
-                    return redirect()->route('dashboard');
+                if ($user->isManager()) {
+                    return redirect()->route('manager.dashboard');
                 }
+                if ($user->isStaff()) {
+                    return redirect()->route('staff.dashboard');
+                }
+            }
+
+            // Nếu user không phải admin nhưng cố gắng truy cập /admin → redirect về dashboard đúng role
+            if (!$user->isAdmin() && str_starts_with($request->path(), 'admin')) {
+                if ($user->isManager()) {
+                    return redirect()->route('manager.dashboard');
+                }
+                if ($user->isStaff()) {
+                    return redirect()->route('staff.dashboard');
+                }
+                return redirect('/');
             }
         }
 

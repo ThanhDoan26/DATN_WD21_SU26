@@ -26,8 +26,10 @@
             <div class="hidden md:flex items-center space-x-4">
                 @if (Route::has('login'))
                     @auth
-                        @if(auth()->user()->isAdmin() || auth()->user()->isManager())
-                            <a href="{{ route('admin.dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium">Bảng điều khiển</a>
+                        @if(auth()->user()->isAdmin())
+                            <a href="{{ route('admin.dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium"><i class="fas fa-user-shield me-1"></i> Admin Portal</a>
+                        @elseif(auth()->user()->isManager())
+                            <a href="{{ route('manager.dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium"><i class="fas fa-user-shield me-1"></i> Manager Portal</a>
                         @elseif(auth()->user()->isStaff())
                             <a href="{{ route('staff.dashboard') }}" class="text-[#ca8a04] hover:text-[#eab308] transition-colors font-medium"><i class="fas fa-user-shield me-1"></i> Staff Portal</a>
                         @endif
