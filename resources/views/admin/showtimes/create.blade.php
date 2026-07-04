@@ -34,7 +34,7 @@
                         <select id="movie_id" name="movie_id" class="form-select @error('movie_id') is-invalid @enderror" required>
                             <option value="">-- Chọn phim --</option>
                             @foreach($movies as $movie)
-                                <option value="{{ $movie->id }}" {{ old('movie_id') == $movie->id ? 'selected' : '' }}>
+                                <option value="{{ $movie->id }}" data-duration="{{ $movie->duration }}" {{ old('movie_id') == $movie->id ? 'selected' : '' }}>
                                     {{ $movie->title }}
                                 </option>
                             @endforeach
@@ -379,6 +379,51 @@
                 .catch(error => console.error('Error fetching seats:', error));
         }
 
+        const movieSelect = document.getElementById('movie_id');
+        const startInput = document.getElementById('start_time');
+        const endInput = document.getElementById('end_time');
+
+        function formatDatetimeLocal(date) {
+            const pad = (value) => String(value).padStart(2, '0');
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+        }
+
+        function getSelectedMovieDuration() {
+            const selectedOption = movieSelect.options[movieSelect.selectedIndex];
+            return selectedOption ? Number(selectedOption.dataset.duration || 0) : 0;
+        }
+
+        function updateEndTime() {
+            if (!startInput.value || !movieSelect.value) {
+                return;
+            }
+
+            const durationMinutes = getSelectedMovieDuration();
+            if (!durationMinutes || Number.isNaN(durationMinutes)) {
+                return;
+            }
+
+            const startDate = new Date(startInput.value);
+            if (Number.isNaN(startDate.getTime())) {
+                return;
+            }
+
+            const calculatedEnd = new Date(startDate.getTime() + (durationMinutes + 15) * 60 * 1000);
+            const formattedEnd = formatDatetimeLocal(calculatedEnd);
+
+            if (endInput.dataset.autoComputed !== 'false') {
+                endInput.value = formattedEnd;
+                endInput.dataset.autoComputed = 'true';
+            }
+        }
+
+        endInput.addEventListener('input', function() {
+            this.dataset.autoComputed = 'false';
+        });
+
+        movieSelect.addEventListener('change', updateEndTime);
+        startInput.addEventListener('change', updateEndTime);
+
         roomSelect.addEventListener('change', function() {
             loadSeatMap(this.value);
             seatDetailCard.innerHTML = '<p class="text-muted">Vui lòng click vào một ghế trên sơ đồ để xem chi tiết.</p>';
@@ -388,6 +433,8 @@
         if (roomSelect.value) {
             loadSeatMap(roomSelect.value);
         }
+
+        updateEndTime();
     });
 </script>
 @endsection

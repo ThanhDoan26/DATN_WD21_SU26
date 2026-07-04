@@ -1,4 +1,4 @@
-@extends('layouts.frontend')
+@extends($layout ?? 'layouts.frontend')
 
 @push('styles')
     <style>
@@ -40,6 +40,27 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <!-- Left Column (Main Info) -->
                 <div class="lg:col-span-8 space-y-8">
+
+                    @if(isset($isWalkIn) && $isWalkIn)
+                    <!-- Customer Info (Walk-in) -->
+                    <div class="rounded-3xl bg-slate-900 border border-slate-800 shadow-xl p-8 mb-8">
+                        <h2 class="text-xl font-bold text-white mb-4"><i class="fas fa-user mr-2 text-primary"></i> Thông Tin Khách Hàng (Tùy chọn)</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-slate-400 text-sm mb-2">Họ Tên</label>
+                                <input type="text" id="customer_name" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary" placeholder="Nhập họ tên">
+                            </div>
+                            <div>
+                                <label class="block text-slate-400 text-sm mb-2">Số Điện Thoại</label>
+                                <input type="text" id="customer_phone" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary" placeholder="Nhập SĐT">
+                            </div>
+                            <div>
+                                <label class="block text-slate-400 text-sm mb-2">Email</label>
+                                <input type="email" id="customer_email" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary" placeholder="Nhập Email">
+                            </div>
+                        </div>
+                    </div>
+                    @endif
 
                     <!-- Ticket Info -->
                     <div class="rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden relative">
@@ -179,6 +200,21 @@
                                     <span class="text-white font-semibold text-lg">Stripe</span>
                                 </div>
                             </label>
+
+                            @if(isset($isWalkIn) && $isWalkIn)
+                            <label class="relative cursor-pointer group">
+                                <input type="radio" name="payment" value="CASH" class="peer payment-radio hidden">
+                                <div class="border-2 border-slate-700 rounded-2xl p-6 transition-all duration-300 hover:border-slate-500 flex flex-col items-center gap-3 bg-slate-950/30">
+                                    <div class="absolute top-4 right-4 text-primary opacity-0 scale-50 transition-all duration-300 check-icon">
+                                        <i class="fas fa-check-circle text-xl"></i>
+                                    </div>
+                                    <div class="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 text-3xl mb-2">
+                                        <i class="fas fa-money-bill-wave"></i>
+                                    </div>
+                                    <span class="text-white font-semibold text-lg">Tiền mặt</span>
+                                </div>
+                            </label>
+                            @endif
                         </div>
                     </div>
 
@@ -493,7 +529,10 @@
                             seat_ids: Array.isArray(seatIds) ? seatIds.join(',') : seatIds,
                             combos: selectedCombos,
                             payment_method: selectedPayment,
-                            coupon_code: couponCode
+                            coupon_code: couponCode,
+                            customer_name: document.getElementById('customer_name') ? document.getElementById('customer_name').value : null,
+                            customer_phone: document.getElementById('customer_phone') ? document.getElementById('customer_phone').value : null,
+                            customer_email: document.getElementById('customer_email') ? document.getElementById('customer_email').value : null
                         })
                     })
                     .then(async response => {
@@ -513,6 +552,11 @@
                     .then(data => {
                         if (!data.success) {
                             throw new Error(data.message || 'Lỗi tạo booking');
+                        }
+
+                        if (data.isWalkIn) {
+                            window.location.href = data.redirect_url;
+                            return;
                         }
 
                         const bookingId = data.data.booking_id;

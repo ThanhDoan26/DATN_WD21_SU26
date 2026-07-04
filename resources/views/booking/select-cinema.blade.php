@@ -1,4 +1,4 @@
-@extends('layouts.frontend')
+@extends($layout ?? 'layouts.frontend')
 
 @section('content')
 
@@ -77,7 +77,7 @@
                 <div class="text-center py-20">
                     <i class="fas fa-inbox text-slate-500 text-6xl mb-4"></i>
                     <p class="text-slate-400 text-xl mb-6">Không có cụm rạp nào có suất chiếu phim này</p>
-                    <a href="{{ route('movies.current') }}" class="inline-block bg-primary hover:bg-red-700 text-white px-6 py-2 rounded-lg transition">
+                    <a href="{{ (isset($isWalkIn) && $isWalkIn) ? route('staff.walkin.movies') : route('movies.current') }}" class="inline-block bg-primary hover:bg-red-700 text-white px-6 py-2 rounded-lg transition">
                         <i class="fas fa-arrow-left mr-2"></i>Quay lại danh sách phim
                     </a>
                 </div>
@@ -92,8 +92,11 @@
         function selectCinema(cinemaId, cinemaName) {
             const movieId = {{ $movie->id }};
             // Chuyển đến bước chọn ngày và suất chiếu
-            // URL: /booking/movie/{movie}/cinema/{cinema}/dates
-            window.location.href = `/booking/movie/${movieId}/cinema/${cinemaId}/dates`;
+            @if(isset($isWalkIn) && $isWalkIn)
+                window.location.href = `/staff/walk-in/movie/${movieId}/cinema/${cinemaId}/dates`;
+            @else
+                window.location.href = `/booking/movie/${movieId}/cinema/${cinemaId}/dates`;
+            @endif
         }
     </script>
 @endpush

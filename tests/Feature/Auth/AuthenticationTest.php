@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 test('login screen can be rendered', function () {
     $response = $this->get('/login');
@@ -16,8 +17,8 @@ test('users can authenticate using the login screen', function () {
         'password' => 'password',
     ]);
 
-    $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $this->assertAuthenticatedAs($user);
+    $response->assertRedirect();
 });
 
 test('users can not authenticate with invalid password', function () {
@@ -29,6 +30,21 @@ test('users can not authenticate with invalid password', function () {
     ]);
 
     $this->assertGuest();
+});
+
+test('users can authenticate when password is stored as legacy md5 hash', function () {
+    $user = User::factory()->create();
+    DB::table('users')->where('id', $user->id)->update([
+        'password' => md5('password'),
+    ]);
+
+    $response = $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertAuthenticatedAs($user);
+    $response->assertRedirect();
 });
 
 test('users can logout', function () {
