@@ -1,37 +1,40 @@
 @extends('layouts.staff')
 
 @section('content')
-<div class="p-6">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-ticket-alt text-blue-500 mr-2"></i>Chọn Phim Đặt Tại Quầy</h1>
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <h2 class="fw-bold text-primary mb-0"><i class="fas fa-ticket-alt me-2"></i>Chọn Phim (Tạo vé tại quầy)</h2>
     </div>
 
     @if($movies->count() > 0)
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div class="row g-4">
             @foreach($movies as $movie)
-                <div class="bg-white rounded-xl shadow overflow-hidden flex flex-col">
-                    <div class="h-64 overflow-hidden relative">
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden">
+                    <div class="position-relative" style="height: 300px;">
                         @if($movie->poster_url)
-                            <img src="{{ str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="w-full h-full object-cover">
+                            <img src="{{ str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" 
+                                 alt="{{ $movie->title }}" 
+                                 class="w-100 h-100 object-fit-cover" style="object-fit: cover;">
                         @else
-                            <div class="w-full h-full bg-gray-200 flex items-center justify-center">
-                                <i class="fas fa-film text-gray-400 text-4xl"></i>
+                            <div class="w-100 h-100 bg-secondary d-flex align-items-center justify-content-center text-white">
+                                <i class="fas fa-film fa-4x text-light opacity-50"></i>
                             </div>
                         @endif
                         @if($movie->age_rating)
-                            <div class="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
+                            <span class="badge bg-danger position-absolute top-0 end-0 m-3 fs-6">
                                 {{ $movie->age_rating }}
-                            </div>
+                            </span>
                         @endif
                     </div>
                     
-                    <div class="p-4 flex-1 flex flex-col">
-                        <h3 class="font-bold text-lg line-clamp-2 mb-2 text-gray-800">{{ $movie->title }}</h3>
-                        <p class="text-sm text-gray-600 mb-4 flex-1">
-                            <i class="fas fa-clock text-gray-400 mr-1"></i> {{ $movie->duration }} phút
+                    <div class="card-body d-flex flex-column p-4">
+                        <h5 class="card-title fw-bold text-dark text-truncate mb-2" title="{{ $movie->title }}">{{ $movie->title }}</h5>
+                        <p class="card-text text-muted mb-4 flex-grow-1">
+                            <i class="fas fa-clock me-1"></i> {{ $movie->duration }} phút
                         </p>
                         
-                        <a href="{{ route('staff.walkin.cinema', $movie->id) }}" class="w-full block text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+                        <a href="{{ route('staff.walkin.dates', $movie->id) }}" class="btn btn-primary w-100 fw-bold py-2 rounded-3">
                             Chọn Phim Này
                         </a>
                     </div>
@@ -39,13 +42,13 @@
             @endforeach
         </div>
         
-        <div class="mt-6">
-            {{ $movies->links() }}
+        <div class="d-flex justify-content-center mt-5">
+            {{ $movies->links('pagination::bootstrap-5') }}
         </div>
     @else
-        <div class="bg-white rounded-xl shadow p-12 text-center">
-            <i class="fas fa-inbox text-gray-300 text-5xl mb-4"></i>
-            <p class="text-gray-500 text-lg">Không có phim nào đang chiếu.</p>
+        <div class="text-center py-5 bg-white rounded-4 shadow-sm">
+            <i class="fas fa-film text-muted mb-3" style="font-size: 5rem;"></i>
+            <h4 class="text-muted">Không có phim nào đang chiếu.</h4>
         </div>
     @endif
 </div>

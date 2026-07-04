@@ -24,53 +24,44 @@ use App\Mail\TicketConfirmationMail;
 
 class WalkInBookingController extends Controller
 {
-    /**
-     * Show currently showing movies
-     */
     public function movies(): View
     {
-        $movies = Movie::where('status', 'SHOWING')
-            ->orderBy('release_date', 'desc')
+        $cinemaId = Auth::user()->cinema_id;
+
+        // Nghiệp vụ chuyên nghiệp: Chỉ hiển thị các phim thực sự đang có hoặc sắp có suất chiếu
+        // tại RẠP CỦA NHÂN VIÊN.
+        $movies = Movie::whereIn('status', ['NOW_SHOWING', 'COMING_SOON'])
+            ->whereHas('showtimes', function ($query) use ($cinemaId) {
+                $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+                      ->where('start_time', '>', now())
+                      ->whereHas('room', function($r) use ($cinemaId) {
+                          $r->where('cinema_id', $cinemaId);
+                      });
+            })
+            ->withCount(['showtimes' => function ($query) use ($cinemaId) {
+                $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+                      ->where('start_time', '>', now())
+                      ->whereHas('room', function($r) use ($cinemaId) {
+                          $r->where('cinema_id', $cinemaId);
+                      });
+            }])
+            ->orderBy('created_at', 'desc')
             ->paginate(12);
 
         return view('staff.walkin.movies', compact('movies'));
     }
 
     /**
-     * Step 1: Select Cinema
-     */
-    public function selectCinema(Movie $movie): View
-    {
-        $cinemas = Cinema::whereHas('rooms', function ($query) use ($movie) {
-            $query->whereHas('showtimes', function ($q) use ($movie) {
-                $q->where('movie_id', $movie->id)
-                  ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
-                  ->where('start_time', '>', now());
-            });
-        })
-        ->with(['rooms' => function ($query) use ($movie) {
-            $query->whereHas('showtimes', function ($q) use ($movie) {
-                $q->where('movie_id', $movie->id)
-                  ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
-                  ->where('start_time', '>', now());
-            });
-        }])
-        ->get();
-
-        return view('booking.select-cinema', [
-            'movie' => $movie,
-            'cinemas' => $cinemas,
-            'layout' => 'layouts.staff',
-            'isWalkIn' => true,
-        ]);
-    }
-
-    /**
      * Step 2 & 3: Select Dates and Showtimes
      */
-    public function selectDatesAndShowtimes(Movie $movie, Cinema $cinema): View
+    public function selectDatesAndShowtimes(Movie $movie): View
     {
-        return view('booking.select-dates-and-showtimes', [
+        $cinema = Auth::user()->cinema;
+        if (!$cinema) {
+            abort(403, 'Nhân viên chưa được phân công rạp.');
+        }
+
+        return view('staff.walkin.dates-showtimes', [
             'movie' => $movie,
             'cinema' => $cinema,
             'layout' => 'layouts.staff',
@@ -78,6 +69,11 @@ class WalkInBookingController extends Controller
         ]);
     }
 
+
+
+    /**
+     * Step 2 & 3: Select Dates and Showtimes
+     */
     /**
      * Step 4: Select Seats
      */
@@ -89,6 +85,11 @@ class WalkInBookingController extends Controller
 
         if ($showtime->start_time <= now()) {
             return abort(404);
+        }
+
+        // Kiểm tra suất chiếu có thuộc rạp của staff không
+        if (Auth::user()->cinema_id && $showtime->room->cinema_id !== Auth::user()->cinema_id) {
+            abort(403, 'Bạn không có quyền truy cập suất chiếu của rạp khác.');
         }
 
         $bookedSeats = $showtime->bookings()
@@ -108,7 +109,7 @@ class WalkInBookingController extends Controller
 
         $ticketPrices = $showtime->ticketPrices()->get();
 
-        return view('booking.select-seats', [
+        return view('staff.walkin.seats', [
             'showtime' => $showtime,
             'room' => $room,
             'bookedSeats' => $bookedSeats->toArray(),
@@ -203,7 +204,7 @@ class WalkInBookingController extends Controller
         $combos = Combo::where('status', 'ACTIVE')->get();
         $coupons = Coupon::where('status', 'ACTIVE')->get();
 
-        return view('checkout', compact(
+        return view('staff.walkin.checkout', compact(
             'showtime',
             'selectedSeats',
             'ticketPrices',
@@ -321,7 +322,7 @@ class WalkInBookingController extends Controller
             'booking_id' => 'required|integer|exists:bookings,id',
         ]);
 
-        $booking = Booking::where('id', $request->query('booking_id'))->first();
+        $booking = Booking::with('showtime.movie')->where('id', $request->query('booking_id'))->first();
 
         if (!$booking) {
             abort(404, 'Booking không tồn tại.');
@@ -329,8 +330,10 @@ class WalkInBookingController extends Controller
 
         $bookingService = new BookingService();
         $bookingDetails = $bookingService->getBookingDetails($booking->id);
+        $bookingDetails['movie_title'] = $booking->showtime->movie->title;
+        $bookingDetails['final_total'] = $booking->total_price;
 
-        return view('checkout-success', [
+        return view('staff.walkin.checkout-success', [
             'booking' => $bookingDetails,
             'layout' => 'layouts.staff',
             'isWalkIn' => true,
