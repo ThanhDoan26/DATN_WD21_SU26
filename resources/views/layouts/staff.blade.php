@@ -112,6 +112,11 @@
                     <i class="fas fa-ticket-alt"></i> <span>Tra cứu & Check-in vé</span>
                 </a>
             </li>
+            <li>
+                <a href="{{ route('staff.walkin.movies') }}" class="@if(request()->routeIs('staff.walkin.*')) active @endif">
+                    <i class="fas fa-cash-register"></i> <span>Tạo vé tại quầy</span>
+                </a>
+            </li>
         </ul>
     </aside>
 

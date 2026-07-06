@@ -1,4 +1,4 @@
-@extends('layouts.frontend')
+@extends($layout ?? 'layouts.frontend')
 
 @push('styles')
     <style>
@@ -89,7 +89,7 @@
 
             <!-- Action Buttons -->
             <div class="flex gap-4 mt-12 justify-between">
-                <a href="{{ route('booking.select-cinema', $movie) }}" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg transition font-bold">
+                <a href="{{ (isset($isWalkIn) && $isWalkIn) ? route('staff.walkin.cinema', $movie) : route('booking.select-cinema', $movie) }}" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg transition font-bold">
                     <i class="fas fa-arrow-left mr-2"></i>Quay lại chọn rạp
                 </a>
                 <button id="nextButton"
@@ -264,7 +264,11 @@
 
         function proceedToSeats() {
             if (selectedShowtime) {
-                window.location.href = `/booking/showtime/${selectedShowtime}/seats`;
+                @if(isset($isWalkIn) && $isWalkIn)
+                    window.location.href = `/staff/walk-in/showtime/${selectedShowtime}/seats`;
+                @else
+                    window.location.href = `/booking/showtime/${selectedShowtime}/seats`;
+                @endif
             }
         }
     </script>

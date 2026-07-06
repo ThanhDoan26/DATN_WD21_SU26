@@ -42,7 +42,8 @@ class BookingService
         array $selectedSeatIds,
         ?string $paymentMethod = null,
         ?string $couponCode = null,
-        array $combos = []
+        array $combos = [],
+        array $extraData = []
     ): int {
         if (empty($selectedSeatIds)) {
             throw new Exception('Vui lòng chọn ít nhất 1 ghế');
@@ -211,6 +212,10 @@ class BookingService
                     'booking_code' => $bookingCode,
                     'created_at' => now(),
                     'updated_at' => now(),
+                    'booking_source' => $extraData['booking_source'] ?? 'online',
+                    'customer_name' => $extraData['customer_name'] ?? null,
+                    'customer_phone' => $extraData['customer_phone'] ?? null,
+                    'customer_email' => $extraData['customer_email'] ?? null,
                 ]);
 
                 // ================================================================

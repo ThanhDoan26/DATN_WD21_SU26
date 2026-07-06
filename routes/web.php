@@ -64,7 +64,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/checkout/success', [\App\Http\Controllers\CheckoutController::class, 'success'])->name('checkout.success');
 
     // Lịch sử đặt vé
-    Route::get('/booking-history', [BookingHistoryController::class, 'index'])->name('booking.history');
+Route::get('/booking-history', [BookingHistoryController::class, 'index'])->name('booking.history');
     Route::get('/booking-history/{bookingCode}', [BookingHistoryController::class, 'show'])->name('booking.history.show');
 });
 Route::middleware('auth')->group(function () {
@@ -94,4 +94,6 @@ Route::get('/quick-login-staff', function () {
         return redirect()->route('staff.dashboard');
     }
     return redirect()->route('login')->with('error', 'Không tìm thấy tài khoản Staff.');
+
 })->name('staff.quick-login');
+
