@@ -1,4 +1,4 @@
-@extends('layouts.frontend')
+@extends($layout ?? 'layouts.frontend')
 
 @section('content')
     <div class="max-w-4xl mx-auto px-4 py-16">
@@ -40,14 +40,45 @@
                         </div>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <a href="/" class="inline-flex items-center justify-center rounded-3xl bg-slate-900 border border-slate-700 px-6 py-4 text-center text-white font-semibold hover:bg-slate-800 transition">
-                        <i class="fas fa-arrow-left mr-2"></i> Quay về trang chính
-                    </a>
-                    <a href="/" class="inline-flex items-center justify-center rounded-3xl bg-primary px-6 py-4 text-center text-white font-semibold hover:bg-red-600 transition">
-                        <i class="fas fa-ticket-alt mr-2"></i> Xem danh sách booking
-                    </a>
-                </div>
+                @if(session('success'))
+                    <div class="bg-emerald-500/10 border border-emerald-500 text-emerald-400 p-4 rounded-2xl mb-6">
+                        {{ session('success') }}
+                    </div>
+                @endif
+                @if(session('error'))
+                    <div class="bg-rose-500/10 border border-rose-500 text-rose-400 p-4 rounded-2xl mb-6">
+                        {{ session('error') }}
+                    </div>
+                @endif
+
+                @if($booking['status'] === 'Pending')
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <form action="{{ route('checkout.cancel') }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đơn vé này không? Ghế sẽ được giải phóng cho người khác.');">
+                            @csrf
+                            <input type="hidden" name="booking_id" value="{{ $booking['booking_id'] }}">
+                            <button type="submit" class="w-full inline-flex items-center justify-center rounded-3xl bg-slate-800 border border-slate-600 px-6 py-4 text-center text-rose-400 font-semibold hover:bg-slate-700 transition">
+                                <i class="fas fa-times-circle mr-2"></i> Hủy đơn vé
+                            </button>
+                        </form>
+
+                        <form action="{{ route('checkout.mock-payment') }}" method="POST">
+                            @csrf
+                            <input type="hidden" name="booking_id" value="{{ $booking['booking_id'] }}">
+                            <button type="submit" class="w-full inline-flex items-center justify-center rounded-3xl bg-emerald-600 px-6 py-4 text-center text-white font-semibold hover:bg-emerald-500 transition shadow-lg shadow-emerald-500/30">
+                                <i class="fas fa-check-circle mr-2"></i> Xác nhận thanh toán
+                            </button>
+                        </form>
+                    </div>
+                @else
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <a href="{{ route('home') }}" class="inline-flex items-center justify-center rounded-3xl bg-slate-900 border border-slate-700 px-6 py-4 text-center text-white font-semibold hover:bg-slate-800 transition">
+                            <i class="fas fa-arrow-left mr-2"></i> Quay về trang chính
+                        </a>
+                        <a href="{{ route('home') }}" class="inline-flex items-center justify-center rounded-3xl bg-primary px-6 py-4 text-center text-white font-semibold hover:bg-red-600 transition">
+                            <i class="fas fa-ticket-alt mr-2"></i> Xem danh sách booking
+                        </a>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
