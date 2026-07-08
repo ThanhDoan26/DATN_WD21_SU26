@@ -54,4 +54,24 @@ class Movie extends Model
         $minutes = $this->duration % 60;
         return sprintf('%d:%02d', $hours, $minutes);
     }
+
+    /**
+     * Kiểm tra phim có suất chiếu hợp lệ (SCHEDULED, ONGOING)
+     */
+    public function hasActiveShowtimes(): bool
+    {
+        return $this->showtimes()
+            ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+            ->exists();
+    }
+
+    /**
+     * Lấy số lượng suất chiếu hợp lệ
+     */
+    public function getActiveShowtimesCount(): int
+    {
+        return $this->showtimes()
+            ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+            ->count();
+    }
 }

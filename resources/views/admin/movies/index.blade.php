@@ -50,9 +50,14 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Danh sách Phim</h5>
-        <a href="{{ route('admin.movies.create') }}" class="btn btn-sm btn-light text-primary fw-bold">
-            <i class="fas fa-plus"></i> Thêm phim mới
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('admin.movies.trashed') }}" class="btn btn-sm btn-secondary fw-bold" title="Xem phim đã xóa">
+                <i class="fas fa-trash"></i> Đã Xóa
+            </a>
+            <a href="{{ route('admin.movies.create') }}" class="btn btn-sm btn-light text-primary fw-bold">
+                <i class="fas fa-plus"></i> Thêm phim mới
+            </a>
+        </div>
     </div>
     <div class="card-body">
         <div class="table-responsive">

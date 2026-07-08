@@ -143,7 +143,71 @@ class MovieController extends Controller
 
     public function destroy(Movie $movie)
     {
+        // Kiểm tra phim có suất chiếu hợp lệ
+        if ($movie->hasActiveShowtimes()) {
+            $activeCount = $movie->getActiveShowtimesCount();
+            return redirect()->route('admin.movies.index')
+                             ->with('error', "Không thể xóa phim '$movie->title' vì phim đang có $activeCount suất chiếu hợp lệ. Vui lòng xóa hoặc hủy tất cả suất chiếu trước.");
+        }
+
         $movie->delete();
-        return redirect()->route('admin.movies.index')->with('success', 'Phim đã được xóa mềm.');
+        return redirect()->route('admin.movies.index')->with('success', 'Phim đã được xóa mềm. Bạn có thể khôi phục từ danh sách đã xóa.');
+    }
+
+    /**
+     * Display a listing of trashed movies
+     */
+    public function trashed(Request $request)
+    {
+        $query = Movie::onlyTrashed()->with('categories');
+
+        if ($request->filled('search')) {
+            $query->where('title', 'like', '%' . $request->search . '%');
+        }
+
+        $movies = $query->orderBy('deleted_at', 'desc')->paginate(12);
+
+        return view('admin.movies.trashed', ['movies' => $movies]);
+    }
+
+    /**
+     * Restore a trashed movie
+     */
+    public function restore($id)
+    {
+        $movie = Movie::onlyTrashed()->findOrFail($id);
+        $movie->restore();
+
+        return redirect()->route('admin.movies.index')
+                         ->with('success', 'Khôi phục phim thành công!');
+    }
+
+    /**
+     * Permanently delete a trashed movie
+     */
+    public function forceDelete($id)
+    {
+        $movie = Movie::onlyTrashed()->findOrFail($id);
+        
+        try {
+            // Remove poster if exists
+            if ($movie->poster_url && \Illuminate\Support\Facades\Storage::disk('public')->exists($movie->poster_url)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($movie->poster_url);
+            }
+
+            // Delete related categories mapping
+            $movie->categories()->detach();
+
+            $movie->forceDelete();
+
+            return redirect()->route('admin.movies.trashed')
+                             ->with('success', 'Xóa vĩnh viễn phim thành công!');
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == 23000) {
+                return redirect()->route('admin.movies.trashed')
+                                 ->with('error', 'Không thể xóa vĩnh viễn phim này vì đang có dữ liệu liên quan (Suất chiếu, Vé,...).');
+            }
+            throw $e;
+        }
     }
 }
