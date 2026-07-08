@@ -135,7 +135,17 @@ class CinemaStaffDashboardController extends Controller
         $searchType = null; // 'booking' or 'seat'
 
         if ($code) {
-            $code = trim(strtoupper($code));
+            $originalCode = trim($code);
+            $code = strtoupper($originalCode);
+            
+            // Bóc tách token nếu QR Code là URL (VD: http://.../tickets/xxx-yyy)
+            $extractedToken = $originalCode;
+            if (filter_var($originalCode, FILTER_VALIDATE_URL)) {
+                $segments = explode('/', parse_url($originalCode, PHP_URL_PATH));
+                $extractedToken = end($segments);
+            }
+            $extractedToken = strtolower($extractedToken);
+
             $user = auth()->user();
             $cinemaId = $user->cinema_id;
 
@@ -148,7 +158,8 @@ class CinemaStaffDashboardController extends Controller
                 'showtime.room.cinema',
                 'bookedSeats',
                 'bookedSeats.seat'
-            ])->where('booking_code', $code)->first();
+            ])->where('booking_code', $code)
+              ->orWhere('ticket_token', $extractedToken)->first();
 
             if ($booking) {
                 $result = $booking;
@@ -261,10 +272,19 @@ class CinemaStaffDashboardController extends Controller
      */
     public function lookup(Request $request)
     {
-        $code = trim(strtoupper($request->query('code')));
-        if (!$code) {
+        $originalCode = trim($request->query('code'));
+        $code = strtoupper($originalCode);
+        if (!$originalCode) {
             return response()->json(['success' => false, 'error' => 'Vui lòng cung cấp mã vé.'], 400);
         }
+
+        // Bóc tách token nếu QR Code là URL (VD: http://.../tickets/xxx-yyy)
+        $extractedToken = $originalCode;
+        if (filter_var($originalCode, FILTER_VALIDATE_URL)) {
+            $segments = explode('/', parse_url($originalCode, PHP_URL_PATH));
+            $extractedToken = end($segments);
+        }
+        $extractedToken = strtolower($extractedToken);
 
         $user = auth()->user();
         $cinemaId = $user->cinema_id;
@@ -280,7 +300,8 @@ class CinemaStaffDashboardController extends Controller
             'showtime.room.cinema',
             'bookedSeats',
             'bookedSeats.seat'
-        ])->where('booking_code', $code)->first();
+        ])->where('booking_code', $code)
+          ->orWhere('ticket_token', $extractedToken)->first();
 
         if ($booking) {
             if ($cinemaId && $booking->showtime->room->cinema_id != $cinemaId) {
