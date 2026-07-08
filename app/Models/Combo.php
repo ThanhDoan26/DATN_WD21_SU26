@@ -24,4 +24,28 @@ class Combo extends Model
     {
         return $this->hasMany(BookingCombo::class);
     }
+
+    /**
+     * Get the reviews for the combo.
+     */
+    public function comboReviews()
+    {
+        return $this->hasMany(ComboReview::class);
+    }
+
+    /**
+     * Helper: Get average rating.
+     */
+    public function getAverageRatingAttribute()
+    {
+        return round($this->comboReviews()->avg('rating') ?? 0, 1);
+    }
+
+    /**
+     * Helper: Get total reviews.
+     */
+    public function getTotalReviewsAttribute()
+    {
+        return $this->comboReviews()->count();
+    }
 }

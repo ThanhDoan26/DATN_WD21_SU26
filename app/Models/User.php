@@ -66,6 +66,14 @@ class User extends Authenticatable
         return $this->hasMany(Review::class);
     }
 
+    /**
+     * Người dùng có nhiều đánh giá combo
+     */
+    public function comboReviews(): HasMany
+    {
+        return $this->hasMany(ComboReview::class);
+    }
+
     // ========================================
     // HELPER METHODS
     // ========================================

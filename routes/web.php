@@ -78,8 +78,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/checkout/success', [\App\Http\Controllers\CheckoutController::class, 'success'])->name('checkout.success');
 
     // Lịch sử đặt vé
-Route::get('/booking-history', [BookingHistoryController::class, 'index'])->name('booking.history');
+    Route::get('/booking-history', [BookingHistoryController::class, 'index'])->name('booking.history');
     Route::get('/booking-history/{bookingCode}', [BookingHistoryController::class, 'show'])->name('booking.history.show');
+    
+    // Đánh giá Combo
+    Route::post('/booking-history/combo-rate', [\App\Http\Controllers\ComboReviewController::class, 'store'])->name('combo-reviews.store');
 });
 Route::middleware('auth')->group(function () {
 

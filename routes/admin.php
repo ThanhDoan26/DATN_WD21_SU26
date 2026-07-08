@@ -116,6 +116,10 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
 
     // Combos
     Route::resource('combos', ComboController::class, ['as' => 'admin']);
+    
+    // Combo Reviews
+    Route::get('combo-reviews', [\App\Http\Controllers\Admin\ComboReviewController::class, 'index'])->name('admin.combo-reviews.index');
+    Route::get('combo-reviews/{combo}', [\App\Http\Controllers\Admin\ComboReviewController::class, 'show'])->name('admin.combo-reviews.show');
 
     // Reviews
     Route::get('reviews', [\App\Http\Controllers\Admin\ReviewController::class, 'index'])->name('admin.reviews.index');

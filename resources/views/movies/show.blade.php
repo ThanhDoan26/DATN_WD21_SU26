@@ -276,49 +276,108 @@
                         </h2>
 
                         <!-- Review Form -->
+                        <!-- Review Form -->
                         @auth
-                            @if($userReview)
-                                <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50 mb-8">
-                                    <h3 class="text-xl font-bold mb-4">Đánh giá của bạn</h3>
-                                    <div class="flex items-center gap-2 mb-2 text-yellow-400 text-lg">
-                                        @for($i = 1; $i <= 5; $i++)
-                                            <i class="fas fa-star {{ $i <= $userReview->rating ? '' : 'text-slate-600' }}"></i>
-                                        @endfor
-                                    </div>
-                                    <p class="text-slate-300">{{ $userReview->comment }}</p>
-                                    @if($userReview->status === 'HIDDEN')
-                                        <p class="text-red-400 text-sm mt-4"><i class="fas fa-eye-slash"></i> Đánh giá của bạn đã bị ẩn bởi quản trị viên.</p>
-                                    @endif
-                                </div>
-                            @elseif($canReview)
+                            @if($userReview || $canReview)
                                 <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 mb-8 shadow-xl">
-                                    <h3 class="text-xl font-bold mb-4">Gửi đánh giá của bạn</h3>
                                     <form action="{{ route('movies.reviews.store', $movie->id) }}" method="POST">
                                         @csrf
-                                        <div class="mb-4">
-                                            <label class="block text-slate-400 mb-2 font-medium">Chất lượng phim (1-5 sao)</label>
-                                            <div class="flex gap-2" x-data="{ rating: 5, hoverRating: 0 }">
-                                                <button type="button" @click="rating = 1" @mouseenter="hoverRating = 1" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 1 || (hoverRating === 0 && rating >= 1)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
-                                                <button type="button" @click="rating = 2" @mouseenter="hoverRating = 2" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 2 || (hoverRating === 0 && rating >= 2)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
-                                                <button type="button" @click="rating = 3" @mouseenter="hoverRating = 3" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 3 || (hoverRating === 0 && rating >= 3)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
-                                                <button type="button" @click="rating = 4" @mouseenter="hoverRating = 4" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 4 || (hoverRating === 0 && rating >= 4)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
-                                                <button type="button" @click="rating = 5" @mouseenter="hoverRating = 5" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 5 || (hoverRating === 0 && rating >= 5)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
-                                                <input type="hidden" name="rating" :value="rating">
+                                        
+                                        <div class="border-b border-slate-700 pb-4 mb-6">
+                                            <h3 class="text-lg font-bold text-slate-300 tracking-wider">ĐÁNH GIÁ PHIM</h3>
+                                        </div>
+
+                                        @if($userReview)
+                                            <!-- Static Movie Review if already reviewed -->
+                                            <div class="mb-8">
+                                                <div class="flex items-center gap-2 mb-2 text-yellow-400 text-lg">
+                                                    @for($i = 1; $i <= 5; $i++)
+                                                        <i class="fas fa-star {{ $i <= $userReview->rating ? '' : 'text-slate-600' }}"></i>
+                                                    @endfor
+                                                </div>
+                                                <p class="text-slate-300">{{ $userReview->comment }}</p>
+                                                @if($userReview->status === 'HIDDEN')
+                                                    <p class="text-red-400 text-sm mt-4"><i class="fas fa-eye-slash"></i> Đánh giá của bạn đã bị ẩn bởi quản trị viên.</p>
+                                                @endif
+                                                <input type="hidden" name="rating" value="{{ $userReview->rating }}">
+                                                <input type="hidden" name="comment" value="{{ $userReview->comment }}">
                                             </div>
-                                            @error('rating')
-                                                <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
-                                            @enderror
+                                        @else
+                                            <!-- Movie Review Input -->
+                                            <div class="mb-8">
+                                                <div class="mb-4">
+                                                    <label class="block text-slate-400 mb-2 font-medium">Chất lượng phim (1-5 sao)</label>
+                                                    <div class="flex gap-2" x-data="{ rating: 5, hoverRating: 0 }">
+                                                        <button type="button" @click="rating = 1" @mouseenter="hoverRating = 1" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 1 || (hoverRating === 0 && rating >= 1)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                        <button type="button" @click="rating = 2" @mouseenter="hoverRating = 2" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 2 || (hoverRating === 0 && rating >= 2)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                        <button type="button" @click="rating = 3" @mouseenter="hoverRating = 3" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 3 || (hoverRating === 0 && rating >= 3)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                        <button type="button" @click="rating = 4" @mouseenter="hoverRating = 4" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 4 || (hoverRating === 0 && rating >= 4)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                        <button type="button" @click="rating = 5" @mouseenter="hoverRating = 5" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 5 || (hoverRating === 0 && rating >= 5)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                        <input type="hidden" name="rating" :value="rating">
+                                                    </div>
+                                                    @error('rating')
+                                                        <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+                                                    @enderror
+                                                </div>
+                                                <div class="mb-4">
+                                                    <label for="comment" class="block text-slate-400 mb-2 font-medium">Bình luận phim</label>
+                                                    <textarea id="comment" name="comment" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-white placeholder-slate-500 focus:ring-primary focus:border-primary" placeholder="Nhập cảm nhận của bạn về bộ phim này..."></textarea>
+                                                    @error('comment')
+                                                        <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+                                                    @enderror
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        <!-- COMBO REVIEW -->
+                                        @if(isset($purchasedCombos) && $purchasedCombos->count() > 0)
+                                            <div class="border-b border-slate-700 pb-4 mb-6">
+                                                <h3 class="text-lg font-bold text-slate-300 tracking-wider">ĐÁNH GIÁ COMBO</h3>
+                                            </div>
+
+                                            <div class="space-y-6 mb-8">
+                                                @foreach($purchasedCombos as $combo)
+                                                    @php
+                                                        $cReview = $combo->comboReviews->where('user_id', auth()->id())->first();
+                                                        $cRating = $cReview ? $cReview->rating : 5;
+                                                        $cComment = $cReview ? $cReview->comment : '';
+                                                    @endphp
+                                                    <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 flex flex-col md:flex-row gap-4">
+                                                        <div class="w-24 h-24 shrink-0 rounded-lg overflow-hidden bg-slate-800">
+                                                            @if($combo->image)
+                                                                <img src="{{ Storage::url($combo->image) }}" alt="{{ $combo->name }}" class="w-full h-full object-cover">
+                                                            @else
+                                                                <div class="w-full h-full flex items-center justify-center text-slate-600"><i class="fas fa-popcorn text-3xl"></i></div>
+                                                            @endif
+                                                        </div>
+                                                        <div class="flex-grow">
+                                                            <h4 class="text-white font-bold mb-2">{{ $combo->name }}</h4>
+                                                            <input type="hidden" name="combos[{{ $combo->id }}][booking_id]" value="{{ $combo->booking_id_for_review }}">
+                                                            
+                                                            <div class="mb-3">
+                                                                <div class="flex gap-1" x-data="{ rating: {{ $cRating }}, hoverRating: 0 }">
+                                                                    <button type="button" @click="rating = 1" @mouseenter="hoverRating = 1" @mouseleave="hoverRating = 0" class="text-2xl focus:outline-none transition-colors" :style="(hoverRating >= 1 || (hoverRating === 0 && rating >= 1)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                                    <button type="button" @click="rating = 2" @mouseenter="hoverRating = 2" @mouseleave="hoverRating = 0" class="text-2xl focus:outline-none transition-colors" :style="(hoverRating >= 2 || (hoverRating === 0 && rating >= 2)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                                    <button type="button" @click="rating = 3" @mouseenter="hoverRating = 3" @mouseleave="hoverRating = 0" class="text-2xl focus:outline-none transition-colors" :style="(hoverRating >= 3 || (hoverRating === 0 && rating >= 3)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                                    <button type="button" @click="rating = 4" @mouseenter="hoverRating = 4" @mouseleave="hoverRating = 0" class="text-2xl focus:outline-none transition-colors" :style="(hoverRating >= 4 || (hoverRating === 0 && rating >= 4)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                                    <button type="button" @click="rating = 5" @mouseenter="hoverRating = 5" @mouseleave="hoverRating = 0" class="text-2xl focus:outline-none transition-colors" :style="(hoverRating >= 5 || (hoverRating === 0 && rating >= 5)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                                    <input type="hidden" name="combos[{{ $combo->id }}][rating]" :value="rating">
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <textarea name="combos[{{ $combo->id }}][comment]" rows="2" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white placeholder-slate-500 text-sm focus:ring-primary focus:border-primary" placeholder="Bình luận Combo...">{{ $cComment }}</textarea>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+
+                                        <div class="text-center pt-4 border-t border-slate-700/50">
+                                            <button type="submit" class="bg-primary hover:bg-red-700 text-white font-bold py-3 px-12 rounded-full transition-all text-lg tracking-wider">
+                                                GỬI ĐÁNH GIÁ
+                                            </button>
                                         </div>
-                                        <div class="mb-4">
-                                            <label for="comment" class="block text-slate-400 mb-2 font-medium">Bình luận của bạn</label>
-                                            <textarea id="comment" name="comment" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-white placeholder-slate-500 focus:ring-primary focus:border-primary" placeholder="Nhập cảm nhận của bạn về bộ phim này..."></textarea>
-                                            @error('comment')
-                                                <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
-                                            @enderror
-                                        </div>
-                                        <button type="submit" class="bg-primary hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full transition-all">
-                                            Gửi Đánh Giá
-                                        </button>
                                     </form>
                                 </div>
                             @else
@@ -338,6 +397,9 @@
                         <!-- Reviews List -->
                         <div class="space-y-6">
                             @forelse($reviews as $review)
+                                @php
+                                    $userComboReviews = isset($comboReviews) && $comboReviews->has($review->user_id) ? $comboReviews[$review->user_id] : collect();
+                                @endphp
                                 <div class="bg-slate-800/30 p-6 rounded-2xl border border-slate-700/30 flex gap-4">
                                     <div class="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center text-xl font-bold text-slate-300 flex-shrink-0">
                                         {{ substr($review->user->name, 0, 1) }}
@@ -353,6 +415,36 @@
                                             @endfor
                                         </div>
                                         <p class="text-slate-300 leading-relaxed">{{ $review->comment }}</p>
+
+                                        @if($userComboReviews->count() > 0)
+                                            <div class="mt-4 pt-4 border-t border-slate-700/50">
+                                                <h5 class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">Đánh giá Combo</h5>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    @foreach($userComboReviews as $cReview)
+                                                        <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 flex gap-3">
+                                                            <div class="w-16 h-16 shrink-0 rounded-md overflow-hidden bg-slate-800">
+                                                                @if($cReview->combo && $cReview->combo->image)
+                                                                    <img src="{{ Storage::url($cReview->combo->image) }}" alt="{{ $cReview->combo->name }}" class="w-full h-full object-cover">
+                                                                @else
+                                                                    <div class="w-full h-full flex items-center justify-center text-slate-600"><i class="fas fa-popcorn text-xl"></i></div>
+                                                                @endif
+                                                            </div>
+                                                            <div class="flex-grow">
+                                                                <h6 class="text-slate-200 font-bold text-sm mb-1 truncate">{{ $cReview->combo->name ?? 'Combo' }}</h6>
+                                                                <div class="flex text-yellow-400 text-xs mb-1">
+                                                                    @for($i = 1; $i <= 5; $i++)
+                                                                        <i class="fas fa-star {{ $i <= $cReview->rating ? '' : 'text-slate-600' }}"></i>
+                                                                    @endfor
+                                                                </div>
+                                                                @if($cReview->comment)
+                                                                    <p class="text-slate-400 text-xs line-clamp-2" title="{{ $cReview->comment }}">{{ $cReview->comment }}</p>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             @empty

@@ -54,6 +54,11 @@ class Booking extends Model
         return $this->belongsToMany(Combo::class, 'booking_combos')->withPivot('quantity', 'price')->withTimestamps();
     }
 
+    public function comboReviews(): HasMany
+    {
+        return $this->hasMany(ComboReview::class);
+    }
+
     /**
      * Helper: Kiểm tra booking đã thanh toán
      */
