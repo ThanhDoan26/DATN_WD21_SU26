@@ -148,11 +148,24 @@
 
                     <!-- QR Section -->
                     <div class="md:w-64 flex flex-col items-center">
+                        @php
+                            $isExpired = $booking->status === 'Paid' && ($booking->showtime->status === \App\Models\Showtime::STATUS_COMPLETED || ($booking->showtime->end_time && $booking->showtime->end_time->isPast()));
+                        @endphp
+                        
                         <div class="p-4 bg-white rounded-3xl shadow-2xl mb-4 group/qr">
-                            @if($booking->status === 'Paid')
-                                <!-- Real apps would use a QR lib -->
-                                <div class="w-48 h-48 bg-slate-100 rounded-2xl flex items-center justify-center border-4 border-slate-50 overflow-hidden">
-                                     <i class="fas fa-qrcode text-8xl text-slate-800 opacity-80 group-hover/qr:scale-110 transition-transform duration-500"></i>
+                            @if($booking->status === 'Used')
+                                <div class="w-48 h-48 bg-emerald-50 rounded-2xl flex flex-col items-center justify-center border-4 border-emerald-100 p-4 text-center">
+                                     <i class="fas fa-check-double text-5xl text-emerald-500 mb-3"></i>
+                                     <p class="text-emerald-800 text-xs font-bold uppercase tracking-tighter">Vé đã được sử dụng</p>
+                                </div>
+                            @elseif($isExpired)
+                                <div class="w-48 h-48 bg-rose-50 rounded-2xl flex flex-col items-center justify-center border-4 border-rose-100 p-4 text-center grayscale">
+                                     <i class="fas fa-lock text-5xl text-rose-400 mb-3"></i>
+                                     <p class="text-rose-800 text-xs font-bold uppercase tracking-tighter">Vé đã quá hạn</p>
+                                </div>
+                            @elseif($booking->status === 'Paid')
+                                <div class="w-48 h-48 bg-slate-100 rounded-2xl flex items-center justify-center border-4 border-slate-50 overflow-hidden group-hover/qr:scale-105 transition-transform duration-500">
+                                     {!! \SimpleSoftwareIO\QrCode\Facades\QrCode::size(160)->generate(url('/tickets/' . $booking->ticket_token)) !!}
                                 </div>
                             @elseif($booking->status === 'Pending')
                                 <div class="w-48 h-48 bg-amber-50 rounded-2xl flex flex-col items-center justify-center border-4 border-amber-100 p-4 text-center">
@@ -162,11 +175,16 @@
                             @else
                                 <div class="w-48 h-48 bg-slate-200 rounded-2xl flex flex-col items-center justify-center border-4 border-slate-300 p-4 text-center grayscale">
                                      <i class="fas fa-times-circle text-5xl text-slate-400 mb-3"></i>
-                                     <p class="text-slate-600 text-xs font-bold uppercase tracking-tighter">Vé không khả dụng</p>
+                                     <p class="text-slate-600 text-xs font-bold uppercase tracking-tighter">Vé đã hủy</p>
                                 </div>
                             @endif
                         </div>
-                        @if($booking->status === 'Paid')
+                        
+                        @if($booking->status === 'Used')
+                            <p class="text-emerald-500 text-[10px] text-center uppercase font-bold tracking-widest leading-relaxed">Cảm ơn bạn đã xem phim</p>
+                        @elseif($isExpired)
+                            <p class="text-rose-500 text-[10px] text-center uppercase font-bold tracking-widest leading-relaxed">Suất chiếu đã kết thúc</p>
+                        @elseif($booking->status === 'Paid')
                             <p class="text-slate-400 text-[10px] text-center uppercase font-bold tracking-widest leading-relaxed">Xuất trình mã này tại quầy<br/>để nhận vé vào phòng chiếu</p>
                         @elseif($booking->status === 'Pending')
                              <button class="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold py-3 rounded-2xl transition-all shadow-lg shadow-amber-500/20">THANH TOÁN NGAY</button>

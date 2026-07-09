@@ -100,6 +100,25 @@ Route::middleware('auth')->group(function () {
 
 });
 
+// Native App QR Scanner Redirection
+Route::get('/tickets/{token}', function ($token) {
+    // Nếu người quét là Staff hoặc Manager -> Chuyển vào trang thao tác quét chuyên dụng
+    if (auth()->check()) {
+        $user = auth()->user();
+        if ($user->isStaff() || $user->isManager() || $user->isAdmin()) {
+            return redirect()->route('staff.ticket.search', ['code' => $token, 'scan' => 1]);
+        }
+    }
+
+    // Nếu người quét là Khách hàng (User gốc của vé) hoặc chưa đăng nhập
+    $booking = \App\Models\Booking::where('ticket_token', $token)->first();
+    if ($booking) {
+        return redirect()->route('booking.history.show', ['bookingCode' => $booking->booking_code]);
+    }
+
+    return redirect()->route('home')->with('error', 'Vé không tồn tại trên hệ thống.');
+})->name('tickets.scan');
+
 require __DIR__.'/auth.php';
 
 Route::get('/quick-login-staff', function () {
