@@ -8,33 +8,41 @@
     <!-- Statistics Cards -->
     <div class="col-md-3">
         <div class="stat-box">
-            <i class="fas fa-building" style="font-size: 2rem; color: #1e3c72;"></i>
-            <div class="stat-number">{{ $totalCinemas ?? 0 }}</div>
-            <div class="stat-label">Cinemas</div>
+            <i class="fas fa-users" style="font-size: 2rem; color: #1e3c72;"></i>
+            <div class="stat-number">{{ number_format($totalActiveUsers ?? 0) }}</div>
+            <div class="stat-label">Users</div>
         </div>
     </div>
 
     <div class="col-md-3">
         <div class="stat-box">
-            <i class="fas fa-door-open" style="font-size: 2rem; color: #2a5298;"></i>
-            <div class="stat-number">{{ $totalRooms ?? 0 }}</div>
-            <div class="stat-label">Rooms</div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="stat-box">
-            <i class="fas fa-video" style="font-size: 2rem; color: #1e3c72;"></i>
-            <div class="stat-number">{{ $totalMovies ?? 0 }}</div>
+            <i class="fas fa-video" style="font-size: 2rem; color: #2a5298;"></i>
+            <div class="stat-number">{{ number_format($totalMovies ?? 0) }}</div>
             <div class="stat-label">Movies</div>
         </div>
     </div>
 
     <div class="col-md-3">
         <div class="stat-box">
-            <i class="fas fa-ticket-alt" style="font-size: 2rem; color: #2a5298;"></i>
-            <div class="stat-number">{{ $totalBookings ?? 0 }}</div>
-            <div class="stat-label">Bookings</div>
+            <i class="fas fa-building" style="font-size: 2rem; color: #1e3c72;"></i>
+            <div class="stat-number">{{ number_format($totalCinemas ?? 0) }}</div>
+            <div class="stat-label">Cinemas</div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="stat-box">
+            <i class="fas fa-calendar-alt" style="font-size: 2rem; color: #2a5298;"></i>
+            <div class="stat-number">{{ number_format($totalShowtimes ?? 0) }}</div>
+            <div class="stat-label">Showtimes</div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mt-4">
+        <div class="stat-box">
+            <i class="fas fa-ticket-alt" style="font-size: 2rem; color: #1e3c72;"></i>
+            <div class="stat-number">{{ number_format($totalTicketsSold ?? 0) }}</div>
+            <div class="stat-label">Tickets Sold</div>
         </div>
     </div>
 </div>
