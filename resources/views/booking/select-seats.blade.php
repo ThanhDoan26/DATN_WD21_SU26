@@ -1,39 +1,7 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Chọn Ghế - movieGo</title>
+@extends('layouts.frontend')
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @else
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script>
-            tailwind.config = {
-                darkMode: 'class',
-                theme: {
-                    extend: {
-                        fontFamily: {
-                            sans: ['Outfit', 'sans-serif'],
-                        },
-                        colors: {
-                            primary: '#e50914',
-                        }
-                    }
-                }
-            }
-        </script>
-    @endif
-
+@push('styles')
     <style>
-        body { font-family: 'Outfit', sans-serif; }
-
         /* Seat Map Styles */
         .seat-map-wrapper {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
@@ -164,6 +132,22 @@
             filter: none;
         }
 
+        /* Broken Seat - Ghế hỏng */
+        .seat.broken {
+            background: repeating-linear-gradient(45deg, #374151, #374151 4px, #4b5563 4px, #4b5563 8px) !important;
+            border-color: #6b7280 !important;
+            color: #9ca3af !important;
+            cursor: not-allowed !important;
+            box-shadow: none;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .seat.broken:hover {
+            transform: none;
+            filter: none;
+        }
+
         @keyframes pulseSelection {
             0% { outline-color: rgba(59, 130, 246, 0.8); }
             50% { outline-color: rgba(59, 130, 246, 0.2); }
@@ -231,10 +215,9 @@
             opacity: 0.6;
         }
     </style>
-</head>
-<body class="bg-slate-900 text-white antialiased selection:bg-primary selection:text-white">
+@endpush
 
-    @include('layouts.guest-navigation')
+@section('content')
 
     <!-- Page Header -->
     <div class="bg-gradient-to-b from-slate-800 to-slate-900 pt-32 pb-16 px-4">
@@ -297,6 +280,10 @@
                                 <div class="legend-box booked">✕</div>
                                 <span>Ghế Đã Đặt</span>
                             </div>
+                            <div class="legend-item">
+                                <div class="legend-box" style="background:repeating-linear-gradient(45deg,#374151,#374151 3px,#4b5563 3px,#4b5563 6px);border-color:#6b7280;opacity:0.5;">✕</div>
+                                <span>Ghế Hỏng</span>
+                            </div>
                         </div>
 
                         <!-- Cinema Screen -->
@@ -317,8 +304,20 @@
                                         @foreach($seats->sortBy('seat_number') as $seat)
                                             @php
                                                 $isBooked = in_array($seat->id, $bookedSeats);
+                                                $isBroken = $seat->status === \App\Models\Seat::STATUS_BROKEN;
                                                 $isVip = $seat->seat_type === 'VIP';
-                                                $seatClass = $isBooked ? 'booked' : ($isVip ? 'vip' : 'regular');
+                                                
+                                                if ($isBroken) {
+                                                    $seatClass = 'broken';
+                                                } elseif ($isBooked) {
+                                                    $seatClass = 'booked';
+                                                } elseif ($isVip) {
+                                                    $seatClass = 'vip';
+                                                } else {
+                                                    $seatClass = 'regular';
+                                                }
+                                                
+                                                $isDisabled = $isBooked || $isBroken;
                                             @endphp
                                             <button
                                                 onclick="toggleSeat({{ $seat->id }}, this)"
@@ -326,9 +325,9 @@
                                                 data-seat-id="{{ $seat->id }}"
                                                 data-seat-code="{{ $seat->getSeatCode() }}"
                                                 data-seat-type="{{ $seat->seat_type }}"
-                                                title="{{ $seat->getSeatCode() }}"
-                                                {{ $isBooked ? 'disabled' : '' }}>
-                                                {{ $seat->seat_number }}
+                                                title="{{ $seat->getSeatCode() }}{{ $isBroken ? ' (Ghế hỏng)' : '' }}"
+                                                {{ $isDisabled ? 'disabled' : '' }}>
+                                                {{ $isBroken ? '✕' : $seat->seat_number }}
                                             </button>
                                         @endforeach
                                     </div>
@@ -393,20 +392,9 @@
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="bg-slate-800 border-t border-slate-700 py-12 px-4 mt-16">
-        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-                <div class="flex items-center gap-2 mb-4">
-                    <div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white font-bold">
-                        <i class="fas fa-ticket-alt"></i>
-                    </div>
-                    <span class="font-bold text-xl">movie<span class="text-primary">Go</span></span>
-                </div>
-            </div>
-        </div>
-    </footer>
+@endsection
 
+@push('scripts')
     <script>
         const showtimeId = {{ $showtime->id }};
         const surcharge = {{ $showtime->surcharge ?? 0 }};
@@ -414,7 +402,7 @@
         const ticketPrices = @json($ticketPrices->mapWithKeys(fn($price) => [$price->seat_type => (float) $price->price]));
 
         function toggleSeat(seatId, button) {
-            if (button.classList.contains('booked')) {
+            if (button.classList.contains('booked') || button.classList.contains('broken')) {
                 return;
             }
 
@@ -469,5 +457,4 @@
             window.location.href = `/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
         }
     </script>
-</body>
-</html>
+@endpush

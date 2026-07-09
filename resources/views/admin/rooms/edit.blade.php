@@ -42,7 +42,7 @@
                                         data-address="{{ $cinema->address }}"
                                         data-city="{{ $cinema->city }}"
                                         data-phone="{{ $cinema->phone }}"
-                                        {{ old('cinema_id', $room->cinema_id) === (string)$cinema->id ? 'selected' : '' }}>
+                                        {{ old('cinema_id', $room->cinema_id) == $cinema->id ? 'selected' : '' }}>
                                     {{ $cinema->name }}
                                 </option>
                             @empty
@@ -132,9 +132,74 @@
         </form>
     </div>
 </div>
+
+<!-- BẮT ĐẦU: Sơ đồ quản lý ghế -->
+<div class="card mt-4">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-th"></i> Sơ đồ ghế - Click vào ghế để khóa/mở khóa hỏng</span>
+    </div>
+    <div class="card-body bg-light">
+        <!-- Chú thích -->
+        <div class="d-flex justify-content-center gap-4 mb-4">
+            <div class="d-flex align-items-center gap-2"><div class="border border-success bg-white" style="width:24px;height:24px; border-radius:4px;"></div> Trống</div>
+            <div class="d-flex align-items-center gap-2"><div class="border border-danger bg-danger text-white d-flex align-items-center justify-content-center" style="width:24px;height:24px; border-radius:4px;"><i class="fas fa-times" style="font-size: 12px;"></i></div> Hỏng</div>
+            <div class="d-flex align-items-center gap-2"><div class="border border-secondary bg-secondary text-white d-flex align-items-center justify-content-center" style="width:24px;height:24px; border-radius:4px;"><i class="fas fa-lock" style="font-size: 12px;"></i></div> Đã đặt</div>
+        </div>
+
+        <div class="seat-map-container" style="overflow-x: auto; min-width: 600px;">
+            <!-- Màn hình chiếu -->
+            <div class="mb-5 mx-auto" style="width: 60%; height: 10px; background: #ccc; box-shadow: 0 15px 10px -10px rgba(0,0,0,0.5); border-radius: 50% / 100% 100% 0 0; text-align: center; position: relative;">
+                <span class="text-muted" style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); letter-spacing: 5px;">MÀN HÌNH</span>
+            </div>
+            
+            <!-- Hiển thị ghế -->
+            <div class="d-flex flex-column align-items-center gap-2">
+                @if(isset($seatsByRow) && $seatsByRow->count() > 0)
+                    @foreach($seatsByRow as $row => $rowSeats)
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="row-label fw-bold text-muted" style="width: 30px; text-align: right;">{{ $row }}</div>
+                            <div class="d-flex gap-2">
+                                @foreach($rowSeats as $seat)
+                                    @php
+                                        $bgColor = 'bg-white border-success text-dark';
+                                        $cursor  = 'cursor-pointer';
+                                        $icon    = '';
+                                        // Sweetbox chiếm 2 ghế, nên CSS rộng hơn
+                                        $width   = (strtolower($seat->seat_type) === 'sweetbox') ? '70px' : '35px';
+
+                                        if ($seat->status === 'BROKEN') {
+                                            $bgColor = 'bg-danger text-white border-danger';
+                                            $icon = '<i class="fas fa-times"></i>';
+                                        } elseif ($seat->status === 'BOOKED') {
+                                            $bgColor = 'bg-secondary text-white border-secondary';
+                                            $cursor = 'not-allowed';
+                                            $icon = '<i class="fas fa-lock"></i>';
+                                        }
+                                    @endphp
+                                    <div class="seat-item border rounded d-flex align-items-center justify-content-center shadow-sm {{ $bgColor }}"
+                                         style="width: {{ $width }}; height: 35px; font-size: 0.85rem; cursor: {{ $cursor === 'not-allowed' ? 'not-allowed' : 'pointer' }}; {{ $seat->status === 'BOOKED' ? 'opacity: 0.7; pointer-events: none;' : 'transition: all 0.2s;' }}"
+                                         data-seat-id="{{ $seat->id }}"
+                                         data-seat-number="{{ $seat->seat_number }}"
+                                         data-status="{{ $seat->status }}"
+                                         onclick="toggleSeatStatus(this)">
+                                        {!! $icon ?: $seat->seat_number !!}
+                                    </div>
+                                @endforeach
+                            </div>
+                            <div class="row-label fw-bold text-muted" style="width: 30px; text-align: left;">{{ $row }}</div>
+                        </div>
+                    @endforeach
+                @else
+                    <div class="alert alert-warning">Chưa có dữ liệu ghế cho phòng này.</div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+<!-- KẾT THÚC: Sơ đồ quản lý ghế -->
 @endsection
 
-@push('scripts')
+@section('extra_js')
 <script>
     function showCinemaInfo() {
         const select = document.getElementById('cinema_id');
@@ -160,5 +225,57 @@
     document.addEventListener('DOMContentLoaded', function() {
         showCinemaInfo();
     });
+
+    // Hàm xử lý Ajax khóa/mở ghế
+    function toggleSeatStatus(element) {
+        const seatId = element.getAttribute('data-seat-id');
+        const currentStatus = element.getAttribute('data-status');
+        
+        // Bỏ qua nếu ghế đã được mua
+        if (currentStatus === 'BOOKED') return;
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        if (!csrfToken) {
+            alert('Lỗi: Không tìm thấy CSRF Token trên trang!');
+            return;
+        }
+
+        // Hiệu ứng Loading
+        element.style.pointerEvents = 'none';
+        element.style.opacity = '0.5';
+
+        fetch(`/admin/rooms/{{ $room->id }}/seats/${seatId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken.getAttribute('content'),
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Cập nhật lại UI dựa trên trạng thái mới
+                if (data.new_status === 'BROKEN') {
+                    element.className = 'seat-item border rounded d-flex align-items-center justify-content-center shadow-sm bg-danger text-white border-danger';
+                    element.innerHTML = '<i class="fas fa-times"></i>';
+                } else {
+                    element.className = 'seat-item border rounded d-flex align-items-center justify-content-center shadow-sm bg-white text-dark border-success';
+                    element.innerHTML = element.getAttribute('data-seat-number');
+                }
+                element.setAttribute('data-status', data.new_status);
+            } else {
+                alert(data.message || 'Có lỗi xảy ra!');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Lỗi kết nối máy chủ!');
+        })
+        .finally(() => {
+            element.style.pointerEvents = 'auto';
+            element.style.opacity = '1';
+        });
+    }
 </script>
-@endpush
+@endsection

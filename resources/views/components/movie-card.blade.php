@@ -4,7 +4,7 @@
     <!-- Poster Image -->
     <div class="relative overflow-hidden aspect-[2/3] w-full shrink-0">
         @if($movie->poster_url)
-            <img src="{{ asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+            <img src="{{ str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
         @else
             <div class="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
                 <i class="fas fa-image text-slate-500 text-4xl"></i>

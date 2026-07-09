@@ -59,6 +59,14 @@ class User extends Authenticatable
         return $this->hasMany(Booking::class);
     }
 
+    /**
+     * Người dùng có nhiều đánh giá
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
     // ========================================
     // HELPER METHODS
     // ========================================

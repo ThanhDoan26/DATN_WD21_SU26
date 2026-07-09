@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\ComboController;
+use App\Http\Controllers\Admin\ReviewController;
 
 /**
  * Admin Routes
@@ -56,7 +57,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::delete('rooms/{room}', [RoomController::class, 'destroy'])->name('admin.rooms.destroy');
     Route::post('rooms/{id}/restore', [RoomController::class, 'restore'])->name('admin.rooms.restore');
     Route::delete('rooms/{id}/force-delete', [RoomController::class, 'forceDelete'])->name('admin.rooms.forceDelete');
-
+    Route::post('rooms/{room}/seats/{seat}/toggle-status', [RoomController::class, 'toggleSeatStatus'])->name('admin.rooms.seats.toggle-status');
     // Seats
     Route::get('seats', [SeatController::class, 'index'])->name('admin.seats.index');
     Route::get('seats/create', [SeatController::class, 'create'])->name('admin.seats.create');
@@ -104,8 +105,12 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::put('bookings/{booking}', [BookingController::class, 'update'])->name('admin.bookings.update');
     Route::delete('bookings/{booking}', [BookingController::class, 'destroy'])->name('admin.bookings.destroy');
 
-    });
+    // Reviews
+    Route::get('reviews', [ReviewController::class, 'index'])->name('admin.reviews.index');
+    Route::patch('reviews/{review}/toggle-status', [ReviewController::class, 'toggleStatus'])->name('admin.reviews.toggle-status');
+    Route::delete('reviews/{review}', [ReviewController::class, 'destroy'])->name('admin.reviews.destroy');
 
+    });
 
     // Phân quyền chỉ cho ADMIN
     Route::middleware(['role:ADMIN'])->group(function () {

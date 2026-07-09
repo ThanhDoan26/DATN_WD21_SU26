@@ -40,6 +40,11 @@ class Movie extends Model
         return $this->belongsToMany(Category::class, 'category_movie');
     }
 
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
     /**
      * Helper: Lấy thời lượng phim dạng "h:mm"
      */

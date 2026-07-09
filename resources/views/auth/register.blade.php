@@ -84,7 +84,6 @@
         <span class="text-slate-500 text-sm">Hoặc đăng ký bằng</span>
         <div class="flex-1 border-t border-slate-700"></div>
     </div>
-
     <!-- Social Login -->
     <div class="mt-6 grid grid-cols-2 gap-4">
         <button class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 py-2.5 rounded-lg text-sm font-medium transition-colors text-white">

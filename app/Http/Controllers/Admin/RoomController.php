@@ -97,19 +97,17 @@ class RoomController extends AdminController
                 // - Hàng A tới C (rowIndex 0, 1, 2) là ghế thường (Regular)
                 // - Hàng cuối cùng là ghế đôi (Sweetbox)
                 // - Còn lại ở giữa là ghế VIP
+                $rowCols = $totalCols;
                 if ($r == $totalRows) {
                     $seatType = 'Sweetbox';
+                    $rowCols = floor($totalCols / 2); // Sweetbox chiếm không gian gấp đôi nên số lượng giảm 1 nửa
                 } elseif ($r <= 3) {
                     $seatType = 'Regular';
                 } else {
                     $seatType = 'VIP';
                 }
 
-                for ($c = 1; $c <= $totalCols; $c++) {
-                    if ($seatCount >= $totalSeats) {
-                        break 2; // Đã đủ số ghế
-                    }
-
+                for ($c = 1; $c <= $rowCols; $c++) {
                     $seatsData[] = [
                         'room_id'     => $room->id,
                         'row_name'    => $rowName,
@@ -123,6 +121,9 @@ class RoomController extends AdminController
                     $seatCount++;
                 }
             }
+
+            // Cập nhật lại total_seats thực tế sau khi đã giảm ghế Sweetbox
+            $room->update(['total_seats' => $seatCount]);
 
             // 3. Insert dữ liệu ghế theo Batch để tăng tốc độ DB
             \App\Models\Seat::insert($seatsData);
@@ -149,7 +150,15 @@ class RoomController extends AdminController
     public function edit(Room $room)
     {
         $cinemas = Cinema::where('status', 'ACTIVE')->get();
-        return view('admin.rooms.edit', compact('room', 'cinemas'));
+        
+        // Lấy danh sách ghế, sắp xếp và nhóm theo hàng (Ví dụ: A, B, C...)
+        $seatsByRow = $room->seats()
+            ->orderBy('row_name')
+            ->orderBy('seat_number')
+            ->get()
+            ->groupBy('row_name');
+
+        return view('admin.rooms.edit', compact('room', 'cinemas', 'seatsByRow'));
     }
 
     /**
@@ -167,21 +176,25 @@ class RoomController extends AdminController
 
         $oldTotalSeats = (int) $room->total_seats;
 
-        // Hỗ trợ lấy total_rows và total_cols từ request (nếu form có), nếu không có thì tự tính dựa trên total_seats
+        // Lấy total_rows và total_cols từ request (chỉ form Create mới gửi 2 field này)
         $totalRows = (int) $request->input('total_rows');
         $totalCols = (int) $request->input('total_cols');
 
+        // Form Edit không gửi total_rows/total_cols → giữ nguyên ghế hiện tại, chỉ cập nhật thông tin phòng
         if (!$totalRows || !$totalCols) {
-            $totalSeats = $validated['total_seats'] ?? 120;
-            $totalCols = 12; // Cố định 12 cột chuẩn
-            $totalRows = ceil($totalSeats / $totalCols);
-            $validated['total_seats'] = $totalSeats; 
-        } else {
-            $totalSeats = $totalRows * $totalCols;
-            $validated['total_seats'] = $totalSeats;
+            // Giữ nguyên total_seats cũ, không tái tạo sơ đồ ghế
+            $validated['total_seats'] = $oldTotalSeats;
+            $room->update($validated);
+
+            return redirect()->route('admin.rooms.edit', $room->id)
+                             ->with('success', 'Cập nhật thông tin phòng chiếu thành công!');
         }
 
-        // Check if total seats has changed to recreate the seat map
+        // Có gửi total_rows/total_cols → tính lại total_seats
+        $totalSeats = $totalRows * $totalCols;
+        $validated['total_seats'] = $totalSeats;
+
+        // Chỉ tái tạo sơ đồ ghế khi số ghế thực sự thay đổi
         if ($totalSeats !== $oldTotalSeats) {
             if ($room->hasActiveShowtimes()) {
                 return redirect()->back()
@@ -205,19 +218,17 @@ class RoomController extends AdminController
                         $rowName = chr(65 + floor($rowIndex / 26) - 1) . chr(65 + ($rowIndex % 26));
                     }
 
+                    $rowCols = $totalCols;
                     if ($r == $totalRows) {
                         $seatType = 'Sweetbox';
+                        $rowCols = floor($totalCols / 2); // Sweetbox chiếm không gian gấp đôi
                     } elseif ($r <= 3) {
                         $seatType = 'Regular';
                     } else {
                         $seatType = 'VIP';
                     }
 
-                    for ($c = 1; $c <= $totalCols; $c++) {
-                        if ($seatCount >= $totalSeats) {
-                            break 2;
-                        }
-
+                    for ($c = 1; $c <= $rowCols; $c++) {
                         $seatsData[] = [
                             'room_id'     => $room->id,
                             'row_name'    => $rowName,
@@ -233,12 +244,14 @@ class RoomController extends AdminController
                 }
 
                 \App\Models\Seat::insert($seatsData);
+                // Cập nhật lại total_seats chuẩn vì Sweetbox đã bị giảm số lượng
+                $validated['total_seats'] = $seatCount;
             }
         }
 
         $room->update($validated);
 
-        return redirect()->route('admin.rooms.index')
+        return redirect()->route('admin.rooms.edit', $room->id)
                          ->with('success', 'Cập nhật phòng chiếu thành công!');
     }
 
@@ -295,4 +308,33 @@ class RoomController extends AdminController
 
         return redirect()->route('admin.rooms.trashed')
                          ->with('success', 'Xóa vĩnh viễn phòng chiếu thành công!');
-    }}
+    }
+
+    /**
+     * Tắt / Bật trạng thái ghế (Ajax)
+     */
+    public function toggleSeatStatus(Request $request, Room $room, $seatId)
+    {
+        $seat = $room->seats()->findOrFail($seatId);
+
+        // Chặn không cho tác động tới ghế đang có người đặt
+        if ($seat->status === \App\Models\Seat::STATUS_BOOKED) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Không thể đổi trạng thái ghế đã có người đặt.'
+            ], 403);
+        }
+
+        // Đảo trạng thái: Nếu đang Trống -> Hỏng, nếu đang Hỏng -> Trống
+        $seat->status = ($seat->status === \App\Models\Seat::STATUS_AVAILABLE) 
+                        ? \App\Models\Seat::STATUS_BROKEN 
+                        : \App\Models\Seat::STATUS_AVAILABLE;
+        $seat->save();
+
+        return response()->json([
+            'success' => true,
+            'new_status' => $seat->status,
+            'message' => 'Cập nhật trạng thái ghế thành công!'
+        ]);
+    }
+}

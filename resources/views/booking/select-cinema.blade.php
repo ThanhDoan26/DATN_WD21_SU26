@@ -1,43 +1,6 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Chọn Cụm Rạp - movieGo</title>
+@extends('layouts.frontend')
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @else
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script>
-            tailwind.config = {
-                darkMode: 'class',
-                theme: {
-                    extend: {
-                        fontFamily: {
-                            sans: ['Outfit', 'sans-serif'],
-                        },
-                        colors: {
-                            primary: '#e50914',
-                        }
-                    }
-                }
-            }
-        </script>
-    @endif
-
-    <style>
-        body { font-family: 'Outfit', sans-serif; }
-    </style>
-</head>
-<body class="bg-slate-900 text-white antialiased selection:bg-primary selection:text-white">
-
-    @include('layouts.guest-navigation')
+@section('content')
 
     <!-- Page Header -->
     <div class="bg-gradient-to-b from-slate-800 to-slate-900 pt-32 pb-16 px-4">
@@ -57,7 +20,7 @@
         <div class="max-w-7xl mx-auto">
             <!-- Movie Info Bar -->
             <div class="bg-slate-800 rounded-lg p-6 mb-8 flex items-center gap-4">
-                <img src="{{ $movie->poster_url }}" alt="{{ $movie->title }}" class="w-20 h-28 rounded-lg object-cover">
+                <img src="{{ str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="w-20 h-28 rounded-lg object-cover shadow-lg border border-slate-700">
                 <div class="flex-1">
                     <h2 class="text-3xl font-bold mb-2">{{ $movie->title }}</h2>
                     <p class="text-slate-300">{{ $movie->description }}</p>
@@ -122,29 +85,9 @@
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="bg-slate-800 border-t border-slate-700 py-12 px-4 mt-16">
-        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-                <div class="flex items-center gap-2 mb-4">
-                    <div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white font-bold">
-                        <i class="fas fa-ticket-alt"></i>
-                    </div>
-                    <span class="font-bold text-xl">movie<span class="text-primary">Go</span></span>
-                </div>
-                <p class="text-slate-400 text-sm">Nền tảng đặt vé xem phim trực tuyến hàng đầu</p>
-            </div>
-            <div>
-                <h4 class="font-semibold mb-4">Về movieGo</h4>
-                <ul class="space-y-2 text-slate-400 text-sm">
-                    <li><a href="/" class="hover:text-white transition">Trang chủ</a></li>
-                    <li><a href="{{ route('movies.current') }}" class="hover:text-white transition">Phim Đang Chiếu</a></li>
-                    <li><a href="{{ route('movies.upcoming') }}" class="hover:text-white transition">Phim Sắp Chiếu</a></li>
-                </ul>
-            </div>
-        </div>
-    </footer>
+@endsection
 
+@push('scripts')
     <script>
         function selectCinema(cinemaId, cinemaName) {
             const movieId = {{ $movie->id }};
@@ -153,5 +96,4 @@
             window.location.href = `/booking/movie/${movieId}/cinema/${cinemaId}/dates`;
         }
     </script>
-</body>
-</html>
+@endpush
