@@ -16,6 +16,20 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::get('/dashboard', function () {
+    $user = auth()->user();
+
+    // Chuyển hướng về dashboard đúng role — không cho phép staff/manager/admin ở lại trang này
+    if ($user && $user->isAdmin()) {
+        return redirect()->route('admin.dashboard');
+    }
+    if ($user && $user->isManager()) {
+        return redirect()->route('manager.dashboard');
+    }
+    if ($user && $user->isStaff()) {
+        return redirect()->route('staff.dashboard');
+    }
+
+    // Chỉ USER (khách hàng) mới được xem trang dashboard này
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -64,8 +78,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/checkout/success', [\App\Http\Controllers\CheckoutController::class, 'success'])->name('checkout.success');
 
     // Lịch sử đặt vé
-Route::get('/booking-history', [BookingHistoryController::class, 'index'])->name('booking.history');
+    Route::get('/booking-history', [BookingHistoryController::class, 'index'])->name('booking.history');
     Route::get('/booking-history/{bookingCode}', [BookingHistoryController::class, 'show'])->name('booking.history.show');
+    
+    // Đánh giá Combo
+    Route::post('/booking-history/combo-rate', [\App\Http\Controllers\ComboReviewController::class, 'store'])->name('combo-reviews.store');
 });
 Route::middleware('auth')->group(function () {
 
@@ -82,6 +99,25 @@ Route::middleware('auth')->group(function () {
         ->name('stripe.cancel');
 
 });
+
+// Native App QR Scanner Redirection
+Route::get('/tickets/{token}', function ($token) {
+    // Nếu người quét là Staff hoặc Manager -> Chuyển vào trang thao tác quét chuyên dụng
+    if (auth()->check()) {
+        $user = auth()->user();
+        if ($user->isStaff() || $user->isManager() || $user->isAdmin()) {
+            return redirect()->route('staff.ticket.search', ['code' => $token, 'scan' => 1]);
+        }
+    }
+
+    // Nếu người quét là Khách hàng (User gốc của vé) hoặc chưa đăng nhập
+    $booking = \App\Models\Booking::where('ticket_token', $token)->first();
+    if ($booking) {
+        return redirect()->route('booking.history.show', ['bookingCode' => $booking->booking_code]);
+    }
+
+    return redirect()->route('home')->with('error', 'Vé không tồn tại trên hệ thống.');
+})->name('tickets.scan');
 
 require __DIR__.'/auth.php';
 

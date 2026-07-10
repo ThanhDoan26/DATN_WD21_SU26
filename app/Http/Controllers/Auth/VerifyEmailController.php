@@ -15,13 +15,30 @@ class VerifyEmailController extends Controller
     public function __invoke(EmailVerificationRequest $request): RedirectResponse
     {
         if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+            return redirect()->intended($this->getDashboardUrl($request->user()).'?verified=1');
         }
 
         if ($request->user()->markEmailAsVerified()) {
             event(new Verified($request->user()));
         }
 
-        return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+        return redirect()->intended($this->getDashboardUrl($request->user()).'?verified=1');
+    }
+
+    /**
+     * Lấy URL dashboard phù hợp với role của user
+     */
+    private function getDashboardUrl($user): string
+    {
+        if ($user->isAdmin()) {
+            return route('admin.dashboard', absolute: false);
+        }
+        if ($user->isManager()) {
+            return route('manager.dashboard', absolute: false);
+        }
+        if ($user->isStaff()) {
+            return route('staff.dashboard', absolute: false);
+        }
+        return route('dashboard', absolute: false);
     }
 }

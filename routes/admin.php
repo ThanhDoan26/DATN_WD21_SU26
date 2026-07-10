@@ -40,10 +40,13 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::get('movies', [MovieController::class, 'index'])->name('admin.movies.index');
     Route::get('movies/create', [MovieController::class, 'create'])->name('admin.movies.create');
     Route::post('movies', [MovieController::class, 'store'])->name('admin.movies.store');
+    Route::get('movies/trashed', [MovieController::class, 'trashed'])->name('admin.movies.trashed');
     Route::get('movies/{movie}', [MovieController::class, 'show'])->name('admin.movies.show');
     Route::get('movies/{movie}/edit', [MovieController::class, 'edit'])->name('admin.movies.edit');
     Route::put('movies/{movie}', [MovieController::class, 'update'])->name('admin.movies.update');
     Route::delete('movies/{movie}', [MovieController::class, 'destroy'])->name('admin.movies.destroy');
+    Route::post('movies/{id}/restore', [MovieController::class, 'restore'])->name('admin.movies.restore');
+    Route::delete('movies/{id}/force-delete', [MovieController::class, 'forceDelete'])->name('admin.movies.forceDelete');
 
     // Rooms
     Route::get('rooms', [RoomController::class, 'index'])->name('admin.rooms.index');
@@ -116,6 +119,10 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
 
     // Combos
     Route::resource('combos', ComboController::class, ['as' => 'admin']);
+    
+    // Combo Reviews
+    Route::get('combo-reviews', [\App\Http\Controllers\Admin\ComboReviewController::class, 'index'])->name('admin.combo-reviews.index');
+    Route::get('combo-reviews/{combo}', [\App\Http\Controllers\Admin\ComboReviewController::class, 'show'])->name('admin.combo-reviews.show');
 
     // Reviews
     Route::get('reviews', [\App\Http\Controllers\Admin\ReviewController::class, 'index'])->name('admin.reviews.index');

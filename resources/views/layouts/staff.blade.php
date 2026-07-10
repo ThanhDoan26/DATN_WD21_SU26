@@ -103,6 +103,11 @@
         </div>
         <ul class="sidebar-menu">
             <li>
+                <a href="{{ url('/') }}">
+                    <i class="fas fa-home"></i> <span>Trang Chủ</span>
+                </a>
+            </li>
+            <li>
                 <a href="{{ route('staff.dashboard') }}" class="@if(request()->routeIs('staff.dashboard')) active @endif">
                     <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
                 </a>

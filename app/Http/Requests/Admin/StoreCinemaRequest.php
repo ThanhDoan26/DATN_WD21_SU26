@@ -22,7 +22,7 @@ class StoreCinemaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', 'unique:cinemas,name'],
             'address' => ['required', 'string', 'max:255'],
             'city' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:20'],
@@ -39,6 +39,7 @@ class StoreCinemaRequest extends FormRequest
         return [
             'name.required' => 'Tên rạp chiếu phim là bắt buộc.',
             'name.max' => 'Tên rạp không được vượt quá 255 ký tự.',
+            'name.unique' => 'Tên rạp chiếu phim này đã tồn tại.',
             'address.required' => 'Địa chỉ là bắt buộc.',
             'address.max' => 'Địa chỉ không được vượt quá 255 ký tự.',
             'city.required' => 'Thành phố là bắt buộc.',

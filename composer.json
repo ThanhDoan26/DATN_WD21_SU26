@@ -10,6 +10,7 @@
         "laravel/framework": "^13.8",
         "laravel/sanctum": "*",
         "laravel/tinker": "^3.0",
+        "simplesoftwareio/simple-qrcode": "*",
         "stripe/stripe-php": "^20.3"
     },
     "require-dev": {
