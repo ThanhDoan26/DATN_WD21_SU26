@@ -229,16 +229,22 @@
         // Tính toán phân bổ ghế
         let rCount = 0, vCount = 0, sCount = 0;
         for (let r = 1; r <= rows; r++) {
-            if (r === rows && rows > 1) sCount += cols;
+            if (r === rows && rows > 1) {
+                sCount += Math.floor(cols / 2); // Sweetbox bằng một nửa số cột
+            }
             else if (r <= 3) rCount += cols;
             else vCount += cols;
         }
         if (rows === 1) { rCount = cols; sCount = 0; }
+        
+        // Tổng số ghế thực tế
+        const actualTotal = rCount + vCount + sCount;
+        totalSeatsInput.value = actualTotal;
 
         document.getElementById('calcRegular').textContent = rCount;
         document.getElementById('calcVip').textContent = vCount;
         document.getElementById('calcSweetbox').textContent = sCount;
-        document.getElementById('calcTotal').textContent = total;
+        document.getElementById('calcTotal').textContent = actualTotal;
 
         // Render preview
         const preview = document.getElementById('seatPreview');
@@ -252,7 +258,12 @@
         for (let r = 1; r <= rows; r++) {
             const rowName = String.fromCharCode(64 + r);
             let seatType;
-            if (r === rows && rows > 1) seatType = 'sweetbox';
+            let rowCols = cols;
+            
+            if (r === rows && rows > 1) {
+                seatType = 'sweetbox';
+                rowCols = Math.floor(cols / 2);
+            }
             else if (r <= 3) seatType = 'regular';
             else seatType = 'vip';
 
@@ -264,7 +275,7 @@
             leftLabel.textContent = rowName;
             rowDiv.appendChild(leftLabel);
 
-            for (let c = 1; c <= cols; c++) {
+            for (let c = 1; c <= rowCols; c++) {
                 const seatDiv = document.createElement('div');
                 seatDiv.className = `preview-seat ${seatType}`;
                 seatDiv.textContent = `${rowName}${c}`;

@@ -18,7 +18,7 @@
     .seat.regular { background-color: #0ea5e9; border-color: #0284c7; }
     .seat.vip { background-color: #f59e0b; color: #1e293b; border-color: #d97706; }
     .seat.sweetbox { background-color: #ec4899; width: 90px; border-color: #db2777; }
-    .seat.unavailable { background-color: #cbd5e1 !important; border-color: #94a3b8 !important; color: #64748b !important; cursor: not-allowed; box-shadow: none; opacity: 0.75; }
+    .seat.broken { background-color: #cbd5e1 !important; border-color: #94a3b8 !important; color: #64748b !important; cursor: not-allowed; box-shadow: none; opacity: 0.75; }
     .seat.selected-active { outline: 3px solid #1e3c72; outline-offset: 2px; animation: pulseSelection 1.5s infinite; }
     @keyframes pulseSelection { 0% { outline-color: rgba(30, 60, 114, 0.8); } 50% { outline-color: rgba(30, 60, 114, 0.1); } 100% { outline-color: rgba(30, 60, 114, 0.8); } }
     .seat-legend { display: flex; gap: 20px; margin: 10px 0 30px 0; flex-wrap: wrap; justify-content: center; background-color: #f8fafc; padding: 15px 25px; border-radius: 12px; border: 1px solid #e2e8f0; }
@@ -80,7 +80,7 @@
                             <th>Thuộc Rạp</th>
                             <td>
                                 @if($room->cinema)
-                                    <span class="badge bg-secondary">{{ $room->cinema->name }}</span>
+                                    <span class="badge bg-secondary">{{ $room->cinema?->name ?? 'N/A' }}</span>
                                 @else
                                     <span class="text-muted">Không xác định</span>
                                 @endif
@@ -236,7 +236,7 @@
                 <div class="legend-box" style="background-color: #cbd5e1; color: #64748b;">
                     <i class="fas fa-wrench" style="font-size: 0.55rem;"></i>
                 </div>
-                <span>Unavailable</span>
+                <span>Hỏng</span>
             </div>
         </div>
 
@@ -351,7 +351,7 @@
                 const seatDiv = document.createElement('div');
                 seatDiv.className = `seat ${seat.seat_type.toLowerCase()} ${seat.status.toLowerCase()}`;
                 
-                if (seat.status === 'UNAVAILABLE') {
+                if (seat.status === 'BROKEN') {
                     seatDiv.innerHTML = `<i class="fas fa-wrench" title="Ghế Hỏng"></i>`;
                 } else {
                     seatDiv.textContent = `${seat.row_name}${seat.seat_number}`;
@@ -408,8 +408,8 @@
         const detailIcon = document.getElementById('detailSeatIcon');
         detailIcon.textContent = `${seat.row_name}${seat.seat_number}`;
         detailIcon.className = `seat ${seat.seat_type.toLowerCase()}`;
-        if (seat.status === 'UNAVAILABLE') {
-            detailIcon.classList.add('unavailable');
+        if (seat.status === 'BROKEN') {
+            detailIcon.classList.add('broken');
             detailIcon.innerHTML = `<i class="fas fa-wrench"></i>`;
         } else {
             detailIcon.innerHTML = `${seat.row_name}${seat.seat_number}`;

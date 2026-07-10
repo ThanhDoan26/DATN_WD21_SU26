@@ -17,7 +17,7 @@
 <div class="card mb-4">
     <div class="card-body">
         <h3>{{ $showtime->movie->title }}</h3>
-        <p class="text-muted mb-0">Rạp: {{ $showtime->room->cinema->name }}</p>
+        <p class="text-muted mb-0">Rạp: {{ $showtime->room?->cinema?->name ?? 'N/A' }}</p>
         <p class="text-muted">Phòng: {{ $showtime->room->name }}</p>
 
         <hr>

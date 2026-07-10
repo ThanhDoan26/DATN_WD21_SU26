@@ -53,7 +53,7 @@
                         <h2 class="text-4xl md:text-5xl font-bold text-white mb-2">
                             <i class="fas fa-search text-primary mr-3"></i>Kết Quả Tìm Kiếm
                         </h2>
-                        <p class="text-slate-400">Tìm thấy <span class="text-primary font-bold">{{ $searchResults->total() }}</span> phim phù hợp.</p>
+<p class="text-slate-400">Tìm thấy <span class="text-primary font-bold">{{ $searchResults->total() }}</span> phim phù hợp.</p>
                     </div>
                     <a href="{{ route('home') }}" class="flex items-center gap-2 text-slate-400 hover:text-white font-semibold transition-colors bg-slate-800 px-4 py-2 rounded-lg">
                         Xoá bộ lọc <i class="fas fa-times"></i>
@@ -108,7 +108,7 @@
                 <a href="{{ route('movies.current') }}" class="hidden md:flex items-center gap-2 text-primary hover:text-red-400 font-semibold transition-colors">
                     Xem thêm <i class="fas fa-arrow-right"></i>
                 </a>
-            </div>
+</div>
 
             <!-- Movies Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -14,6 +14,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Seat extends Model
 {
+    const STATUS_AVAILABLE = 'AVAILABLE';
+    const STATUS_BOOKED = 'BOOKED';
+    const STATUS_BROKEN = 'BROKEN';
+
     protected $fillable = ['room_id', 'row_name', 'seat_number', 'seat_type', 'status'];
 
     public function room(): BelongsTo

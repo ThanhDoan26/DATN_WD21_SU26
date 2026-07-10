@@ -146,6 +146,19 @@ class CheckoutController extends Controller
             return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 ghế.'], 422);
         }
 
+        // Chặn ghế hỏng hoặc đã đặt (phòng trường hợp hack request)
+        $invalidSeats = Seat::whereIn('id', $seatIds)
+            ->whereIn('status', [Seat::STATUS_BROKEN, Seat::STATUS_BOOKED])
+            ->get();
+
+        if ($invalidSeats->isNotEmpty()) {
+            $codes = $invalidSeats->map(fn($s) => $s->getSeatCode())->implode(', ');
+            return response()->json([
+                'success' => false,
+                'message' => 'Các ghế sau không khả dụng: ' . $codes
+            ], 422);
+        }
+
         try {
             $bookingService = new BookingService();
             $bookingId = $bookingService->createBooking(

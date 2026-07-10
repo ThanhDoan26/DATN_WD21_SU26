@@ -51,7 +51,7 @@
                         <option value="">Tất cả phòng</option>
                         @foreach($rooms as $room)
                             <option value="{{ $room->id }}" {{ request('room_id') == $room->id ? 'selected' : '' }}>
-                                {{ $room->cinema->name }} / {{ $room->name }}
+                                {{ $room->cinema?->name ?? 'N/A' }} / {{ $room->name }}
                             </option>
                         @endforeach
                     </select>
@@ -91,7 +91,7 @@
                     <tr>
                         <td>{{ $showtime->id }}</td>
                         <td>{{ $showtime->movie->title }}</td>
-                        <td>{{ $showtime->room->cinema->name }} / {{ $showtime->room->name }}</td>
+                        <td>{{ $showtime->room?->cinema?->name ?? 'N/A' }} / {{ $showtime->room?->name ?? 'N/A' }}</td>
                         <td>{{ $showtime->start_time->format('d/m/Y H:i') }} - {{ $showtime->end_time->format('H:i') }}</td>
                         <td>
                             @if($showtime->status === \App\Models\Showtime::STATUS_SCHEDULED)

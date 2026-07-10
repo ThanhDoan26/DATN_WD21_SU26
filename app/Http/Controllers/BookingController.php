@@ -178,12 +178,16 @@ class BookingController extends Controller
     }
 
     /**
-     * Helper: Đếm số ghế còn trống
+     * Helper: Đếm số ghế còn trống (loại bỏ ghế hỏng và ghế đã đặt)
      */
     private function getAvailableSeatsCount(int $showtimeId): int
     {
         $room = Showtime::find($showtimeId)->room;
-        $totalSeats = $room->seats()->count();
+        
+        // Chỉ đếm ghế có trạng thái AVAILABLE (loại bỏ BROKEN)
+        $availableSeats = $room->seats()
+            ->where('status', \App\Models\Seat::STATUS_AVAILABLE)
+            ->count();
 
         $bookedSeats = DB::table('booked_seats')
             ->whereIn('booking_id', function ($query) use ($showtimeId) {
@@ -194,6 +198,6 @@ class BookingController extends Controller
             })
             ->count();
 
-        return $totalSeats - $bookedSeats;
+        return $availableSeats - $bookedSeats;
     }
 }

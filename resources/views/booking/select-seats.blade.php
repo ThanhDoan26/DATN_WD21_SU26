@@ -132,6 +132,22 @@
             filter: none;
         }
 
+        /* Broken Seat - Ghế hỏng */
+        .seat.broken {
+            background: repeating-linear-gradient(45deg, #374151, #374151 4px, #4b5563 4px, #4b5563 8px) !important;
+            border-color: #6b7280 !important;
+            color: #9ca3af !important;
+            cursor: not-allowed !important;
+            box-shadow: none;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .seat.broken:hover {
+            transform: none;
+            filter: none;
+        }
+
         @keyframes pulseSelection {
             0% { outline-color: rgba(59, 130, 246, 0.8); }
             50% { outline-color: rgba(59, 130, 246, 0.2); }
@@ -264,6 +280,10 @@
                                 <div class="legend-box booked">✕</div>
                                 <span>Ghế Đã Đặt</span>
                             </div>
+                            <div class="legend-item">
+                                <div class="legend-box" style="background:repeating-linear-gradient(45deg,#374151,#374151 3px,#4b5563 3px,#4b5563 6px);border-color:#6b7280;opacity:0.5;">✕</div>
+                                <span>Ghế Hỏng</span>
+                            </div>
                         </div>
 
                         <!-- Cinema Screen -->
@@ -284,8 +304,20 @@
                                         @foreach($seats->sortBy('seat_number') as $seat)
                                             @php
                                                 $isBooked = in_array($seat->id, $bookedSeats);
+                                                $isBroken = $seat->status === \App\Models\Seat::STATUS_BROKEN;
                                                 $isVip = $seat->seat_type === 'VIP';
-                                                $seatClass = $isBooked ? 'booked' : ($isVip ? 'vip' : 'regular');
+                                                
+                                                if ($isBroken) {
+                                                    $seatClass = 'broken';
+                                                } elseif ($isBooked) {
+                                                    $seatClass = 'booked';
+                                                } elseif ($isVip) {
+                                                    $seatClass = 'vip';
+                                                } else {
+                                                    $seatClass = 'regular';
+                                                }
+                                                
+                                                $isDisabled = $isBooked || $isBroken;
                                             @endphp
                                             <button
                                                 onclick="toggleSeat({{ $seat->id }}, this)"
@@ -293,9 +325,9 @@
                                                 data-seat-id="{{ $seat->id }}"
                                                 data-seat-code="{{ $seat->getSeatCode() }}"
                                                 data-seat-type="{{ $seat->seat_type }}"
-                                                title="{{ $seat->getSeatCode() }}"
-                                                {{ $isBooked ? 'disabled' : '' }}>
-                                                {{ $seat->seat_number }}
+                                                title="{{ $seat->getSeatCode() }}{{ $isBroken ? ' (Ghế hỏng)' : '' }}"
+                                                {{ $isDisabled ? 'disabled' : '' }}>
+                                                {{ $isBroken ? '✕' : $seat->seat_number }}
                                             </button>
                                         @endforeach
                                     </div>
@@ -370,7 +402,7 @@
         const ticketPrices = @json($ticketPrices->mapWithKeys(fn($price) => [$price->seat_type => (float) $price->price]));
 
         function toggleSeat(seatId, button) {
-            if (button.classList.contains('booked')) {
+            if (button.classList.contains('booked') || button.classList.contains('broken')) {
                 return;
             }
 
