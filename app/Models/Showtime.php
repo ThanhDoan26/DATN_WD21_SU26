@@ -128,4 +128,29 @@ class Showtime extends Model
             ->where('status', 'ACTIVE')
             ->value('price');
     }
+
+    /**
+     * Thống kê: Lấy số lượng ghế đã được đặt (không tính các booking đã bị hủy)
+     */
+    public function getBookedSeatsCount(): int
+    {
+        return $this->bookings()
+            ->where('status', '!=', 'Cancelled')
+            ->join('booked_seats', 'bookings.id', '=', 'booked_seats.booking_id')
+            ->count('booked_seats.id');
+    }
+
+    /**
+     * Thống kê: Tính tỷ lệ lấp đầy phòng chiếu (%)
+     */
+    public function getOccupancyRate(): float
+    {
+        $totalSeats = $this->room?->total_seats ?? 0;
+        if ($totalSeats == 0) {
+            return 0;
+        }
+        
+        $bookedCount = $this->getBookedSeatsCount();
+        return round(($bookedCount / $totalSeats) * 100, 2);
+    }
 }

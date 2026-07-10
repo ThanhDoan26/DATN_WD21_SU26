@@ -27,6 +27,17 @@
     .bg-sky { background-color: #0ea5e9 !important; color: #ffffff; }
     .bg-pink { background-color: #ec4899 !important; color: #ffffff; }
     .bg-gold { background-color: #f59e0b !important; color: #1e293b; }
+    
+    /* Progress Bar Animation (Cho phần Thống kê) */
+    .progress { border-radius: 12px; background-color: #f1f5f9; overflow: visible; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
+    .progress-bar { border-radius: 12px; position: relative; box-shadow: 0 3px 8px rgba(0,0,0,0.15); transition: width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .progress-bar::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, rgba(255,255,255,0.25) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.25) 75%, transparent 75%, transparent); background-size: 1.5rem 1.5rem; animation: progress-stripes 1s linear infinite; border-radius: 12px; }
+    @keyframes progress-stripes { from { background-position: 1.5rem 0; } to { background-position: 0 0; } }
+    
+    /* Table hover effect (Cho phần Thống kê) */
+    .table-hover tbody tr { transition: all 0.25s ease; border-bottom: 1px solid #f1f5f9; }
+    .table-hover tbody tr:hover { background-color: #ffffff; transform: scale(1.015); box-shadow: 0 8px 25px rgba(0,0,0,0.06); border-radius: 12px; z-index: 2; position: relative; }
+    .table-hover tbody tr:hover td { border-color: transparent; }
 </style>
 @endsection
 
@@ -249,6 +260,83 @@
 
             <!-- Grid ghế -->
             <div id="seatsGrid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== THỐNG KÊ TỶ LỆ LẤP ĐẦY ============ -->
+<div class="card mt-4">
+    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-chart-pie"></i> Thống kê Tỷ lệ lấp đầy theo Suất Chiếu (Sắp tới & Đang chiếu)</span>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-center" style="width: 80px;">ID</th>
+                        <th>Tên Phim</th>
+                        <th>Thời gian chiếu</th>
+                        <th class="text-center">Trạng thái</th>
+                        <th class="text-center">Ghế đã đặt / Tổng</th>
+                        <th style="min-width: 200px;">Tỷ lệ lấp đầy</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php
+                        // Lấy các suất chiếu chưa kết thúc
+                        $activeShowtimesList = $room->showtimes()
+                            ->with('movie')
+                            ->whereIn('status', [\App\Models\Showtime::STATUS_SCHEDULED, \App\Models\Showtime::STATUS_ONGOING])
+                            ->orderBy('start_time', 'asc')
+                            ->get();
+                    @endphp
+                    @forelse($activeShowtimesList as $st)
+                        @php
+                            $booked = $st->getBookedSeatsCount();
+                            $total = $room->total_seats ?? 0;
+                            $rate = $st->getOccupancyRate();
+                            
+                            $progressColor = 'bg-success';
+                            if ($rate < 30) $progressColor = 'bg-danger';
+                            elseif ($rate < 70) $progressColor = 'bg-warning';
+                        @endphp
+                        <tr>
+                            <td class="text-center fw-bold text-muted">#{{ $st->id }}</td>
+                            <td><strong class="text-primary">{{ $st->movie?->title ?? 'N/A' }}</strong></td>
+                            <td>
+                                <div><i class="far fa-calendar-alt text-muted"></i> {{ $st->start_time ? $st->start_time->format('d/m/Y') : 'N/A' }}</div>
+                                <div><i class="far fa-clock text-muted"></i> <strong class="text-dark">{{ $st->start_time ? $st->start_time->format('H:i') : 'N/A' }}</strong> - {{ $st->end_time ? $st->end_time->format('H:i') : 'N/A' }}</div>
+                            </td>
+                            <td class="text-center">
+                                @if($st->status === \App\Models\Showtime::STATUS_SCHEDULED)
+                                    <span class="badge bg-primary">Sắp chiếu</span>
+                                @else
+                                    <span class="badge bg-success">Đang chiếu</span>
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                <span class="fs-6"><strong class="text-dark">{{ $booked }}</strong> <span class="text-muted">/ {{ $total }}</span></span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 10px;">
+                                        <div class="progress-bar {{ $progressColor }}" role="progressbar" style="width: {{ $rate }}%;" aria-valuenow="{{ $rate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="badge {{ $progressColor }} text-white" style="min-width: 45px;">{{ $rate }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox mb-2" style="font-size: 24px; opacity: 0.5;"></i><br>
+                                Không có suất chiếu nào sắp tới hoặc đang diễn ra tại phòng này.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
