@@ -418,8 +418,63 @@
             return new Intl.NumberFormat('vi-VN').format(num);
         }
 
+        function validateSeatSelection() {
+            let isValid = true;
+            
+            document.querySelectorAll('.row-seats').forEach(rowElement => {
+                const seats = Array.from(rowElement.querySelectorAll('.seat'));
+                
+                // Split into blocks by unavailable seats
+                let blocks = [];
+                let currentBlock = [];
+                
+                seats.forEach(seat => {
+                    if (seat.classList.contains('booked') || seat.disabled) {
+                        if (currentBlock.length > 0) {
+                            blocks.push(currentBlock);
+                            currentBlock = [];
+                        }
+                    } else {
+                        currentBlock.push(seat);
+                    }
+                });
+                
+                if (currentBlock.length > 0) {
+                    blocks.push(currentBlock);
+                }
+                
+                // Check each block
+                blocks.forEach(block => {
+                    let selectedIndices = [];
+                    block.forEach((seat, index) => {
+                        if (seat.classList.contains('selected')) {
+                            selectedIndices.push(index);
+                        }
+                    });
+                    
+                    if (selectedIndices.length > 1) {
+                        let first = Math.min(...selectedIndices);
+                        let last = Math.max(...selectedIndices);
+                        let countInRange = last - first + 1;
+                        
+                        // If there is a gap, the range will be larger than the number of selected seats
+                        if (countInRange > selectedIndices.length) {
+                            isValid = false;
+                        }
+                    }
+                });
+            });
+            
+            return isValid;
+        }
+
         function proceedToCheckout() {
             if (selectedSeats.size === 0) return;
+
+            if (!validateSeatSelection()) {
+                alert("Bạn không được để trống 1 ghế giữa các ghế đã chọn trong cùng một hàng.\nVui lòng chọn các ghế liền kề hoặc bỏ chọn ghế phù hợp.");
+                return;
+            }
 
             const seatIds = Array.from(selectedSeats).join(',');
             @if(isset($isWalkIn) && $isWalkIn)

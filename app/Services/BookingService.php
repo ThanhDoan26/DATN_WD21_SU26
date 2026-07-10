@@ -49,6 +49,9 @@ class BookingService
             throw new Exception('Vui lòng chọn ít nhất 1 ghế');
         }
 
+        $seatValidationService = new SeatSelectionValidationService();
+        $seatValidationService->validateSelectedSeats($showtimeId, $selectedSeatIds);
+
         try {
             $this->cleanupExpiredPendingBookings();
 
