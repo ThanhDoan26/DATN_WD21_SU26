@@ -2,10 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Models\Cinema;
-use App\Models\Room;
-use App\Models\Movie;
-use App\Models\Booking;
 use App\Services\Admin\DashboardService;
 
 /**
@@ -32,7 +28,10 @@ class DashboardController extends AdminController
             ->take(5)
             ->get();
 
-        $statistics = $this->dashboardService->getStatistics();
+        $month = request()->query('month') ? (int) request()->query('month') : null;
+        $year = request()->query('year') ? (int) request()->query('year') : null;
+
+        $statistics = $this->dashboardService->getStatistics($month, $year);
         
         $data = [
             'totalActiveUsers' => $statistics['totalActiveUsers'],
@@ -40,6 +39,12 @@ class DashboardController extends AdminController
             'totalCinemas'     => $statistics['totalCinemas'],
             'totalShowtimes'   => $statistics['totalShowtimes'],
             'totalTicketsSold' => $statistics['totalTicketsSold'],
+            'totalRevenue'     => $statistics['totalRevenue'],
+            'dailyRevenue'     => $statistics['dailyRevenue'],
+            'monthlyRevenue'   => $statistics['monthlyRevenue'],
+            'yearlyRevenue'    => $statistics['yearlyRevenue'],
+            'selectedMonth'    => $statistics['selectedMonth'],
+            'selectedYear'     => $statistics['selectedYear'],
             'topCombos'        => $topCombos,
         ];
 

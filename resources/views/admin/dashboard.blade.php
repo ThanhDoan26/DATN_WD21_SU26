@@ -10,7 +10,7 @@
         <div class="stat-box">
             <i class="fas fa-users" style="font-size: 2rem; color: #1e3c72;"></i>
             <div class="stat-number">{{ number_format($totalActiveUsers ?? 0) }}</div>
-            <div class="stat-label">Users</div>
+            <div class="stat-label">Người dùng</div>
         </div>
     </div>
 
@@ -18,7 +18,7 @@
         <div class="stat-box">
             <i class="fas fa-video" style="font-size: 2rem; color: #2a5298;"></i>
             <div class="stat-number">{{ number_format($totalMovies ?? 0) }}</div>
-            <div class="stat-label">Movies</div>
+            <div class="stat-label">Phim</div>
         </div>
     </div>
 
@@ -26,7 +26,7 @@
         <div class="stat-box">
             <i class="fas fa-building" style="font-size: 2rem; color: #1e3c72;"></i>
             <div class="stat-number">{{ number_format($totalCinemas ?? 0) }}</div>
-            <div class="stat-label">Cinemas</div>
+            <div class="stat-label">Cụm rạp</div>
         </div>
     </div>
 
@@ -34,7 +34,7 @@
         <div class="stat-box">
             <i class="fas fa-calendar-alt" style="font-size: 2rem; color: #2a5298;"></i>
             <div class="stat-number">{{ number_format($totalShowtimes ?? 0) }}</div>
-            <div class="stat-label">Showtimes</div>
+            <div class="stat-label">Suất chiếu</div>
         </div>
     </div>
 
@@ -42,7 +42,83 @@
         <div class="stat-box">
             <i class="fas fa-ticket-alt" style="font-size: 2rem; color: #1e3c72;"></i>
             <div class="stat-number">{{ number_format($totalTicketsSold ?? 0) }}</div>
-            <div class="stat-label">Tickets Sold</div>
+            <div class="stat-label">Vé đã bán</div>
+        </div>
+    </div>
+    <div class="col-md-3 mt-4">
+        <div class="stat-box">
+            <i class="fas fa-dollar-sign" style="font-size: 2rem; color: #0f766e;"></i>
+            <div class="stat-number">{{ number_format($totalRevenue ?? 0, 0, ',', '.') }} ₫</div>
+            <div class="stat-label">Doanh thu tổng</div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
+                <div>
+                    <h5 class="mb-0 text-primary"><i class="fas fa-chart-line"></i> Thống kê doanh thu chi tiết</h5>
+                    <small class="text-muted">
+                        Tháng: {{ str_pad($selectedMonth ?? now()->month, 2, '0', STR_PAD_LEFT) }} / Năm: {{ $selectedYear ?? now()->year }}
+                    </small>
+                </div>
+                <form method="GET" action="{{ route('admin.dashboard') }}" class="d-flex flex-wrap gap-2">
+                    <div class="input-group">
+                        <label class="input-group-text" for="filter-month">Tháng</label>
+                        <select id="filter-month" name="month" class="form-select">
+                            @foreach(range(1, 12) as $m)
+                                <option value="{{ $m }}" @if(($selectedMonth ?? now()->month) == $m) selected @endif>{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-group-text" for="filter-year">Năm</label>
+                        <select id="filter-year" name="year" class="form-select">
+                            @php
+                                $currentYear = now()->year;
+                            @endphp
+                            @foreach(range($currentYear, $currentYear - 10) as $y)
+                                <option value="{{ $y }}" @if(($selectedYear ?? $currentYear) == $y) selected @endif>{{ $y }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Lọc</button>
+                </form>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="stat-box">
+                            <i class="fas fa-dollar-sign" style="font-size: 2rem; color: #0f766e;"></i>
+                            <div class="stat-number">{{ number_format($totalRevenue ?? 0, 0, ',', '.') }} ₫</div>
+                            <div class="stat-label">Tổng doanh thu</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="stat-box">
+                            <i class="fas fa-calendar-day" style="font-size: 2rem; color: #16a34a;"></i>
+                            <div class="stat-number">{{ number_format($dailyRevenue ?? 0, 0, ',', '.') }} ₫</div>
+                            <div class="stat-label">Doanh thu hôm nay</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="stat-box">
+                            <i class="fas fa-calendar-alt" style="font-size: 2rem; color: #0ea5e9;"></i>
+                            <div class="stat-number">{{ number_format($monthlyRevenue ?? 0, 0, ',', '.') }} ₫</div>
+                            <div class="stat-label">Doanh thu tháng</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="stat-box">
+                            <i class="fas fa-calendar" style="font-size: 2rem; color: #7c3aed;"></i>
+                            <div class="stat-number">{{ number_format($yearlyRevenue ?? 0, 0, ',', '.') }} ₫</div>
+                            <div class="stat-label">Doanh thu năm</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
