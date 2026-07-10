@@ -15,6 +15,10 @@ class ReviewController extends Controller
         $validated = $request->validate([
             'rating' => 'required|integer|min:1|max:5',
             'comment' => 'nullable|string|max:1000',
+            'combos' => 'nullable|array',
+            'combos.*.booking_id' => 'required|exists:bookings,id',
+            'combos.*.rating' => 'required|integer|min:1|max:5',
+            'combos.*.comment' => 'nullable|string|max:1000',
         ]);
 
         $userId = Auth::id();
@@ -39,6 +43,23 @@ class ReviewController extends Controller
                 'status' => 'ACTIVE' // Reset status to ACTIVE if they update
             ]
         );
+
+        // Cập nhật các đánh giá Combo nếu có
+        if (!empty($validated['combos'])) {
+            foreach ($validated['combos'] as $comboId => $comboData) {
+                \App\Models\ComboReview::updateOrCreate(
+                    [
+                        'user_id' => $userId,
+                        'combo_id' => $comboId,
+                    ],
+                    [
+                        'booking_id' => $comboData['booking_id'],
+                        'rating' => $comboData['rating'],
+                        'comment' => $comboData['comment'] ?? null,
+                    ]
+                );
+            }
+        }
 
         return back()->with('success', 'Đánh giá của bạn đã được gửi thành công!');
     }

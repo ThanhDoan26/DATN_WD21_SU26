@@ -29,10 +29,11 @@
         font-size: 28px;
         margin-right: 20px;
     }
+    .metric-icon.users { background: #e0e7ff; color: #4338ca; }
+    .metric-icon.movies { background: #fae8ff; color: #a21caf; }
     .metric-icon.rooms { background: #e0f2fe; color: #0284c7; }
     .metric-icon.shows { background: #fef3c7; color: #d97706; }
-    .metric-icon.seats { background: #dcfce7; color: #16a34a; }
-    .metric-icon.revenue { background: #fee2e2; color: #dc2626; }
+    .metric-icon.tickets { background: #dcfce7; color: #16a34a; }
     
     .metric-info h3 {
         margin: 0;
@@ -52,54 +53,67 @@
 <div class="container-fluid p-0">
     <!-- Cặp Card Placeholder -->
     <div class="row">
-        <!-- Tổng số phòng -->
-        <div class="col-md-3 col-sm-6">
-            <div class="metric-card">
+        <!-- 1. Tổng số người dùng -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="metric-card h-100 mb-0">
+                <div class="metric-icon users">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="metric-info">
+                    <h3>{{ number_format($statistics['totalActiveUsers'] ?? 0) }}</h3>
+                    <p>Tổng số người dùng</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Tổng số phim -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="metric-card h-100 mb-0">
+                <div class="metric-icon movies">
+                    <i class="fas fa-film"></i>
+                </div>
+                <div class="metric-info">
+                    <h3>{{ number_format($statistics['totalMovies'] ?? 0) }}</h3>
+                    <p>Tổng số phim</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Tổng số phòng chiếu -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="metric-card h-100 mb-0">
                 <div class="metric-icon rooms">
                     <i class="fas fa-door-closed"></i>
                 </div>
                 <div class="metric-info">
-                    <h3>...</h3>
-                    <p>Tổng số phòng</p>
+                    <h3>{{ number_format($statistics['totalRooms'] ?? 0) }}</h3>
+                    <p>Tổng số phòng chiếu</p>
                 </div>
             </div>
         </div>
 
-        <!-- Tổng số suất chiếu hôm nay -->
-        <div class="col-md-3 col-sm-6">
-            <div class="metric-card">
+        <!-- 4. Tổng số suất chiếu -->
+        <div class="col-lg-6 col-md-6 mb-4">
+            <div class="metric-card h-100 mb-0">
                 <div class="metric-icon shows">
                     <i class="fas fa-calendar-check"></i>
                 </div>
                 <div class="metric-info">
-                    <h3>...</h3>
-                    <p>Suất chiếu hôm nay</p>
+                    <h3>{{ number_format($statistics['totalShowtimes'] ?? 0) }}</h3>
+                    <p>Tổng số suất chiếu</p>
                 </div>
             </div>
         </div>
 
-        <!-- Tổng số ghế hoạt động -->
-        <div class="col-md-3 col-sm-6">
-            <div class="metric-card">
-                <div class="metric-icon seats">
-                    <i class="fas fa-chair"></i>
+        <!-- 5. Tổng số vé đã bán -->
+        <div class="col-lg-6 col-md-12 mb-4">
+            <div class="metric-card h-100 mb-0">
+                <div class="metric-icon tickets">
+                    <i class="fas fa-ticket-alt"></i>
                 </div>
                 <div class="metric-info">
-                    <h3>...</h3>
-                    <p>Số ghế hoạt động</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Doanh thu hôm nay -->
-        <div class="col-md-3 col-sm-6">
-            <div class="metric-card">
-                <div class="metric-icon revenue">
-                    <i class="fas fa-wallet"></i>
-                </div>
-                <div class="metric-info">
-                    <h3>...</h3>
-                    <p>Doanh thu hôm nay</p>
+                    <h3>{{ number_format($statistics['totalTicketsSold'] ?? 0) }}</h3>
+                    <p>Tổng số vé đã bán</p>
                 </div>
             </div>
         </div>

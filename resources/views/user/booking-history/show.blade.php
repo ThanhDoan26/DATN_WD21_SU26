@@ -114,6 +114,25 @@
                             @endforeach
                         </div>
 
+                        @if($booking->combos && $booking->combos->count() > 0)
+                            <h4 class="text-white font-bold mt-8 mb-6 flex items-center gap-2">
+                                <i class="fas fa-popcorn text-primary"></i> Combo Bắp Nước ({{ $booking->combos->count() }})
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                @foreach($booking->combos as $combo)
+                                    <div class="bg-slate-900/50 border border-slate-700/50 p-4 rounded-2xl group/combo hover:border-primary/50 transition-colors">
+                                        <div class="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p class="text-white font-bold group-hover/combo:text-primary transition-colors">{{ $combo->name }}</p>
+                                                <p class="text-slate-500 text-xs">Số lượng: x{{ $combo->pivot->quantity }}</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-white font-bold text-sm">{{ number_format($combo->pivot->price) }}đ</p>
+                                        </div>
+                                @endforeach
+                            </div>
+                        @endif
+
                         <div class="mt-10 p-6 bg-slate-900/30 rounded-2xl border border-dashed border-slate-700">
                              <div class="flex justify-between items-end">
                                 <div>
@@ -191,4 +210,6 @@
         </div>
     </div>
 </div>
+
+
 @endsection
