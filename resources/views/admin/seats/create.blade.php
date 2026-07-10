@@ -44,7 +44,7 @@
                             <option value="">-- Chọn Phòng --</option>
                             @forelse($rooms as $room)
                                 <option value="{{ $room->id }}" {{ old('room_id') === (string)$room->id ? 'selected' : '' }}>
-                                    {{ $room->cinema->name }} - {{ $room->name }}
+                                    {{ $room->cinema?->name ?? 'N/A' }} - {{ $room->name }}
                                 </option>
                             @empty
                                 <option disabled>Không có phòng nào</option>

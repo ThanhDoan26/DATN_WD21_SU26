@@ -102,7 +102,7 @@
                         <strong>{{ $room->name }}</strong>
                     </td>
                     <td>
-                        <span class="badge bg-secondary">{{ $room->cinema->name ?? 'N/A' }}</span>
+                        <span class="badge bg-secondary">{{ $room->cinema?->name ?? 'N/A' }}</span>
                     </td>
                     <td>
                         <span class="badge bg-info">{{ $room->format }}</span>

@@ -89,7 +89,7 @@
                             <td>{{ $review->created_at->format('d/m/Y H:i') }}</td>
                             <td class="text-end">
                                 <div class="btn-group">
-                                    <form action="{{ route('admin.reviews.toggleStatus', $review->id) }}" method="POST" class="d-inline">
+                                    <form action="{{ route('admin.reviews.toggle-status', $review->id) }}" method="POST" class="d-inline">
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" class="btn btn-sm {{ $review->status === 'ACTIVE' ? 'btn-warning' : 'btn-success' }}" 

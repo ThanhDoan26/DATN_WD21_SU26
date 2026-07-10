@@ -1,8 +1,8 @@
 @props(['movie'])
 
-<a href="{{ route('movies.show', $movie->id) }}" class="group block overflow-hidden rounded-xl bg-slate-800 hover:bg-slate-700 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl">
+<a href="{{ route('movies.show', $movie->id) }}" class="group flex flex-col h-full overflow-hidden rounded-xl bg-slate-800 hover:bg-slate-700 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl">
     <!-- Poster Image -->
-    <div class="relative overflow-hidden h-56 sm:h-64">
+    <div class="relative overflow-hidden aspect-[2/3] w-full shrink-0">
         @if($movie->poster_url)
             <img src="{{ str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
         @else
@@ -29,7 +29,7 @@
     </div>
 
     <!-- Movie Info -->
-    <div class="p-4">
+    <div class="p-4 flex flex-col flex-grow">
         <h3 class="font-bold text-base line-clamp-2 text-white group-hover:text-primary transition-colors">
             {{ $movie->title }}
         </h3>
@@ -58,8 +58,10 @@
         @endif
 
         <!-- Book Button -->
-        <button class="w-full mt-4 bg-primary hover:bg-red-700 text-white py-2 rounded-lg font-semibold transition-colors text-sm">
-            Đặt vé
-        </button>
+        <div class="mt-auto pt-4">
+            <button class="w-full bg-primary hover:bg-red-700 text-white py-2 rounded-lg font-semibold transition-colors text-sm">
+                Đặt vé
+            </button>
+        </div>
     </div>
 </a>

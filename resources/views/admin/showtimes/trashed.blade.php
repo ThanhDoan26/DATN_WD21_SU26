@@ -40,7 +40,7 @@
                     <tr>
                         <td>{{ $showtime->id }}</td>
                         <td>{{ $showtime->movie->title }}</td>
-                        <td>{{ $showtime->room->cinema->name }} / {{ $showtime->room->name }}</td>
+                        <td>{{ $showtime->room?->cinema?->name ?? 'N/A' }} / {{ $showtime->room?->name ?? 'N/A' }}</td>
                         <td>{{ $showtime->start_time->format('d/m/Y H:i') }} - {{ $showtime->end_time->format('H:i') }}</td>
                         <td>{{ $showtime->deleted_at->format('d/m/Y H:i') }}</td>
                         <td>

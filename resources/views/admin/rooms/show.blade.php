@@ -80,7 +80,7 @@
                             <th>Thuộc Rạp</th>
                             <td>
                                 @if($room->cinema)
-                                    <span class="badge bg-secondary">{{ $room->cinema->name }}</span>
+                                    <span class="badge bg-secondary">{{ $room->cinema?->name ?? 'N/A' }}</span>
                                 @else
                                     <span class="text-muted">Không xác định</span>
                                 @endif
