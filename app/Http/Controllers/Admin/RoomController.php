@@ -93,14 +93,12 @@ class RoomController extends AdminController
                     $rowName = chr(65 + floor($rowIndex / 26) - 1) . chr(65 + ($rowIndex % 26));
                 }
 
-                // Phân loại hạng ghế theo chuẩn nghiệp vụ:
-                // - Hàng A tới C (rowIndex 0, 1, 2) là ghế thường (Regular)
-                // - Hàng cuối cùng là ghế đôi (Sweetbox)
-                // - Còn lại ở giữa là ghế VIP
-                $rowCols = $totalCols;
+                // Tính số lượng cột cho hàng này để đảm bảo tổng số ghế tạo ra bằng chính xác totalSeats
+                $remainingSeats = $totalSeats - $seatCount;
+                $rowCols = min($totalCols, $remainingSeats);
+
                 if ($r == $totalRows) {
                     $seatType = 'Sweetbox';
-                    $rowCols = floor($totalCols / 2); // Sweetbox chiếm không gian gấp đôi nên số lượng giảm 1 nửa
                 } elseif ($r <= 3) {
                     $seatType = 'Regular';
                 } else {
@@ -175,27 +173,42 @@ class RoomController extends AdminController
         ]);
 
         $oldTotalSeats = (int) $room->total_seats;
+        $newTotalSeats = (int) $request->input('total_seats');
 
         // Lấy total_rows và total_cols từ request (chỉ form Create mới gửi 2 field này)
         $totalRows = (int) $request->input('total_rows');
         $totalCols = (int) $request->input('total_cols');
 
-        // Form Edit không gửi total_rows/total_cols → giữ nguyên ghế hiện tại, chỉ cập nhật thông tin phòng
-        if (!$totalRows || !$totalCols) {
-            // Giữ nguyên total_seats cũ, không tái tạo sơ đồ ghế
-            $validated['total_seats'] = $oldTotalSeats;
-            $room->update($validated);
-
-            return redirect()->route('admin.rooms.edit', $room->id)
-                             ->with('success', 'Cập nhật thông tin phòng chiếu thành công!');
+        // Lưu lại trạng thái của các ghế cũ (đặc biệt là ghế hỏng) để phục hồi
+        $oldSeatsMap = [];
+        foreach ($room->seats()->get() as $seat) {
+            $oldSeatsMap[$seat->row_name . '-' . $seat->seat_number] = $seat->status;
         }
 
-        // Có gửi total_rows/total_cols → tính lại total_seats
-        $totalSeats = $totalRows * $totalCols;
-        $validated['total_seats'] = $totalSeats;
+        // Form Edit không gửi total_rows/total_cols
+        if (!$totalRows || !$totalCols) {
+            // Nếu total_seats có thay đổi, ta suy luận lại layout
+            if ($newTotalSeats > 0 && $newTotalSeats !== $oldTotalSeats) {
+                $totalSeats = $newTotalSeats;
+                $totalCols = 12; // Cố định 12 cột chuẩn
+                $totalRows = (int) ceil($totalSeats / $totalCols);
+                $validated['total_seats'] = $totalSeats;
+            } else {
+                // Giữ nguyên total_seats cũ, không tái tạo sơ đồ ghế
+                $validated['total_seats'] = $oldTotalSeats;
+                $room->update($validated);
+
+                return redirect()->route('admin.rooms.show', $room->id)
+                                 ->with('success', 'Cập nhật thông tin phòng chiếu thành công!');
+            }
+        } else {
+            // Có gửi total_rows/total_cols → tính lại total_seats
+            $totalSeats = $totalRows * $totalCols;
+            $validated['total_seats'] = $totalSeats;
+        }
 
         // Chỉ tái tạo sơ đồ ghế khi số ghế thực sự thay đổi
-        if ($totalSeats !== $oldTotalSeats) {
+        if ($validated['total_seats'] !== $oldTotalSeats || (isset($totalSeats) && $totalSeats !== $oldTotalSeats)) {
             if ($room->hasActiveShowtimes()) {
                 return redirect()->back()
                     ->withInput()
@@ -218,10 +231,11 @@ class RoomController extends AdminController
                         $rowName = chr(65 + floor($rowIndex / 26) - 1) . chr(65 + ($rowIndex % 26));
                     }
 
-                    $rowCols = $totalCols;
+                    $remainingSeats = $totalSeats - $seatCount;
+                    $rowCols = min($totalCols, $remainingSeats);
+
                     if ($r == $totalRows) {
                         $seatType = 'Sweetbox';
-                        $rowCols = floor($totalCols / 2); // Sweetbox chiếm không gian gấp đôi
                     } elseif ($r <= 3) {
                         $seatType = 'Regular';
                     } else {
@@ -229,12 +243,16 @@ class RoomController extends AdminController
                     }
 
                     for ($c = 1; $c <= $rowCols; $c++) {
+                        $seatKey = $rowName . '-' . $c;
+                        // Phục hồi trạng thái cũ nếu có (vd: ghế Hỏng)
+                        $status = $oldSeatsMap[$seatKey] ?? 'AVAILABLE';
+
                         $seatsData[] = [
                             'room_id'     => $room->id,
                             'row_name'    => $rowName,
                             'seat_number' => $c,
                             'seat_type'   => $seatType, 
-                            'status'      => 'AVAILABLE', 
+                            'status'      => $status, 
                             'created_at'  => $now,
                             'updated_at'  => $now,
                         ];
@@ -251,7 +269,7 @@ class RoomController extends AdminController
 
         $room->update($validated);
 
-        return redirect()->route('admin.rooms.edit', $room->id)
+        return redirect()->route('admin.rooms.show', $room->id)
                          ->with('success', 'Cập nhật phòng chiếu thành công!');
     }
 
