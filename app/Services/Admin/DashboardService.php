@@ -9,7 +9,7 @@ use App\Models\Showtime;
 use App\Models\BookedSeat;
 use App\Models\Booking;
 use Carbon\Carbon;
-
+use Illuminate\Support\Facades\DB;
 class DashboardService
 {
     /**
@@ -143,6 +143,43 @@ class DashboardService
         $periodRevenue = $periodRevenueQuery->sum('total_price');
         $detailedBookings = $bookingsQuery->orderBy('payment_time', 'desc')->get();
 
+        // 8. Top phim bán chạy (Top Movies)
+        $topMoviesQuery = DB::table('movies')
+            ->join('showtimes', 'movies.id', '=', 'showtimes.movie_id')
+            ->join('bookings', 'showtimes.id', '=', 'bookings.showtime_id')
+            ->join('booked_seats', 'bookings.id', '=', 'booked_seats.booking_id')
+            ->whereIn('bookings.status', $paidStatuses)
+            ->whereNull('movies.deleted_at');
+
+        if ($cinemaId) {
+            $topMoviesQuery->join('rooms', 'showtimes.room_id', '=', 'rooms.id')
+                           ->where('rooms.cinema_id', $cinemaId);
+        }
+
+        // Áp dụng điều kiện thời gian
+        if ($selectedReportType === 'date') {
+            $topMoviesQuery->whereBetween('bookings.payment_time', $dateRange);
+        } elseif ($selectedReportType === 'week') {
+            $topMoviesQuery->whereBetween('bookings.payment_time', $dateRange);
+        } elseif ($selectedReportType === 'month') {
+            $topMoviesQuery->whereYear('bookings.payment_time', $selectedYear)->whereMonth('bookings.payment_time', $selectedMonth);
+        } elseif ($selectedReportType === 'year') {
+            $topMoviesQuery->whereYear('bookings.payment_time', $selectedYear);
+        }
+
+        $topMovies = $topMoviesQuery->select(
+                'movies.id',
+                'movies.title',
+                'movies.poster_url',
+                DB::raw('COUNT(booked_seats.id) as total_tickets'),
+                DB::raw('SUM(booked_seats.price_at_booking) as total_revenue')
+            )
+            ->groupBy('movies.id', 'movies.title', 'movies.poster_url')
+            ->orderByDesc('total_tickets')
+            ->orderByDesc('total_revenue')
+            ->take(5)
+            ->get();
+
         return [
             'totalActiveUsers' => $totalActiveUsers,
             'totalMovies'      => $totalMovies,
@@ -162,6 +199,7 @@ class DashboardService
             'toDate'           => $toDate ?? Carbon::now()->toDateString(),
             'selectedCinemaId' => $cinemaId,
             'detailedBookings' => $detailedBookings,
+            'topMovies'        => $topMovies,
         ];
     }
 }

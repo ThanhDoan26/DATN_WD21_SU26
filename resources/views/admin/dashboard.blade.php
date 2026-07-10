@@ -277,10 +277,22 @@
         </div>
     </div>
 
-    <!-- Tables row -->
+    <!-- Tables row 1: Top Movies & Top Combo -->
     <div class="row">
+        <!-- Top Movies -->
+        <div class="col-12 col-xl-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 text-primary fw-bold"><i class="fas fa-film text-danger me-2"></i>Top 5 Phim bán chạy</h5>
+                </div>
+                <div class="card-body p-0" id="top-movies-wrapper">
+                    @include('admin.partials.top_movies')
+                </div>
+            </div>
+        </div>
+
         <!-- Top Combo -->
-        <div class="col-12 col-xl-4 mb-4">
+        <div class="col-12 col-xl-6 mb-4">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-white border-0 py-3">
                     <h5 class="mb-0 text-primary fw-bold"><i class="fas fa-star text-warning me-2"></i>Top 5 Combo được yêu thích</h5>
@@ -290,9 +302,12 @@
                 </div>
             </div>
         </div>
+    </div>
 
+    <!-- Tables row 2: Detailed Transactions -->
+    <div class="row">
         <!-- Detailed Transactions -->
-        <div class="col-12 col-xl-8 mb-4">
+        <div class="col-12 mb-4">
             <div class="card border-0 shadow-sm h-100" id="revenue-details-card">
                 <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <h5 class="mb-0 text-primary fw-bold"><i class="fas fa-list-alt text-success me-2"></i>Chi tiết giao dịch doanh thu</h5>
@@ -704,6 +719,7 @@
             // Cập nhật Tables HTML
             document.getElementById('revenue-table-wrapper').innerHTML = data.html_revenue_table;
             document.getElementById('top-combos-wrapper').innerHTML = data.html_top_combos;
+            document.getElementById('top-movies-wrapper').innerHTML = data.html_top_movies;
         })
         .catch(err => {
             console.error('Fetch error:', err);

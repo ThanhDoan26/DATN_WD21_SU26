@@ -72,6 +72,7 @@ class DashboardController extends AdminController
             'selectedCinemaId' => $cinemaId,
             'cinemas'          => \App\Models\Cinema::all(),
             'topCombos'        => $topCombos,
+            'topMovies'        => $statistics['topMovies'],
             'detailedBookings' => $statistics['detailedBookings'],
         ];
 
@@ -96,6 +97,7 @@ class DashboardController extends AdminController
                 'cinemaName'       => $cinemaId && $data['cinemas']->firstWhere('id', $cinemaId) ? $data['cinemas']->firstWhere('id', $cinemaId)->name : 'Tất cả cụm rạp',
                 'html_revenue_table' => view('admin.partials.revenue_table', $data)->render(),
                 'html_top_combos'    => view('admin.partials.top_combos', $data)->render(),
+                'html_top_movies'    => view('admin.partials.top_movies', $data)->render(),
             ]);
         }
 
