@@ -20,18 +20,33 @@ class DashboardController extends AdminController
 
     public function index()
     {
-        $topCombos = \App\Models\Combo::withCount('comboReviews as total_reviews')
-            ->withAvg('comboReviews as average_rating', 'rating')
-            ->having('total_reviews', '>', 0)
+        $month = request()->query('month') ? (int) request()->query('month') : null;
+        $year = request()->query('year') ? (int) request()->query('year') : null;
+        $cinemaId = request()->query('cinema_id') ? (int) request()->query('cinema_id') : null;
+
+        $topCombosQuery = \App\Models\Combo::query();
+        $topCombosQuery->withCount(['comboReviews as total_reviews' => function ($query) use ($cinemaId) {
+            if ($cinemaId) {
+                $query->whereHas('booking.showtime.room', function ($q) use ($cinemaId) {
+                    $q->where('cinema_id', $cinemaId);
+                });
+            }
+        }])
+        ->withAvg(['comboReviews as average_rating' => function ($query) use ($cinemaId) {
+            if ($cinemaId) {
+                $query->whereHas('booking.showtime.room', function ($q) use ($cinemaId) {
+                    $q->where('cinema_id', $cinemaId);
+                });
+            }
+        }], 'rating');
+
+        $topCombos = $topCombosQuery->having('total_reviews', '>', 0)
             ->orderByDesc('average_rating')
             ->orderByDesc('total_reviews')
             ->take(5)
             ->get();
 
-        $month = request()->query('month') ? (int) request()->query('month') : null;
-        $year = request()->query('year') ? (int) request()->query('year') : null;
-
-        $statistics = $this->dashboardService->getStatistics($month, $year);
+        $statistics = $this->dashboardService->getStatistics($month, $year, $cinemaId);
         
         $data = [
             'totalActiveUsers' => $statistics['totalActiveUsers'],
@@ -45,7 +60,10 @@ class DashboardController extends AdminController
             'yearlyRevenue'    => $statistics['yearlyRevenue'],
             'selectedMonth'    => $statistics['selectedMonth'],
             'selectedYear'     => $statistics['selectedYear'],
+            'selectedCinemaId' => $cinemaId,
+            'cinemas'          => \App\Models\Cinema::all(),
             'topCombos'        => $topCombos,
+            'detailedBookings' => $statistics['detailedBookings'],
         ];
 
         return view('admin.dashboard', $data);

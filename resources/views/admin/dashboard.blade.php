@@ -61,10 +61,22 @@
                 <div>
                     <h5 class="mb-0 text-primary"><i class="fas fa-chart-line"></i> Thống kê doanh thu chi tiết</h5>
                     <small class="text-muted">
+                        @if($selectedCinemaId && $cinemas->firstWhere('id', $selectedCinemaId))
+                            Cụm rạp: <strong>{{ $cinemas->firstWhere('id', $selectedCinemaId)->name }}</strong> |
+                        @endif
                         Tháng: {{ str_pad($selectedMonth ?? now()->month, 2, '0', STR_PAD_LEFT) }} / Năm: {{ $selectedYear ?? now()->year }}
                     </small>
                 </div>
                 <form method="GET" action="{{ route('admin.dashboard') }}" class="d-flex flex-wrap gap-2">
+                    <div class="input-group">
+                        <label class="input-group-text" for="filter-cinema">Cụm rạp</label>
+                        <select id="filter-cinema" name="cinema_id" class="form-select">
+                            <option value="">Tất cả cụm rạp</option>
+                            @foreach($cinemas ?? [] as $cinema)
+                                <option value="{{ $cinema->id }}" @if(($selectedCinemaId ?? null) == $cinema->id) selected @endif>{{ $cinema->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="input-group">
                         <label class="input-group-text" for="filter-month">Tháng</label>
                         <select id="filter-month" name="month" class="form-select">
@@ -204,4 +216,142 @@
         </div>
     </div>
 </div>
+
+<!-- Detailed Revenue Transactions Table -->
+<div class="card mt-4" id="revenue-details-card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="mb-0 text-primary"><i class="fas fa-list-alt text-success me-2"></i> Chi tiết giao dịch doanh thu</h5>
+        <div class="btn-group">
+            <button onclick="exportTableToCSV('bao-cao-doanh-thu.csv')" class="btn btn-outline-success btn-sm">
+                <i class="fas fa-file-excel me-1"></i> Tải về CSV
+            </button>
+            <button onclick="printReport()" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-print me-1"></i> In báo cáo
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="revenue-details-table">
+                <thead class="table-light">
+                    <tr>
+                        <th width="60" class="text-center">STT</th>
+                        <th>Thời gian</th>
+                        <th>Mã hóa đơn</th>
+                        <th>Cụm rạp</th>
+                        <th>Phim</th>
+                        <th>Phòng chiếu</th>
+                        <th class="text-center">Số vé</th>
+                        <th>Hình thức thanh toán</th>
+                        <th class="text-end">Doanh thu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($detailedBookings ?? [] as $index => $booking)
+                    <tr>
+                        <td class="text-center">{{ $index + 1 }}</td>
+                        <td>{{ $booking->payment_time ? $booking->payment_time->format('d/m/Y H:i') : $booking->created_at->format('d/m/Y H:i') }}</td>
+                        <td><span class="fw-bold text-primary">{{ $booking->booking_code }}</span></td>
+                        <td>{{ $booking->showtime->room->cinema->name ?? 'N/A' }}</td>
+                        <td>{{ $booking->showtime->movie->title ?? 'N/A' }}</td>
+                        <td>{{ $booking->showtime->room->name ?? 'N/A' }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-secondary">{{ $booking->bookedSeats->count() }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-success">{{ $booking->payment_method ?? 'Khác' }}</span>
+                        </td>
+                        <td class="text-end fw-bold text-success">
+                            {{ number_format($booking->total_price, 0, ',', '.') }} ₫
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-3">Không có giao dịch nào phù hợp với bộ lọc</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section('extra_css')
+<style>
+    @media print {
+        /* Hide all page content except the detailed report card */
+        body * {
+            visibility: hidden;
+            background: none !important;
+            box-shadow: none !important;
+        }
+        #revenue-details-card, #revenue-details-card * {
+            visibility: visible;
+        }
+        #revenue-details-card {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        #revenue-details-card .card-header .btn-group {
+            display: none !important;
+        }
+        .table-responsive {
+            overflow: visible !important;
+        }
+        table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+        }
+        th, td {
+            border: 1px solid #ddd !important;
+            padding: 8px !important;
+        }
+    }
+</style>
+@endsection
+
+<script>
+function printReport() {
+    window.print();
+}
+
+function exportTableToCSV(filename) {
+    var csv = [];
+    var rows = document.querySelectorAll("#revenue-details-table tr");
+    
+    for (var i = 0; i < rows.length; i++) {
+        var row = [], cols = rows[i].querySelectorAll("td, th");
+        
+        for (var j = 0; j < cols.length; j++) {
+            // Clean inner text
+            let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").trim();
+            // Escape double quotes
+            data = data.replace(/"/g, '""');
+            row.push('"' + data + '"');
+        }
+        
+        csv.push(row.join(","));
+    }
+
+    // Include the UTF-8 BOM so Excel opens it with the correct encoding
+    var csvContent = "\ufeff" + csv.join("\n");
+    var blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    var link = document.createElement("a");
+    if (link.download !== undefined) {
+        var url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}
+</script>
 @endsection
