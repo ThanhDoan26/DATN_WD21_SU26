@@ -10,33 +10,34 @@
         <div class="row g-4">
             @foreach($movies as $movie)
                 <div class="col-xl-3 col-lg-4 col-md-6">
-                <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden">
-                    <div class="position-relative" style="height: 300px;">
-                        @if($movie->poster_url)
-                            <img src="{{ str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" 
-                                 alt="{{ $movie->title }}" 
-                                 class="w-100 h-100 object-fit-cover" style="object-fit: cover;">
-                        @else
-                            <div class="w-100 h-100 bg-secondary d-flex align-items-center justify-content-center text-white">
-                                <i class="fas fa-film fa-4x text-light opacity-50"></i>
-                            </div>
-                        @endif
-                        @if($movie->age_rating)
-                            <span class="badge bg-danger position-absolute top-0 end-0 m-3 fs-6">
-                                {{ $movie->age_rating }}
-                            </span>
-                        @endif
-                    </div>
-                    
-                    <div class="card-body d-flex flex-column p-4">
-                        <h5 class="card-title fw-bold text-dark text-truncate mb-2" title="{{ $movie->title }}">{{ $movie->title }}</h5>
-                        <p class="card-text text-muted mb-4 flex-grow-1">
-                            <i class="fas fa-clock me-1"></i> {{ $movie->duration }} phút
-                        </p>
+                    <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden">
+                        <div class="position-relative" style="height: 300px;">
+                            @if($movie->poster_url)
+                                <img src="{{ str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" 
+                                     alt="{{ $movie->title }}" 
+                                     class="w-100 h-100 object-fit-cover" style="object-fit: cover;">
+                            @else
+                                <div class="w-100 h-100 bg-secondary d-flex align-items-center justify-content-center text-white">
+                                    <i class="fas fa-film fa-4x text-light opacity-50"></i>
+                                </div>
+                            @endif
+                            @if($movie->age_rating)
+                                <span class="badge bg-danger position-absolute top-0 end-0 m-3 fs-6">
+                                    {{ $movie->age_rating }}
+                                </span>
+                            @endif
+                        </div>
                         
-                        <a href="{{ route('staff.walkin.dates', $movie->id) }}" class="btn btn-primary w-100 fw-bold py-2 rounded-3">
-                            Chọn Phim Này
-                        </a>
+                        <div class="card-body d-flex flex-column p-4">
+                            <h5 class="card-title fw-bold text-dark text-truncate mb-2" title="{{ $movie->title }}">{{ $movie->title }}</h5>
+                            <p class="card-text text-muted mb-4 flex-grow-1">
+                                <i class="fas fa-clock me-1"></i> {{ $movie->duration }} phút
+                            </p>
+                            
+                            <a href="{{ route('staff.walkin.dates', $movie->id) }}" class="btn btn-primary w-100 fw-bold py-2 rounded-3">
+                                Chọn Phim Này
+                            </a>
+                        </div>
                     </div>
                 </div>
             @endforeach
