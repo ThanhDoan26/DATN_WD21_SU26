@@ -40,6 +40,115 @@ class SeatSelectionValidationService
 
             $this->validateContinuousSeats($blocks);
         }
+
+        // 3. Multi-row connectivity validation
+        $selectedSeats = $allSeats->filter(fn($seat) => $seat->is_selected)->values();
+        $numSelected = $selectedSeats->count();
+        if ($numSelected <= 1) {
+            return;
+        }
+
+        // Row name to integer mapping helper
+        $rowToInt = function($rowName) {
+            return ord(strtoupper($rowName)) - 64;
+        };
+
+        // Count selected seats per row
+        $selectedCountPerRow = [];
+        foreach ($selectedSeats as $seat) {
+            $r = $rowToInt($seat->row_name);
+            $selectedCountPerRow[$r] = ($selectedCountPerRow[$r] ?? 0) + 1;
+        }
+
+        // Build adjacency graph
+        $adj = array_fill(0, $numSelected, []);
+
+        for ($i = 0; $i < $numSelected; $i++) {
+            $s1 = $selectedSeats[$i];
+            $r1 = $rowToInt($s1->row_name);
+            $c1 = (int) $s1->seat_number;
+
+            for ($j = $i + 1; $j < $numSelected; $j++) {
+                $s2 = $selectedSeats[$j];
+                $r2 = $rowToInt($s2->row_name);
+                $c2 = (int) $s2->seat_number;
+
+                $connected = false;
+
+                if ($r1 == $r2) {
+                    // Same row: connected if they only have unavailable seats between them
+                    $minCol = min($c1, $c2);
+                    $maxCol = max($c1, $c2);
+                    if ($maxCol - $minCol == 1) {
+                        $connected = true;
+                    } else {
+                        // Check if all seats between minCol and maxCol are unavailable
+                        $allBetweenUnavailable = true;
+                        $rowSeats = $groupedByRow[$s1->row_name] ?? collect();
+                        foreach ($rowSeats as $seat) {
+                            $col = (int) $seat->seat_number;
+                            if ($col > $minCol && $col < $maxCol) {
+                                if (!$seat->is_unavailable) {
+                                    $allBetweenUnavailable = false;
+                                    break;
+                                }
+                            }
+                        }
+                        if ($allBetweenUnavailable) {
+                            $connected = true;
+                        }
+                    }
+                } elseif (abs($r1 - $r2) == 1) {
+                    // Adjacent rows
+                    if ($c1 == $c2) {
+                        // Vertical connection is always allowed
+                        $connected = true;
+                    } elseif (abs($c1 - $c2) == 1) {
+                        // Diagonal connection: only allowed if both rows have exactly 1 selected seat
+                        if (($selectedCountPerRow[$r1] ?? 0) == 1 && ($selectedCountPerRow[$r2] ?? 0) == 1) {
+                            $connected = true;
+                        }
+                    }
+                }
+
+                if ($connected) {
+                    $adj[$i][] = $j;
+                    $adj[$j][] = $i;
+                }
+            }
+        }
+
+        // Find connected components using BFS
+        $visited = array_fill(0, $numSelected, false);
+        $components = [];
+
+        for ($i = 0; $i < $numSelected; $i++) {
+            if (!$visited[$i]) {
+                $comp = [];
+                $queue = [$i];
+                $visited[$i] = true;
+
+                while (!empty($queue)) {
+                    $u = array_shift($queue);
+                    $comp[] = $u;
+
+                    foreach ($adj[$u] as $v) {
+                        if (!$visited[$v]) {
+                            $visited[$v] = true;
+                            $queue[] = $v;
+                        }
+                    }
+                }
+                $components[] = $comp;
+            }
+        }
+
+        // If there is any component of size 1, it is invalid!
+        foreach ($components as $comp) {
+            if (count($comp) == 1) {
+                throw new Exception($this->buildValidationMessage());
+            }
+        }
     }
 
     /**
@@ -59,12 +168,18 @@ class SeatSelectionValidationService
 
         $allSeats = DB::table('seats')
             ->where('room_id', $room->room_id)
+            ->orderBy('row_name')
+            ->orderBy('seat_number')
             ->get();
 
         $bookedSeatIds = DB::table('booked_seats')
             ->join('bookings', 'booked_seats.booking_id', '=', 'bookings.id')
             ->where('bookings.showtime_id', $showtimeId)
             ->where('bookings.status', '!=', 'Cancelled')
+            ->where(function ($q) {
+                $q->where('bookings.status', '!=', 'Pending')
+                  ->orWhere('bookings.booking_time', '>=', now()->subMinutes(10));
+            })
             ->pluck('booked_seats.seat_id')
             ->toArray();
 
@@ -88,8 +203,11 @@ class SeatSelectionValidationService
      */
     private function sortSeatsBySeatNumber(Collection $rowSeats): Collection
     {
-        return $rowSeats->sortBy('seat_number')->values();
+        return $rowSeats->sortBy(function ($seat) {
+            return (int) $seat->seat_number;
+        })->values();
     }
+
 
     /**
      * Chia hàng thành các block liên tiếp nhau (ngăn cách bởi ghế unavailable)
@@ -153,6 +271,6 @@ class SeatSelectionValidationService
      */
     private function buildValidationMessage(): string
     {
-        return "Bạn không được để trống 1 ghế giữa các ghế đã chọn trong cùng một hàng. Vui lòng chọn các ghế liền kề hoặc bỏ chọn ghế phù hợp.";
+        return "Bạn chỉ được chọn các ghế liền kề nhau. Không được để trống ghế ở giữa.";
     }
 }

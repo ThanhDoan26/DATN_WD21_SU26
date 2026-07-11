@@ -472,7 +472,7 @@
             if (selectedSeats.size === 0) return;
 
             if (!validateSeatSelection()) {
-                alert("Bạn không được để trống 1 ghế giữa các ghế đã chọn trong cùng một hàng.\nVui lòng chọn các ghế liền kề hoặc bỏ chọn ghế phù hợp.");
+                alert("Bạn chỉ được chọn các ghế liền kề nhau. Không được để trống ghế ở giữa.");
                 return;
             }
 

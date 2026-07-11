@@ -24,7 +24,15 @@ class StripeController extends Controller
             ], 400);
         }
 
-        Stripe::setApiKey(config('services.stripe.secret_key'));
+        $secretKey = config('services.stripe.secret_key');
+        if (empty($secretKey)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Chưa cấu hình Stripe Secret Key (STRIPE_SECRET_KEY) trong file .env.'
+            ], 500);
+        }
+
+        Stripe::setApiKey($secretKey);
 
         /*
         |--------------------------------------------------------------------------
@@ -81,7 +89,16 @@ class StripeController extends Controller
             $booking->payment_time = now();
 
             $booking->save();
+
+            // Sync booked_seats status to PAID
+            \Illuminate\Support\Facades\DB::table('booked_seats')
+                ->where('booking_id', $booking->id)
+                ->update([
+                    'status' => 'PAID',
+                    'updated_at' => now(),
+                ]);
         }
+
 
         return redirect()->route('checkout.success', [
             'booking_id' => $booking->id,

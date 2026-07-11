@@ -151,9 +151,59 @@ class BookingController extends Controller
             return abort(404);
         }
 
-        // Lấy thông tin ghế và những ghế đã đặt
+        // Tự động dọn dẹp các booking quá hạn trước khi hiển thị sơ đồ ghế
+        $bookingService = new \App\Services\BookingService();
+        $bookingService->cleanupExpiredPendingBookings();
+
+        // Hủy các booking Pending cũ của chính user này đối với suất chiếu này để giải phóng ghế
+        $userId = auth()->id();
+        if ($userId) {
+            $userPendingBookings = DB::table('bookings')
+                ->where('user_id', $userId)
+                ->where('showtime_id', $showtime->id)
+                ->where('status', 'Pending')
+                ->pluck('id')
+                ->toArray();
+
+            if (!empty($userPendingBookings)) {
+                // Hoàn lại lượt dùng mã giảm giá nếu có
+                $bookingsWithCoupons = DB::table('bookings')
+                    ->whereIn('id', $userPendingBookings)
+                    ->whereNotNull('coupon_id')
+                    ->get();
+
+                foreach ($bookingsWithCoupons as $b) {
+                    DB::table('coupons')
+                        ->where('id', $b->coupon_id)
+                        ->where('used_count', '>', 0)
+                        ->decrement('used_count');
+                }
+
+                DB::table('bookings')
+                    ->whereIn('id', $userPendingBookings)
+                    ->update([
+                        'status' => 'Cancelled',
+                        'cancellation_reason' => 'User reloaded seat selection page',
+                        'cancelled_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                DB::table('booked_seats')
+                    ->whereIn('booking_id', $userPendingBookings)
+                    ->update([
+                        'status' => 'CANCELLED',
+                        'updated_at' => now(),
+                    ]);
+            }
+        }
+
+        // Lấy thông tin ghế và những ghế đã đặt (chỉ lấy ghế chưa hủy và chưa hết hạn)
         $bookedSeats = $showtime->bookings()
             ->where('status', '!=', 'Cancelled')
+            ->where(function ($q) {
+                $q->where('status', '!=', 'Pending')
+                  ->orWhere('booking_time', '>=', now()->subMinutes(10));
+            })
             ->with('bookedSeats')
             ->get()
             ->flatMap(function ($booking) {
@@ -182,6 +232,10 @@ class BookingController extends Controller
      */
     private function getAvailableSeatsCount(int $showtimeId): int
     {
+        // Dọn dẹp trước khi đếm
+        $bookingService = new \App\Services\BookingService();
+        $bookingService->cleanupExpiredPendingBookings();
+
         $room = Showtime::find($showtimeId)->room;
         $totalSeats = $room->seats()->count();
 
@@ -190,10 +244,17 @@ class BookingController extends Controller
                 $query->select('id')
                     ->from('bookings')
                     ->where('showtime_id', $showtimeId)
-                    ->whereIn('status', ['Pending', 'Paid']);
+                    ->where(function ($q) {
+                        $q->where('status', 'Paid')
+                          ->orWhere(function ($q2) {
+                              $q2->where('status', 'Pending')
+                                 ->where('booking_time', '>=', now()->subMinutes(10));
+                          });
+                    });
             })
             ->count();
 
         return $totalSeats - $bookedSeats;
     }
+
 }
