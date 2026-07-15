@@ -439,6 +439,29 @@
                 </ul>
             </li>
             <li>
+                <a href="#blogSubmenu" data-bs-toggle="collapse" class="@if(request()->routeIs('admin.posts.*') || request()->routeIs('admin.post-categories.*')) active @else text-white-50 @endif d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-newspaper"></i>
+                        <span class="ms-1">Tin tức / Blog</span>
+                    </div>
+                    <i class="fas fa-chevron-down text-sm" style="font-size: 0.8em"></i>
+                </a>
+                <ul class="collapse list-unstyled {{ request()->routeIs('admin.posts.*') || request()->routeIs('admin.post-categories.*') ? 'show' : '' }}" id="blogSubmenu" style="background: rgba(0,0,0,0.1); margin: 0; padding: 0;">
+                    <li>
+                        <a href="{{ route('admin.posts.index') }}" class="@if(request()->routeIs('admin.posts.index') || request()->routeIs('admin.posts.create') || request()->routeIs('admin.posts.edit') || request()->routeIs('admin.posts.show')) active @endif" style="padding-left: 50px;">
+                            <i class="fas fa-list me-2" style="font-size: 0.8rem; width: auto;"></i> Danh sách bài viết
+                        </a>
+                    </li>
+                    @if(auth()->user()->isAdmin())
+                    <li>
+                        <a href="{{ route('admin.post-categories.index') }}" class="@if(request()->routeIs('admin.post-categories.*')) active @endif" style="padding-left: 50px;">
+                            <i class="fas fa-folder me-2" style="font-size: 0.8rem; width: auto;"></i> Danh mục tin tức
+                        </a>
+                    </li>
+                    @endif
+                </ul>
+            </li>
+            <li>
                 <a href="{{ route('admin.users.index') }}"
                    class="@if(request()->routeIs('admin.users.*')) active @endif">
                     <i class="fas fa-users"></i>
