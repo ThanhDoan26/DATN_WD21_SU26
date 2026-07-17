@@ -128,8 +128,6 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::patch('reviews/{review}/toggle-status', [ReviewController::class, 'toggleStatus'])->name('admin.reviews.toggle-status');
     Route::delete('reviews/{review}', [ReviewController::class, 'destroy'])->name('admin.reviews.destroy');
 
-    });
-
     // Phân quyền chỉ cho ADMIN
     Route::middleware(['role:ADMIN'])->group(function () {
         // Users
@@ -148,6 +146,30 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     // Combos
     Route::resource('combos', ComboController::class, ['as' => 'admin']);
 
+    });
+
+    // ==========================================
+    // Tin tức / Blog Routes
+    // ==========================================
+    Route::middleware(['role:ADMIN,STAFF'])->group(function () {
+        Route::get('posts', [\App\Http\Controllers\Admin\PostController::class, 'index'])->name('admin.posts.index');
+    });
+
+    Route::middleware(['role:ADMIN'])->group(function () {
+        Route::resource('post-categories', \App\Http\Controllers\Admin\PostCategoryController::class, ['as' => 'admin']);
+        
+        Route::get('posts/create', [\App\Http\Controllers\Admin\PostController::class, 'create'])->name('admin.posts.create');
+        Route::post('posts', [\App\Http\Controllers\Admin\PostController::class, 'store'])->name('admin.posts.store');
+        Route::get('posts/trashed', [\App\Http\Controllers\Admin\PostController::class, 'trashed'])->name('admin.posts.trashed');
+        Route::get('posts/{post}', [\App\Http\Controllers\Admin\PostController::class, 'show'])->name('admin.posts.show');
+        Route::get('posts/{post}/edit', [\App\Http\Controllers\Admin\PostController::class, 'edit'])->name('admin.posts.edit');
+        Route::put('posts/{post}', [\App\Http\Controllers\Admin\PostController::class, 'update'])->name('admin.posts.update');
+        Route::delete('posts/{post}', [\App\Http\Controllers\Admin\PostController::class, 'destroy'])->name('admin.posts.destroy');
+        Route::post('posts/{id}/restore', [\App\Http\Controllers\Admin\PostController::class, 'restore'])->name('admin.posts.restore');
+        Route::delete('posts/{id}/force-delete', [\App\Http\Controllers\Admin\PostController::class, 'forceDelete'])->name('admin.posts.forceDelete');
+        Route::patch('posts/{post}/toggle-status', [\App\Http\Controllers\Admin\PostController::class, 'toggleStatus'])->name('admin.posts.toggle-status');
+        Route::patch('posts/{post}/toggle-featured', [\App\Http\Controllers\Admin\PostController::class, 'toggleFeatured'])->name('admin.posts.toggle-featured');
+    });
 });
 
 
