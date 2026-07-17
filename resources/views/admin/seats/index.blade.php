@@ -24,15 +24,16 @@
         margin: 0 auto 40px auto;
         padding: 12px 0;
         text-align: center;
-        background: linear-gradient(180deg, rgba(30, 60, 114, 0.12) 0%, rgba(30, 60, 114, 0.02) 100%);
-        border-top: 6px solid #1e3c72;
+        background: linear-gradient(180deg, rgba(147, 51, 234, 0.12) 0%, rgba(147, 51, 234, 0.02) 100%);
+        border-top: 6px solid var(--primary-color);
         border-radius: 8px 8px 120px 120px;
         font-size: 0.85rem;
         font-weight: 700;
         letter-spacing: 8px;
-        color: #1e3c72;
-        box-shadow: 0 8px 25px -8px rgba(30, 60, 114, 0.25);
+        color: var(--primary-color);
+        box-shadow: 0 8px 25px -8px rgba(147, 51, 234, 0.25);
         text-transform: uppercase;
+        font-family: 'Sora', sans-serif;
     }
 
     .seat-layout-container {
@@ -137,15 +138,15 @@
 
     /* Active Selection Outline */
     .seat.selected-active {
-        outline: 3px solid #1e3c72;
+        outline: 3px solid var(--primary-color);
         outline-offset: 2px;
         animation: pulseSelection 1.5s infinite;
     }
 
     @keyframes pulseSelection {
-        0% { outline-color: rgba(30, 60, 114, 0.8); }
-        50% { outline-color: rgba(30, 60, 114, 0.1); }
-        100% { outline-color: rgba(30, 60, 114, 0.8); }
+        0% { outline-color: rgba(147, 51, 234, 0.8); }
+        50% { outline-color: rgba(147, 51, 234, 0.1); }
+        100% { outline-color: rgba(147, 51, 234, 0.8); }
     }
 
     .seat-legend {
@@ -154,10 +155,10 @@
         margin: 10px 0 30px 0;
         flex-wrap: wrap;
         justify-content: center;
-        background-color: #f8fafc;
+        background-color: var(--bg-base);
         padding: 15px 25px;
         border-radius: 12px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border-light);
     }
 
     .legend-item {
@@ -183,27 +184,29 @@
     }
 
     .filter-section {
-        background: #ffffff;
+        background: var(--bg-surface);
         padding: 24px;
         border-radius: 12px;
         margin-bottom: 25px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid var(--border-light);
     }
 
     .filter-section select {
         padding: 10px 14px;
-        border: 1px solid #cbd5e1;
+        border: 1px solid var(--border-light);
         border-radius: 8px;
         font-size: 0.92rem;
-        color: #334155;
+        color: var(--text-ink);
         transition: all 0.2s;
+        background-color: var(--bg-base);
     }
     
     .filter-section select:focus {
-        border-color: #1e3c72;
-        box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.15);
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px rgba(147, 51, 234, 0.12);
         outline: none;
+        background-color: #fff;
     }
 
     /* Loading Spinner Styling */

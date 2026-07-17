@@ -100,11 +100,11 @@
 
 /* Seat Status - Booked in Current Order */
 .seat-booked-current {
-    background-color: #1e3c72 !important;
+    background-color: var(--primary-color) !important;
     color: white !important;
-    border: 2px solid #0d1f47 !important;
+    border: 2px solid var(--sidebar-bg) !important;
     font-weight: 600;
-    box-shadow: 0 0 0 2px rgba(30, 60, 114, 0.2);
+    box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.2);
 }
 
 /* Seat Status - Booked by Others */

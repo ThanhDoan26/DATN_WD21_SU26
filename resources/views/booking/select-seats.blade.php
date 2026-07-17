@@ -214,6 +214,76 @@
             border-color: #94a3b8;
             opacity: 0.6;
         }
+
+        /* ===================== COUNTDOWN TIMER ===================== */
+        #booking-timer-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 9999;
+            display: none;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+            padding: 0 24px;
+            height: 60px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            animation: timerSlideDown 0.4s cubic-bezier(0.4,0,0.2,1) forwards;
+        }
+        @keyframes timerSlideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to   { transform: translateY(0);     opacity: 1; }
+        }
+        #timer-progress-track {
+            flex: 1; max-width: 300px;
+            height: 6px; background: rgba(255,255,255,0.1);
+            border-radius: 99px; overflow: hidden;
+        }
+        #timer-progress-fill {
+            height: 100%; border-radius: 99px;
+            background: linear-gradient(90deg, #22c55e, #facc15, #e50914);
+            background-size: 300% 100%;
+            background-position: 0% 50%;
+            transition: width 1s linear, background-position 1s linear;
+            width: 100%;
+        }
+        #timer-digits {
+            font-variant-numeric: tabular-nums;
+            font-size: 1.25rem; font-weight: 800;
+            letter-spacing: 1px; min-width: 56px;
+            text-align: center; transition: color 0.5s;
+            color: #ffffff;
+        }
+        #timer-digits.urgent { color: #ef4444 !important; animation: timerPulse 0.8s infinite; }
+        @keyframes timerPulse {
+            0%,100% { opacity: 1; }
+            50%      { opacity: 0.55; }
+        }
+        /* Expired overlay */
+        #booking-expired-overlay {
+            display: none; position: fixed; inset: 0; z-index: 99999;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
+            align-items: center; justify-content: center;
+        }
+        #booking-expired-overlay.active { display: flex; }
+        .expired-card {
+            background: #0f172a; border: 1px solid rgba(239,68,68,0.2);
+            border-radius: 24px; padding: 48px 40px;
+            max-width: 440px; width: 90%; text-align: center;
+            box-shadow: 0 32px 64px rgba(0,0,0,0.6);
+            animation: expiredZoomIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards;
+        }
+        @keyframes expiredZoomIn {
+            from { transform: scale(0.85); opacity: 0; }
+            to   { transform: scale(1);    opacity: 1; }
+        }
+        .expired-icon {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: rgba(239,68,68,0.15); border: 2px solid rgba(239,68,68,0.3);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 24px; font-size: 1.75rem; color: #ef4444;
+        }
     </style>
 @endpush
 

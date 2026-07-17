@@ -173,8 +173,8 @@
     </div>
 
     <!-- ĐANG XEM BÁO CÁO HEADER -->
-    <div class="card border-0 shadow-sm mb-4 overflow-hidden">
-        <div class="card-body p-4 bg-light border-start border-primary border-4">
+    <div class="card mb-4 overflow-hidden">
+        <div class="card-body p-4">
             <h6 class="text-uppercase text-muted fw-bold mb-1 small" style="letter-spacing: 0.5px;">Đang xem báo cáo</h6>
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
                 <div>
@@ -368,9 +368,9 @@
     /* Giao diện bộ lọc nâng cao */
     .filter-card {
         border-radius: 12px !important;
-        background-color: #ffffff;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04) !important;
-        border: 1px solid rgba(0,0,0,0.02) !important;
+        background-color: var(--bg-surface);
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+        border: 1px solid var(--border-light) !important;
     }
     .filter-card .form-label {
         letter-spacing: 0.5px;
@@ -379,14 +379,14 @@
         border-radius: 8px;
         padding: 10px 14px;
         font-weight: 500;
-        transition: all 0.3s ease;
-        border-color: #e0e6ed !important;
-        background-color: #fcfdfe;
+        transition: all 0.2s ease;
+        border-color: var(--border-light) !important;
+        background-color: var(--bg-base);
     }
     .filter-card .form-select:focus, .filter-card .form-control:focus {
-        border-color: #1e3c72 !important;
+        border-color: var(--primary-color) !important;
         background-color: #fff;
-        box-shadow: 0 0 0 0.2rem rgba(30, 60, 114, 0.12) !important;
+        box-shadow: 0 0 0 4px rgba(147, 51, 234, 0.12) !important;
     }
 
     /* Quick Filter Buttons */
@@ -395,60 +395,53 @@
         padding: 6px 16px !important;
         font-size: 0.85rem !important;
         font-weight: 600 !important;
-        border-color: #e0e6ed !important;
-        color: #4a5568 !important;
-        background: #f8fafc !important;
+        border-color: var(--border-light) !important;
+        color: var(--text-muted) !important;
+        background: var(--bg-base) !important;
         transition: all 0.2s ease !important;
         box-shadow: 0 1px 2px rgba(0,0,0,0.02);
     }
     .quick-filter-btn:hover {
-        background-color: #1e3c72 !important;
-        border-color: #1e3c72 !important;
-        color: #ffffff !important;
+        background-color: var(--primary-light) !important;
+        border-color: var(--primary-color) !important;
+        color: var(--primary-color) !important;
         transform: translateY(-1px);
-        box-shadow: 0 4px 6px rgba(30, 60, 114, 0.12);
+        box-shadow: 0 4px 6px rgba(147, 51, 234, 0.08);
     }
     .quick-filter-btn.active {
-        background-color: #1e3c72 !important;
-        border-color: #1e3c72 !important;
+        background-color: var(--primary-color) !important;
+        border-color: var(--primary-color) !important;
         color: #ffffff !important;
-        box-shadow: 0 4px 8px rgba(30, 60, 114, 0.2) !important;
+        box-shadow: 0 4px 8px rgba(147, 51, 234, 0.2) !important;
     }
 
     /* Stat Cards */
     .stat-card {
-        border: none;
+        border: 1px solid var(--border-light);
         border-radius: 12px;
-        background: #ffffff;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: var(--bg-surface);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
         overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
     }
     .stat-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08) !important;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.04) !important;
     }
-    .stat-card::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 4px;
-        height: 100%;
-    }
-    .stat-card-primary::after { background-color: #1e3c72; }
-    .stat-card-success::after { background-color: #10b981; }
-    .stat-card-info::after { background-color: #0ea5e9; }
-    .stat-card-warning::after { background-color: #f59e0b; }
-    .stat-card-danger::after { background-color: #ef4444; }
-    .stat-card-secondary::after { background-color: #64748b; }
+    .stat-card:hover.stat-card-primary { border-color: var(--primary-color); }
+    .stat-card:hover.stat-card-success { border-color: #10b981; }
+    .stat-card:hover.stat-card-info { border-color: #0ea5e9; }
+    .stat-card:hover.stat-card-warning { border-color: #f59e0b; }
+    .stat-card:hover.stat-card-danger { border-color: #ef4444; }
+    .stat-card:hover.stat-card-secondary { border-color: #64748b; }
 
-    .bg-primary-light { background-color: rgba(30, 60, 114, 0.06); }
-    .bg-success-light { background-color: rgba(16, 185, 129, 0.06); }
-    .bg-info-light { background-color: rgba(14, 165, 233, 0.06); }
-    .bg-warning-light { background-color: rgba(245, 158, 11, 0.06); }
-    .bg-danger-light { background-color: rgba(239, 68, 68, 0.06); }
-    .bg-secondary-light { background-color: rgba(100, 116, 139, 0.06); }
+    .bg-primary-light { background-color: var(--primary-light); }
+    .bg-success-light { background-color: rgba(16, 185, 129, 0.08); }
+    .bg-info-light { background-color: rgba(14, 165, 233, 0.08); }
+    .bg-warning-light { background-color: rgba(245, 158, 11, 0.08); }
+    .bg-danger-light { background-color: rgba(239, 68, 68, 0.08); }
+    .bg-secondary-light { background-color: rgba(100, 116, 139, 0.08); }
 
     .stat-card-icon {
         transition: all 0.3s ease;
