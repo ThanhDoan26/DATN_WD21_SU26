@@ -11,7 +11,7 @@
         "laravel/sanctum": "*",
         "laravel/tinker": "^3.0",
         "simplesoftwareio/simple-qrcode": "*",
-        "stripe/stripe-php": "^20.3"
+        "stripe/stripe-php": "^21.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
