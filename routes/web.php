@@ -119,6 +119,10 @@ Route::get('/tickets/{token}', function ($token) {
     return redirect()->route('home')->with('error', 'Vé không tồn tại trên hệ thống.');
 })->name('tickets.scan');
 
+// Tin tức / Blog frontend routes
+Route::get('/tin-tuc', [\App\Http\Controllers\PostController::class, 'index'])->name('posts.index');
+Route::get('/tin-tuc/{slug}', [\App\Http\Controllers\PostController::class, 'show'])->name('posts.show');
+
 require __DIR__.'/auth.php';
 
 Route::get('/quick-login-staff', function () {
