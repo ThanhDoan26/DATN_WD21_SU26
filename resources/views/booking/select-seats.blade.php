@@ -1,4 +1,4 @@
-@extends('layouts.frontend')
+@extends($layout ?? 'layouts.frontend')
 
 @push('styles')
     <style>
@@ -450,11 +450,70 @@
             return new Intl.NumberFormat('vi-VN').format(num);
         }
 
+        function validateSeatSelection() {
+            let isValid = true;
+            
+            document.querySelectorAll('.row-seats').forEach(rowElement => {
+                const seats = Array.from(rowElement.querySelectorAll('.seat'));
+                
+                // Split into blocks by unavailable seats
+                let blocks = [];
+                let currentBlock = [];
+                
+                seats.forEach(seat => {
+                    if (seat.classList.contains('booked') || seat.disabled) {
+                        if (currentBlock.length > 0) {
+                            blocks.push(currentBlock);
+                            currentBlock = [];
+                        }
+                    } else {
+                        currentBlock.push(seat);
+                    }
+                });
+                
+                if (currentBlock.length > 0) {
+                    blocks.push(currentBlock);
+                }
+                
+                // Check each block
+                blocks.forEach(block => {
+                    let selectedIndices = [];
+                    block.forEach((seat, index) => {
+                        if (seat.classList.contains('selected')) {
+                            selectedIndices.push(index);
+                        }
+                    });
+                    
+                    if (selectedIndices.length > 1) {
+                        let first = Math.min(...selectedIndices);
+                        let last = Math.max(...selectedIndices);
+                        let countInRange = last - first + 1;
+                        
+                        // If there is a gap, the range will be larger than the number of selected seats
+                        if (countInRange > selectedIndices.length) {
+                            isValid = false;
+                        }
+                    }
+                });
+            });
+            
+            return isValid;
+        }
+
         function proceedToCheckout() {
             if (selectedSeats.size === 0) return;
 
+            if (!validateSeatSelection()) {
+                alert("Bạn chỉ được chọn các ghế liền kề nhau. Không được để trống ghế ở giữa.");
+                return;
+            }
+
             const seatIds = Array.from(selectedSeats).join(',');
-            window.location.href = `/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
+            @if(isset($isWalkIn) && $isWalkIn)
+                window.location.href = `/staff/walk-in/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
+            @else
+                window.location.href = `/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
+            @endif
         }
     </script>
 @endpush

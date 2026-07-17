@@ -4,6 +4,8 @@ namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+use Illuminate\Validation\Rule;
+
 class UpdateCinemaRequest extends FormRequest
 {
     /**
@@ -22,7 +24,12 @@ class UpdateCinemaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required', 
+                'string', 
+                'max:255', 
+                Rule::unique('cinemas', 'name')->ignore($this->cinema)
+            ],
             'address' => ['required', 'string', 'max:255'],
             'city' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:20'],
@@ -39,6 +46,7 @@ class UpdateCinemaRequest extends FormRequest
         return [
             'name.required' => 'Tên rạp chiếu phim là bắt buộc.',
             'name.max' => 'Tên rạp không được vượt quá 255 ký tự.',
+            'name.unique' => 'Tên rạp chiếu phim này đã tồn tại.',
             'address.required' => 'Địa chỉ là bắt buộc.',
             'address.max' => 'Địa chỉ không được vượt quá 255 ký tự.',
             'city.required' => 'Thành phố là bắt buộc.',

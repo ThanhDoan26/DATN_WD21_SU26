@@ -12,6 +12,8 @@ use App\Services\BookingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\TicketConfirmationMail;
 
 class CheckoutController extends Controller
 {
@@ -30,29 +32,58 @@ class CheckoutController extends Controller
         $showtimeId = $request->query('showtime_id');
         $seatIds = $request->query('seat_ids');
 
+        // Normalize showtimeId - handle array or string
         if (is_array($showtimeId)) {
             $showtimeId = $showtimeId[0] ?? null;
         }
+        if ($showtimeId !== null) {
+            $showtimeId = (int) $showtimeId;
+        }
 
+        // Normalize seatIds - handle array or string
         if (is_array($seatIds)) {
             $seatIds = implode(',', array_filter($seatIds, fn($item) => $item !== null && $item !== ''));
         }
 
-        if ($showtimeId && $seatIds) {
+        // Convert string to array of integers
+        if ($seatIds && is_string($seatIds)) {
             $seatIds = array_filter(array_map('intval', explode(',', $seatIds)));
+        } else {
+            $seatIds = [];
+        }
+
+        // Only proceed if we have both showtime and seat IDs
+        if ($showtimeId && !empty($seatIds)) {
             $showtime = Showtime::with('room.cinema')->find($showtimeId);
 
             if (!$showtime) {
                 abort(404, 'Suất chiếu không tồn tại.');
             }
 
+            // Check if showtime is still valid for booking
+            if (!in_array($showtime->status, [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])) {
+                abort(404, 'Suất chiếu này không còn khả dụng.');
+            }
+
+            if ($showtime->start_time <= now()) {
+                abort(404, 'Suất chiếu này đã bắt đầu hoặc kết thúc.');
+            }
+
+            // Get ticket prices for this showtime
             $ticketPrices = TicketPrice::where('showtime_id', $showtimeId)
                 ->where('status', 'ACTIVE')
                 ->get()
                 ->keyBy('seat_type');
 
+            // Get selected seats
             $selectedSeats = Seat::whereIn('id', $seatIds)->get();
 
+            // Verify all requested seats were found
+            if ($selectedSeats->count() !== count($seatIds)) {
+                abort(404, 'Một số ghế không tồn tại.');
+            }
+
+            // Build seat summary
             foreach ($selectedSeats as $seat) {
                 $priceRow = $ticketPrices[$seat->seat_type] ?? null;
                 $seatPrice = $priceRow ? (float) $priceRow->price : 0;
@@ -96,13 +127,20 @@ class CheckoutController extends Controller
     {
         $request->validate([
             'showtime_id' => 'required|exists:showtimes,id',
-            'seat_ids' => 'required|string',
+            'seat_ids' => 'required',
             'combos' => 'nullable|array',
             'payment_method' => 'nullable|string|max:100',
             'coupon_code' => 'nullable|string|max:50',
         ]);
 
-        $seatIds = array_filter(array_map('intval', explode(',', $request->input('seat_ids'))));
+        $seatIdsInput = $request->input('seat_ids');
+        if (is_string($seatIdsInput)) {
+            $seatIds = array_filter(array_map('intval', explode(',', $seatIdsInput)));
+        } elseif (is_array($seatIdsInput)) {
+            $seatIds = array_filter(array_map('intval', $seatIdsInput));
+        } else {
+            $seatIds = [];
+        }
 
         if (empty($seatIds)) {
             return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 ghế.'], 422);
@@ -222,5 +260,75 @@ class CheckoutController extends Controller
                 'final_total' => max(0, $orderTotal - $discountAmount)
             ]
         ]);
+    }
+
+    public function cancel(Request $request)
+    {
+        $request->validate([
+            'booking_id' => 'required|integer|exists:bookings,id',
+        ]);
+
+        $booking = Booking::where('id', $request->booking_id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$booking) {
+            return back()->with('error', 'Đơn vé không tồn tại hoặc không thuộc về bạn.');
+        }
+
+        if ($booking->status !== 'Pending') {
+            return back()->with('error', 'Chỉ có thể hủy đơn vé đang chờ thanh toán.');
+        }
+
+        try {
+            $bookingService = new BookingService();
+            $bookingService->cancelBooking($booking->id, 'Người dùng tự hủy đơn');
+            
+            return redirect()->route('home')->with('success', 'Đã hủy đơn vé và giải phóng ghế thành công.');
+        } catch (\Exception $e) {
+            Log::error('Cancel booking failed: ' . $e->getMessage());
+            return back()->with('error', 'Có lỗi xảy ra khi hủy đơn vé.');
+        }
+    }
+
+    public function mockPayment(Request $request)
+    {
+        $request->validate([
+            'booking_id' => 'required|integer|exists:bookings,id',
+        ]);
+
+        $booking = Booking::where('id', $request->booking_id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$booking) {
+            return back()->with('error', 'Đơn vé không tồn tại hoặc không thuộc về bạn.');
+        }
+
+        if ($booking->status !== 'Pending') {
+            return back()->with('error', 'Đơn vé này không ở trạng thái chờ thanh toán.');
+        }
+
+        try {
+            $bookingService = new BookingService();
+            
+            // Đánh dấu thanh toán thành công
+            $bookingService->completePayment($booking->id, $booking->payment_method ?? 'MOCK_PAYMENT');
+            
+            // Lấy thông tin chi tiết để gửi email
+            $bookingDetails = $bookingService->getBookingDetails($booking->id);
+            $showtime = Showtime::with(['movie', 'room.cinema'])->find($booking->showtime_id);
+            
+            // Gửi email xác nhận
+            if (Auth::user() && Auth::user()->email) {
+                Mail::to(Auth::user()->email)->send(new TicketConfirmationMail($bookingDetails, $showtime));
+            }
+            
+            return redirect()->route('checkout.success', ['booking_id' => $booking->id])
+                             ->with('success', 'Thanh toán thành công. Email xác nhận đã được gửi đến bạn.');
+        } catch (\Exception $e) {
+            Log::error('Mock payment failed: ' . $e->getMessage());
+            return back()->with('error', 'Có lỗi xảy ra khi xử lý thanh toán: ' . $e->getMessage());
+        }
     }
 }

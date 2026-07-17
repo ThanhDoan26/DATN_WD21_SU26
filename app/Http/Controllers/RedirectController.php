@@ -24,13 +24,18 @@ class RedirectController extends Controller
                 return redirect()->route('admin.dashboard');
             }
 
-            // Nếu user là staff/manager → redirect tới staff dashboard (TODO)
-            if ($user->isStaff() || $user->isManager()) {
-                return redirect()->route('dashboard');
+            // Nếu user là manager → redirect tới manager dashboard
+            if ($user->isManager()) {
+                return redirect()->route('manager.dashboard');
+            }
+
+            // Nếu user là staff → redirect tới staff dashboard
+            if ($user->isStaff()) {
+                return redirect()->route('staff.dashboard');
             }
         }
 
-        // Mặc định redirect tới dashboard
-        return redirect()->route('dashboard');
+        // Mặc định redirect tới trang chủ (khách hàng)
+        return redirect('/');
     }
 }

@@ -37,7 +37,8 @@ class BookingHistoryService
             ->with([
                 'showtime.movie',
                 'showtime.room.cinema',
-                'bookedSeats.seat'
+                'bookedSeats.seat',
+                'combos.comboReviews' // Eager load combos and their reviews
             ])
             ->first();
     }

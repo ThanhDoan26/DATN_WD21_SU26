@@ -42,15 +42,66 @@ class BookingService
         array $selectedSeatIds,
         ?string $paymentMethod = null,
         ?string $couponCode = null,
-        array $combos = []
+        array $combos = [],
+        array $extraData = []
     ): int {
         if (empty($selectedSeatIds)) {
             throw new Exception('Vui lòng chọn ít nhất 1 ghế');
         }
 
         try {
+            // 1. Tự động dọn dẹp các booking quá hạn trước khi kiểm tra
             $this->cleanupExpiredPendingBookings();
 
+            // 2. Hủy các booking Pending cũ của chính user này đối với suất chiếu này để giải phóng ghế
+            if ($userId) {
+                $userPendingBookingIds = DB::table('bookings')
+                    ->where('user_id', $userId)
+                    ->where('showtime_id', $showtimeId)
+                    ->where('status', 'Pending')
+                    ->pluck('id')
+                    ->toArray();
+
+                if (!empty($userPendingBookingIds)) {
+                    // Hoàn lại lượt dùng mã giảm giá nếu có
+                    $bookingsWithCoupons = DB::table('bookings')
+                        ->whereIn('id', $userPendingBookingIds)
+                        ->whereNotNull('coupon_id')
+                        ->get();
+
+                    foreach ($bookingsWithCoupons as $b) {
+                        DB::table('coupons')
+                            ->where('id', $b->coupon_id)
+                            ->where('used_count', '>', 0)
+                            ->decrement('used_count');
+                    }
+
+                    DB::table('bookings')
+                        ->whereIn('id', $userPendingBookingIds)
+                        ->update([
+                            'status' => 'Cancelled',
+                            'cancellation_reason' => 'User initiated a new booking request',
+                            'cancelled_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+
+                    DB::table('booked_seats')
+                        ->whereIn('booking_id', $userPendingBookingIds)
+                        ->update([
+                            'status' => 'CANCELLED',
+                            'updated_at' => now(),
+                        ]);
+                }
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Pre-booking cleanup failed: ' . $e->getMessage());
+        }
+
+        // 3. Thực hiện validate sau khi đã giải phóng các ghế hết hạn và ghế cũ của chính user
+        $seatValidationService = new SeatSelectionValidationService();
+        $seatValidationService->validateSelectedSeats($showtimeId, $selectedSeatIds);
+
+        try {
             return DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos) {
 
                 // ================================================================
@@ -63,8 +114,12 @@ class BookingService
                     ->join('bookings', 'booked_seats.booking_id', '=', 'bookings.id')
                     ->where('bookings.showtime_id', $showtimeId)
                     ->whereIn('booked_seats.seat_id', $selectedSeatIds)
-                    // Chỉ lock ghế chưa hủy
+                    // Chỉ lock ghế chưa hủy và chưa hết hạn
                     ->where('bookings.status', '!=', 'Cancelled')
+                    ->where(function ($q) {
+                        $q->where('bookings.status', '!=', 'Pending')
+                          ->orWhere('bookings.booking_time', '>=', now()->subMinutes(10));
+                    })
                     ->lockForUpdate() // 🔒 CRITICAL: SELECT ... FOR UPDATE
                     ->select('booked_seats.seat_id', 'booked_seats.status')
                     ->get();
@@ -73,14 +128,25 @@ class BookingService
                 // Step 2: Kiểm tra xem ghế đã bị đặt hay chưa
                 // ================================================================
                 if ($lockedBookedSeats->count() > 0) {
-                    // Lấy danh sách ghế đã đặt
+                    // Lấy danh sách ghế đã đặt dưới dạng Seat Code (ví dụ: A5, B6)
                     $bookedSeatIds = $lockedBookedSeats->pluck('seat_id')->toArray();
+                    $bookedSeatsInfo = DB::table('seats')
+                        ->whereIn('id', $bookedSeatIds)
+                        ->select('row_name', 'seat_number')
+                        ->get();
+
+                    $bookedSeatCodes = [];
+                    foreach ($bookedSeatsInfo as $seat) {
+                        $bookedSeatCodes[] = $seat->row_name . $seat->seat_number;
+                    }
+
                     throw new Exception(
                         'Một hoặc nhiều ghế đã được đặt bởi khách khác: ' .
-                        implode(', ', $bookedSeatIds) .
+                        implode(', ', $bookedSeatCodes) .
                         '. Vui lòng chọn ghế khác!'
                     );
                 }
+
 
                 // ================================================================
                 // Step 3: Lấy thông tin ghế + tính giá vé
@@ -179,7 +245,7 @@ class BookingService
                     if (!$coupon) {
                         throw new Exception("Mã giảm giá không hợp lệ hoặc không tồn tại.");
                     }
-                    
+
                     $validation = $coupon->isValid($totalPrice);
                     if (!$validation['valid']) {
                         throw new Exception($validation['message']);
@@ -211,6 +277,10 @@ class BookingService
                     'booking_code' => $bookingCode,
                     'created_at' => now(),
                     'updated_at' => now(),
+                    'booking_source' => $extraData['booking_source'] ?? 'online',
+                    'customer_name' => $extraData['customer_name'] ?? null,
+                    'customer_phone' => $extraData['customer_phone'] ?? null,
+                    'customer_email' => $extraData['customer_email'] ?? null,
                 ]);
 
                 // ================================================================
@@ -283,7 +353,7 @@ class BookingService
                 ->whereIn('id', $expiredBookingIds)
                 ->whereNotNull('coupon_id')
                 ->get();
-                
+
             foreach ($bookingsWithCoupons as $b) {
                 DB::table('coupons')->where('id', $b->coupon_id)->where('used_count', '>', 0)->decrement('used_count');
             }

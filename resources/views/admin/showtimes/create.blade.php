@@ -34,7 +34,7 @@
                         <select id="movie_id" name="movie_id" class="form-select @error('movie_id') is-invalid @enderror" required>
                             <option value="">-- Chọn phim --</option>
                             @foreach($movies as $movie)
-                                <option value="{{ $movie->id }}" {{ old('movie_id') == $movie->id ? 'selected' : '' }}>
+                                <option value="{{ $movie->id }}" data-duration="{{ $movie->duration }}" {{ old('movie_id') == $movie->id ? 'selected' : '' }}>
                                     {{ $movie->title }}
                                 </option>
                             @endforeach
@@ -65,8 +65,32 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="mb-3">
-                        <label for="start_time" class="form-label">Thời Gian Bắt Đầu *</label>
-                        <input type="datetime-local" id="start_time" name="start_time" class="form-control @error('start_time') is-invalid @enderror" value="{{ old('start_time') }}" required>
+                        <label class="form-label">Thời Gian Bắt Đầu *</label>
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-5">
+                                <input type="date" id="start_date" class="form-control @error('start_time') is-invalid @enderror" value="{{ old('start_time') ? \Carbon\Carbon::parse(old('start_time'))->format('Y-m-d') : '' }}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <select id="start_hour" class="form-select" required>
+                                    <option value="">Giờ</option>
+                                    @for ($hour = 1; $hour <= 24; $hour++)
+                                        <option value="{{ str_pad($hour, 2, '0', STR_PAD_LEFT) }}">{{ str_pad($hour, 2, '0', STR_PAD_LEFT) }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select id="start_minute" class="form-select" required>
+                                    @for ($minute = 0; $minute < 60; $minute++)
+                                        <option value="{{ str_pad($minute, 2, '0', STR_PAD_LEFT) }}">{{ str_pad($minute, 2, '0', STR_PAD_LEFT) }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div class="col-md-1">
+                                <span id="start_period" class="form-text text-muted">&nbsp;</span>
+                            </div>
+                        </div>
+                        <input type="hidden" id="start_time" name="start_time" value="{{ old('start_time') }}">
+                        <div class="small text-muted">Chọn giờ:.</div>
                         @error('start_time')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -74,8 +98,32 @@
                 </div>
                 <div class="col-md-6">
                     <div class="mb-3">
-                        <label for="end_time" class="form-label">Thời Gian Kết Thúc *</label>
-                        <input type="datetime-local" id="end_time" name="end_time" class="form-control @error('end_time') is-invalid @enderror" value="{{ old('end_time') }}" required>
+                        <label class="form-label">Thời Gian Kết Thúc *</label>
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-5">
+                                <input type="date" id="end_date" class="form-control @error('end_time') is-invalid @enderror" value="{{ old('end_time') ? \Carbon\Carbon::parse(old('end_time'))->format('Y-m-d') : '' }}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <select id="end_hour" class="form-select" required>
+                                    <option value="">Giờ</option>
+                                    @for ($hour = 1; $hour <= 24; $hour++)
+                                        <option value="{{ str_pad($hour, 2, '0', STR_PAD_LEFT) }}">{{ str_pad($hour, 2, '0', STR_PAD_LEFT) }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select id="end_minute" class="form-select" required>
+                                    @for ($minute = 0; $minute < 60; $minute++)
+                                        <option value="{{ str_pad($minute, 2, '0', STR_PAD_LEFT) }}">{{ str_pad($minute, 2, '0', STR_PAD_LEFT) }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div class="col-md-1">
+                                <span id="end_period" class="form-text text-muted">&nbsp;</span>
+                            </div>
+                        </div>
+                        <input type="hidden" id="end_time" name="end_time" value="{{ old('end_time') }}">
+                        <div class="small text-muted">Chọn giờ .</div>
                         @error('end_time')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -377,6 +425,219 @@
                     grid.appendChild(container);
                 })
                 .catch(error => console.error('Error fetching seats:', error));
+        }
+
+        const movieSelect = document.getElementById('movie_id');
+        const startDateInput = document.getElementById('start_date');
+        const startHourInput = document.getElementById('start_hour');
+        const startMinuteInput = document.getElementById('start_minute');
+        const startPeriodText = document.getElementById('start_period');
+        const endDateInput = document.getElementById('end_date');
+        const endHourInput = document.getElementById('end_hour');
+        const endMinuteInput = document.getElementById('end_minute');
+        const endPeriodText = document.getElementById('end_period');
+        const hiddenStartInput = document.getElementById('start_time');
+        const hiddenEndInput = document.getElementById('end_time');
+
+        let endAutoComputed = true;
+
+        function pad(value) {
+            return String(value).padStart(2, '0');
+        }
+
+        function formatDatetimeLocal(date) {
+            const year = date.getFullYear();
+            const month = pad(date.getMonth() + 1);
+            const day = pad(date.getDate());
+            const hours = pad(date.getHours());
+            const minutes = pad(date.getMinutes());
+            const seconds = pad(date.getSeconds());
+            return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+        }
+
+        function parseDatetimeLocal(value) {
+            if (!value || typeof value !== 'string') {
+                return null;
+            }
+
+            const parts = value.split('T');
+            if (parts.length !== 2) {
+                return null;
+            }
+
+            const [datePart, timePart] = parts;
+            const [year, month, day] = datePart.split('-').map(Number);
+            const timeParts = timePart.split(':').map(Number);
+            const hour = timeParts[0];
+            const minute = timeParts[1];
+            const second = timeParts.length > 2 ? timeParts[2] : 0;
+
+            if ([year, month, day, hour, minute, second].some(v => Number.isNaN(v))) {
+                return null;
+            }
+
+            return new Date(year, month - 1, day, hour, minute, second, 0);
+        }
+
+        function getSelectedMovieDuration() {
+            const selectedOption = movieSelect.options[movieSelect.selectedIndex];
+            return selectedOption ? Number(selectedOption.dataset.duration || 0) : 0;
+        }
+
+        function updatePeriodText(hourValue, element) {
+            const hour = Number(hourValue);
+            if (!hourValue) {
+                element.textContent = '';
+                return;
+            }
+            element.textContent = hour >= 13 ? 'CH' : 'SA';
+        }
+
+        function enforce24OnlyZeroMinute(hourInput, minuteInput) {
+            const is24 = Number(hourInput.value) === 24;
+            minuteInput.querySelectorAll('option').forEach(option => {
+                option.disabled = is24 && option.value !== '00';
+            });
+            if (is24 && minuteInput.value !== '00') {
+                minuteInput.value = '00';
+            }
+        }
+
+        function buildHiddenDatetime(dateInput, hourInput, minuteInput) {
+            if (!dateInput.value || !hourInput.value || !minuteInput.value) {
+                return '';
+            }
+            let date = new Date(`${dateInput.value}T00:00`);
+            const hour = Number(hourInput.value);
+            const minute = Number(minuteInput.value);
+
+            if (hour === 24) {
+                date.setDate(date.getDate() + 1);
+                date.setHours(0, 0, 0, 0);
+            } else {
+                date.setHours(hour, minute, 0, 0);
+            }
+
+            return formatDatetimeLocal(date);
+        }
+
+        function setSelectorsFromHidden(dateInput, hourInput, minuteInput, periodText, hiddenInput) {
+            const value = hiddenInput.value;
+            const parsed = parseDatetimeLocal(value);
+            if (!parsed) {
+                return;
+            }
+
+            let displayDate = parsed;
+            let displayHour = parsed.getHours();
+            let displayMinute = parsed.getMinutes();
+
+            if (displayHour === 0 && displayMinute === 0) {
+                displayDate = new Date(parsed.getTime());
+                displayDate.setDate(displayDate.getDate() - 1);
+                displayHour = 24;
+            }
+
+            dateInput.value = `${displayDate.getFullYear()}-${pad(displayDate.getMonth() + 1)}-${pad(displayDate.getDate())}`;
+            hourInput.value = pad(displayHour);
+            minuteInput.value = pad(displayMinute);
+            enforce24OnlyZeroMinute(hourInput, minuteInput);
+            updatePeriodText(hourInput.value, periodText);
+        }
+
+        function computeExpectedEnd() {
+            if (!hiddenStartInput.value || !movieSelect.value) {
+                return '';
+            }
+            const startDateObject = parseDatetimeLocal(hiddenStartInput.value);
+            const durationMinutes = getSelectedMovieDuration();
+            if (!startDateObject || !durationMinutes || Number.isNaN(durationMinutes)) {
+                return '';
+            }
+            const calculatedEnd = new Date(startDateObject.getTime() + (durationMinutes + 15) * 60 * 1000);
+            return formatDatetimeLocal(calculatedEnd);
+        }
+
+        function updateStartHidden() {
+            hiddenStartInput.value = buildHiddenDatetime(startDateInput, startHourInput, startMinuteInput);
+            updatePeriodText(startHourInput.value, startPeriodText);
+        }
+
+        function updateEndHidden(forceManual = false) {
+            hiddenEndInput.value = buildHiddenDatetime(endDateInput, endHourInput, endMinuteInput);
+            updatePeriodText(endHourInput.value, endPeriodText);
+            if (forceManual) {
+                endAutoComputed = false;
+            }
+        }
+
+        function updateEndFromStart() {
+            const expectedEnd = computeExpectedEnd();
+            if (!expectedEnd) {
+                return;
+            }
+            hiddenEndInput.value = expectedEnd;
+            setSelectorsFromHidden(endDateInput, endHourInput, endMinuteInput, endPeriodText, hiddenEndInput);
+            endAutoComputed = true;
+        }
+
+        function syncAllTimeFields() {
+            setSelectorsFromHidden(startDateInput, startHourInput, startMinuteInput, startPeriodText, hiddenStartInput);
+            setSelectorsFromHidden(endDateInput, endHourInput, endMinuteInput, endPeriodText, hiddenEndInput);
+
+            const expectedEnd = computeExpectedEnd();
+            if (!hiddenEndInput.value && expectedEnd) {
+                updateEndFromStart();
+                endAutoComputed = true;
+                return;
+            }
+
+            endAutoComputed = expectedEnd && expectedEnd === hiddenEndInput.value;
+        }
+
+        [startHourInput, startMinuteInput].forEach(input => {
+            input.addEventListener('change', function () {
+                enforce24OnlyZeroMinute(startHourInput, startMinuteInput);
+                updateStartHidden();
+                if (endAutoComputed || !hiddenEndInput.value) {
+                    updateEndFromStart();
+                }
+            });
+        });
+
+        startDateInput.addEventListener('change', function () {
+            updateStartHidden();
+            if (endAutoComputed || !hiddenEndInput.value) {
+                updateEndFromStart();
+            }
+        });
+
+        [endHourInput, endMinuteInput, endDateInput].forEach(input => {
+            input.addEventListener('change', function () {
+                enforce24OnlyZeroMinute(endHourInput, endMinuteInput);
+                updateEndHidden(true);
+            });
+        });
+
+        movieSelect.addEventListener('change', function () {
+            updateStartHidden();
+            if (endAutoComputed) {
+                updateEndFromStart();
+            }
+        });
+
+        syncAllTimeFields();
+
+        const showtimeForm = document.querySelector('form');
+        if (showtimeForm) {
+            showtimeForm.addEventListener('submit', function () {
+                updateStartHidden();
+                if (endAutoComputed || !hiddenEndInput.value) {
+                    updateEndFromStart();
+                } else {
+                    updateEndHidden(true);
+                }
+            });
         }
 
         roomSelect.addEventListener('change', function() {

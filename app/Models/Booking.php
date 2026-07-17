@@ -25,8 +25,24 @@ class Booking extends Model
         'cancelled_at',
         'cancellation_reason',
         'booking_code',
+        'ticket_token',
         'notes',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($booking) {
+            if ($booking->status === 'Paid' && empty($booking->ticket_token)) {
+                $booking->ticket_token = (string) \Illuminate\Support\Str::uuid();
+            }
+        });
+
+        static::updating(function ($booking) {
+            if ($booking->status === 'Paid' && empty($booking->ticket_token)) {
+                $booking->ticket_token = (string) \Illuminate\Support\Str::uuid();
+            }
+        });
+    }
 
     protected $casts = [
         'booking_time' => 'datetime',
@@ -52,6 +68,11 @@ class Booking extends Model
     public function combos()
     {
         return $this->belongsToMany(Combo::class, 'booking_combos')->withPivot('quantity', 'price')->withTimestamps();
+    }
+
+    public function comboReviews(): HasMany
+    {
+        return $this->hasMany(ComboReview::class);
     }
 
     /**

@@ -16,7 +16,7 @@
                 <a href="/" class="{{ request()->is('/') ? 'text-primary font-bold' : 'text-slate-300 hover:text-white font-medium' }} transition-colors">Trang chủ</a>
                 <a href="{{ route('movies.current') }}" class="{{ request()->routeIs('movies.current') ? 'text-primary font-bold' : 'text-slate-300 hover:text-white font-medium' }} transition-colors">Phim Đang Chiếu</a>
                 <a href="{{ route('movies.upcoming') }}" class="{{ request()->routeIs('movies.upcoming') ? 'text-primary font-bold' : 'text-slate-300 hover:text-white font-medium' }} transition-colors">Phim Sắp Chiếu</a>
-                <a href="#" class="text-slate-300 hover:text-white transition-colors font-medium">Khuyến Mãi</a>
+                <a href="{{ route('posts.index') }}" class="{{ request()->routeIs('posts.*') ? 'text-primary font-bold' : 'text-slate-300 hover:text-white font-medium' }} transition-colors">Tin tức</a>
                 @auth
                     <a href="{{ route('booking.history') }}" class="{{ request()->routeIs('booking.history*') ? 'text-primary font-bold' : 'text-slate-300 hover:text-white font-medium' }} transition-colors">Lịch sử đặt vé</a>
                 @endauth
@@ -26,8 +26,12 @@
             <div class="hidden md:flex items-center space-x-4">
                 @if (Route::has('login'))
                     @auth
-                        @if(auth()->user()->isAdmin() || auth()->user()->isManager())
-                            <a href="{{ route('admin.dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium">Bảng điều khiển</a>
+                        @if(auth()->user()->isAdmin())
+                            <a href="{{ route('admin.dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium"><i class="fas fa-user-shield me-1"></i> Admin Portal</a>
+                        @elseif(auth()->user()->isManager())
+                            <a href="{{ route('manager.dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium"><i class="fas fa-user-shield me-1"></i> Manager Portal</a>
+                        @elseif(auth()->user()->isStaff())
+                            <a href="{{ route('staff.dashboard') }}" class="text-[#ca8a04] hover:text-[#eab308] transition-colors font-medium"><i class="fas fa-user-shield me-1"></i> Staff Portal</a>
                         @endif
 
                         <form method="POST" action="{{ route('logout') }}" class="inline">

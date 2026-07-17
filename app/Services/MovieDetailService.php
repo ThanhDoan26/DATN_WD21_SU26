@@ -58,6 +58,7 @@ class MovieDetailService
         
         $canReview = false;
         $userReview = null;
+        $purchasedCombos = collect();
         
         if (auth()->check()) {
             $userId = auth()->id();
@@ -73,7 +74,35 @@ class MovieDetailService
                         $query->where('movie_id', $id);
                     })->exists();
             }
+
+            // Fetch combos purchased during this movie's bookings
+            $bookingsWithCombos = \App\Models\Booking::where('user_id', $userId)
+                ->whereIn('status', ['Paid', 'Used'])
+                ->whereHas('showtime', function ($query) use ($id) {
+                    $query->where('movie_id', $id);
+                })
+                ->with(['combos', 'combos.comboReviews' => function($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                }])
+                ->get();
+                
+            foreach ($bookingsWithCombos as $booking) {
+                foreach ($booking->combos as $combo) {
+                    if (!$purchasedCombos->has($combo->id)) {
+                        $combo->booking_id_for_review = $booking->id;
+                        $purchasedCombos->put($combo->id, $combo);
+                    }
+                }
+            }
         }
+
+        // Fetch all combo reviews for this movie to display alongside movie reviews
+        $comboReviews = \App\Models\ComboReview::with('combo')
+            ->whereHas('booking.showtime', function($q) use ($id) {
+                $q->where('movie_id', $id);
+            })
+            ->get()
+            ->groupBy('user_id');
 
         // 5. Logging phục vụ debug
         Log::info('Truy cập trang chi tiết phim', [
@@ -89,6 +118,8 @@ class MovieDetailService
             'reviews' => $reviews,
             'canReview' => $canReview,
             'userReview' => $userReview,
+            'purchasedCombos' => $purchasedCombos,
+            'comboReviews' => $comboReviews,
         ];
     }
 }
