@@ -92,7 +92,7 @@
                         <input type="hidden" id="start_time" name="start_time" value="{{ old('start_time') }}">
                         <div class="small text-muted">Chọn giờ:.</div>
                         @error('start_time')
-                            <div class="invalid-feedback">{{ $message }}</div>
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
                 </div>
@@ -125,7 +125,7 @@
                         <input type="hidden" id="end_time" name="end_time" value="{{ old('end_time') }}">
                         <div class="small text-muted">Chọn giờ .</div>
                         @error('end_time')
-                            <div class="invalid-feedback">{{ $message }}</div>
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
                 </div>

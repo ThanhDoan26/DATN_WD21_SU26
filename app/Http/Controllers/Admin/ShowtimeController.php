@@ -52,6 +52,31 @@ class ShowtimeController extends AdminController
                 'date',
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id'))),
+                function ($attribute, $value, $fail) use ($request) {
+                    $roomId = $request->input('room_id');
+                    $movieId = $request->input('movie_id');
+                    if (!$roomId || !$movieId || !$value) {
+                        return;
+                    }
+
+                    $movie = Movie::find($movieId);
+                    if (!$movie || !$movie->duration) {
+                        return;
+                    }
+
+                    $newStart = Carbon::parse($value);
+                    $newEnd = $newStart->copy()->addMinutes($movie->duration + 15);
+
+                    $overlap = Showtime::where('room_id', $roomId)
+                        ->whereDate('start_time', $newStart->toDateString())
+                        ->where('end_time', '>', $newStart)
+                        ->where('start_time', '<', $newEnd)
+                        ->exists();
+
+                    if ($overlap) {
+                        $fail('Phòng chiếu này đã có lịch chiếu trong khoảng thời gian này.');
+                    }
+                },
             ],
             'end_time' => [
                 'required',
@@ -134,6 +159,32 @@ class ShowtimeController extends AdminController
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id')))
                     ->ignore($showtime->id),
+                function ($attribute, $value, $fail) use ($request, $showtime) {
+                    $roomId = $request->input('room_id');
+                    $movieId = $request->input('movie_id');
+                    if (!$roomId || !$movieId || !$value) {
+                        return;
+                    }
+
+                    $movie = Movie::find($movieId);
+                    if (!$movie || !$movie->duration) {
+                        return;
+                    }
+
+                    $newStart = Carbon::parse($value);
+                    $newEnd = $newStart->copy()->addMinutes($movie->duration + 15);
+
+                    $overlap = Showtime::where('room_id', $roomId)
+                        ->where('id', '!=', $showtime->id)
+                        ->whereDate('start_time', $newStart->toDateString())
+                        ->where('end_time', '>', $newStart)
+                        ->where('start_time', '<', $newEnd)
+                        ->exists();
+
+                    if ($overlap) {
+                        $fail('Phòng chiếu này đã có lịch chiếu trong khoảng thời gian này.');
+                    }
+                },
             ],
             'end_time' => [
                 'required',

@@ -100,7 +100,7 @@
                         <input type="hidden" id="start_time" name="start_time" value="{{ old('start_time', $showtime->start_time->format('Y-m-d\TH:i:s')) }}">
                         <div class="small text-muted">Chọn giờ.</div>
                         @error('start_time')
-                            <div class="invalid-feedback">{{ $message }}</div>
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
                 </div>
@@ -133,7 +133,7 @@
                         <input type="hidden" id="end_time" name="end_time" value="{{ old('end_time', $showtime->end_time->format('Y-m-d\TH:i:s')) }}">
                         <div class="small text-muted">Chọn giờ .</div>
                         @error('end_time')
-                            <div class="invalid-feedback">{{ $message }}</div>
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
                 </div>
