@@ -321,7 +321,18 @@ class CheckoutController extends Controller
             
             // Gửi email xác nhận
             if (Auth::user() && Auth::user()->email) {
-                Mail::to(Auth::user()->email)->send(new TicketConfirmationMail($bookingDetails, $showtime));
+                try {
+                    \Illuminate\Support\Facades\Log::info("CheckoutController: Đang gọi Mail::to()->send() gửi cho " . Auth::user()->email);
+                    Mail::to(Auth::user()->email)->send(new TicketConfirmationMail($bookingDetails, $showtime));
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("CheckoutController: Lỗi khi gọi Mail::to()->send() cho " . Auth::user()->email . ". Lỗi: " . $e->getMessage(), [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                }
+            } else {
+                \Illuminate\Support\Facades\Log::warning("CheckoutController: TicketConfirmationMail KHÔNG được gọi do user chưa đăng nhập hoặc không có email.");
             }
             
             return redirect()->route('checkout.success', ['booking_id' => $booking->id])

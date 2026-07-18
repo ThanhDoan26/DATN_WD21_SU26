@@ -280,12 +280,19 @@ class WalkInBookingController extends Controller
                 // If email provided, send confirmation
                 $bookingDetails = $bookingService->getBookingDetails($bookingId);
                 if ($request->input('customer_email')) {
+                    \Illuminate\Support\Facades\Log::info("WalkInBookingController: Đang gọi Mail::to()->send() gửi cho " . $request->input('customer_email'));
                     $showtime = Showtime::with(['movie', 'room.cinema'])->find($request->input('showtime_id'));
                     try {
                         Mail::to($request->input('customer_email'))->send(new TicketConfirmationMail($bookingDetails, $showtime));
                     } catch (\Exception $e) {
-                        Log::error('Walk-in payment email failed: ' . $e->getMessage());
+                        Log::error('Walk-in payment email failed: ' . $e->getMessage(), [
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine(),
+                            'trace' => $e->getTraceAsString(),
+                        ]);
                     }
+                } else {
+                    \Illuminate\Support\Facades\Log::warning("WalkInBookingController: TicketConfirmationMail KHÔNG được gọi do khách hàng không cung cấp email.");
                 }
 
                 return response()->json([

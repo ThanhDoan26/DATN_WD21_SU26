@@ -392,6 +392,7 @@ class BookingService
         string $paymentMethod,
         array $additionalData = []
     ): bool {
+        \Illuminate\Support\Facades\Log::info("BookingService::completePayment [Step: Complete Payment] - Starting for Booking ID: {$bookingId}, Method: {$paymentMethod}");
         return DB::transaction(function () use ($bookingId, $paymentMethod, $additionalData) {
 
             // Kiểm tra booking tồn tại + status = Pending
@@ -401,10 +402,12 @@ class BookingService
                 ->first();
 
             if (!$booking) {
+                \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không tồn tại");
                 throw new Exception("Booking $bookingId không tồn tại");
             }
 
             if ($booking->status !== 'Pending') {
+                \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$booking->status}");
                 throw new Exception(
                     "Không thể thanh toán booking này. Status: {$booking->status}. " .
                     "Chỉ có thể thanh toán booking ở trạng thái Pending."
@@ -429,6 +432,7 @@ class BookingService
                     'updated_at' => now(),
                 ]);
 
+            \Illuminate\Support\Facades\Log::info("BookingService::completePayment [Step: Complete Payment] - Successfully completed payment for Booking ID: {$bookingId}");
             return true;
 
         });
@@ -539,11 +543,13 @@ class BookingService
      * @return array
      */
     public function getBookingDetails(int $bookingId): array {
+        \Illuminate\Support\Facades\Log::info("BookingService::getBookingDetails [Step: Get Booking Details] - Fetching details for Booking ID: {$bookingId}");
         $booking = DB::table('bookings')
             ->where('id', $bookingId)
             ->first();
 
         if (!$booking) {
+            \Illuminate\Support\Facades\Log::warning("BookingService::getBookingDetails - Booking $bookingId không tồn tại");
             throw new Exception("Booking $bookingId không tồn tại");
         }
 
@@ -561,6 +567,37 @@ class BookingService
             )
             ->get();
 
+        // Fetch combos
+        $combos = DB::table('booking_combos')
+            ->join('combos', 'booking_combos.combo_id', '=', 'combos.id')
+            ->where('booking_combos.booking_id', $bookingId)
+            ->select('combos.id', 'combos.name', 'booking_combos.quantity', 'booking_combos.price')
+            ->get();
+
+        // Fetch showtime and movie details
+        $showtime = DB::table('showtimes')
+            ->where('id', $booking->showtime_id)
+            ->first();
+
+        $movie = null;
+        if ($showtime) {
+            $movie = DB::table('movies')
+                ->where('id', $showtime->movie_id)
+                ->first();
+        }
+
+        // Fetch user email if not set on booking level
+        $userEmail = '';
+        $userName = '';
+        if ($booking->user_id) {
+            $user = DB::table('users')->where('id', $booking->user_id)->first();
+            if ($user) {
+                $userEmail = $user->email;
+                $userName = $user->name;
+            }
+        }
+
+        \Illuminate\Support\Facades\Log::info("BookingService::getBookingDetails [Step: Get Booking Details] - Successfully fetched details for Booking ID: {$bookingId}");
         return [
             'booking_id' => $booking->id,
             'booking_code' => $booking->booking_code,
@@ -569,7 +606,13 @@ class BookingService
             'payment_method' => $booking->payment_method,
             'booking_time' => $booking->booking_time,
             'payment_time' => $booking->payment_time,
+            'discount_amount' => $booking->discount_amount ?? 0,
+            'customer_name' => $booking->customer_name ?? $userName ?? 'Khách hàng',
+            'customer_email' => $booking->customer_email ?? $userEmail ?? '',
             'seats' => $bookedSeats,
+            'combos' => $combos,
+            'showtime' => $showtime,
+            'movie' => $movie,
         ];
     }
 
