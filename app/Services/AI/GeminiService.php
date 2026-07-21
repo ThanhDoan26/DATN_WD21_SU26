@@ -23,7 +23,7 @@ class GeminiService
         try {
             $response = Http::timeout(30)
                 ->acceptJson()
-                ->retry(3, 1000, function (\Exception $exception, \Illuminate\Http\Client\Request $request) {
+                ->retry(3, 1000, function (\Exception $exception, \Illuminate\Http\Client\PendingRequest $request) {
                     if ($exception instanceof \Illuminate\Http\Client\RequestException && $exception->response->clientError()) {
                         return false;
                     }
