@@ -105,16 +105,21 @@
 
         /* Selected Seat */
         .seat.selected {
-            outline: 3px solid #3b82f6;
-            outline-offset: 2px;
+            background-color: #22c55e !important;
+            border-color: #16a34a !important;
+            color: #ffffff !important;
+            outline: none !important;
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+            box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
             animation: pulseSelection 1.5s infinite;
         }
 
         .seat.selected.vip {
-            outline: 3px solid #d97706;
-            box-shadow: 0 6px 16px rgba(217, 119, 6, 0.4);
+            background-color: #22c55e !important;
+            border-color: #16a34a !important;
+            color: #ffffff !important;
+            outline: none !important;
+            box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
         }
 
         /* Booked Seat */
@@ -149,9 +154,9 @@
         }
 
         @keyframes pulseSelection {
-            0% { outline-color: rgba(59, 130, 246, 0.8); }
-            50% { outline-color: rgba(59, 130, 246, 0.2); }
-            100% { outline-color: rgba(59, 130, 246, 0.8); }
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
 
         /* Legend */

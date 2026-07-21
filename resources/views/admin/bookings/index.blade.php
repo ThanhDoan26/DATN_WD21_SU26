@@ -257,16 +257,16 @@
                             <a href="{{ route('admin.bookings.show', $booking->id) }}" class="btn btn-sm btn-info" title="Xem chi tiết">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <a href="{{ route('admin.bookings.edit', $booking->id) }}" class="btn btn-sm btn-warning" title="Sửa">
+                            <!-- <a href="{{ route('admin.bookings.edit', $booking->id) }}" class="btn btn-sm btn-warning" title="Sửa">
                                 <i class="fas fa-edit"></i>
-                            </a>
-                            <form action="{{ route('admin.bookings.destroy', $booking->id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Xác nhận xóa đơn hàng này?');">
+                            </a> -->
+                            <!-- <form action="{{ route('admin.bookings.destroy', $booking->id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Xác nhận xóa đơn hàng này?');">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="btn btn-sm btn-danger" title="Xóa">
                                     <i class="fas fa-trash"></i>
                                 </button>
-                            </form>
+                            </form> -->
                         </div>
                     </td>
                 </tr>

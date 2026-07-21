@@ -133,15 +133,50 @@
         </div>
     </div>
 
+    <!-- Session Messages -->
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-3 py-3 mb-3" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-check-circle fa-2x me-3 text-success"></i>
+                <div>
+                    <h6 class="alert-heading fw-bold mb-1">Thành công!</h6>
+                    <p class="mb-0 text-success-emphasis">{{ session('success') }}</p>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm rounded-3 py-3 mb-3" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-times-circle fa-2x me-3 text-danger"></i>
+                <div>
+                    <h6 class="alert-heading fw-bold mb-1">Lỗi!</h6>
+                    <p class="mb-0 text-danger-emphasis">{{ session('error') }}</p>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
     <!-- Warnings & Alerts Section -->
     @if(isset($warnings) && count($warnings) > 0)
         @foreach($warnings as $warning)
-            <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm rounded-3 py-3 mb-3" role="alert">
+            @php
+                // Xác định loại cảnh báo dựa trên nội dung
+                $isInfo = str_contains($warning, 'đã được sử dụng');
+                $alertClass = $isInfo ? 'alert-info' : 'alert-warning';
+                $iconClass = $isInfo ? 'fa-info-circle text-info' : 'fa-exclamation-triangle text-warning';
+                $title = $isInfo ? 'Thông tin vé:' : 'Lưu ý vé không đủ điều kiện Check-in:';
+                $textClass = $isInfo ? 'text-info-emphasis' : 'text-warning-emphasis';
+            @endphp
+            <div class="alert {{ $alertClass }} alert-dismissible fade show border-0 shadow-sm rounded-3 py-3 mb-3" role="alert">
                 <div class="d-flex align-items-center">
-                    <i class="fas fa-exclamation-triangle fa-2x me-3 text-danger"></i>
+                    <i class="fas {{ $iconClass }} fa-2x me-3"></i>
                     <div>
-                        <h6 class="alert-heading fw-bold mb-1">Cảnh báo vé không hợp lệ!</h6>
-                        <p class="mb-0 text-secondary-emphasis">{{ $warning }}</p>
+                        <h6 class="alert-heading fw-bold mb-1">{{ $title }}</h6>
+                        <p class="mb-0 {{ $textClass }}">{{ $warning }}</p>
                     </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
