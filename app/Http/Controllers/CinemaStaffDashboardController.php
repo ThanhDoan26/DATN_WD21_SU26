@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\BookedSeat;
 use App\Models\Showtime;
 use Illuminate\Support\Facades\DB;
+use App\Services\QRCodeService;
 
 class CinemaStaffDashboardController extends Controller
 {
@@ -136,21 +137,36 @@ class CinemaStaffDashboardController extends Controller
 
         if ($code) {
             $originalCode = trim($code);
-            $code = strtoupper($originalCode);
             
-            // Bóc tách token nếu QR Code là URL (VD: http://.../tickets/xxx-yyy)
-            $extractedToken = $originalCode;
-            if (filter_var($originalCode, FILTER_VALIDATE_URL)) {
-                $segments = explode('/', parse_url($originalCode, PHP_URL_PATH));
-                $extractedToken = end($segments);
+            // 1. Kiểm tra xem chuỗi quét được có phải là JSON hợp lệ và chứa 'checksum' và 'booking_code' hay không
+            $decoded = json_decode($originalCode, true);
+            if (is_array($decoded) && isset($decoded['checksum']) && isset($decoded['booking_code'])) {
+                // 2. Nếu đúng là JSON vé điện tử:
+                $qrCodeService = app(QRCodeService::class);
+                $verifyResult = $qrCodeService->verifyTicketQRCode($originalCode);
+                if (isset($verifyResult['valid']) && !$verifyResult['valid']) {
+                    $warnings[] = $verifyResult['message'];
+                }
+                $code = strtoupper($decoded['booking_code']);
+                $extractedToken = null;
+            } else {
+                // 3. Nếu KHÔNG phải JSON (mã booking thường hoặc URL): giữ nguyên toàn bộ logic cũ
+                $code = strtoupper($originalCode);
+                
+                // Bóc tách token nếu QR Code là URL (VD: http://.../tickets/xxx-yyy)
+                $extractedToken = $originalCode;
+                if (filter_var($originalCode, FILTER_VALIDATE_URL)) {
+                    $segments = explode('/', parse_url($originalCode, PHP_URL_PATH));
+                    $extractedToken = end($segments);
+                }
+                $extractedToken = strtolower($extractedToken);
             }
-            $extractedToken = strtolower($extractedToken);
 
             $user = auth()->user();
             $cinemaId = $user->cinema_id;
 
             // 1. Tìm theo mã booking
-            $booking = Booking::with([
+            $bookingQuery = Booking::with([
                 'user',
                 'showtime',
                 'showtime.movie',
@@ -158,8 +174,13 @@ class CinemaStaffDashboardController extends Controller
                 'showtime.room.cinema',
                 'bookedSeats',
                 'bookedSeats.seat'
-            ])->where('booking_code', $code)
-              ->orWhere('ticket_token', $extractedToken)->first();
+            ])->where('booking_code', $code);
+
+            if (!empty($extractedToken)) {
+                $bookingQuery->orWhere('ticket_token', $extractedToken);
+            }
+
+            $booking = $bookingQuery->first();
 
             if ($booking) {
                 $result = $booking;
