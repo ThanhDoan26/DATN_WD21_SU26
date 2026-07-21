@@ -6,16 +6,30 @@ use App\Http\Controllers\Controller;
 use App\Models\Combo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ComboController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $combos = Combo::orderBy('id', 'desc')->paginate(10);
-        return view('admin.combos.index', compact('combos'));
+        $search = $request->query('search');
+        $status = $request->query('status');
+
+        $combos = Combo::query()
+            ->when($search, function ($query, $search) {
+                return $query->where('name', 'like', '%' . $search . '%');
+            })
+            ->when($status, function ($query, $status) {
+                return $query->where('status', $status);
+            })
+            ->orderBy('id', 'desc')
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('admin.combos.index', compact('combos', 'search', 'status'));
     }
 
     /**
@@ -32,11 +46,20 @@ class ComboController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('combos')->where(function ($query) {
+                    return $query->where('status', 'ACTIVE');
+                }),
+            ],
             'price' => 'required|numeric|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'description' => 'nullable|string',
             'status' => 'required|in:ACTIVE,INACTIVE',
+        ], [
+            'name.unique' => 'Tên combo này đang trùng với một combo khác đang hoạt động.',
         ]);
 
         $data = $request->except('image');
@@ -73,11 +96,20 @@ class ComboController extends Controller
     public function update(Request $request, Combo $combo)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('combos')->where(function ($query) {
+                    return $query->where('status', 'ACTIVE');
+                })->ignore($combo->id),
+            ],
             'price' => 'required|numeric|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'description' => 'nullable|string',
             'status' => 'required|in:ACTIVE,INACTIVE',
+        ], [
+            'name.unique' => 'Tên combo này đang trùng với một combo khác đang hoạt động.',
         ]);
 
         $data = $request->except('image');
@@ -108,5 +140,16 @@ class ComboController extends Controller
         $combo->delete();
 
         return redirect()->route('admin.combos.index')->with('success', 'Xoá combo bắp nước thành công!');
+    }
+
+    /**
+     * Toggle the status of the specified combo.
+     */
+    public function toggleStatus(Combo $combo)
+    {
+        $combo->status = $combo->status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+        $combo->save();
+
+        return back()->with('success', 'Trạng thái combo bắp nước đã được cập nhật thành công!');
     }
 }
