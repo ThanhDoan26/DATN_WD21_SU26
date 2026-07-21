@@ -50,8 +50,15 @@ class ShowtimeController extends AdminController
             'start_time' => [
                 'required',
                 'date',
-                Rule::unique('showtimes', 'start_time')
-                    ->where(fn ($query) => $query->where('room_id', $request->input('room_id'))),
+                function ($attribute, $value, $fail) use ($request) {
+                    $this->validateNoOverlap(
+                        roomId: $request->input('room_id'),
+                        startTime: $value,
+                        endTime: $request->input('end_time'),
+                        excludeId: null,
+                        fail: $fail,
+                    );
+                },
             ],
             'end_time' => [
                 'required',
@@ -84,7 +91,6 @@ class ShowtimeController extends AdminController
             'room_id.exists' => 'Phòng chiếu chọn không hợp lệ',
             'start_time.required' => 'Thời gian bắt đầu là bắt buộc',
             'start_time.date' => 'Thời gian bắt đầu không hợp lệ',
-            'start_time.unique' => 'Đã tồn tại suất chiếu cùng phòng vào thời điểm này',
             'end_time.required' => 'Thời gian kết thúc là bắt buộc',
             'end_time.date' => 'Thời gian kết thúc không hợp lệ',
             'end_time.after' => 'Thời gian kết thúc phải sau thời gian bắt đầu',
@@ -131,9 +137,15 @@ class ShowtimeController extends AdminController
             'start_time' => [
                 'required',
                 'date',
-                Rule::unique('showtimes', 'start_time')
-                    ->where(fn ($query) => $query->where('room_id', $request->input('room_id')))
-                    ->ignore($showtime->id),
+                function ($attribute, $value, $fail) use ($request, $showtime) {
+                    $this->validateNoOverlap(
+                        roomId: $request->input('room_id'),
+                        startTime: $value,
+                        endTime: $request->input('end_time'),
+                        excludeId: $showtime->id,
+                        fail: $fail,
+                    );
+                },
             ],
             'end_time' => [
                 'required',
@@ -166,7 +178,6 @@ class ShowtimeController extends AdminController
             'room_id.exists' => 'Phòng chiếu chọn không hợp lệ',
             'start_time.required' => 'Thời gian bắt đầu là bắt buộc',
             'start_time.date' => 'Thời gian bắt đầu không hợp lệ',
-            'start_time.unique' => 'Đã tồn tại suất chiếu cùng phòng vào thời điểm này',
             'end_time.required' => 'Thời gian kết thúc là bắt buộc',
             'end_time.date' => 'Thời gian kết thúc không hợp lệ',
             'end_time.after' => 'Thời gian kết thúc phải sau thời gian bắt đầu',
@@ -256,5 +267,53 @@ class ShowtimeController extends AdminController
 
         return redirect()->route('admin.showtimes.index')
             ->with('success', 'Xóa suất chiếu thành công!');
+    }
+
+    /**
+     * Kiểm tra xung đột lịch chiếu trong cùng phòng.
+     *
+     * Logic: Hai khoảng thời gian [A_start, A_end) và [B_start, B_end) bị chồng lên nhau
+     * khi và chỉ khi: A_start < B_end AND A_end > B_start
+     *
+     * @param  int|string  $roomId      ID phòng chiếu cần kiểm tra
+     * @param  string      $startTime   Thời gian bắt đầu của suất chiếu mới
+     * @param  string|null $endTime     Thời gian kết thúc của suất chiếu mới
+     * @param  int|null    $excludeId   ID suất chiếu hiện tại cần bỏ qua (khi chỉnh sửa)
+     * @param  callable    $fail        Callback từ Laravel validation để báo lỗi
+     */
+    private function validateNoOverlap(
+        int|string $roomId,
+        string $startTime,
+        ?string $endTime,
+        ?int $excludeId,
+        callable $fail
+    ): void {
+        if (! $roomId || ! $startTime || ! $endTime) {
+            return;
+        }
+
+        $newStart = Carbon::parse($startTime);
+        $newEnd   = Carbon::parse($endTime);
+
+        $conflict = Showtime::where('room_id', $roomId)
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->whereNotNull('end_time')
+            // Overlap: existing.start_time < newEnd AND existing.end_time > newStart
+            ->where('start_time', '<', $newEnd)
+            ->where('end_time', '>', $newStart)
+            ->with('movie')
+            ->first();
+
+        if ($conflict) {
+            $conflictStart = Carbon::parse($conflict->start_time)->format('H:i d/m/Y');
+            $conflictEnd   = Carbon::parse($conflict->end_time)->format('H:i d/m/Y');
+            $movieTitle    = $conflict->movie?->title ?? 'Không rõ';
+
+            $fail(
+                "Lịch chiếu bị trùng với suất chiếu \"{$movieTitle}\" (" .
+                "{$conflictStart} – {$conflictEnd}) trong cùng phòng. " .
+                "Vui lòng chọn khung giờ khác."
+            );
+        }
     }
 }

@@ -5,8 +5,8 @@
 
 @section('extra_css')
 <style>
-    .seat-preview-wrapper { background: #ffffff; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; align-items: center; margin: 15px 0; border: 1px solid #e2e8f0; overflow-x: auto; }
-    .preview-screen { width: 70%; max-width: 500px; margin: 0 auto 30px auto; padding: 10px 0; text-align: center; background: linear-gradient(180deg, rgba(30, 60, 114, 0.12) 0%, rgba(30, 60, 114, 0.02) 100%); border-top: 5px solid #1e3c72; border-radius: 8px 8px 100px 100px; font-size: 0.75rem; font-weight: 700; letter-spacing: 6px; color: #1e3c72; text-transform: uppercase; }
+    .seat-preview-wrapper { background: var(--bg-surface); padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; align-items: center; margin: 15px 0; border: 1px solid var(--border-light); overflow-x: auto; }
+    .preview-screen { width: 70%; max-width: 500px; margin: 0 auto 30px auto; padding: 10px 0; text-align: center; background: linear-gradient(180deg, rgba(147, 51, 234, 0.12) 0%, rgba(147, 51, 234, 0.02) 100%); border-top: 5px solid var(--primary-color); border-radius: 8px 8px 100px 100px; font-size: 0.75rem; font-weight: 700; letter-spacing: 6px; color: var(--primary-color); text-transform: uppercase; font-family: 'Sora', sans-serif; }
     .preview-layout { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
     .preview-row { display: flex; align-items: center; justify-content: center; gap: 5px; }
     .preview-row-label { font-size: 0.7rem; font-weight: 700; color: #94a3b8; width: 22px; text-align: center; }
@@ -17,9 +17,9 @@
     .preview-legend { display: flex; gap: 16px; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
     .preview-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #475569; }
     .preview-legend-box { width: 18px; height: 18px; border-radius: 4px; }
-    .calc-info { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 15px; margin-top: 15px; }
+    .calc-info { background: var(--bg-base); border: 1px solid var(--border-light); border-radius: 10px; padding: 15px; margin-top: 15px; }
     .calc-info .calc-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 0.9rem; }
-    .calc-info .calc-total { font-size: 1.1rem; font-weight: 700; color: #1e3c72; border-top: 2px solid #bae6fd; padding-top: 8px; margin-top: 4px; }
+    .calc-info .calc-total { font-size: 1.1rem; font-weight: 700; color: var(--primary-color); border-top: 2px solid var(--border-light); padding-top: 8px; margin-top: 4px; font-family: 'Sora', sans-serif; }
 </style>
 @endsection
 
