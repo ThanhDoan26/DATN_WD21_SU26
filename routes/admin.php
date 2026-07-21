@@ -144,6 +144,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::resource('coupons', CouponController::class, ['as' => 'admin']);
 
     // Combos
+    Route::patch('combos/{combo}/toggle-status', [ComboController::class, 'toggleStatus'])->name('admin.combos.toggle-status');
     Route::resource('combos', ComboController::class, ['as' => 'admin']);
 
     });

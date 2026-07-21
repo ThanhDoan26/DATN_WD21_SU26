@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Models\Room;
 use App\Models\Cinema;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * RoomController
@@ -54,10 +55,19 @@ class RoomController extends AdminController
     {
         $validated = $request->validate([
             'cinema_id' => 'required|exists:cinemas,id',
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('rooms')->where(function ($query) use ($request) {
+                    return $query->where('cinema_id', $request->input('cinema_id'));
+                })
+            ],
             'format' => 'required|string|max:100',
             'total_seats' => 'nullable|integer|min:0',
             'status' => 'required|in:ACTIVE,INACTIVE,MAINTENANCE,CLOSED',
+        ], [
+            'name.unique' => 'Tên phòng chiếu đã tồn tại trong rạp này.',
         ]);
 
         // Hỗ trợ lấy total_rows và total_cols từ request (nếu form có), nếu không có thì tự tính dựa trên total_seats
@@ -166,10 +176,19 @@ class RoomController extends AdminController
     {
         $validated = $request->validate([
             'cinema_id' => 'required|exists:cinemas,id',
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('rooms')->where(function ($query) use ($request) {
+                    return $query->where('cinema_id', $request->input('cinema_id'));
+                })->ignore($room->id)
+            ],
             'format' => 'required|string|max:100',
             'total_seats' => 'nullable|integer|min:0',
             'status' => 'required|in:ACTIVE,INACTIVE,MAINTENANCE,CLOSED',
+        ], [
+            'name.unique' => 'Tên phòng chiếu đã tồn tại trong rạp này.',
         ]);
 
         $oldTotalSeats = (int) $room->total_seats;

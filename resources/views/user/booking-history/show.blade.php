@@ -128,7 +128,9 @@
                                             </div>
                                             <div class="text-right">
                                                 <p class="text-white font-bold text-sm">{{ number_format($combo->pivot->price) }}đ</p>
+                                            </div>
                                         </div>
+                                    </div>
                                 @endforeach
                             </div>
                         @endif
@@ -165,7 +167,7 @@
                                 </div>
                             @elseif($booking->status === 'Paid')
                                 <div class="w-48 h-48 bg-slate-100 rounded-2xl flex items-center justify-center border-4 border-slate-50 overflow-hidden group-hover/qr:scale-105 transition-transform duration-500">
-                                     {!! \SimpleSoftwareIO\QrCode\Facades\QrCode::size(160)->generate(url('/tickets/' . $booking->ticket_token)) !!}
+                                     {!! \SimpleSoftwareIO\QrCode\Facades\QrCode::size(160)->margin(0)->generate(url('/tickets/' . $booking->ticket_token)) !!}
                                 </div>
                             @elseif($booking->status === 'Pending')
                                 <div class="w-48 h-48 bg-amber-50 rounded-2xl flex flex-col items-center justify-center border-4 border-amber-100 p-4 text-center">
