@@ -5,7 +5,7 @@
         $chatMessages = \App\Models\ChatMessage::where('conversation_id', $conversation->id)->orderBy('created_at', 'asc')->get();
     }
 @endphp
-<div id="ai-chatbot-widget" class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 font-sans">
+<div id="ai-chatbot-widget" class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 font-sans pointer-events-none">
     
     {{-- Chat Window --}}
     <div id="ai-chat-window" class="w-[360px] max-w-[calc(100vw-2rem)] h-[550px] max-h-[calc(100vh-8rem)] bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-200 flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right opacity-0 scale-90 pointer-events-none">
@@ -94,7 +94,7 @@
     </div>
 
     {{-- Floating Button --}}
-    <button type="button" id="ai-chat-toggle" class="w-14 h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-full flex items-center justify-center shadow-[0_4px_14px_0_rgb(0,0,0,0.39)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.23)] border border-slate-700 transition-all cursor-pointer relative z-50">
+    <button type="button" id="ai-chat-toggle" class="pointer-events-auto w-14 h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-full flex items-center justify-center shadow-[0_4px_14px_0_rgb(0,0,0,0.39)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.23)] border border-slate-700 transition-all cursor-pointer relative z-50">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
         </svg>
