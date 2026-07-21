@@ -149,9 +149,12 @@
                         <div class="small text-muted">Chọn giờ .</div>
                         @error('end_time')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
+<<<<<<< HEAD
                             <div class="text-danger small mt-1 d-flex align-items-center gap-1">
                                 <i class="fas fa-circle-exclamation"></i> {{ $message }}
                             </div>
+=======
+>>>>>>> 9730541d563131ed93072a9122ca8bda6ec5f09b
                         @enderror
                     </div>
                 </div>
