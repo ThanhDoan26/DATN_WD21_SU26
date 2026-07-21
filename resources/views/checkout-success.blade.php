@@ -83,3 +83,10 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    // Thanh toán thành công — xóa timer để không hiện overlay hết hạn
+    sessionStorage.removeItem('booking_expires_at');
+</script>
+@endpush

@@ -7,7 +7,7 @@
         <!-- Legend -->
         <div class="seat-map-legend mb-4">
             <div class="legend-item">
-                <div class="legend-seat-indicator" style="background-color: #1e3c72; color: white; border: 2px solid #0d1f47;"></div>
+                <div class="legend-seat-indicator" style="background-color: var(--primary-color); color: white; border: 2px solid var(--sidebar-bg);"></div>
                 <span><strong>Ghế đặt trong đơn hàng này</strong></span>
             </div>
             <div class="legend-item">

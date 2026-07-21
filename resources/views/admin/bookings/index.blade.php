@@ -321,7 +321,7 @@ table thead th a {
 }
 
 table thead th a:hover {
-    color: #1e3c72;
+    color: var(--primary-color);
     text-decoration: underline;
 }
 

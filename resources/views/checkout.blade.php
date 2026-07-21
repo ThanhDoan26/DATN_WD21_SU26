@@ -16,6 +16,77 @@
             opacity: 1;
             transform: scale(1);
         }
+
+        /* ===================== COUNTDOWN TIMER ===================== */
+        #booking-timer-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 9999;
+            display: none;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+            padding: 0 24px;
+            height: 60px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            animation: timerSlideDown 0.4s cubic-bezier(0.4,0,0.2,1) forwards;
+        }
+        @keyframes timerSlideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to   { transform: translateY(0);     opacity: 1; }
+        }
+        #timer-progress-track {
+            flex: 1; max-width: 300px;
+            height: 6px; background: rgba(255,255,255,0.1);
+            border-radius: 99px; overflow: hidden;
+        }
+        #timer-progress-fill {
+            height: 100%; border-radius: 99px;
+            background: linear-gradient(90deg, #22c55e, #facc15, #e50914);
+            background-size: 300% 100%;
+            background-position: 0% 50%;
+            transition: width 1s linear, background-position 1s linear;
+            width: 100%;
+        }
+        #timer-digits {
+            font-variant-numeric: tabular-nums;
+            font-size: 1.25rem; font-weight: 800;
+            letter-spacing: 1px; min-width: 56px;
+            text-align: center; transition: color 0.5s;
+            color: #ffffff;
+        }
+        #timer-digits.urgent { color: #ef4444 !important; animation: timerPulse 0.8s infinite; }
+        @keyframes timerPulse {
+            0%,100% { opacity: 1; }
+            50%      { opacity: 0.55; }
+        }
+        /* Expired overlay */
+        #booking-expired-overlay {
+            display: none; position: fixed; inset: 0; z-index: 99999;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
+            align-items: center; justify-content: center;
+        }
+        #booking-expired-overlay.active { display: flex; }
+        .expired-card {
+            background: #0f172a; border: 1px solid rgba(239,68,68,0.2);
+            border-radius: 24px; padding: 48px 40px;
+            max-width: 440px; width: 90%; text-align: center;
+            box-shadow: 0 32px 64px rgba(0,0,0,0.6);
+            animation: expiredZoomIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards;
+        }
+        @keyframes expiredZoomIn {
+            from { transform: scale(0.85); opacity: 0; }
+            to   { transform: scale(1);    opacity: 1; }
+        }
+        .expired-icon {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: rgba(239,68,68,0.15); border: 2px solid rgba(239,68,68,0.3);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 24px; font-size: 1.75rem; color: #ef4444;
+        }
+        /* ============================================================ */
     </style>
 @endpush
 
@@ -306,6 +377,38 @@
                             </div>
                         </div>
 
+                        <!-- ===== COUNTDOWN CLOCK WIDGET ===== -->
+                        <div id="sidebar-timer-widget"
+                             style="margin-bottom:20px;background:linear-gradient(135deg,rgba(15,23,42,0.9),rgba(30,41,59,0.9));border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px 20px;display:flex;align-items:center;gap:14px">
+                            <!-- Ring icon -->
+                            <div id="sidebar-timer-ring" style="position:relative;width:64px;height:64px;flex-shrink:0">
+                                <svg viewBox="0 0 64 64" style="width:64px;height:64px;transform:rotate(-90deg)">
+                                    <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="5"/>
+                                    <circle id="sidebar-ring-arc" cx="32" cy="32" r="27" fill="none"
+                                            stroke="#22c55e" stroke-width="5" stroke-linecap="round"
+                                            stroke-dasharray="169.6" stroke-dashoffset="0"
+                                            style="transition:stroke-dashoffset 1s linear,stroke 0.5s"/>
+                                </svg>
+                                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                                    <i class="far fa-clock" id="sidebar-clock-icon" style="font-size:1.1rem;color:#94a3b8;transition:color 0.5s"></i>
+                                </div>
+                            </div>
+                            <!-- Time text -->
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:#64748b;font-weight:600;margin-bottom:4px">
+                                    Thời gian giữ ghế
+                                </div>
+                                <div id="sidebar-timer-digits"
+                                     style="font-size:2rem;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:2px;color:#ffffff;line-height:1;transition:color 0.4s">
+                                    10:00
+                                </div>
+                                <div id="sidebar-timer-label" style="font-size:0.72rem;color:#64748b;margin-top:4px">
+                                    Chờ xác nhận thanh toán...
+                                </div>
+                            </div>
+                        </div>
+                        <!-- ==================================== -->
+
                         <div class="space-y-3">
                             <button id="confirm-reservation" class="w-full rounded-2xl bg-[#e50914] px-6 py-4 text-white text-lg font-bold hover:bg-[#b80710] hover:shadow-lg hover:shadow-red-500/40 transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-3">
                                 <span>Thanh toán ngay</span>
@@ -316,11 +419,41 @@
                                 <span>Quay lại</span>
                             </a>
                         </div>
-                        <p class="mt-4 text-center text-xs text-slate-500">Ghế của bạn sẽ được giữ trong <span class="text-slate-300 font-medium"><i class="far fa-clock"></i> {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES }} phút</span></p>
                     </div>
                 </div>
             </div>
         @endif
+    </div>
+
+    {{-- ======== COUNTDOWN TIMER BAR (sticky top) ======== --}}
+    <div id="booking-timer-bar">
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+            <i class="far fa-clock" style="color:#facc15;font-size:1.1rem"></i>
+            <span style="color:#94a3b8;font-size:0.85rem;font-weight:500" class="hidden-xs">Thời gian giữ ghế</span>
+            <span id="timer-digits">10:00</span>
+        </div>
+        <div id="timer-progress-track">
+            <div id="timer-progress-fill"></div>
+        </div>
+        <span style="font-size:0.75rem;color:#64748b;flex-shrink:0" class="hidden-xs">Thanh toán trước khi hết giờ</span>
+    </div>
+
+    {{-- ======== SESSION EXPIRED OVERLAY ======== --}}
+    <div id="booking-expired-overlay">
+        <div class="expired-card">
+            <div class="expired-icon"><i class="fas fa-clock"></i></div>
+            <h2 style="font-size:1.5rem;font-weight:800;color:#fff;margin-bottom:12px">Phiên đặt vé đã hết hạn</h2>
+            <p style="color:#94a3b8;font-size:0.9rem;line-height:1.6;margin-bottom:28px">
+                Quá <strong style="color:#fff">10 phút</strong> mà chưa hoàn tất thanh toán,<br>
+                ghế của bạn đã được giải phóng.<br>
+                Vui lòng chọn lại ghế để tiếp tục.
+            </p>
+            <a id="expired-back-btn" href="/"
+               style="display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#e50914;color:#fff;font-weight:700;padding:14px 32px;border-radius:16px;text-decoration:none;width:100%;transition:background 0.2s"
+               onmouseover="this.style.background='#b80710'" onmouseout="this.style.background='#e50914'">
+                <i class="fas fa-arrow-left"></i> Chọn lại ghế
+            </a>
+        </div>
     </div>
 
 @endsection
@@ -332,6 +465,8 @@
                 return;
             @endif
 
+            console.log("Checkout timer script: DOMContentLoaded loaded.");
+
             const showtimeId = @json($showtimeId ?? '');
             const seatIds = @json($seatIds ?? '');
             const ticketTotal = {{ $total ?? 0 }}; // Tiền vé đã bao gồm phụ thu
@@ -339,7 +474,136 @@
             const reserveUrl = @json(route('checkout.reserve', [], false));
             const stripeSessionUrl = @json(route('stripe.session', [], false));
             const successUrl = @json(route('checkout.success', [], false));
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
+            const TIMEOUT_SECONDS = {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES * 60 }};
+            const seatSelectionUrl = '{{ url()->previous() }}';
+
+            // ===================== COUNTDOWN TIMER =====================
+            let countdownInterval = null;
+            const timerBar       = document.getElementById('booking-timer-bar');
+            const timerDigits    = document.getElementById('timer-digits');
+            const timerFill      = document.getElementById('timer-progress-fill');
+            const expiredOverlay = document.getElementById('booking-expired-overlay');
+            const expiredBackBtn = document.getElementById('expired-back-btn');
+
+            function startCountdown(expiresAtMs) {
+                console.log("startCountdown starting for timestamp:", expiresAtMs, "Current time:", Date.now());
+                if (expiredBackBtn) expiredBackBtn.href = seatSelectionUrl;
+                if (timerBar) timerBar.style.display = 'flex';
+
+                // Sidebar widget elements
+                const sidebarDigits  = document.getElementById('sidebar-timer-digits');
+                const sidebarLabel   = document.getElementById('sidebar-timer-label');
+                const sidebarArc     = document.getElementById('sidebar-ring-arc');
+                const sidebarIcon    = document.getElementById('sidebar-clock-icon');
+                const ARC_LEN = 169.6; // 2*π*27
+
+                function tick() {
+                    const now = Date.now();
+                    const remaining = Math.max(0, Math.floor((expiresAtMs - now) / 1000));
+                    const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
+                    const secs = String(remaining % 60).padStart(2, '0');
+                    const display = `${mins}:${secs}`;
+
+                    // --- Top bar ---
+                    if (timerDigits) timerDigits.textContent = display;
+                    const pct = (remaining / TIMEOUT_SECONDS) * 100;
+                    if (timerFill) {
+                        timerFill.style.width = pct + '%';
+                        timerFill.style.backgroundPosition = `${100 - pct}% 50%`;
+                    }
+
+                    // --- Sidebar widget ---
+                    if (sidebarDigits) sidebarDigits.textContent = display;
+
+                    // SVG arc: dashoffset goes from 0 (full) → ARC_LEN (empty)
+                    const offset = ARC_LEN * (1 - remaining / TIMEOUT_SECONDS);
+                    if (sidebarArc) {
+                        sidebarArc.setAttribute('stroke-dashoffset', offset);
+                    }
+
+                    // Color transitions: green → yellow → red
+                    let color;
+                    if (remaining > 300)      color = '#22c55e'; // green  > 5 min
+                    else if (remaining > 90)  color = '#facc15'; // yellow 1.5-5 min
+                    else                      color = '#ef4444'; // red    < 1.5 min
+
+                    if (sidebarArc)  sidebarArc.style.stroke = color;
+                    if (sidebarIcon) sidebarIcon.style.color  = color;
+                    if (sidebarDigits) sidebarDigits.style.color = color;
+
+                    if (remaining <= 90) {
+                        if (timerDigits) timerDigits.classList.add('urgent');
+                        if (sidebarLabel) {
+                            sidebarLabel.textContent = '⚠ Sắp hết thời gian!';
+                            sidebarLabel.style.color = '#ef4444';
+                        }
+                    } else {
+                        if (timerDigits) timerDigits.classList.remove('urgent');
+                        if (sidebarLabel) {
+                            sidebarLabel.textContent = 'Thanh toán trước khi hết giờ';
+                            sidebarLabel.style.color = '#64748b';
+                        }
+                    }
+
+                    if (remaining <= 0) {
+                        console.log("Timer expired!");
+                        clearInterval(countdownInterval);
+                        sessionStorage.removeItem('booking_expires_at');
+                        if (timerBar) timerBar.style.display = 'none';
+                        if (expiredOverlay) expiredOverlay.classList.add('active');
+                    }
+                }
+
+                tick();
+                clearInterval(countdownInterval);
+                countdownInterval = setInterval(tick, 1000);
+            }
+
+            // ---- Khởi động timer ngay khi vào trang ----
+            // 1. Nếu server trả về thời gian kết thúc của Booking có sẵn trong DB → Ưu tiên dùng
+            // 2. Nếu có timer lưu trong sessionStorage (resume từ Stripe) → dùng tiếp
+            // 3. Nếu chưa có → đếm 10 phút từ hiện tại
+            (function initTimer() {
+                console.log("initTimer called.");
+                if (expiredBackBtn) expiredBackBtn.href = seatSelectionUrl;
+
+                const serverExpiresAt = @json($expiresAtMs ?? null);
+                if (serverExpiresAt) {
+                    const expiresAtMs = parseInt(serverExpiresAt, 10);
+                    console.log("initTimer: found server-side expiry:", expiresAtMs);
+                    sessionStorage.setItem('booking_expires_at', expiresAtMs.toString());
+                    if (expiresAtMs > Date.now()) {
+                        startCountdown(expiresAtMs);
+                    } else {
+                        sessionStorage.removeItem('booking_expires_at');
+                        if (expiredOverlay) expiredOverlay.classList.add('active');
+                    }
+                    return;
+                }
+
+                const stored = sessionStorage.getItem('booking_expires_at');
+                if (stored) {
+                    const expiresAtMs = parseInt(stored, 10);
+                    console.log("initTimer: found stored expiry:", expiresAtMs);
+                    if (expiresAtMs > Date.now()) {
+                        startCountdown(expiresAtMs);
+                    } else {
+                        console.log("initTimer: stored expiry is in the past, showing overlay.");
+                        sessionStorage.removeItem('booking_expires_at');
+                        if (expiredOverlay) expiredOverlay.classList.add('active');
+                    }
+                } else {
+                    // Mới vào trang → bắt đầu đếm 10 phút ngay
+                    const freshExpiry = Date.now() + TIMEOUT_SECONDS * 1000;
+                    console.log("initTimer: starting fresh expiry:", freshExpiry);
+                    sessionStorage.setItem('booking_expires_at', freshExpiry.toString());
+                    startCountdown(freshExpiry);
+                }
+            })();
+            // ---------------------------------------------
 
             let combosTotal = 0;
             let currentDiscount = 0;
@@ -560,6 +824,17 @@
                         }
 
                         const bookingId = data.data.booking_id;
+
+                        // ===== KHỞI ĐỘNG ĐỒNG HỒ ĐẾM NGƯỢC =====
+                        const timeoutMs = (data.data?.timeout_minutes ?? {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES }}) * 60 * 1000;
+                        const bookingTime = data.data?.booking_time
+                            ? new Date(data.data.booking_time).getTime()
+                            : Date.now();
+                        const expiresAtMs = bookingTime + timeoutMs;
+                        // Lưu vào sessionStorage để timer vẫn chạy nếu Stripe redirect về
+                        sessionStorage.setItem('booking_expires_at', expiresAtMs.toString());
+                        startCountdown(expiresAtMs);
+                        // ==========================================
 
                         // ========== BƯỚC 2: TẠO STRIPE SESSION ==========
                         return fetch(stripeSessionUrl, {

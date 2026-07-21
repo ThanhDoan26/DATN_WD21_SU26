@@ -102,7 +102,20 @@ class CheckoutController extends Controller
                 $total += $seatFinalPrice;
             }
 
-            $surcharge = (float) $showtime->surcharge;
+            // Check if there is an existing pending booking for this user, showtime and these seats
+            $pendingBooking = Booking::where('user_id', Auth::id())
+                ->where('showtime_id', $showtimeId)
+                ->where('status', 'Pending')
+                ->whereHas('bookedSeats', function ($q) use ($seatIds) {
+                    $q->whereIn('seat_id', $seatIds);
+                })
+                ->orderBy('booking_time', 'desc')
+                ->first();
+
+            $expiresAtMs = null;
+            if ($pendingBooking) {
+                $expiresAtMs = ($pendingBooking->booking_time->timestamp + BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES * 60) * 1000;
+            }
         }
 
         $combos = Combo::where('status', 'ACTIVE')->get();
@@ -119,7 +132,8 @@ class CheckoutController extends Controller
             'seatIds',
             'showtimeId',
             'combos',
-            'coupons'
+            'coupons',
+            'expiresAtMs'
         ));
     }
 

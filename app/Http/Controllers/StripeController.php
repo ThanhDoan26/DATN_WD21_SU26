@@ -107,12 +107,12 @@ class StripeController extends Controller
 
     public function cancel(Request $request)
     {
-        $booking = Booking::findOrFail($request->booking_id);
+        $booking = Booking::with('bookedSeats')->findOrFail($request->booking_id);
+        $seatIds = $booking->bookedSeats->pluck('seat_id')->implode(',');
 
-        // Không hủy ngay, để hệ thống tự hết hạn theo thời gian (10 phút)
-        // Người dùng có thể quay lại chọn ghế nếu muốn
-
-        return redirect()->route('checkout')
-            ->with('info', 'Bạn đã hủy thanh toán. Ghế vẫn được giữ trong 10 phút. Bạn có thể quay lại để tiếp tục.');
+        return redirect()->route('checkout', [
+            'showtime_id' => $booking->showtime_id,
+            'seat_ids' => $seatIds,
+        ])->with('info', 'Bạn đã hủy thanh toán. Ghế vẫn được giữ trong 10 phút. Bạn có thể quay lại để tiếp tục.');
     }
 }
