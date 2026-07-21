@@ -52,6 +52,9 @@
     <!-- Footer -->
     @include('layouts.guest-footer')
 
+    <!-- AI Chatbot Widget -->
+    @include('components.chatbot.widget')
+
     @stack('scripts')
 </body>
 </html>

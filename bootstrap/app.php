@@ -16,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function () {
             Route::middleware('api')
-                ->prefix('api/chatbot')
+                ->prefix('api')
                 ->group(base_path('routes/ai.php'));
         },
     )

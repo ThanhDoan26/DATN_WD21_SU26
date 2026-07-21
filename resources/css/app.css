@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap');
+@import '../views/components/chatbot/chatbot.css';
 
 @tailwind base;
 @tailwind components;
@@ -14,12 +15,18 @@
         font-feature-settings: "rlig" 1, "calt" 1;
     }
 
-    h1, h2, h3, h4, h5, h6 {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
         @apply font-display font-semibold tracking-tight;
     }
 }
 
 @layer components {
+
     /* ============ AUTHENTICATION LAYOUT ============ */
     .auth-container {
         @apply min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 sm:py-16;
@@ -203,8 +210,15 @@
 
     /* ============ ANIMATIONS ============ */
     @keyframes glow {
-        0%, 100% { opacity: 0.5; }
-        50% { opacity: 1; }
+
+        0%,
+        100% {
+            opacity: 0.5;
+        }
+
+        50% {
+            opacity: 1;
+        }
     }
 
     .animate-glow {

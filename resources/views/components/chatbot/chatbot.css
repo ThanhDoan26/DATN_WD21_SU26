@@ -1,0 +1,14 @@
+/* resources/views/components/chatbot/chatbot.css */
+.chatbot-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.chatbot-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.chatbot-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #e2e8f0; /* tailwind slate-200 */
+    border-radius: 10px;
+}
+.chatbot-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #cbd5e1; /* tailwind slate-300 */
+}
