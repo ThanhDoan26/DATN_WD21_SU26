@@ -138,29 +138,25 @@
 
     /* Active Selection */
     .seat.selected-active {
-<<<<<<< HEAD
         background-color: #22c55e !important;
         border-color: #16a34a !important;
         color: #ffffff !important;
         outline: none !important;
         box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.4);
-=======
         outline: 3px solid var(--primary-color);
         outline-offset: 2px;
->>>>>>> 6ef7026e588cacafcb5b86da61ba8cd98d3b563a
         animation: pulseSelection 1.5s infinite;
     }
 
     @keyframes pulseSelection {
-<<<<<<< HEAD
         0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
         70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
         100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-=======
+
         0% { outline-color: rgba(147, 51, 234, 0.8); }
         50% { outline-color: rgba(147, 51, 234, 0.1); }
         100% { outline-color: rgba(147, 51, 234, 0.8); }
->>>>>>> 6ef7026e588cacafcb5b86da61ba8cd98d3b563a
+
     }
 
     .seat-legend {

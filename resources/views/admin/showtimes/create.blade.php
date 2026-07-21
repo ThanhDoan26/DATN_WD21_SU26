@@ -110,13 +110,12 @@
                         <input type="hidden" id="start_time" name="start_time" value="{{ old('start_time') }}">
                         <div class="small text-muted">Chọn giờ:.</div>
                         @error('start_time')
-<<<<<<< HEAD
                             <div class="invalid-feedback d-block">{{ $message }}</div>
-=======
+
                             <div class="text-danger small mt-1 d-flex align-items-center gap-1">
                                 <i class="fas fa-circle-exclamation"></i> {{ $message }}
                             </div>
->>>>>>> 6ef7026e588cacafcb5b86da61ba8cd98d3b563a
+
                         @enderror
                     </div>
                 </div>
@@ -149,13 +148,10 @@
                         <input type="hidden" id="end_time" name="end_time" value="{{ old('end_time') }}">
                         <div class="small text-muted">Chọn giờ .</div>
                         @error('end_time')
-<<<<<<< HEAD
                             <div class="invalid-feedback d-block">{{ $message }}</div>
-=======
                             <div class="text-danger small mt-1 d-flex align-items-center gap-1">
                                 <i class="fas fa-circle-exclamation"></i> {{ $message }}
                             </div>
->>>>>>> 6ef7026e588cacafcb5b86da61ba8cd98d3b563a
                         @enderror
                     </div>
                 </div>
@@ -295,15 +291,12 @@
     .seat.vip { background-color: #f59e0b; color: #1e293b; border-color: #d97706; }
     .seat.sweetbox { background-color: #ec4899; width: 90px; border-color: #db2777; }
     .seat.unavailable { background-color: #cbd5e1 !important; border-color: #94a3b8 !important; color: #64748b !important; cursor: not-allowed; box-shadow: none; opacity: 0.75; }
-<<<<<<< HEAD
     .seat.selected-active { background-color: #22c55e !important; border-color: #16a34a !important; color: #ffffff !important; outline: none !important; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.4); animation: pulseSelection 1.5s infinite; }
     @keyframes pulseSelection { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
     .seat-legend { display: flex; gap: 20px; margin: 10px 0 30px 0; flex-wrap: wrap; justify-content: center; background-color: #f8fafc; padding: 15px 25px; border-radius: 12px; border: 1px solid #e2e8f0; }
-=======
     .seat.selected-active { outline: 3px solid var(--primary-color); outline-offset: 2px; animation: pulseSelection 1.5s infinite; }
     @keyframes pulseSelection { 0% { outline-color: rgba(147, 51, 234, 0.8); } 50% { outline-color: rgba(147, 51, 234, 0.1); } 100% { outline-color: rgba(147, 51, 234, 0.8); } }
     .seat-legend { display: flex; gap: 20px; margin: 10px 0 30px 0; flex-wrap: wrap; justify-content: center; background-color: var(--bg-base); padding: 15px 25px; border-radius: 12px; border: 1px solid var(--border-light); }
->>>>>>> 6ef7026e588cacafcb5b86da61ba8cd98d3b563a
     .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 500; color: #475569; }
     .legend-box { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.65rem; font-weight: 700; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
     .bg-sky { background-color: #0ea5e9 !important; color: #ffffff; }
