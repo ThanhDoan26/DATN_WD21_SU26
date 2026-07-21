@@ -50,7 +50,6 @@ class ShowtimeController extends AdminController
             'start_time' => [
                 'required',
                 'date',
-<<<<<<< HEAD
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id'))),
                 function ($attribute, $value, $fail) use ($request) {
@@ -77,7 +76,6 @@ class ShowtimeController extends AdminController
                     if ($overlap) {
                         $fail('Phòng chiếu này đã có lịch chiếu trong khoảng thời gian này.');
                     }
-=======
                 function ($attribute, $value, $fail) use ($request) {
                     $this->validateNoOverlap(
                         roomId: $request->input('room_id'),
@@ -86,7 +84,6 @@ class ShowtimeController extends AdminController
                         excludeId: null,
                         fail: $fail,
                     );
->>>>>>> 6ef7026e588cacafcb5b86da61ba8cd98d3b563a
                 },
             ],
             'end_time' => [
@@ -166,7 +163,6 @@ class ShowtimeController extends AdminController
             'start_time' => [
                 'required',
                 'date',
-<<<<<<< HEAD
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id')))
                     ->ignore($showtime->id),
@@ -195,7 +191,6 @@ class ShowtimeController extends AdminController
                     if ($overlap) {
                         $fail('Phòng chiếu này đã có lịch chiếu trong khoảng thời gian này.');
                     }
-=======
                 function ($attribute, $value, $fail) use ($request, $showtime) {
                     $this->validateNoOverlap(
                         roomId: $request->input('room_id'),
@@ -204,7 +199,7 @@ class ShowtimeController extends AdminController
                         excludeId: $showtime->id,
                         fail: $fail,
                     );
->>>>>>> 6ef7026e588cacafcb5b86da61ba8cd98d3b563a
+
                 },
             ],
             'end_time' => [
