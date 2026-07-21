@@ -74,7 +74,7 @@
                         <a href="{{ route('home') }}" class="inline-flex items-center justify-center rounded-3xl bg-slate-900 border border-slate-700 px-6 py-4 text-center text-white font-semibold hover:bg-slate-800 transition">
                             <i class="fas fa-arrow-left mr-2"></i> Quay về trang chính
                         </a>
-                        <a href="{{ route('home') }}" class="inline-flex items-center justify-center rounded-3xl bg-primary px-6 py-4 text-center text-white font-semibold hover:bg-red-600 transition">
+                        <a href="{{ route('booking.history') }}" class="inline-flex items-center justify-center rounded-3xl bg-primary px-6 py-4 text-center text-white font-semibold hover:bg-red-600 transition">
                             <i class="fas fa-ticket-alt mr-2"></i> Xem danh sách booking
                         </a>
                     </div>

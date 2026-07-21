@@ -135,17 +135,20 @@
         filter: none;
     }
 
-    /* Active Selection Outline */
+    /* Active Selection */
     .seat.selected-active {
-        outline: 3px solid #1e3c72;
-        outline-offset: 2px;
+        background-color: #22c55e !important;
+        border-color: #16a34a !important;
+        color: #ffffff !important;
+        outline: none !important;
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.4);
         animation: pulseSelection 1.5s infinite;
     }
 
     @keyframes pulseSelection {
-        0% { outline-color: rgba(30, 60, 114, 0.8); }
-        50% { outline-color: rgba(30, 60, 114, 0.1); }
-        100% { outline-color: rgba(30, 60, 114, 0.8); }
+        0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+        70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
     }
 
     .seat-legend {

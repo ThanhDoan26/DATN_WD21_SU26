@@ -14,7 +14,7 @@
         "laravel/tinker": "^3.0",
         "picqer/php-barcode-generator": "^3.2",
         "simplesoftwareio/simple-qrcode": "*",
-        "stripe/stripe-php": "^20.3"
+        "stripe/stripe-php": "^21.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

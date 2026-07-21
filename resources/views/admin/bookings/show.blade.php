@@ -22,9 +22,9 @@
         <p class="text-muted" style="margin-top: 5px; margin-bottom: 0;">{{ $booking->booking_code }}</p>
     </div>
     <div>
-        <a href="{{ route('admin.bookings.edit', $booking->id) }}" class="btn btn-warning btn-sm">
+        <!-- <a href="{{ route('admin.bookings.edit', $booking->id) }}" class="btn btn-warning btn-sm">
             <i class="fas fa-edit"></i> Sửa
-        </a>
+        </a> -->
         <a href="{{ route('admin.bookings.index') }}" class="btn btn-secondary btn-sm">
             <i class="fas fa-arrow-left"></i> Quay Lại
         </a>
@@ -113,6 +113,9 @@
 
         <!-- Booked Seats Table -->
         @include('admin.bookings.partials.booked-seats-table')
+
+        <!-- Booked Combos Table -->
+        @include('admin.bookings.partials.booked-combos-table')
     </div>
 
     <!-- Sidebar -->
@@ -173,7 +176,7 @@
         </div>
 
         <!-- Actions -->
-        <div class="card">
+        <!-- <div class="card">
             <div class="card-header">
                 <i class="fas fa-cog"></i> Hành Động
             </div>
@@ -189,7 +192,7 @@
                     </button>
                 </form>
             </div>
-        </div>
+        </div> -->
     </div>
 </div>
 @endsection
