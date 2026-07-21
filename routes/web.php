@@ -11,6 +11,13 @@ Route::get('/phim-dang-chieu', [MovieController::class, 'currentMovies'])->name(
 Route::get('/phim-sap-chieu', [MovieController::class, 'upcomingMovies'])->name('movies.upcoming');
 Route::get('/phim/{id}', [MovieController::class, 'show'])->name('movies.show');
 
+// Posts routes
+Route::get('/tin-tuc', [\App\Http\Controllers\PostController::class, 'index'])->name('posts.index');
+Route::get('/tin-tuc/{slug}', [\App\Http\Controllers\PostController::class, 'show'])->name('posts.show');
+
+// AI Chatbot Web Route
+Route::post('/chat/web', [\App\Http\Controllers\ChatController::class, 'chatWeb'])->name('chat.web');
+
 Route::middleware('auth')->group(function () {
     Route::post('/movies/{movie}/reviews', [\App\Http\Controllers\ReviewController::class, 'store'])->name('movies.reviews.store');
 });
@@ -118,10 +125,6 @@ Route::get('/tickets/{token}', function ($token) {
 
     return redirect()->route('home')->with('error', 'Vé không tồn tại trên hệ thống.');
 })->name('tickets.scan');
-
-// Tin tức / Blog frontend routes
-Route::get('/tin-tuc', [\App\Http\Controllers\PostController::class, 'index'])->name('posts.index');
-Route::get('/tin-tuc/{slug}', [\App\Http\Controllers\PostController::class, 'show'])->name('posts.show');
 
 require __DIR__.'/auth.php';
 
