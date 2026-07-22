@@ -113,6 +113,6 @@ class StripeController extends Controller
         return redirect()->route('checkout', [
             'showtime_id' => $booking->showtime_id,
             'seat_ids' => $seatIds,
-        ])->with('info', 'Bạn đã hủy thanh toán. Ghế vẫn được giữ trong 10 phút. Bạn có thể quay lại để tiếp tục.');
+        ])->with('info', 'Bạn đã hủy thanh toán. Ghế vẫn sẽ được giữ trong 10 phút. Bạn có thể quay lại để tiếp tục.');
     }
 }

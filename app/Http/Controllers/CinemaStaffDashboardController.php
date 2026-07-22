@@ -31,13 +31,13 @@ class CinemaStaffDashboardController extends Controller
                 $q->where('cinema_id', $cinemaId);
             });
         }
-
+ 
         // ── KPI Cards ──────────────────────────────────────────────
         // Vé check-in hôm nay
         $checkedInToday = (clone $baseSeatsQuery)
             ->where('status', 'USED')
             ->whereDate('checked_in_at', today())
-            ->count();
+            ->count(); 
 
         // Vé chưa sử dụng (sẵn sàng check-in)
         $unusedTickets = (clone $baseSeatsQuery)
