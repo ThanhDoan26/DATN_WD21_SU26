@@ -497,8 +497,8 @@
     <aside class="sidebar">
         <!-- Sidebar Header -->
         <div class="sidebar-header">
-            <h4><i class="fas fa-film"></i> Cinema</h4>
-            <p>Admin Panel</p>
+            <h4><i class="fas fa-film"></i> MovieGo</h4>
+            <p>Quản trị</p>
         </div>
 
         <!-- Sidebar Menu -->
@@ -513,21 +513,21 @@
                 <a href="{{ route('admin.dashboard') }}"
                    class="@if(request()->routeIs('admin.dashboard')) active @endif">
                     <i class="fas fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
+                    <span>Bảng điều khiển</span>
                 </a>
             </li>
             <li>
                 <a href="{{ route('admin.cinemas.index') }}"
                    class="@if(request()->routeIs('admin.cinemas.*')) active @endif">
                     <i class="fas fa-building"></i>
-                    <span>Cinemas</span>
+                    <span>Rạp chiếu</span>
                 </a>
             </li>
             <li>
                 <a href="{{ route('admin.rooms.index') }}"
                    class="@if(request()->routeIs('admin.rooms.*')) active @endif">
                     <i class="fas fa-door-open"></i>
-                    <span>Rooms</span>
+                    <span>Phòng chiếu</span>
                 </a>
             </li>
 
@@ -535,28 +535,28 @@
                 <a href="{{ route('admin.categories.index') }}"
                    class="@if(request()->routeIs('admin.categories.*')) active @endif">
                     <i class="fas fa-tags"></i>
-                    <span>Categories</span>
+                    <span>Danh mục phim</span>
                 </a>
             </li>
             <li>
                 <a href="{{ route('admin.movies.index') }}"
                    class="@if(request()->routeIs('admin.movies.*')) active @endif">
                     <i class="fas fa-video"></i>
-                    <span>Movies</span>
+                    <span>Phim</span>
                 </a>
             </li>
             <li>
                 <a href="{{ route('admin.showtimes.index') }}"
                    class="@if(request()->routeIs('admin.showtimes.*')) active @endif">
                     <i class="fas fa-calendar-alt"></i>
-                    <span>Showtimes</span>
+                    <span>Lịch chiếu</span>
                 </a>
             </li>
             <li>
                 <a href="{{ route('admin.bookings.index') }}"
                    class="@if(request()->routeIs('admin.bookings.*')) active @endif">
                     <i class="fas fa-ticket-alt"></i>
-                    <span>Bookings</span>
+                    <span>Đơn hàng</span>
                 </a>
             </li>
             <li>
@@ -598,7 +598,7 @@
                 <a href="#blogSubmenu" data-bs-toggle="collapse" class="@if(request()->routeIs('admin.posts.*') || request()->routeIs('admin.post-categories.*')) active @else text-white-50 @endif d-flex justify-content-between align-items-center">
                     <div>
                         <i class="fas fa-newspaper"></i>
-                        <span class="ms-1">Tin tức / Blog</span>
+                        <span class="ms-1">Tin tức</span>
                     </div>
                     <i class="fas fa-chevron-down text-sm" style="font-size: 0.8em"></i>
                 </a>
@@ -648,7 +648,7 @@
                     <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="userDropdown">
                         <li>
                             <a class="dropdown-item py-2" href="{{ route('profile.edit') }}">
-                                <i class="fas fa-user-circle me-2 text-primary"></i> Profile
+                                <i class="fas fa-user-circle me-2 text-primary"></i> Hồ sơ
                             </a>
                         </li>
                         <li><hr class="dropdown-divider"></li>
@@ -656,7 +656,7 @@
                             <form method="POST" action="{{ route('logout') }}" class="m-0">
                                 @csrf
                                 <button type="submit" class="dropdown-item py-2 text-danger">
-                                    <i class="fas fa-sign-out-alt me-2"></i> Logout
+                                    <i class="fas fa-sign-out-alt me-2"></i> Đăng xuất
                                 </button>
                             </form>
                         </li>

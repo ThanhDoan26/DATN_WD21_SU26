@@ -109,7 +109,7 @@
             </li>
             <li>
                 <a href="{{ route('manager.dashboard') }}" class="@if(request()->routeIs('manager.dashboard')) active @endif">
-                    <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
+                    <i class="fas fa-tachometer-alt"></i> <span>Bảng điều khiển</span>
                 </a>
             </li>
             <li>
@@ -142,7 +142,7 @@
 
     <div class="main-content">
         <div class="topbar">
-            <h5>@yield('page_title', 'Dashboard')</h5>
+            <h5>@yield('page_title', 'Bảng điều khiển')</h5>
             <div class="topbar-right">
                 <div class="dropdown">
                     <div class="user-info dropdown-toggle" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
@@ -159,7 +159,7 @@
                             <form method="POST" action="{{ route('logout') }}" class="m-0">
                                 @csrf
                                 <button type="submit" class="dropdown-item py-2 text-danger">
-                                    <i class="fas fa-sign-out-alt me-2"></i> Logout
+                                    <i class="fas fa-sign-out-alt me-2"></i> Đăng xuất
                                 </button>
                             </form>
                         </li>
