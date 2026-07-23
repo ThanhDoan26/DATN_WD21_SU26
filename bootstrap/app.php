@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => AdminMiddleware::class,
             'role' => \App\Http\Middleware\CheckRole::class,
+            'cinema.assignment' => \App\Http\Middleware\CheckCinemaAssignment::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
