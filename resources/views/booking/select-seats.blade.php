@@ -395,6 +395,7 @@
                                                 $isDisabled = $isBooked || $isBroken;
                                             @endphp
                                             <button
+                                                type="button"
                                                 onclick="toggleSeat({{ $seat->id }}, this)"
                                                 class="seat {{ $seatClass }}"
                                                 data-seat-id="{{ $seat->id }}"
@@ -415,12 +416,16 @@
 
                 <!-- Sidebar: Summary & Checkout -->
                 <div>
-                    <!-- Summary Card -->
-                    <div class="bg-slate-800 rounded-lg p-6 sticky top-24">
-                        <h3 class="text-xl font-bold mb-6">Thông tin đặt vé</h3>
+                    <form id="seat-selection-form" action="{{ route('checkout') }}" method="GET">
+                        <input type="hidden" name="showtime_id" id="form_showtime_id" value="{{ $showtime->id }}" />
+                        <input type="hidden" name="seat_ids" id="form_seat_ids" value="" />
 
-                        <!-- Selected Seats -->
-                        <div class="mb-6 pb-6 border-b border-slate-700">
+                        <!-- Summary Card -->
+                        <div class="bg-slate-800 rounded-lg p-6 sticky top-24">
+                            <h3 class="text-xl font-bold mb-6">Thông tin đặt vé</h3>
+
+                            <!-- Selected Seats -->
+                            <div class="mb-6 pb-6 border-b border-slate-700">
                             <div class="flex justify-between items-center mb-3">
                                 <span class="text-slate-400">Ghế đã chọn:</span>
                                 <span class="text-lg font-bold" id="seatCount">0 ghế</span>
@@ -452,7 +457,7 @@
                         </div>
 
                         <!-- Action Buttons -->
-                        <button onclick="proceedToCheckout()"
+                        <button type="submit"
                                 id="checkoutButton"
                                 disabled
                                 class="w-full bg-primary hover:bg-red-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition mb-3">
@@ -462,6 +467,7 @@
                             <i class="fas fa-arrow-left mr-2"></i>Quay lại
                         </a>
                     </div>
+                </form>
                 </div>
             </div>
         </div>
@@ -584,11 +590,8 @@
             }
 
             const seatIds = Array.from(selectedSeats).join(',');
-            @if(isset($isWalkIn) && $isWalkIn)
-                window.location.href = `/staff/walk-in/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
-            @else
-                window.location.href = `/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
-            @endif
+            document.getElementById('form_seat_ids').value = seatIds;
+            document.getElementById('seat-selection-form').submit();
         }
     </script>
 @endpush
