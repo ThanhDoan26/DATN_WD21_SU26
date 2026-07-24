@@ -80,39 +80,78 @@ class MovieController extends Controller
     /**
      * Display list of currently showing movies
      */
-    public function currentMovies(): View
+    public function currentMovies(\Illuminate\Http\Request $request): View
     {
-        $movies = Movie::where('status', 'NOW_SHOWING')
-            ->with(['showtimes' => function ($query) {
-                $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
-                      ->with(['room' => function ($q) {
-                          $q->with('cinema');
-                      }])
+        $query = Movie::where('status', 'NOW_SHOWING')
+            ->with([
+                'showtimes' => function ($q) {
+                    $q->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+                      ->with(['room.cinema'])
                       ->orderBy('start_time');
-            }, 'categories'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(12);
+                },
+                'categories',
+            ])
+            ->withAvg('reviews', 'rating');
 
-        return view('movies.current', ['movies' => $movies]);
+        // Keyword search (server-side fallback)
+        if ($request->filled('keyword')) {
+            $query->where('title', 'like', '%' . $request->keyword . '%');
+        }
+
+        // Genre filter
+        if ($request->filled('genre_id')) {
+            $query->whereHas('categories', fn ($q) => $q->where('categories.id', $request->genre_id));
+        }
+
+        // Sorting
+        match ($request->get('sort', 'latest')) {
+            'alpha'  => $query->orderBy('title'),
+            'rating' => $query->orderByDesc('reviews_avg_rating'),
+            default  => $query->orderByDesc('created_at'),
+        };
+
+        $movies     = $query->paginate(12)->withQueryString();
+        $cinemas    = Cinema::where('status', 'ACTIVE')->get();
+        $categories = Category::all();
+
+        return view('movies.current', compact('movies', 'cinemas', 'categories'));
     }
 
     /**
      * Display list of upcoming movies
      */
-    public function upcomingMovies(): View
+    public function upcomingMovies(\Illuminate\Http\Request $request): View
     {
-        $movies = Movie::where('status', 'COMING_SOON')
-            ->with(['showtimes' => function ($query) {
-                $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
-                      ->with(['room' => function ($q) {
-                          $q->with('cinema');
-                      }])
+        $query = Movie::where('status', 'COMING_SOON')
+            ->with([
+                'showtimes' => function ($q) {
+                    $q->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+                      ->with(['room.cinema'])
                       ->orderBy('start_time');
-            }, 'categories'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(12);
+                },
+                'categories',
+            ])
+            ->withAvg('reviews', 'rating');
 
-        return view('movies.upcoming', ['movies' => $movies]);
+        if ($request->filled('keyword')) {
+            $query->where('title', 'like', '%' . $request->keyword . '%');
+        }
+
+        if ($request->filled('genre_id')) {
+            $query->whereHas('categories', fn ($q) => $q->where('categories.id', $request->genre_id));
+        }
+
+        match ($request->get('sort', 'latest')) {
+            'alpha'  => $query->orderBy('title'),
+            'rating' => $query->orderByDesc('reviews_avg_rating'),
+            default  => $query->orderByDesc('created_at'),
+        };
+
+        $movies     = $query->paginate(12)->withQueryString();
+        $cinemas    = Cinema::where('status', 'ACTIVE')->get();
+        $categories = Category::all();
+
+        return view('movies.upcoming', compact('movies', 'cinemas', 'categories'));
     }
 
     /**

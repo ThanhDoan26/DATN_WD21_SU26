@@ -25,10 +25,23 @@
             <div class="card-header">
                 <h5 class="mb-0">Hành động</h5>
             </div>
-            <div class="card-body text-center">
-                <a href="{{ route('admin.movies.edit', $movie) }}" class="btn btn-primary w-100 mb-2">
+            <div class="card-body d-flex flex-column gap-2">
+                <a href="{{ route('admin.movies.edit', $movie) }}" class="btn btn-primary w-100">
                     <i class="fas fa-edit"></i> Chỉnh sửa phim
                 </a>
+                <a href="{{ route('movies.show', $movie->id) }}" target="_blank" class="btn btn-success w-100">
+                    <i class="fas fa-eye"></i> Xem trang khách
+                </a>
+                @if($movie->status === 'NOW_SHOWING')
+                <a href="{{ route('movies.current') }}" target="_blank" class="btn btn-outline-info w-100 btn-sm">
+                    <i class="fas fa-film"></i> Xem trong Phim Đang Chiếu
+                </a>
+                @elseif($movie->status === 'COMING_SOON')
+                <a href="{{ route('movies.upcoming') }}" target="_blank" class="btn btn-outline-info w-100 btn-sm">
+                    <i class="fas fa-calendar-alt"></i> Xem trong Phim Sắp Chiếu
+                </a>
+                @endif
+                <hr class="my-1">
                 <form action="{{ route('admin.movies.destroy', $movie) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa bộ phim này?');">
                     @csrf
                     @method('DELETE')
@@ -38,6 +51,33 @@
                 </form>
             </div>
         </div>
+
+        {{-- Trailer Preview Card --}}
+        @if($movie->trailer_url)
+        @php
+            preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/', $movie->trailer_url, $ytMatch);
+            $ytId = $ytMatch[1] ?? null;
+        @endphp
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fab fa-youtube text-danger"></i> Trailer</h5>
+                <a href="{{ $movie->trailer_url }}" target="_blank" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-external-link-alt"></i> Mở
+                </a>
+            </div>
+            <div class="card-body p-0">
+                @if($ytId)
+                <div style="position:relative;padding-top:56.25%;">
+                    <iframe src="https://www.youtube.com/embed/{{ $ytId }}" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+                @else
+                <div class="p-3">
+                    <a href="{{ $movie->trailer_url }}" target="_blank" class="text-break">{{ $movie->trailer_url }}</a>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
     </div>
 
     <div class="col-md-8">
@@ -79,7 +119,35 @@
                         </tr>
                         <tr>
                             <th class="bg-light">Độ tuổi</th>
-                            <td><span class="badge bg-info text-dark">{{ $movie->age_rating ?: 'Chưa cập nhật' }}</span></td>
+                            <td>
+                                @php
+                                    $badgeColor = match(true) {
+                                        in_array($movie->age_rating, ['P', 'K', 'G'])      => 'success',
+                                        in_array($movie->age_rating, ['T13', '13+', 'PG']) => 'warning',
+                                        in_array($movie->age_rating, ['T16', '16+'])        => 'warning',
+                                        in_array($movie->age_rating, ['T18', '18+', 'R'])  => 'danger',
+                                        default                                             => 'secondary',
+                                    };
+                                    $badgeStyle = match(true) {
+                                        in_array($movie->age_rating, ['T16', '16+'])        => 'background:#f97316;',
+                                        default => '',
+                                    };
+                                @endphp
+                                @if($movie->age_rating)
+                                <span class="badge bg-{{ $badgeColor }} fs-6" style="{{ $badgeStyle }}">
+                                    {{ $movie->age_rating }}
+                                </span>
+                                <small class="text-muted ms-2">
+                                    @if(in_array($movie->age_rating, ['P', 'K'])) Phổ biến (mọi độ tuổi)
+                                    @elseif($movie->age_rating === 'T13') Từ 13 tuổi trở lên
+                                    @elseif($movie->age_rating === 'T16') Từ 16 tuổi trở lên
+                                    @elseif($movie->age_rating === 'T18') Từ 18 tuổi trở lên
+                                    @endif
+                                </small>
+                                @else
+                                <span class="text-muted">Chưa cập nhật</span>
+                                @endif
+                            </td>
                         </tr>
                         <tr>
                             <th class="bg-light">Đạo diễn</th>
