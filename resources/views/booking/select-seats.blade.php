@@ -478,7 +478,8 @@
                         </div>
 
                         <!-- Action Buttons -->
-                        <button type="submit"
+                        <button type="button"
+                                onclick="proceedToCheckout()"
                                 id="checkoutButton"
                                 disabled
                                 class="w-full bg-primary hover:bg-red-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition mb-3">

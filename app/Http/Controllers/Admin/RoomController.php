@@ -107,8 +107,9 @@ class RoomController extends AdminController
                 $remainingSeats = $totalSeats - $seatCount;
                 $rowCols = min($totalCols, $remainingSeats);
 
-                if ($r == $totalRows) {
+                if ($r == $totalRows && $totalRows > 1) {
                     $seatType = 'Sweetbox';
+                    $rowCols = (int) floor($rowCols / 2);
                 } elseif ($r <= 3) {
                     $seatType = 'Regular';
                 } else {
@@ -253,8 +254,9 @@ class RoomController extends AdminController
                     $remainingSeats = $totalSeats - $seatCount;
                     $rowCols = min($totalCols, $remainingSeats);
 
-                    if ($r == $totalRows) {
+                    if ($r == $totalRows && $totalRows > 1) {
                         $seatType = 'Sweetbox';
+                        $rowCols = (int) floor($rowCols / 2);
                     } elseif ($r <= 3) {
                         $seatType = 'Regular';
                     } else {
