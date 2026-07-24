@@ -31,7 +31,7 @@ class ReviewController extends Controller
             })->exists();
 
         if (!$canReview) {
-            return back()->with('error', 'Bạn chỉ có thể đánh giá sau khi đã mua vé bộ phim này.');
+            return back()->with('error', 'Bạn chỉ có thể đánh giá sau khi đã mua vé xem bộ phim này.');
         }
 
         // Cập nhật hoặc tạo mới review
