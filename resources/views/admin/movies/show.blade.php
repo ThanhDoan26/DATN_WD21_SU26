@@ -114,6 +114,16 @@
                             <td>{{ $movie->description ?: 'Chưa cập nhật' }}</td>
                         </tr>
                         <tr>
+                            <th class="bg-light">Định dạng phim</th>
+                            <td>
+                                @if($movie->format)
+                                    <span class="badge bg-info text-dark fs-6">{{ $movie->format }}</span>
+                                @else
+                                    <span class="text-muted">Chưa cập nhật</span>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
                             <th class="bg-light">Thời lượng</th>
                             <td>{{ $movie->duration }} phút ({{ $movie->getDurationFormatted() }})</td>
                         </tr>
