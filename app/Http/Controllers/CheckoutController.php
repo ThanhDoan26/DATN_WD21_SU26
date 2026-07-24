@@ -29,6 +29,7 @@ class CheckoutController extends Controller
         $subtotal = 0;
         $surcharge = 0;
         $total = 0;
+        $expiresAtMs = null;
         $showtimeId = $request->query('showtime_id');
         $seatIds = $request->query('seat_ids');
 
@@ -112,7 +113,6 @@ class CheckoutController extends Controller
                 ->orderBy('booking_time', 'desc')
                 ->first();
 
-            $expiresAtMs = null;
             if ($pendingBooking) {
                 $expiresAtMs = ($pendingBooking->booking_time->timestamp + BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES * 60) * 1000;
             }
