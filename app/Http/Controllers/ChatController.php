@@ -45,9 +45,24 @@ class ChatController extends Controller
 
         try {
             $user = auth()->user();
-            $this->chatbotService->chat($request->input('message'), $user);
+            $response = $this->chatbotService->chat($request->input('message'), $user);
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $response,
+                ]);
+            }
+
             return redirect()->back()->with('chat_open', true);
         } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'AI đang bận, vui lòng thử lại sau.'
+                ], 500);
+            }
+
             return redirect()->back()->with('chat_open', true)->with('chat_error', 'AI đang bận, vui lòng thử lại sau.');
         }
     }
