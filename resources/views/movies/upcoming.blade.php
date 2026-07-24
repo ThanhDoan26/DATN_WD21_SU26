@@ -280,15 +280,16 @@
 
         <div class="filter-divider hidden sm:block"></div>
 
-        {{-- Genre --}}
-        <select id="genre-filter" class="filter-select">
-            <option value="">🎭 Thể loại</option>
-            @foreach($categories as $cat)
-            <option value="{{ $cat->id }}" {{ request('genre_id') == $cat->id ? 'selected' : '' }}>
-                {{ $cat->name }}
-            </option>
-            @endforeach
-        </select>
+        {{-- Genre Multi-Select --}}
+        <div style="min-width: 210px; max-width: 280px; flex: 1;">
+            <x-genre-select
+                :categories="$categories"
+                :selected="request('genre_id') ? [request('genre_id')] : []"
+                name="genre_ids[]"
+                label=""
+                placeholder="Tìm thể loại..."
+                id="client-upcoming-genre" />
+        </div>
 
         <div class="filter-divider hidden lg:block"></div>
 
@@ -393,7 +394,7 @@
     function getActiveFilters() {
         return {
             search : document.getElementById('search-input').value.toLowerCase().trim(),
-            genre  : document.getElementById('genre-filter').value,
+            genres : typeof mgSelect_getSelectedValues === 'function' ? mgSelect_getSelectedValues('client-upcoming-genre') : [],
         };
     }
 
@@ -407,7 +408,13 @@
             const genres = card.dataset.genres ?? '';
             let show = true;
             if (f.search && !title.includes(f.search)) show = false;
-            if (f.genre  && !genres.split(',').includes(f.genre)) show = false;
+
+            if (f.genres && f.genres.length > 0) {
+                const cardGenreList = genres.split(',').map(g => g.trim());
+                const hasMatch = f.genres.some(g => cardGenreList.includes(g));
+                if (!hasMatch) show = false;
+            }
+
             card.classList.toggle('hidden-by-filter', !show);
             if (show) visible++;
         });
@@ -437,8 +444,8 @@
         }, 700);
     });
 
-    document.getElementById('genre-filter').addEventListener('change', function() {
-        navigateWithParams({ genre_id: this.value, sort: document.getElementById('sort-select').value });
+    document.addEventListener('genre-change', function(e) {
+        applyFilters();
     });
 
     document.getElementById('sort-select').addEventListener('change', function() {
@@ -447,7 +454,7 @@
 
     window.resetAllFilters = function() {
         document.getElementById('search-input').value = '';
-        document.getElementById('genre-filter').value = '';
+        if (typeof mgSelect_clearAll === 'function') mgSelect_clearAll('client-upcoming-genre');
         document.getElementById('sort-select').value = 'latest';
         applyFilters();
     };
