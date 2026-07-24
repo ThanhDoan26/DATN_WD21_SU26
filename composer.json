@@ -12,7 +12,7 @@
         "laravel/framework": "^13.8",
         "laravel/sanctum": "*",
         "laravel/tinker": "^3.0",
-        "picqer/php-barcode-generator": "^3.2",
+        "picqer/php-barcode-generator": "*",
         "simplesoftwareio/simple-qrcode": "*",
         "stripe/stripe-php": "^21.0"
     },

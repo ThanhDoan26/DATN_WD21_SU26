@@ -306,16 +306,18 @@
                                             <span class="badge badge-paid me-2"><i class="fas fa-check-circle me-1"></i>Sẵn sàng check-in</span>
                                             
                                             <!-- Individual Seat Check-in form -->
-                                            <form action="{{ route('staff.ticket.checkin') }}" method="POST" class="m-0">
+                                            <form action="{{ route('staff.ticket.checkin') }}" method="POST" class="m-0 d-inline-block">
                                                 @csrf
                                                 <input type="hidden" name="type" value="booking">
                                                 <input type="hidden" name="id" value="{{ $result->id }}">
                                                 <input type="hidden" name="seat_id" value="{{ $seat->id }}">
                                                 <button type="submit" class="btn btn-sm btn-warning fw-bold px-3">Check-in ghế</button>
                                             </form>
+                                            <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $seat->id]) }}')" class="btn btn-sm btn-outline-secondary ms-1" title="In vé"><i class="fas fa-print"></i></button>
                                         @elseif($seat->status === 'USED')
                                             <span class="badge badge-used"><i class="fas fa-check-double me-1"></i>Đã sử dụng</span>
                                             <small class="text-muted ms-2">{{ $seat->checked_in_at ? $seat->checked_in_at->format('H:i d/m') : '' }}</small>
+                                            <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $seat->id]) }}')" class="btn btn-sm btn-outline-secondary ms-2" title="In vé"><i class="fas fa-print"></i></button>
                                         @elseif($seat->status === 'RESERVED')
                                             <span class="badge badge-pending">Chờ thanh toán</span>
                                         @elseif($seat->status === 'CANCELLED')
@@ -366,8 +368,8 @@
                         </div>
                     </div>
 
-                    @if($canCheckIn)
-                        <div class="text-center">
+                    <div class="text-center d-flex justify-content-center gap-3">
+                        @if($canCheckIn)
                             <form action="{{ route('staff.ticket.checkin') }}" method="POST" class="d-inline-block">
                                 @csrf
                                 <input type="hidden" name="type" value="seat">
@@ -376,8 +378,14 @@
                                     <i class="fas fa-check-circle me-2"></i> XÁC NHẬN CHECK-IN VÉ NÀY
                                 </button>
                             </form>
-                        </div>
-                    @endif
+                        @endif
+
+                        @if($result->status === 'PAID' || $result->status === 'USED')
+                            <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $result->id]) }}')" class="btn btn-secondary fw-bold px-5 py-3 fs-5 shadow">
+                                <i class="fas fa-print me-2"></i> IN VÉ
+                            </button>
+                        @endif
+                    </div>
                 @endif
             </div>
         </div>
@@ -457,6 +465,18 @@
         function onScanFailure(error) {
             // Không log lỗi liên tục tránh tràn console
         }
+
+        // Handle iframe printing
+        window.printTicketIframe = function(url) {
+            let iframe = document.getElementById('print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-iframe';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+            }
+            iframe.src = url;
+        };
 
         // Tự động bật camera nếu URL có tham số scan=1
         const urlParams = new URLSearchParams(window.location.search);
