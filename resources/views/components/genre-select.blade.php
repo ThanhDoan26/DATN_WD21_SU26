@@ -369,9 +369,36 @@ html.dark-theme .mgs-option { color:#e2e8f0 !important; }
         el.style.background = 'transparent';
     }
 
+
+    /* ── Refresh trigger button label + count ── */
+    function _refreshTrigger(cid) {
+        const selected = document.querySelectorAll('#' + cid + '-list .mgs-option.selected');
+        const label  = document.getElementById(cid + '-label');
+        const count  = document.getElementById(cid + '-count');
+        const footer = document.getElementById(cid + '-footer-count');
+        const n = selected.length;
+
+        if (n === 0) {
+            label.innerHTML = '<span class="mgs-placeholder" style="color:#94a3b8;">Chọn thể loại phim…</span>';
+            if (count) count.style.display = 'none';
+        } else {
+            const names = Array.from(selected).map(o => o.dataset.name);
+            const shown = names.slice(0, 3);
+            const rest  = names.length - shown.length;
+            let html = shown.map(n =>
+                `<span style="background:rgba(147,51,234,.12);color:#9333ea;border:1px solid rgba(147,51,234,.25);border-radius:100px;padding:.08rem .55rem;font-size:.72rem;font-weight:600;white-space:nowrap;">${n}</span>`
+            ).join(' ');
+            if (rest > 0) html += ` <span style="color:#94a3b8;font-size:.78rem;">+${rest}</span>`;
+            label.innerHTML = html;
+            if (count) {
+                count.textContent = n;
+                count.style.display = 'inline-flex';
+            }
+        }
+
         if (footer) footer.textContent = n + ' đã chọn';
 
-        // Dispatch custom event for real-time listeners
+
         const root = document.getElementById(cid + '-root');
         if (root) {
             const selectedIds = Array.from(selected).map(o => o.dataset.id);
