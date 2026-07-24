@@ -246,7 +246,7 @@ class BookingService
                         throw new Exception("Mã giảm giá không hợp lệ hoặc không tồn tại.");
                     }
 
-                    $validation = $coupon->isValid($totalPrice);
+                    $validation = $coupon->isValid($totalPrice, $userId);
                     if (!$validation['valid']) {
                         throw new Exception($validation['message']);
                     }

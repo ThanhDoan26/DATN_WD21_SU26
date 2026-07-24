@@ -135,7 +135,7 @@ class Showtime extends Model
     public function getBookedSeatsCount(): int
     {
         return $this->bookings()
-            ->where('status', '!=', 'Cancelled')
+            ->where('bookings.status', '!=', 'Cancelled')
             ->join('booked_seats', 'bookings.id', '=', 'booked_seats.booking_id')
             ->count('booked_seats.id');
     }

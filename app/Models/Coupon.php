@@ -35,9 +35,10 @@ class Coupon extends Model
      * Kiểm tra xem mã giảm giá có hợp lệ cho đơn hàng hiện tại không.
      *
      * @param float $orderTotal Giá trị đơn hàng tạm tính
+     * @param int|null $userId ID của người dùng (tùy chọn)
      * @return array ['valid' => bool, 'message' => string]
      */
-    public function isValid($orderTotal)
+    public function isValid($orderTotal, $userId = null)
     {
         if ($this->status !== 'ACTIVE') {
             return ['valid' => false, 'message' => 'Mã giảm giá không hoạt động hoặc đã bị khoá.'];
@@ -58,6 +59,19 @@ class Coupon extends Model
 
         if ($orderTotal < $this->min_order_value) {
             return ['valid' => false, 'message' => 'Giá trị đơn hàng chưa đạt mức tối thiểu (' . number_format($this->min_order_value, 0, ',', '.') . ' VNĐ) để sử dụng mã này.'];
+        }
+
+        // Kiểm tra xem User này đã sử dụng mã này chưa (nếu có truyền userId)
+        if ($userId) {
+            $hasUsed = \Illuminate\Support\Facades\DB::table('bookings')
+                ->where('user_id', $userId)
+                ->where('coupon_id', $this->id)
+                ->whereIn('status', ['Pending', 'Paid', 'Used'])
+                ->exists();
+
+            if ($hasUsed) {
+                return ['valid' => false, 'message' => 'Bạn đã sử dụng hoặc đang chờ thanh toán với mã giảm giá này.'];
+            }
         }
 
         return ['valid' => true, 'message' => 'Mã giảm giá hợp lệ.'];

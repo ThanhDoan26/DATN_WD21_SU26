@@ -103,6 +103,15 @@
             font-weight: 800;
         }
 
+        /* Double / Sweetbox Seat (Hồng) */
+        .seat.sweetbox {
+            background-color: #ec4899;
+            width: 92px; /* 2 seats (42px * 2) + gap (8px) = 92px */
+            border-color: #db2777;
+            color: #ffffff;
+            font-weight: 800;
+        }
+
         /* Selected Seat */
         .seat.selected {
             background-color: #22c55e !important;
@@ -206,6 +215,11 @@
             background-color: #f59e0b;
             border-color: #d97706;
             color: #1e293b;
+        }
+
+        .legend-box.sweetbox {
+            background-color: #ec4899;
+            border-color: #db2777;
         }
 
         .legend-box.selected {
@@ -348,6 +362,10 @@
                                 <span>Ghế VIP</span>
                             </div>
                             <div class="legend-item">
+                                <div class="legend-box sweetbox">S</div>
+                                <span>Ghế Đôi</span>
+                            </div>
+                            <div class="legend-item">
                                 <div class="legend-box selected">✓</div>
                                 <span>Ghế Đã Chọn</span>
                             </div>
@@ -376,16 +394,19 @@
                                 <div class="seat-row">
                                     <span class="row-label">{{ $row }}</span>
                                     <div class="row-seats">
-                                        @foreach($seats->sortBy('seat_number') as $seat)
+                                        @foreach($seats->sortBy(fn($s) => (int)$s->seat_number) as $seat)
                                             @php
                                                 $isBooked = in_array($seat->id, $bookedSeats);
                                                 $isBroken = $seat->status === \App\Models\Seat::STATUS_BROKEN;
                                                 $isVip = $seat->seat_type === 'VIP';
+                                                $isSweetbox = $seat->seat_type === 'Sweetbox' || $seat->seat_type === 'Double';
                                                 
                                                 if ($isBroken) {
                                                     $seatClass = 'broken';
                                                 } elseif ($isBooked) {
                                                     $seatClass = 'booked';
+                                                } elseif ($isSweetbox) {
+                                                    $seatClass = 'sweetbox';
                                                 } elseif ($isVip) {
                                                     $seatClass = 'vip';
                                                 } else {
@@ -395,6 +416,7 @@
                                                 $isDisabled = $isBooked || $isBroken;
                                             @endphp
                                             <button
+                                                type="button"
                                                 onclick="toggleSeat({{ $seat->id }}, this)"
                                                 class="seat {{ $seatClass }}"
                                                 data-seat-id="{{ $seat->id }}"
@@ -415,12 +437,16 @@
 
                 <!-- Sidebar: Summary & Checkout -->
                 <div>
-                    <!-- Summary Card -->
-                    <div class="bg-slate-800 rounded-lg p-6 sticky top-24">
-                        <h3 class="text-xl font-bold mb-6">Thông tin đặt vé</h3>
+                    <form id="seat-selection-form" action="{{ route('checkout') }}" method="GET">
+                        <input type="hidden" name="showtime_id" id="form_showtime_id" value="{{ $showtime->id }}" />
+                        <input type="hidden" name="seat_ids" id="form_seat_ids" value="" />
 
-                        <!-- Selected Seats -->
-                        <div class="mb-6 pb-6 border-b border-slate-700">
+                        <!-- Summary Card -->
+                        <div class="bg-slate-800 rounded-lg p-6 sticky top-24">
+                            <h3 class="text-xl font-bold mb-6">Thông tin đặt vé</h3>
+
+                            <!-- Selected Seats -->
+                            <div class="mb-6 pb-6 border-b border-slate-700">
                             <div class="flex justify-between items-center mb-3">
                                 <span class="text-slate-400">Ghế đã chọn:</span>
                                 <span class="text-lg font-bold" id="seatCount">0 ghế</span>
@@ -452,7 +478,7 @@
                         </div>
 
                         <!-- Action Buttons -->
-                        <button onclick="proceedToCheckout()"
+                        <button type="submit"
                                 id="checkoutButton"
                                 disabled
                                 class="w-full bg-primary hover:bg-red-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition mb-3">
@@ -462,6 +488,7 @@
                             <i class="fas fa-arrow-left mr-2"></i>Quay lại
                         </a>
                     </div>
+                </form>
                 </div>
             </div>
         </div>
@@ -584,11 +611,8 @@
             }
 
             const seatIds = Array.from(selectedSeats).join(',');
-            @if(isset($isWalkIn) && $isWalkIn)
-                window.location.href = `/staff/walk-in/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
-            @else
-                window.location.href = `/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
-            @endif
+            document.getElementById('form_seat_ids').value = seatIds;
+            document.getElementById('seat-selection-form').submit();
         }
     </script>
 @endpush

@@ -436,7 +436,21 @@
         </div>
     </div>
 
-    <!-- Tables row 2: Detailed Transactions -->
+    <!-- Tables row 2: Movie Statistics -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 text-primary fw-bold"><i class="fas fa-chart-pie text-info me-2"></i>Thống kê phim theo doanh thu</h5>
+                </div>
+                <div class="card-body p-0" id="movie-statistics-wrapper">
+                    @include('admin.partials.movie_statistics')
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tables row 3: Detailed Transactions -->
     <div class="row">
         <!-- Detailed Transactions -->
         <div class="col-12 mb-4">
@@ -932,6 +946,7 @@
             document.getElementById('revenue-table-wrapper').innerHTML = data.html_revenue_table;
             document.getElementById('top-combos-wrapper').innerHTML = data.html_top_combos;
             document.getElementById('top-movies-wrapper').innerHTML = data.html_top_movies;
+            document.getElementById('movie-statistics-wrapper').innerHTML = data.html_movie_statistics;
         })
         .catch(err => {
             console.error('Fetch error:', err);

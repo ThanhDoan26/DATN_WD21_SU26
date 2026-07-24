@@ -35,7 +35,7 @@
 
             @if($chatMessages->isEmpty())
                 {{-- Welcome Message --}}
-                <div class="flex gap-3 max-w-[90%]">
+                <div class="welcome-message flex gap-3 max-w-[90%]">
                     <div class="w-7 h-7 bg-slate-900 rounded-full flex items-center justify-center shrink-0 mt-1">
                         <span class="text-xs">🤖</span>
                     </div>
@@ -56,7 +56,7 @@
                     @if($msg->role === 'user')
                         {{-- User Message --}}
                         <div class="flex gap-3 max-w-[85%] self-end flex-row-reverse">
-                            <div class="bg-slate-900 text-white p-3 rounded-2xl rounded-tr-sm shadow-sm text-sm">
+                            <div class="bg-slate-900 text-white p-3 rounded-2xl rounded-tr-sm shadow-sm text-sm break-words">
                                 {{ $msg->message }}
                             </div>
                         </div>
@@ -66,22 +66,37 @@
                             <div class="w-7 h-7 bg-slate-900 rounded-full flex items-center justify-center shrink-0 mt-1">
                                 <span class="text-xs">🤖</span>
                             </div>
-                            <div class="bg-white border border-gray-100 p-3.5 rounded-2xl rounded-tl-sm shadow-sm text-sm text-gray-700 leading-relaxed">
+                            <div class="bg-white border border-gray-100 p-3.5 rounded-2xl rounded-tl-sm shadow-sm text-sm text-gray-700 leading-relaxed break-words">
                                 {!! nl2br(e($msg->message)) !!}
                             </div>
                         </div>
                     @endif
                 @endforeach
             @endif
+
+            {{-- Loading Indicator Template --}}
+            <div id="ai-chat-loading" class="hidden flex gap-3 max-w-[90%] items-center">
+                <div class="w-7 h-7 bg-slate-900 rounded-full flex items-center justify-center shrink-0 mt-1">
+                    <span class="text-xs">🤖</span>
+                </div>
+                <div class="bg-white border border-gray-100 p-3.5 rounded-2xl rounded-tl-sm shadow-sm text-sm text-gray-500 italic flex items-center gap-2">
+                    <span>AI đang trả lời</span>
+                    <span class="flex gap-1 items-center">
+                        <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                        <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                        <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                    </span>
+                </div>
+            </div>
         </div>
 
         {{-- Footer --}}
         <div class="p-4 bg-white border-t border-gray-100 shrink-0">
             @auth
-            <form action="{{ route('chat.web') }}" method="POST" class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full pl-4 pr-1.5 py-1.5 focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-100 transition-all shadow-sm">
+            <form id="ai-chat-form" action="{{ route('chat.web') }}" method="POST" class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full pl-4 pr-1.5 py-1.5 focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-100 transition-all shadow-sm">
                 @csrf
-                <input type="text" name="message" placeholder="Hãy hỏi về phim..." required class="w-full bg-transparent border-0 focus:ring-0 text-sm text-gray-700 placeholder-gray-400 outline-none" autocomplete="off" />
-                <button type="submit" class="bg-slate-900 hover:bg-red-600 text-white w-9 h-9 rounded-full transition-colors flex items-center justify-center shrink-0" aria-label="Gửi">
+                <input type="text" id="ai-chat-input" name="message" placeholder="Hãy hỏi về phim..." required class="w-full bg-transparent border-0 focus:ring-0 text-sm text-gray-700 placeholder-gray-400 outline-none" autocomplete="off" />
+                <button type="submit" id="ai-chat-submit" class="bg-slate-900 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white w-9 h-9 rounded-full transition-colors flex items-center justify-center shrink-0" aria-label="Gửi">
                     <svg class="w-4 h-4 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
                 </button>
             </form>
@@ -100,41 +115,3 @@
         </svg>
     </button>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const chatToggle = document.getElementById('ai-chat-toggle');
-        const chatClose = document.getElementById('ai-chat-close');
-        const chatWindow = document.getElementById('ai-chat-window');
-        const chatBody = document.getElementById('ai-chat-body');
-
-        function toggleChat() {
-            if (chatWindow.classList.contains('opacity-0')) {
-                // Open Chat
-                chatWindow.classList.remove('opacity-0', 'scale-90', 'pointer-events-none');
-                chatWindow.classList.add('opacity-100', 'scale-100', 'pointer-events-auto');
-                scrollToBottom();
-            } else {
-                // Close Chat
-                chatWindow.classList.add('opacity-0', 'scale-90', 'pointer-events-none');
-                chatWindow.classList.remove('opacity-100', 'scale-100', 'pointer-events-auto');
-            }
-        }
-
-        function scrollToBottom() {
-            if (chatBody) {
-                chatBody.scrollTop = chatBody.scrollHeight;
-            }
-        }
-
-        if (chatToggle) chatToggle.addEventListener('click', toggleChat);
-        if (chatClose) chatClose.addEventListener('click', toggleChat);
-
-        // Giữ cửa sổ chat mở sau khi submit form
-        @if(session('chat_open'))
-            chatWindow.classList.remove('opacity-0', 'scale-90', 'pointer-events-none');
-            chatWindow.classList.add('opacity-100', 'scale-100', 'pointer-events-auto');
-            scrollToBottom();
-        @endif
-    });
-</script>
