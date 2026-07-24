@@ -603,4 +603,55 @@ class CinemaStaffDashboardController extends Controller
             return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
     }
+    /**
+     * In vé khổ K80
+     */
+    public function printTicket(Request $request, $type, $id)
+    {
+        $user = auth()->user();
+        $cinemaId = $user->cinema_id;
+        $seatsToPrint = collect();
+        $booking = null;
+
+        if ($type === 'booking') {
+            $booking = Booking::with([
+                'user',
+                'showtime.movie',
+                'showtime.room.cinema',
+                'bookedSeats.seat',
+                'combos'
+            ])->findOrFail($id);
+
+            // Kiểm tra rạp
+            if ($cinemaId && $booking->showtime->room->cinema_id != $cinemaId) {
+                return abort(403, 'Không có quyền in vé thuộc rạp khác.');
+            }
+
+            $seatsToPrint = $booking->bookedSeats;
+        } elseif ($type === 'seat') {
+            $bookedSeat = BookedSeat::with([
+                'seat',
+                'booking.user',
+                'booking.showtime.movie',
+                'booking.showtime.room.cinema',
+                'booking.combos'
+            ])->findOrFail($id);
+            
+            $booking = $bookedSeat->booking;
+
+            if ($cinemaId && $booking->showtime->room->cinema_id != $cinemaId) {
+                return abort(403, 'Không có quyền in vé thuộc rạp khác.');
+            }
+
+            $seatsToPrint->push($bookedSeat);
+        } else {
+            return abort(404, 'Loại in vé không hợp lệ.');
+        }
+
+        if ($seatsToPrint->isEmpty()) {
+            return abort(404, 'Không có ghế nào để in.');
+        }
+
+        return view('staff.ticket.print', compact('seatsToPrint', 'booking', 'type'));
+    }
 }

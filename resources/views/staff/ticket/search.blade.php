@@ -301,6 +301,7 @@
                                         <span class="ms-2 text-muted">{{ number_format($seat->price_at_booking) }}đ</span>
                                     </div>
                                     <div class="d-flex align-items-center gap-2">
+                                        <a href="{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $seat->id]) }}" target="_blank" class="btn btn-sm btn-outline-dark fw-bold px-3"><i class="fas fa-print me-1"></i> In vé</a>
                                         @if($seat->status === 'PAID')
                                             <span class="badge badge-paid me-2"><i class="fas fa-check-circle me-1"></i>Sẵn sàng check-in</span>
                                             
@@ -326,19 +327,22 @@
                         </div>
                     </div>
 
-                    <!-- Overall checkin button for booking -->
-                    @if($canCheckIn)
-                        <div class="mt-4 text-center">
+                    <!-- Overall actions for booking -->
+                    <div class="mt-4 text-center d-flex justify-content-center gap-3">
+                        <a href="{{ route('staff.ticket.print', ['type' => 'booking', 'id' => $result->id]) }}" target="_blank" class="btn btn-dark fw-bold px-4 py-3 fs-5 shadow">
+                            <i class="fas fa-print me-2"></i> IN TOÀN BỘ VÉ
+                        </a>
+                        @if($canCheckIn)
                             <form action="{{ route('staff.ticket.checkin') }}" method="POST" class="d-inline-block">
                                 @csrf
                                 <input type="hidden" name="type" value="booking">
                                 <input type="hidden" name="id" value="{{ $result->id }}">
-                                <button type="submit" class="btn btn-warning fw-bold px-5 py-3 fs-5 shadow">
+                                <button type="submit" class="btn btn-warning fw-bold px-4 py-3 fs-5 shadow">
                                     <i class="fas fa-check-circle me-2"></i> CHECK-IN TOÀN BỘ GHẾ
                                 </button>
                             </form>
-                        </div>
-                    @endif
+                        @endif
+                    </div>
 
                 @else
                     <!-- Case 2: Search by Seat QR code - display single seat info with big button -->
@@ -348,7 +352,8 @@
                             <span class="ms-2 badge bg-secondary-subtle text-secondary-emphasis">{{ $result->seat->seat_type ?? 'Regular' }}</span>
                             <span class="ms-2 text-muted">{{ number_format($result->price_at_booking) }}đ</span>
                         </div>
-                        <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $result->id]) }}" target="_blank" class="btn btn-outline-dark fw-bold px-3 py-1"><i class="fas fa-print me-1"></i> In vé</a>
                             @if($result->status === 'PAID')
                                 <span class="badge badge-paid"><i class="fas fa-check-circle me-1"></i>Sẵn sàng check-in</span>
                             @elseif($result->status === 'USED')
