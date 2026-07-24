@@ -391,16 +391,15 @@
             @endforeach
         </select>
 
-        {{-- Genre Multi-Select --}}
-        <div style="min-width: 210px; max-width: 280px; flex: 1;">
-            <x-genre-select
-                :categories="$categories"
-                :selected="request('genre_id') ? [request('genre_id')] : []"
-                name="genre_ids[]"
-                label=""
-                placeholder="Tìm thể loại..."
-                id="client-current-genre" />
-        </div>
+        {{-- Genre --}}
+        <select id="genre-filter" class="filter-select">
+            <option value="">🎭 Thể loại</option>
+            @foreach($categories as $cat)
+            <option value="{{ $cat->id }}" {{ request('genre_id') == $cat->id ? 'selected' : '' }}>
+                {{ $cat->name }}
+            </option>
+            @endforeach
+        </select>
 
         <div class="filter-divider hidden md:block"></div>
 
@@ -529,7 +528,7 @@
         return {
             search : document.getElementById('search-input').value.toLowerCase().trim(),
             cinema : document.getElementById('cinema-filter').value,
-            genres : typeof mgSelect_getSelectedValues === 'function' ? mgSelect_getSelectedValues('client-current-genre') : [],
+            genre  : document.getElementById('genre-filter').value,
             format : document.querySelector('#format-pills .filter-pill.active')?.dataset?.format ?? 'all',
             date   : document.querySelector('#date-tabs .date-tab.active')?.dataset?.date ?? 'all',
         };
@@ -555,12 +554,8 @@
             // Search
             if (f.search && !title.includes(f.search)) show = false;
 
-            // Genre (multi-select: match if movie belongs to any of the selected genres)
-            if (f.genres && f.genres.length > 0) {
-                const cardGenreList = genres.split(',').map(g => g.trim());
-                const hasMatch = f.genres.some(g => cardGenreList.includes(g));
-                if (!hasMatch) show = false;
-            }
+            // Genre
+            if (f.genre && !genres.split(',').includes(f.genre)) show = false;
 
             // Cinema (client-side — filter showtime buttons, card only hidden if 0 buttons left)
             // Date
@@ -590,7 +585,7 @@
         // Hide pagination when client filters are active
         const paginationWrap = document.getElementById('pagination-wrap');
         if (paginationWrap) {
-            const clientFiltersActive = f.cinema !== '' || f.genres.length > 0 || f.format !== 'all' || f.date !== 'all';
+            const clientFiltersActive = f.cinema !== '' || f.format !== 'all' || f.date !== 'all';
             paginationWrap.style.opacity = clientFiltersActive ? '0.4' : '1';
         }
     }
@@ -661,10 +656,10 @@
     document.getElementById('cinema-filter').addEventListener('change', applyFilters);
 
     // =====================================================================
-    // GENRE FILTER (real-time client-side + event listener)
+    // GENRE FILTER (server-side)
     // =====================================================================
-    document.addEventListener('genre-change', function(e) {
-        applyFilters();
+    document.getElementById('genre-filter').addEventListener('change', function() {
+        navigateWithParams({ genre_id: this.value, sort: document.getElementById('sort-select').value });
     });
 
     // =====================================================================
@@ -691,7 +686,7 @@
     window.resetAllFilters = function() {
         document.getElementById('search-input').value = '';
         document.getElementById('cinema-filter').value = '';
-        if (typeof mgSelect_clearAll === 'function') mgSelect_clearAll('client-current-genre');
+        document.getElementById('genre-filter').value = '';
         document.getElementById('sort-select').value = 'latest';
         document.querySelectorAll('#format-pills .filter-pill').forEach(p => p.classList.remove('active'));
         document.querySelector('#format-pills .filter-pill[data-format="all"]')?.classList.add('active');
