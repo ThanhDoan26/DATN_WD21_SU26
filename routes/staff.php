@@ -12,6 +12,7 @@ Route::middleware(['auth', 'role:STAFF'])->prefix('staff')->name('staff.')->grou
     Route::get('/ticket-search', [CinemaStaffDashboardController::class, 'searchForm'])->name('ticket.search');
     Route::get('/ticket-lookup', [CinemaStaffDashboardController::class, 'lookup'])->name('ticket.lookup');
     Route::post('/ticket-checkin', [CinemaStaffDashboardController::class, 'checkIn'])->name('ticket.checkin');
+    Route::get('/ticket-print/{type}/{id}', [CinemaStaffDashboardController::class, 'printTicket'])->name('ticket.print');
 
     // Walk-in Booking
     Route::get('/walk-in/movies', [\App\Http\Controllers\Staff\WalkInBookingController::class, 'movies'])->name('walkin.movies');
