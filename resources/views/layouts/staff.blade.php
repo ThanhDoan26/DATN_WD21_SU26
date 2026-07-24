@@ -109,7 +109,7 @@
             </li>
             <li>
                 <a href="{{ route('staff.dashboard') }}" class="@if(request()->routeIs('staff.dashboard')) active @endif">
-                    <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
+                    <i class="fas fa-tachometer-alt"></i> <span>Bảng điều khiển</span>
                 </a>
             </li>
             <li>
@@ -127,12 +127,12 @@
 
     <div class="main-content">
         <div class="topbar">
-            <h5>@yield('page_title', 'Dashboard')</h5>
+            <h5>@yield('page_title', 'Bảng điều khiển')</h5>
             <div class="topbar-right">
                 <div class="dropdown">
                     <div class="user-info dropdown-toggle" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
                         <div class="text-end">
-                            <small style="color: #999;">Welcome</small><br>
+                            <small style="color: #999;">Chào mừng</small><br>
                             <strong style="color: #333;">{{ Auth::user()->name ?? 'Staff' }}</strong>
                         </div>
                         <div class="user-avatar ms-2">
@@ -144,7 +144,7 @@
                             <form method="POST" action="{{ route('logout') }}" class="m-0">
                                 @csrf
                                 <button type="submit" class="dropdown-item py-2 text-danger">
-                                    <i class="fas fa-sign-out-alt me-2"></i> Logout
+                                    <i class="fas fa-sign-out-alt me-2"></i> Đăng xuất
                                 </button>
                             </form>
                         </li>

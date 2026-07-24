@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
-@section('title', 'Dashboard')
-@section('page_title', 'Dashboard')
+@section('title', 'Bảng điều khiển')
+@section('page_title', 'Bảng điều khiển')
 
 @section('content')
 
@@ -337,25 +337,25 @@
         </p>
         <ul class="list-group list-group-flush mt-2">
             <li class="list-group-item text-muted border-light px-0">
-                <strong><i class="fas fa-building text-primary me-2" style="width: 20px;"></i> Cinemas</strong> - Quản lý cụm rạp chiếu phim
+                <strong><i class="fas fa-building text-primary me-2" style="width: 20px;"></i> Cụm rạp</strong> - Quản lý cụm rạp chiếu phim
             </li>
             <li class="list-group-item text-muted border-light px-0">
-                <strong><i class="fas fa-door-open text-primary me-2" style="width: 20px;"></i> Rooms</strong> - Quản lý phòng chiếu
+                <strong><i class="fas fa-door-open text-primary me-2" style="width: 20px;"></i> Phòng chiếu</strong> - Quản lý phòng chiếu
             </li>
             <li class="list-group-item text-muted border-light px-0">
-                <strong><i class="fas fa-chair text-primary me-2" style="width: 20px;"></i> Seats</strong> - Quản lý sơ đồ ghế ngồi
+                <strong><i class="fas fa-chair text-primary me-2" style="width: 20px;"></i> Ghế</strong> - Quản lý sơ đồ ghế ngồi
             </li>
             <li class="list-group-item text-muted border-light px-0">
-                <strong><i class="fas fa-video text-primary me-2" style="width: 20px;"></i> Movies</strong> - Quản lý danh sách phim
+                <strong><i class="fas fa-video text-primary me-2" style="width: 20px;"></i> Phim</strong> - Quản lý danh sách phim
             </li>
             <li class="list-group-item text-muted border-light px-0">
-                <strong><i class="fas fa-calendar-alt text-primary me-2" style="width: 20px;"></i> Showtimes</strong> - Quản lý lịch chiếu
+                <strong><i class="fas fa-calendar-alt text-primary me-2" style="width: 20px;"></i> Lịch chiếu</strong> - Quản lý lịch chiếu
             </li>
             <li class="list-group-item text-muted border-light px-0">
-                <strong><i class="fas fa-ticket-alt text-primary me-2" style="width: 20px;"></i> Bookings</strong> - Quản lý đơn hàng
+                <strong><i class="fas fa-ticket-alt text-primary me-2" style="width: 20px;"></i> Đơn hàng</strong> - Quản lý đơn hàng
             </li>
             <li class="list-group-item text-muted border-light px-0">
-                <strong><i class="fas fa-users text-primary me-2" style="width: 20px;"></i> Users</strong> - Quản lý người dùng
+                <strong><i class="fas fa-users text-primary me-2" style="width: 20px;"></i> Người dùng</strong> - Quản lý người dùng
             </li>
         </ul>
     </div>
