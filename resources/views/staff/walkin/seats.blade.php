@@ -55,6 +55,7 @@
     }
     .seat-regular { background-color: #0dcaf0; color: white; border-color: #0bacce; }
     .seat-vip { background-color: #ffc107; color: #000; border-color: #e0a800; font-weight: 800; }
+    .seat-sweetbox { background-color: #ec4899; color: white; border-color: #db2777; font-weight: 800; width: 76px; } /* 35*2 + 6 gap */
     .seat-booked { background-color: #dee2e6; color: #6c757d; cursor: not-allowed; border-color: #ced4da; }
     .seat-selected { 
         background-color: #198754 !important; 
@@ -88,11 +89,21 @@
                     @foreach($groupedSeats as $row => $seats)
                         <div class="seat-row">
                             <span class="row-label">{{ $row }}</span>
-                            @foreach($seats->sortBy('seat_number') as $seat)
+                            @foreach($seats->sortBy(fn($s) => (int)$s->seat_number) as $seat)
                                 @php
                                     $isBooked = in_array($seat->id, $bookedSeats);
                                     $isVip = $seat->seat_type === 'VIP';
-                                    $seatClass = $isBooked ? 'seat-booked' : ($isVip ? 'seat-vip' : 'seat-regular');
+                                    $isSweetbox = $seat->seat_type === 'Sweetbox' || $seat->seat_type === 'Double';
+                                    
+                                    if ($isBooked) {
+                                        $seatClass = 'seat-booked';
+                                    } elseif ($isSweetbox) {
+                                        $seatClass = 'seat-sweetbox';
+                                    } elseif ($isVip) {
+                                        $seatClass = 'seat-vip';
+                                    } else {
+                                        $seatClass = 'seat-regular';
+                                    }
                                 @endphp
                                 <div onclick="toggleSeat({{ $seat->id }}, this)" 
                                      class="seat-btn {{ $seatClass }}" 
@@ -112,6 +123,7 @@
             <div class="d-flex justify-content-center gap-4 mt-4 text-muted">
                 <div class="d-flex align-items-center"><div class="seat-btn seat-regular me-2" style="width:25px;height:25px"></div> Thường</div>
                 <div class="d-flex align-items-center"><div class="seat-btn seat-vip me-2" style="width:25px;height:25px"></div> VIP</div>
+                <div class="d-flex align-items-center"><div class="seat-btn seat-sweetbox me-2" style="width:40px;height:25px"></div> Đôi</div>
                 <div class="d-flex align-items-center"><div class="seat-btn seat-selected me-2" style="width:25px;height:25px"></div> Đang chọn</div>
                 <div class="d-flex align-items-center"><div class="seat-btn seat-booked me-2" style="width:25px;height:25px"></div> Đã bán</div>
             </div>
