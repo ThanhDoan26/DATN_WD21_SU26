@@ -106,7 +106,7 @@
         /* Double / Sweetbox Seat (Hồng) */
         .seat.sweetbox {
             background-color: #ec4899;
-            width: 90px;
+            width: 92px; /* 2 seats (42px * 2) + gap (8px) = 92px */
             border-color: #db2777;
             color: #ffffff;
             font-weight: 800;

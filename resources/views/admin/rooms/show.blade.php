@@ -17,7 +17,7 @@
     .seat:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); filter: brightness(1.1); }
     .seat.regular { background-color: #0ea5e9; border-color: #0284c7; }
     .seat.vip { background-color: #f59e0b; color: #1e293b; border-color: #d97706; }
-    .seat.sweetbox { background-color: #ec4899; width: 90px; border-color: #db2777; }
+    .seat.sweetbox { background-color: #ec4899; width: 92px; border-color: #db2777; }
     .seat.broken { background-color: #cbd5e1 !important; border-color: #94a3b8 !important; color: #64748b !important; cursor: not-allowed; box-shadow: none; opacity: 0.75; }
     .seat.selected-active { background-color: #22c55e !important; border-color: #16a34a !important; color: #ffffff !important; outline: none !important; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.4); animation: pulseSelection 1.5s infinite; }
     @keyframes pulseSelection { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
