@@ -369,6 +369,7 @@ html.dark-theme .mgs-option { color:#e2e8f0 !important; }
         el.style.background = 'transparent';
     }
 
+
     /* ── Refresh trigger button label + count ── */
     function _refreshTrigger(cid) {
         const selected = document.querySelectorAll('#' + cid + '-list .mgs-option.selected');
@@ -396,6 +397,7 @@ html.dark-theme .mgs-option { color:#e2e8f0 !important; }
         }
 
         if (footer) footer.textContent = n + ' đã chọn';
+
 
         const root = document.getElementById(cid + '-root');
         if (root) {
