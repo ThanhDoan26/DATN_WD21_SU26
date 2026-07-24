@@ -88,8 +88,16 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="age_rating" class="form-label">Độ tuổi</label>
-                        <input type="text" class="form-control @error('age_rating') is-invalid @enderror" id="age_rating" name="age_rating" value="{{ old('age_rating') }}" placeholder="VD: T18, P, K">
+                        <label for="age_rating" class="form-label">Độ tuổi <i class="fas fa-info-circle text-muted" title="Hiển thị badge màu trên trang khách"></i></label>
+                        <select class="form-select @error('age_rating') is-invalid @enderror" id="age_rating" name="age_rating">
+                            <option value="">-- Chọn độ tuổi --</option>
+                            <option value="P"   {{ old('age_rating') == 'P'   ? 'selected' : '' }}>🟢 P — Phổ biến (mọi độ tuổi)</option>
+                            <option value="K"   {{ old('age_rating') == 'K'   ? 'selected' : '' }}>🟢 K — Dành cho trẻ em</option>
+                            <option value="T13" {{ old('age_rating') == 'T13' ? 'selected' : '' }}>🟡 T13 — Từ 13 tuổi trở lên</option>
+                            <option value="T16" {{ old('age_rating') == 'T16' ? 'selected' : '' }}>🟠 T16 — Từ 16 tuổi trở lên</option>
+                            <option value="T18" {{ old('age_rating') == 'T18' ? 'selected' : '' }}>🔴 T18 — Từ 18 tuổi trở lên</option>
+                        </select>
+                        <small class="text-muted">Badge màu sẽ hiển thị tự động trên trang phim đang chiếu / sắp chiếu.</small>
                         @error('age_rating') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                 </div>
@@ -122,8 +130,24 @@
                 </div>
                 <div class="col-md-4">
                     <div class="mb-3">
-                        <label for="trailer_url" class="form-label">Trailer URL</label>
-                        <input type="url" class="form-control @error('trailer_url') is-invalid @enderror" id="trailer_url" name="trailer_url" value="{{ old('trailer_url') }}" placeholder="https://youtube.com/...">
+                        <label for="trailer_url" class="form-label">
+                            <i class="fab fa-youtube text-danger"></i> Trailer URL (YouTube)
+                        </label>
+                        <div class="input-group">
+                            <input type="url" class="form-control @error('trailer_url') is-invalid @enderror" id="trailer_url" name="trailer_url" value="{{ old('trailer_url') }}" placeholder="https://youtube.com/watch?v=..." oninput="previewTrailer(this.value)">
+                            <button type="button" class="btn btn-outline-danger" onclick="testTrailer()" title="Xem thử trailer">
+                                <i class="fas fa-play"></i>
+                            </button>
+                        </div>
+                        @error('trailer_url') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        {{-- Thumbnail preview --}}
+                        <div id="trailer-preview" class="mt-2" style="display:none;">
+                            <img id="trailer-thumb" src="" alt="Trailer thumbnail" class="img-fluid rounded shadow-sm" style="max-height:120px; object-fit:cover; width:100%;">
+                            <small class="text-success d-block mt-1"><i class="fas fa-check-circle"></i> Đã nhận diện video YouTube</small>
+                        </div>
+                        <div id="trailer-error" class="mt-1" style="display:none;">
+                            <small class="text-danger"><i class="fas fa-exclamation-circle"></i> URL không hợp lệ hoặc không phải YouTube</small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -151,5 +175,55 @@
             reader.readAsDataURL(input.files[0]);
         }
     }
+
+    function extractYoutubeId(url) {
+        if (!url) return null;
+        const patterns = [
+            /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+            /youtube\.com\/shorts\/([^&\n?#]+)/
+        ];
+        for (const p of patterns) {
+            const m = url.match(p);
+            if (m) return m[1];
+        }
+        return null;
+    }
+
+    function previewTrailer(url) {
+        const ytId = extractYoutubeId(url);
+        const previewEl = document.getElementById('trailer-preview');
+        const errorEl   = document.getElementById('trailer-error');
+        const thumbEl   = document.getElementById('trailer-thumb');
+
+        if (ytId) {
+            thumbEl.src = `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`;
+            previewEl.style.display = 'block';
+            errorEl.style.display   = 'none';
+        } else if (url.length > 10) {
+            previewEl.style.display = 'none';
+            errorEl.style.display   = 'block';
+        } else {
+            previewEl.style.display = 'none';
+            errorEl.style.display   = 'none';
+        }
+    }
+
+    function testTrailer() {
+        const url = document.getElementById('trailer_url').value.trim();
+        const ytId = extractYoutubeId(url);
+        if (ytId) {
+            window.open(`https://www.youtube.com/watch?v=${ytId}`, '_blank');
+        } else if (url) {
+            window.open(url, '_blank');
+        } else {
+            alert('Vui lòng nhập URL trailer trước.');
+        }
+    }
+
+    // Auto-preview on page load if value exists
+    document.addEventListener('DOMContentLoaded', function() {
+        const url = document.getElementById('trailer_url').value;
+        if (url) previewTrailer(url);
+    });
 </script>
 @endsection

@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Admin Dashboard') - Cinema Booking System</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('admin_theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
+            }
+        })();
+    </script>
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -34,6 +44,113 @@
             --text-muted: #64748b;
             --border-light: #e2e8f0;
             --border-hover: #cbd5e1;
+        }
+
+        /* Theme Toggle Button Style */
+        .theme-toggle-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 1px solid var(--border-light);
+            background-color: var(--bg-surface);
+            color: var(--text-ink);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .theme-toggle-btn:hover {
+            transform: scale(1.12) rotate(15deg);
+            box-shadow: 0 6px 16px rgba(147, 51, 234, 0.25);
+            border-color: var(--primary-color);
+        }
+
+        /* Dark Mode Variable Overrides */
+        html.dark-theme {
+            --bg-base: #0b0f19;
+            --bg-surface: #131927;
+            --text-ink: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border-light: #1f2937;
+            --border-hover: #374151;
+        }
+
+        html.dark-theme body {
+            background-color: #0b0f19 !important;
+            color: #f3f4f6 !important;
+        }
+
+        html.dark-theme .topbar {
+            background-color: #131927 !important;
+            border-bottom: 1px solid #1f2937 !important;
+        }
+
+        html.dark-theme .topbar h5,
+        html.dark-theme .user-info strong {
+            color: #f3f4f6 !important;
+        }
+
+        html.dark-theme .card,
+        html.dark-theme .card-header {
+            background-color: #131927 !important;
+            border-color: #1f2937 !important;
+            color: #f3f4f6 !important;
+        }
+
+        html.dark-theme .card-header {
+            border-bottom-color: #1f2937 !important;
+        }
+
+        html.dark-theme .form-control,
+        html.dark-theme .form-select {
+            background-color: #1a2234 !important;
+            border-color: #374151 !important;
+            color: #f3f4f6 !important;
+        }
+
+        html.dark-theme .table {
+            color: #f3f4f6 !important;
+            border-color: #1f2937 !important;
+        }
+
+        html.dark-theme .table td,
+        html.dark-theme .table th {
+            background-color: #131927 !important;
+            border-color: #1f2937 !important;
+            color: #f3f4f6 !important;
+        }
+
+        html.dark-theme .table-hover tbody tr:hover td {
+            background-color: #1a2234 !important;
+        }
+
+        html.dark-theme .dropdown-menu {
+            background-color: #131927 !important;
+            border-color: #374151 !important;
+        }
+
+        html.dark-theme .dropdown-item {
+            color: #e5e7eb !important;
+        }
+
+        html.dark-theme .dropdown-item:hover {
+            background-color: rgba(147, 51, 234, 0.2) !important;
+            color: #ffffff !important;
+        }
+
+        html.dark-theme strong,
+        html.dark-theme h1, html.dark-theme h2, html.dark-theme h3, html.dark-theme h4, html.dark-theme h5, html.dark-theme h6 {
+            color: #f3f4f6 !important;
+        }
+
+        html.dark-theme .bg-light {
+            background-color: #1a2234 !important;
+        }
+
+        html.dark-theme .text-dark {
+            color: #f3f4f6 !important;
         }
 
         /* Utility overrides to sync Bootstrap colors with Brand Design System */
@@ -634,7 +751,10 @@
         <!-- TOP BAR -->
         <div class="topbar">
             <h5>@yield('page_title', 'Dashboard')</h5>
-            <div class="topbar-right">
+            <div class="topbar-right d-flex align-items-center">
+                <button type="button" class="theme-toggle-btn me-3" id="themeToggleBtn" onclick="toggleAdminTheme()" title="Chuyển đổi Chế độ Sáng / Tối">
+                    <i class="fas fa-moon" id="themeToggleIcon"></i>
+                </button>
                 <div class="dropdown">
                     <div class="user-info dropdown-toggle" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
                         <div class="text-end">
@@ -686,6 +806,34 @@
 
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        function toggleAdminTheme() {
+            const isDark = document.documentElement.classList.toggle('dark-theme');
+            if (isDark) {
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
+                localStorage.setItem('admin_theme', 'dark');
+            } else {
+                document.documentElement.removeAttribute('data-bs-theme');
+                localStorage.setItem('admin_theme', 'light');
+            }
+            updateThemeIcon(isDark);
+        }
+
+        function updateThemeIcon(isDark) {
+            const icon = document.getElementById('themeToggleIcon');
+            if (icon) {
+                icon.className = isDark ? 'fas fa-sun text-warning' : 'fas fa-moon text-dark';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const isDark = document.documentElement.classList.contains('dark-theme');
+            updateThemeIcon(isDark);
+        });
+    </script>
+    @stack('scripts')
     @yield('extra_js')
 </body>
 </html>
