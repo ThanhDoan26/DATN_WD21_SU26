@@ -582,4 +582,46 @@ class CinemaStaffDashboardController extends Controller
             return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
     }
+    public function printTicket($type, $id)
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if (!$user || !$user->isStaff()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if ($type === 'booking') {
+            $booking = Booking::with([
+                'user',
+                'showtime',
+                'showtime.movie',
+                'showtime.room',
+                'showtime.room.cinema',
+                'bookedSeats.seat'
+            ])->findOrFail($id);
+
+            return view('staff.ticket.print', [
+                'type' => 'booking',
+                'booking' => $booking,
+                'seats' => $booking->bookedSeats
+            ]);
+        } elseif ($type === 'seat') {
+            $bookedSeat = BookedSeat::with([
+                'seat',
+                'booking',
+                'booking.user',
+                'booking.showtime',
+                'booking.showtime.movie',
+                'booking.showtime.room',
+                'booking.showtime.room.cinema'
+            ])->findOrFail($id);
+
+            return view('staff.ticket.print', [
+                'type' => 'seat',
+                'booking' => $bookedSeat->booking,
+                'seats' => collect([$bookedSeat])
+            ]);
+        }
+
+        abort(404);
+    }
 }

@@ -103,6 +103,15 @@
             font-weight: 800;
         }
 
+        /* Double / Sweetbox Seat (Hồng) */
+        .seat.sweetbox {
+            background-color: #ec4899;
+            width: 90px;
+            border-color: #db2777;
+            color: #ffffff;
+            font-weight: 800;
+        }
+
         /* Selected Seat */
         .seat.selected {
             background-color: #22c55e !important;
@@ -208,6 +217,11 @@
             color: #1e293b;
         }
 
+        .legend-box.sweetbox {
+            background-color: #ec4899;
+            border-color: #db2777;
+        }
+
         .legend-box.selected {
             background-color: #3b82f6;
             border-color: #1e40af;
@@ -278,6 +292,10 @@
                                 <span>Ghế VIP</span>
                             </div>
                             <div class="legend-item">
+                                <div class="legend-box sweetbox">S</div>
+                                <span>Ghế Đôi</span>
+                            </div>
+                            <div class="legend-item">
                                 <div class="legend-box selected">✓</div>
                                 <span>Ghế Đã Chọn</span>
                             </div>
@@ -306,16 +324,19 @@
                                 <div class="seat-row">
                                     <span class="row-label">{{ $row }}</span>
                                     <div class="row-seats">
-                                        @foreach($seats->sortBy('seat_number') as $seat)
+                                        @foreach($seats->sortBy(fn($s) => (int)$s->seat_number) as $seat)
                                             @php
                                                 $isBooked = in_array($seat->id, $bookedSeats);
                                                 $isBroken = $seat->status === \App\Models\Seat::STATUS_BROKEN;
                                                 $isVip = $seat->seat_type === 'VIP';
+                                                $isSweetbox = $seat->seat_type === 'Sweetbox' || $seat->seat_type === 'Double';
                                                 
                                                 if ($isBroken) {
                                                     $seatClass = 'broken';
                                                 } elseif ($isBooked) {
                                                     $seatClass = 'booked';
+                                                } elseif ($isSweetbox) {
+                                                    $seatClass = 'sweetbox';
                                                 } elseif ($isVip) {
                                                     $seatClass = 'vip';
                                                 } else {
