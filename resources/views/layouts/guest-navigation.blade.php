@@ -27,11 +27,11 @@
                 @if (Route::has('login'))
                     @auth
                         @if(auth()->user()->isAdmin())
-                            <a href="{{ route('admin.dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium"><i class="fas fa-user-shield me-1"></i> Admin Portal</a>
+                            <a href="{{ route('admin.dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium"><i class="fas fa-user-shield me-1"></i> Trang quản trị</a>
                         @elseif(auth()->user()->isManager())
-                            <a href="{{ route('manager.dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium"><i class="fas fa-user-shield me-1"></i> Manager Portal</a>
+                            <a href="{{ route('manager.dashboard') }}" class="text-slate-300 hover:text-white transition-colors font-medium"><i class="fas fa-user-shield me-1"></i> Trang quản lý</a>
                         @elseif(auth()->user()->isStaff())
-                            <a href="{{ route('staff.dashboard') }}" class="text-[#ca8a04] hover:text-[#eab308] transition-colors font-medium"><i class="fas fa-user-shield me-1"></i> Staff Portal</a>
+                            <a href="{{ route('staff.dashboard') }}" class="text-[#ca8a04] hover:text-[#eab308] transition-colors font-medium"><i class="fas fa-user-shield me-1"></i> Trang nhân viên</a>
                         @endif
 
                         <form method="POST" action="{{ route('logout') }}" class="inline">
