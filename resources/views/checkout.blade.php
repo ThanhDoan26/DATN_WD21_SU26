@@ -827,10 +827,7 @@
 
                         // ===== KHỞI ĐỘNG ĐỒNG HỒ ĐẾM NGƯỢC =====
                         const timeoutMs = (data.data?.timeout_minutes ?? {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES }}) * 60 * 1000;
-                        const bookingTime = data.data?.booking_time
-                            ? new Date(data.data.booking_time).getTime()
-                            : Date.now();
-                        const expiresAtMs = bookingTime + timeoutMs;
+                        const expiresAtMs = Date.now() + timeoutMs;
                         // Lưu vào sessionStorage để timer vẫn chạy nếu Stripe redirect về
                         sessionStorage.setItem('booking_expires_at', expiresAtMs.toString());
                         startCountdown(expiresAtMs);
