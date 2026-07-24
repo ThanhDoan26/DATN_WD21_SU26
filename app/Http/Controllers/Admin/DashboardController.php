@@ -73,6 +73,7 @@ class DashboardController extends AdminController
             'cinemas'          => \App\Models\Cinema::all(),
             'topCombos'        => $topCombos,
             'topMovies'        => $statistics['topMovies'],
+            'movieStatistics'  => $statistics['movieStatistics'] ?? collect(),
             'detailedBookings' => $statistics['detailedBookings'],
         ];
 
@@ -86,6 +87,7 @@ class DashboardController extends AdminController
                 'totalRevenue'     => $data['totalRevenue'],
                 'dailyRevenue'     => $data['dailyRevenue'],
                 'periodRevenue'    => $data['periodRevenue'],
+                'monthlyRevenue'   => $data['monthlyRevenue'],
                 'yearlyRevenue'    => $data['yearlyRevenue'],
                 'selectedMonth'    => $data['selectedMonth'],
                 'selectedYear'     => $data['selectedYear'],
@@ -98,6 +100,7 @@ class DashboardController extends AdminController
                 'html_revenue_table' => view('admin.partials.revenue_table', $data)->render(),
                 'html_top_combos'    => view('admin.partials.top_combos', $data)->render(),
                 'html_top_movies'    => view('admin.partials.top_movies', $data)->render(),
+                'html_movie_statistics' => view('admin.partials.movie_statistics', $data)->render(),
             ]);
         }
 
