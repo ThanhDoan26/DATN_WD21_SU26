@@ -17,9 +17,9 @@
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label text-muted fw-semibold mb-1">Danh mục</label>
+                        <label class="form-label text-muted fw-semibold mb-1">Loại phim / Thể loại</label>
                         <select name="category_id" class="form-select bg-light">
-                            <option value="">Tất cả danh mục</option>
+                            <option value="">Tất cả loại phim</option>
                             @foreach($categories as $category)
                                 <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
                                     {{ $category->name }}
@@ -67,6 +67,7 @@
                         <th width="80">Poster</th>
                         <th>Tên phim</th>
                         <th>Danh mục</th>
+                        <th width="110">Định dạng</th>
                         <th>Thời lượng</th>
                         <th>Trạng thái</th>
                         <th class="text-center" width="150">Hành động</th>
@@ -86,12 +87,19 @@
                         </td>
                         <td>
                             <strong>{{ $movie->title }}</strong><br>
-                            <small class="text-muted">{{ $movie->age_rating }} | {{ $movie->language }}</small>
+                            <small class="text-muted">{{ $movie->age_rating ?: 'Chưa đặt độ tuổi' }} | {{ $movie->language ?: 'Chưa cập nhật' }}</small>
                         </td>
                         <td>
                             @foreach($movie->categories as $cat)
                                 <span class="badge bg-secondary">{{ $cat->name }}</span>
                             @endforeach
+                        </td>
+                        <td>
+                            @if($movie->format)
+                                <span class="badge bg-info text-dark fw-bold">{{ $movie->format }}</span>
+                            @else
+                                <span class="text-muted" style="font-size:12px;">--</span>
+                            @endif
                         </td>
                         <td>{{ $movie->getDurationFormatted() }}</td>
                         <td>

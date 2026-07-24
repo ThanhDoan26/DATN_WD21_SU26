@@ -25,6 +25,7 @@ class Movie extends Model
         'trailer_url',
         'duration',
         'age_rating',
+        'format',
         'status',
         'language',
         'country',

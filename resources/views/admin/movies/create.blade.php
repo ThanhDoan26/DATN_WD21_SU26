@@ -24,7 +24,7 @@
                         :categories="$categories"
                         :selected="old('categories', [])"
                         name="categories[]"
-                        label="Danh mục phim"
+                        label="Loại phim / Thể loại phim"
                         id="create-genre" />
 
                     <div class="mb-3">
@@ -91,6 +91,22 @@
                         </select>
                         <small class="text-muted">Badge màu sẽ hiển thị tự động trên trang phim đang chiếu / sắp chiếu.</small>
                         @error('age_rating') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="format" class="form-label">Định dạng phim <i class="fas fa-info-circle text-muted" title="Ví dụ: 2D, 3D, IMAX, 4DX..."></i></label>
+                        <select class="form-select @error('format') is-invalid @enderror" id="format" name="format">
+                            <option value="">-- Chọn định dạng phim --</option>
+                            <option value="2D" {{ old('format') == '2D' ? 'selected' : '' }}>🎬 2D (Standard)</option>
+                            <option value="3D" {{ old('format') == '3D' ? 'selected' : '' }}>🕶️ 3D</option>
+                            <option value="IMAX" {{ old('format') == 'IMAX' ? 'selected' : '' }}>📽️ IMAX 2D / 3D</option>
+                            <option value="4DX" {{ old('format') == '4DX' ? 'selected' : '' }}>💺 4DX</option>
+                            <option value="2D Phụ Đề" {{ old('format') == '2D Phụ Đề' ? 'selected' : '' }}>💬 2D Phụ đề</option>
+                            <option value="2D Lồng Tiếng" {{ old('format') == '2D Lồng Tiếng' ? 'selected' : '' }}>🗣️ 2D Lồng tiếng</option>
+                            <option value="3D Lồng Tiếng" {{ old('format') == '3D Lồng Tiếng' ? 'selected' : '' }}>🗣️ 3D Lồng tiếng</option>
+                        </select>
+                        <small class="text-muted">Định dạng công chiếu chính của phim (ví dụ: 2D, 3D, IMAX...)</small>
+                        @error('format') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                 </div>
             </div>
