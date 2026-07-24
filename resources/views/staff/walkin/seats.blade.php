@@ -55,7 +55,7 @@
     }
     .seat-regular { background-color: #0dcaf0; color: white; border-color: #0bacce; }
     .seat-vip { background-color: #ffc107; color: #000; border-color: #e0a800; font-weight: 800; }
-    .seat-sweetbox { background-color: #ec4899; color: white; border-color: #db2777; font-weight: 800; width: 75px; }
+    .seat-sweetbox { background-color: #ec4899; color: white; border-color: #db2777; font-weight: 800; width: 76px; } /* 35*2 + 6 gap */
     .seat-booked { background-color: #dee2e6; color: #6c757d; cursor: not-allowed; border-color: #ced4da; }
     .seat-selected { 
         background-color: #198754 !important; 
