@@ -277,6 +277,138 @@
         </div>
     </div>
 
+    <!-- Interactive Sales Analytics Chart -->
+    <div class="card border-0 shadow-sm mb-4 modern-card">
+        <div class="card-header bg-white border-0 py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div>
+                <h5 class="mb-0 text-dark fw-extrabold d-flex align-items-center gap-2">
+                    <i class="fas fa-chart-line text-primary"></i> Biểu đồ Sales Analytics & Doanh thu
+                </h5>
+                <small class="text-muted">Rê chuột vào điểm dữ liệu để xem thông tin chi tiết và hiệu ứng phát sáng</small>
+            </div>
+            <div class="btn-group btn-group-sm smart-animate-toggle" role="group" id="sales-chart-toggle">
+                <button type="button" class="btn btn-outline-primary active smart-btn" onclick="updateSalesChartPeriod('7days', this)">7 Ngày</button>
+                <button type="button" class="btn btn-outline-primary smart-btn" onclick="updateSalesChartPeriod('30days', this)">30 Ngày</button>
+                <button type="button" class="btn btn-outline-primary smart-btn" onclick="updateSalesChartPeriod('12months', this)">12 Tháng</button>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            <div style="height: 320px; position: relative;">
+                <canvas id="salesAnalyticsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Budget Usage & Low Stock Alert Row -->
+    <div class="row g-3 mb-4">
+        <!-- Budget Usage & Room Capacity Bar -->
+        <div class="col-12 col-xl-7">
+            <div class="card border-0 shadow-sm h-100 modern-card">
+                <div class="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0 text-dark fw-bold d-flex align-items-center gap-2">
+                        <i class="fas fa-wallet text-success"></i> Budget Usage & Tỷ lệ Lấp đầy Phòng
+                    </h5>
+                    <span class="badge bg-success-light text-success fw-bold px-3 py-2 rounded-pill">
+                        <i class="fas fa-arrow-up me-1"></i> +8.4% Hiệu suất
+                    </span>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Budget Bar Item 1 -->
+                    <div class="mb-4 budget-interactive-item" data-bs-toggle="tooltip" data-bs-html="true" title="<b>Ngân sách Quảng cáo & Marketing</b><br>Đã chi: 42.500.000 đ / 50.000.000 đ (85%)<br><span class='text-warning'>⚠️ Sắp đạt hạn mức</span>">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-semibold text-dark text-sm"><i class="fas fa-bullhorn text-primary me-2"></i>Ngân sách Quảng cáo & Marketing</span>
+                            <span class="fw-bold text-primary text-sm">85% (42.5M / 50M)</span>
+                        </div>
+                        <div class="progress budget-progress-bar" style="height: 10px; border-radius: 999px;">
+                            <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar" style="width: 85%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Budget Bar Item 2 -->
+                    <div class="mb-4 budget-interactive-item" data-bs-toggle="tooltip" data-bs-html="true" title="<b>Tỷ lệ Lấp đầy Ghế Phòng VIP</b><br>Đã đặt: 1.480 / 1.800 ghế (82%)<br><span class='text-success'>🟢 Tốc độ lấp đầy cao</span>">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-semibold text-dark text-sm"><i class="fas fa-couch text-warning me-2"></i>Tỷ lệ Lấp đầy Phòng VIP</span>
+                            <span class="fw-bold text-warning text-sm">82% (1,480 / 1,800 ghế)</span>
+                        </div>
+                        <div class="progress budget-progress-bar" style="height: 10px; border-radius: 999px;">
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: 82%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Budget Bar Item 3 -->
+                    <div class="mb-0 budget-interactive-item" data-bs-toggle="tooltip" data-bs-html="true" title="<b>Hạn mức Voucher & Ưu đãi Tháng</b><br>Đã phát hành: 68% tổng hạn mức<br><span class='text-info'>ℹ️ 3.200 lượt đổi mã</span>">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-semibold text-dark text-sm"><i class="fas fa-ticket-alt text-success me-2"></i>Ngân sách Khuyến mãi & Coupon</span>
+                            <span class="fw-bold text-success text-sm">68% (34M / 50M)</span>
+                        </div>
+                        <div class="progress budget-progress-bar" style="height: 10px; border-radius: 999px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 68%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Low Stock Alert Card (Smart Animate Collapsible) -->
+        <div class="col-12 col-xl-5">
+            <div class="card border-0 shadow-sm h-100 modern-card border-start border-4 border-danger position-relative overflow-hidden">
+                <div class="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0 text-danger fw-bold d-flex align-items-center gap-2">
+                        <i class="fas fa-exclamation-triangle text-danger pulse-icon"></i> Low Stock Alert
+                    </h5>
+                    <span class="badge bg-danger text-white rounded-pill px-3 py-1 text-xs pulse-glow-badge">
+                        3 Cảnh báo mới
+                    </span>
+                </div>
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between p-3 rounded-3 bg-danger-light mb-3 alert-item-hover">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="alert-icon-box bg-white text-danger rounded-circle p-2 shadow-xs">
+                                <i class="fas fa-couch fs-5"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark text-sm">Suất 20:00 - Avatar 3 (Phòng 1)</div>
+                                <small class="text-danger fw-semibold"><i class="fas fa-fire me-1"></i>Chỉ còn 4 ghế trống!</small>
+                            </div>
+                        </div>
+                        <a href="{{ route('admin.showtimes.index') }}" class="btn btn-sm btn-outline-danger rounded-pill fw-bold">Mở thêm</a>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between p-3 rounded-3 bg-warning-light mb-3 alert-item-hover">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="alert-icon-box bg-white text-warning rounded-circle p-2 shadow-xs">
+                                <i class="fas fa-popcorn fs-5"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark text-sm">Combo Bỏng Ngô Khổng Lồ</div>
+                                <small class="text-warning fw-semibold"><i class="fas fa-box-open me-1"></i>Sắp hết hàng (Còn 12 phần)</small>
+                            </div>
+                        </div>
+                        <a href="{{ route('admin.combos.index') }}" class="btn btn-sm btn-outline-warning rounded-pill fw-bold">Nhập thêm</a>
+                    </div>
+
+                    <!-- Smart Animate Toggle Button -->
+                    <button type="button" class="btn btn-link text-primary p-0 fw-bold text-decoration-none d-flex align-items-center gap-1 mt-2 smart-animate-toggle-btn" onclick="toggleLowStockDrawer()">
+                        <span id="low-stock-toggle-text">Mở rộng chi tiết cảnh báo</span>
+                        <i class="fas fa-chevron-down smart-chevron" id="low-stock-chevron"></i>
+                    </button>
+
+                    <!-- Smart Animate Collapsible Drawer -->
+                    <div class="smart-animate-drawer mt-3" id="low-stock-drawer">
+                        <div class="p-3 bg-light rounded-3 border border-light text-sm">
+                            <div class="fw-bold text-dark mb-1"><i class="fas fa-info-circle text-info me-1"></i> Tóm tắt cảnh báo hệ thống</div>
+                            <p class="text-muted text-xs mb-2">Các suất chiếu từ 18:00 - 22:00 hôm nay có tỷ lệ đặt lấp đầy > 90%. Vui lòng kiểm tra bổ sung phòng chiếu phụ nếu cần.</p>
+                            <div class="d-flex gap-2">
+                                <span class="badge bg-secondary text-xs">Cơ sở: Cinema Central</span>
+                                <span class="badge bg-primary text-xs">Cập nhật: 1 phút trước</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Tables row 1: Top Movies & Top Combo -->
     <div class="row">
         <!-- Top Movies -->
@@ -365,6 +497,93 @@
 
 @section('extra_css')
 <style>
+    /* =====================================================================
+     * MODERN MINIMALIST & SMART ANIMATE STYLES
+     * ===================================================================== */
+    .modern-card {
+        border-radius: 16px !important;
+        border: 1px solid rgba(226, 232, 240, 0.8) !important;
+        box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.04) !important;
+        background: #ffffff !important;
+        transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease, border-color 0.3s ease !important;
+    }
+    .modern-card:hover {
+        border-color: rgba(147, 51, 234, 0.2) !important;
+        box-shadow: 0 20px 40px -10px rgba(147, 51, 234, 0.1) !important;
+    }
+
+    /* Budget Usage Interactive Items & Glow Tooltip States */
+    .budget-interactive-item {
+        cursor: pointer;
+        padding: 8px 10px;
+        border-radius: 10px;
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .budget-interactive-item:hover {
+        background-color: rgba(147, 51, 234, 0.05);
+        transform: translateX(4px);
+    }
+    .budget-interactive-item:hover .progress-bar {
+        box-shadow: 0 0 14px rgba(147, 51, 234, 0.6);
+        filter: brightness(1.1);
+    }
+
+    /* Smart Animate Drawer (Collapsible) */
+    .smart-animate-drawer {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease, margin 0.35s ease;
+    }
+    .smart-animate-drawer.open {
+        max-height: 250px;
+        opacity: 1;
+    }
+    .smart-chevron {
+        transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .smart-chevron.rotated {
+        transform: rotate(180deg);
+    }
+
+    /* Smart Toggle Buttons */
+    .smart-btn {
+        border-radius: 20px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    }
+    .smart-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(147, 51, 234, 0.2);
+    }
+
+    /* Pulse Glow for Low Stock Alert */
+    .pulse-glow-badge {
+        animation: pulseGlowBadge 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+    @keyframes pulseGlowBadge {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+        50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+    }
+    .pulse-icon {
+        animation: pulseIconAlert 1.5s infinite alternate;
+    }
+    @keyframes pulseIconAlert {
+        from { transform: scale(1); filter: drop-shadow(0 0 0 rgba(239,68,68,0)); }
+        to { transform: scale(1.18); filter: drop-shadow(0 0 6px rgba(239,68,68,0.6)); }
+    }
+
+    /* Alert Item Hover Effects */
+    .alert-item-hover {
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        border: 1px solid transparent;
+    }
+    .alert-item-hover:hover {
+        transform: translateX(6px) scale(1.01);
+        border-color: rgba(239, 68, 68, 0.3);
+        box-shadow: 0 6px 16px rgba(239, 68, 68, 0.1);
+    }
+
     /* Giao diện bộ lọc nâng cao */
     .filter-card {
         border-radius: 12px !important;
@@ -873,6 +1092,154 @@
         
         // Bắt đầu chạy counter hiệu ứng ban đầu
         animateCounters();
+
+        // Khởi tạo Chart.js Sales Analytics
+        initSalesChart();
+
+        // Khởi tạo Bootstrap tooltips cho Budget Usage
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
     });
+
+    // =====================================================================
+    // SMART ANIMATE & INTERACTIVE SALES ANALYTICS CHART
+    // =====================================================================
+    let salesChart = null;
+
+    const chartDatasets = {
+        '7days': {
+            labels: ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'],
+            revenue: [12500000, 18200000, 14300000, 22500000, 31000000, 48500000, 52000000],
+            tickets: [140, 210, 165, 260, 350, 540, 590]
+        },
+        '30days': {
+            labels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4'],
+            revenue: [145000000, 178000000, 210000000, 195000000],
+            tickets: [1650, 1980, 2400, 2150]
+        },
+        '12months': {
+            labels: ['Thg 1', 'Thg 2', 'Thg 3', 'Thg 4', 'Thg 5', 'Thg 6', 'Thg 7', 'Thg 8', 'Thg 9', 'Thg 10', 'Thg 11', 'Thg 12'],
+            revenue: [450000000, 520000000, 480000000, 610000000, 730000000, 890000000, 920000000, 850000000, 710000000, 680000000, 790000000, 950000000],
+            tickets: [5100, 5900, 5400, 6800, 8100, 9800, 10200, 9400, 7900, 7600, 8800, 10500]
+        }
+    };
+
+    function initSalesChart() {
+        const ctx = document.getElementById('salesAnalyticsChart');
+        if (!ctx) return;
+
+        const data7Days = chartDatasets['7days'];
+        const chartCtx = ctx.getContext('2d');
+        const gradient = chartCtx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(147, 51, 234, 0.35)');
+        gradient.addColorStop(1, 'rgba(147, 51, 234, 0.0)');
+
+        salesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data7Days.labels,
+                datasets: [{
+                    label: 'Doanh thu (VNĐ)',
+                    data: data7Days.revenue,
+                    borderColor: '#9333ea',
+                    borderWidth: 3,
+                    backgroundColor: gradient,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#9333ea',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 9,
+                    pointHoverBackgroundColor: '#9333ea',
+                    pointHoverBorderColor: '#ffffff',
+                    pointHoverBorderWidth: 3,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 900,
+                    easing: 'easeOutQuart'
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        titleFont: { size: 13, weight: 'bold' },
+                        bodyFont: { size: 13 },
+                        padding: 12,
+                        cornerRadius: 10,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                const val = context.parsed.y;
+                                const formatted = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+                                return '💰 Doanh thu: ' + formatted;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 12 }, color: '#64748b' }
+                    },
+                    y: {
+                        grid: { color: 'rgba(226, 232, 240, 0.6)' },
+                        ticks: {
+                            font: { size: 11 },
+                            color: '#64748b',
+                            callback: function(val) {
+                                if (val >= 1000000) return (val / 1000000) + 'M đ';
+                                return val;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function updateSalesChartPeriod(period, btn) {
+        if (!salesChart || !chartDatasets[period]) return;
+        
+        const group = document.getElementById('sales-chart-toggle');
+        if (group) {
+            group.querySelectorAll('.smart-btn').forEach(b => b.classList.remove('active'));
+        }
+        if (btn) btn.classList.add('active');
+
+        const pData = chartDatasets[period];
+        salesChart.data.labels = pData.labels;
+        salesChart.data.datasets[0].data = pData.revenue;
+        salesChart.update('active');
+    }
+
+    function toggleLowStockDrawer() {
+        const drawer = document.getElementById('low-stock-drawer');
+        const chevron = document.getElementById('low-stock-chevron');
+        const toggleText = document.getElementById('low-stock-toggle-text');
+
+        if (!drawer) return;
+
+        const isOpen = drawer.classList.contains('open');
+        if (isOpen) {
+            drawer.classList.remove('open');
+            if (chevron) chevron.classList.remove('rotated');
+            if (toggleText) toggleText.textContent = 'Mở rộng chi tiết cảnh báo';
+        } else {
+            drawer.classList.add('open');
+            if (chevron) chevron.classList.add('rotated');
+            if (toggleText) toggleText.textContent = 'Thu gọn chi tiết cảnh báo';
+        }
+    }
 </script>
 @endsection
