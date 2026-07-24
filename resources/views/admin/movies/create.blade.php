@@ -20,20 +20,12 @@
                         @error('title') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Danh mục phim</label>
-                        <div class="border p-3 rounded" style="max-height: 150px; overflow-y: auto;">
-                            @foreach($categories as $category)
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="categories[]" value="{{ $category->id }}" id="cat_{{ $category->id }}"
-                                    {{ (is_array(old('categories')) && in_array($category->id, old('categories'))) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="cat_{{ $category->id }}">
-                                        {{ $category->name }}
-                                    </label>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
+                    <x-genre-select
+                        :categories="$categories"
+                        :selected="old('categories', [])"
+                        name="categories[]"
+                        label="Danh mục phim"
+                        id="create-genre" />
 
                     <div class="mb-3">
                         <label for="description" class="form-label">Mô tả</label>
