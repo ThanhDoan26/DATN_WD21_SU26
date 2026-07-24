@@ -57,6 +57,7 @@ class MovieController extends Controller
             'trailer_url' => 'nullable|url|max:255',
             'duration' => 'required|integer|min:30|max:300', // in minutes
             'age_rating' => 'nullable|string|max:50',
+            'format' => 'nullable|string|max:100',
             'language' => 'nullable|string|max:50',
             'country' => 'nullable|string|max:100',
             'status' => 'required|in:COMING_SOON,NOW_SHOWING,ENDED',
@@ -109,6 +110,7 @@ class MovieController extends Controller
             'trailer_url' => 'nullable|url|max:255',
             'duration' => 'required|integer|min:30|max:300',
             'age_rating' => 'nullable|string|max:50',
+            'format' => 'nullable|string|max:100',
             'language' => 'nullable|string|max:50',
             'country' => 'nullable|string|max:100',
             'status' => 'required|in:COMING_SOON,NOW_SHOWING,ENDED',

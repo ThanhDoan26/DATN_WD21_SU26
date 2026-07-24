@@ -481,6 +481,7 @@
                         <button type="button"
                                 onclick="proceedToCheckout()"
                                 id="checkoutButton"
+                                onclick="proceedToCheckout()"
                                 disabled
                                 class="w-full bg-primary hover:bg-red-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition mb-3">
                             <i class="fas fa-arrow-right mr-2"></i>Tiếp tục thanh toán

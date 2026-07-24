@@ -59,7 +59,7 @@
 
         <!-- Book Button -->
         <div class="mt-auto pt-4">
-            <button class="w-full bg-primary hover:bg-red-700 text-white py-2 rounded-lg font-semibold transition-colors text-sm">
+            <button onclick="event.preventDefault(); window.location.href='{{ route('booking.select-cinema', $movie->id) }}';" class="w-full bg-primary hover:bg-red-700 text-white py-2 rounded-lg font-semibold transition-colors text-sm">
                 Đặt vé
             </button>
         </div>
