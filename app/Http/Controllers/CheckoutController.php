@@ -252,7 +252,7 @@ class CheckoutController extends Controller
         }
 
         // Gọi hàm kiểm tra điều kiện bên trong model Coupon
-        $validation = $coupon->isValid($orderTotal);
+        $validation = $coupon->isValid($orderTotal, \Illuminate\Support\Facades\Auth::id());
 
         if (!$validation['valid']) {
             return response()->json([
