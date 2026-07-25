@@ -42,6 +42,7 @@ class MovieController extends Controller
         $currentMovies = Movie::where('status', 'NOW_SHOWING')
             ->with(['showtimes' => function ($query) {
                 $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+                      ->where('start_time', '>=', now())
                       ->orderBy('start_time');
             }, 'categories'])
             ->orderBy('created_at', 'desc')
@@ -52,6 +53,7 @@ class MovieController extends Controller
         $upcomingMovies = Movie::where('status', 'COMING_SOON')
             ->with(['showtimes' => function ($query) {
                 $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+                      ->where('start_time', '>=', now())
                       ->orderBy('start_time');
             }, 'categories'])
             ->orderBy('created_at', 'desc')
@@ -61,7 +63,8 @@ class MovieController extends Controller
         // Featured movies (all non-ended movies)
         $featuredMovies = Movie::whereIn('status', ['NOW_SHOWING', 'COMING_SOON'])
             ->with(['showtimes' => function ($query) {
-                $query->orderBy('start_time');
+                $query->where('start_time', '>=', now())
+                      ->orderBy('start_time');
             }, 'categories'])
             ->orderBy('created_at', 'desc')
             ->limit(4)
@@ -86,6 +89,7 @@ class MovieController extends Controller
             ->with([
                 'showtimes' => function ($q) {
                     $q->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+                      ->where('start_time', '>=', now())
                       ->with(['room.cinema'])
                       ->orderBy('start_time');
                 },
@@ -126,6 +130,7 @@ class MovieController extends Controller
             ->with([
                 'showtimes' => function ($q) {
                     $q->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+                      ->where('start_time', '>=', now())
                       ->with(['room.cinema'])
                       ->orderBy('start_time');
                 },

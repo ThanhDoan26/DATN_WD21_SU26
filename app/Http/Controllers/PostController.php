@@ -54,7 +54,36 @@ class PostController extends Controller
             ->paginate(6)
             ->withQueryString();
 
-        return view('posts.index', compact('posts', 'categories', 'featuredPosts'));
+        // 4. Lấy tin tức xem nhiều nhất (Top 5) cho sidebar
+        $popularPosts = Post::where('status', 'Published')
+            ->with(['category'])
+            ->orderBy('views', 'desc')
+            ->take(5)
+            ->get();
+
+        // 5. Lấy tất cả danh mục có bài viết (cho sidebar tags)
+        $popularCategories = PostCategory::withCount(['posts' => function ($q) {
+            $q->where('status', 'Published');
+        }])->having('posts_count', '>', 0)->orderBy('posts_count', 'desc')->get();
+
+        // 6. Dữ liệu cho live search client-side
+        $allPostsData = Post::where('status', 'Published')
+            ->with('category')
+            ->orderBy('views', 'desc')
+            ->take(50)
+            ->get()
+            ->map(function ($p) {
+                return [
+                    'title'    => $p->title,
+                    'slug'     => $p->slug,
+                    'image'    => $p->image ? asset('storage/' . $p->image) : null,
+                    'category' => $p->category?->name,
+                    'views'    => $p->views,
+                    'url'      => route('posts.show', $p->slug),
+                ];
+            });
+
+        return view('posts.index', compact('posts', 'categories', 'featuredPosts', 'popularPosts', 'popularCategories', 'allPostsData'));
     }
 
     /**
