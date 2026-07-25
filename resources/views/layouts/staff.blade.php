@@ -141,6 +141,12 @@
                     </div>
                     <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="userDropdown">
                         <li>
+                            <a href="{{ route('profile.edit') }}" class="dropdown-item py-2">
+                                <i class="fas fa-user-circle me-2 text-warning"></i> Hồ sơ cá nhân
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
                             <form method="POST" action="{{ route('logout') }}" class="m-0">
                                 @csrf
                                 <button type="submit" class="dropdown-item py-2 text-danger">
