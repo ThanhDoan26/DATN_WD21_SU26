@@ -18,14 +18,15 @@ $posterUrl = $movie->poster_url
 // ---------- Average rating ----------
 $avgRating = round($movie->reviews_avg_rating ?? 0, 1);
 
-// ---------- Showtimes grouped by date ----------
-$showtimesByDate = $movie->showtimes->groupBy(fn($s) => $s->start_time->format('Y-m-d'));
+// ---------- Showtimes grouped by date (only future/upcoming showtimes) ----------
+$upcomingShowtimes = $movie->showtimes->filter(fn($s) => $s->start_time >= now());
+$showtimesByDate   = $upcomingShowtimes->groupBy(fn($s) => $s->start_time->format('Y-m-d'));
 
-// ---------- All cinema IDs on this movie ----------
-$cinemaDates = $movie->showtimes->map(fn($s) => $s->start_time->format('Y-m-d'))->unique()->filter()->values()->join(',');
-$cinemaIds   = $movie->showtimes->map(fn($s) => optional($s->room?->cinema)->id)->unique()->filter()->values()->join(',');
+// ---------- All cinema IDs & dates on upcoming showtimes ----------
+$cinemaDates = $upcomingShowtimes->map(fn($s) => $s->start_time->format('Y-m-d'))->unique()->filter()->values()->join(',');
+$cinemaIds   = $upcomingShowtimes->map(fn($s) => optional($s->room?->cinema)->id)->unique()->filter()->values()->join(',');
 $genreIds    = $movie->categories->pluck('id')->join(',');
-$formats     = $movie->showtimes->map(fn($s) => $s->room?->format)->unique()->filter()->values()->join(',');
+$formats     = $upcomingShowtimes->map(fn($s) => $s->room?->format)->unique()->filter()->values()->join(',');
 @endphp
 
 <div class="cinema-movie-card"
@@ -121,12 +122,12 @@ $formats     = $movie->showtimes->map(fn($s) => $s->room?->format)->unique()->fi
         @endif
 
         {{-- ===== SHOWTIMES (current only) ===== --}}
-        @if($type === 'current' && $movie->showtimes->count() > 0)
+        @if($type === 'current' && $upcomingShowtimes->count() > 0)
         <div class="showtimes-wrap">
             <div class="showtime-header">
                 <i class="fas fa-calendar-alt"></i>
                 <span>Lịch chiếu</span>
-                <span class="showtime-count">{{ $movie->showtimes->count() }} suất</span>
+                <span class="showtime-count">{{ $upcomingShowtimes->count() }} suất</span>
             </div>
 
             {{-- Showtimes grouped by date --}}
