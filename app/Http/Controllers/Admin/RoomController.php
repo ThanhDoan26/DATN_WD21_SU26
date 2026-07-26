@@ -112,9 +112,15 @@ class RoomController extends AdminController
                     $rowCols = (int) floor($rowCols / 2);
                 } elseif ($r <= 3) {
                     $seatType = 'Regular';
+                    $maxCols = $totalCols;
                 } else {
                     $seatType = 'VIP';
+                    $maxCols = $totalCols;
                 }
+
+                // Tính số lượng cột cho hàng này để đảm bảo tổng số ghế tạo ra bằng chính xác totalSeats
+                $remainingSeats = $totalSeats - $seatCount;
+                $rowCols = min((int)$maxCols, $remainingSeats);
 
                 for ($c = 1; $c <= $rowCols; $c++) {
                     $seatsData[] = [
@@ -167,7 +173,15 @@ class RoomController extends AdminController
             ->get()
             ->groupBy('row_name');
 
-        return view('admin.rooms.edit', compact('room', 'cinemas', 'seatsByRow'));
+        $currentRows = $seatsByRow->count();
+        if ($currentRows === 0) {
+            $currentRows = 8;
+            $currentCols = 12;
+        } else {
+            $currentCols = $room->seats()->max('seat_number') ?? 12;
+        }
+
+        return view('admin.rooms.edit', compact('room', 'cinemas', 'seatsByRow', 'currentRows', 'currentCols'));
     }
 
     /**
@@ -195,9 +209,13 @@ class RoomController extends AdminController
         $oldTotalSeats = (int) $room->total_seats;
         $newTotalSeats = (int) $request->input('total_seats');
 
-        // Lấy total_rows và total_cols từ request (chỉ form Create mới gửi 2 field này)
+        // Lấy total_rows và total_cols từ request
         $totalRows = (int) $request->input('total_rows');
         $totalCols = (int) $request->input('total_cols');
+
+        // Lấy số hàng và số cột hiện tại của phòng từ database
+        $currentRows = $room->seats()->distinct('row_name')->count();
+        $currentCols = $room->seats()->max('seat_number') ?? 12;
 
         // Lưu lại trạng thái của các ghế cũ (đặc biệt là ghế hỏng) để phục hồi
         $oldSeatsMap = [];
@@ -205,14 +223,22 @@ class RoomController extends AdminController
             $oldSeatsMap[$seat->row_name . '-' . $seat->seat_number] = $seat->status;
         }
 
-        // Form Edit không gửi total_rows/total_cols
-        if (!$totalRows || !$totalCols) {
-            // Nếu total_seats có thay đổi, ta suy luận lại layout
+        $layoutChanged = false;
+
+        if ($totalRows && $totalCols) {
+            $validated['total_seats'] = $newTotalSeats;
+            if ($totalRows !== $currentRows || $totalCols !== $currentCols) {
+                $layoutChanged = true;
+                $totalSeats = $newTotalSeats;
+            }
+        } else {
+            // Form Edit cũ không gửi total_rows/total_cols
             if ($newTotalSeats > 0 && $newTotalSeats !== $oldTotalSeats) {
                 $totalSeats = $newTotalSeats;
                 $totalCols = 12; // Cố định 12 cột chuẩn
                 $totalRows = (int) ceil($totalSeats / $totalCols);
                 $validated['total_seats'] = $totalSeats;
+                $layoutChanged = true;
             } else {
                 // Giữ nguyên total_seats cũ, không tái tạo sơ đồ ghế
                 $validated['total_seats'] = $oldTotalSeats;
@@ -221,14 +247,10 @@ class RoomController extends AdminController
                 return redirect()->route('admin.rooms.show', $room->id)
                                  ->with('success', 'Cập nhật thông tin phòng chiếu thành công!');
             }
-        } else {
-            // Có gửi total_rows/total_cols → tính lại total_seats
-            $totalSeats = $totalRows * $totalCols;
-            $validated['total_seats'] = $totalSeats;
         }
 
-        // Chỉ tái tạo sơ đồ ghế khi số ghế thực sự thay đổi
-        if ($validated['total_seats'] !== $oldTotalSeats || (isset($totalSeats) && $totalSeats !== $oldTotalSeats)) {
+        // Chỉ tái tạo sơ đồ ghế khi số ghế hoặc layout thực sự thay đổi
+        if ($layoutChanged) {
             if ($room->hasActiveShowtimes()) {
                 return redirect()->back()
                     ->withInput()
@@ -259,9 +281,14 @@ class RoomController extends AdminController
                         $rowCols = (int) floor($rowCols / 2);
                     } elseif ($r <= 3) {
                         $seatType = 'Regular';
+                        $maxCols = $totalCols;
                     } else {
                         $seatType = 'VIP';
+                        $maxCols = $totalCols;
                     }
+
+                    $remainingSeats = $totalSeats - $seatCount;
+                    $rowCols = min((int)$maxCols, $remainingSeats);
 
                     for ($c = 1; $c <= $rowCols; $c++) {
                         $seatKey = $rowName . '-' . $c;
