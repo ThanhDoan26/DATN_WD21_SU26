@@ -479,6 +479,7 @@
 
                         <!-- Action Buttons -->
                         <button type="button"
+                                onclick="proceedToCheckout()"
                                 id="checkoutButton"
                                 onclick="proceedToCheckout()"
                                 disabled

@@ -89,13 +89,34 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="total_seats" class="form-label">Tổng Ghế</label>
-                        <input type="number" class="form-control @error('total_seats') is-invalid @enderror"
-                               id="total_seats" name="total_seats" value="{{ old('total_seats', $room->total_seats) }}" min="0">
-                        @error('total_seats')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="total_rows" class="form-label">Số Hàng (Rows) *</label>
+                                <input type="number" class="form-control @error('total_rows') is-invalid @enderror"
+                                       id="total_rows" name="total_rows" value="{{ old('total_rows', $currentRows ?? 8) }}" min="1" max="26" required>
+                                <div class="form-text">Từ 1 đến 26 hàng (A-Z)</div>
+                                @error('total_rows')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="total_cols" class="form-label">Số Cột (Columns) *</label>
+                                <input type="number" class="form-control @error('total_cols') is-invalid @enderror"
+                                       id="total_cols" name="total_cols" value="{{ old('total_cols', $currentCols ?? 12) }}" min="1" max="30" required>
+                                <div class="form-text">Từ 1 đến 30 ghế/hàng</div>
+                                @error('total_cols')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Hidden total_seats - sẽ tự tính -->
+                    <input type="hidden" name="total_seats" id="total_seats" value="{{ old('total_seats', $room->total_seats) }}">
+                    <div class="form-text text-info fw-bold mt-1">
+                        <i class="fas fa-info-circle"></i> Sơ đồ ghế sẽ được tạo lại nếu thay đổi kích thước. Tổng: <span id="calcTotal">{{ $room->total_seats }}</span> ghế.
                     </div>
                 </div>
             </div>
@@ -224,7 +245,37 @@
     // Gọi hàm ngay khi load trang để xử lý trường hợp có old('cinema_id') hoặc dữ liệu cũ
     document.addEventListener('DOMContentLoaded', function() {
         showCinemaInfo();
+        updateTotalSeats();
     });
+
+    const rowsInput = document.getElementById('total_rows');
+    const colsInput = document.getElementById('total_cols');
+    const totalSeatsInput = document.getElementById('total_seats');
+    const calcTotalSpan = document.getElementById('calcTotal');
+
+    function updateTotalSeats() {
+        const rows = parseInt(rowsInput.value) || 0;
+        const cols = parseInt(colsInput.value) || 0;
+        
+        let rCount = 0, vCount = 0, sCount = 0;
+        for (let r = 1; r <= rows; r++) {
+            if (r === rows && rows > 1) {
+                sCount += Math.floor(cols / 2);
+            }
+            else if (r <= 3) rCount += cols;
+            else vCount += cols;
+        }
+        if (rows === 1) { rCount = cols; sCount = 0; }
+        
+        const actualTotal = rCount + vCount + sCount;
+        if(totalSeatsInput) totalSeatsInput.value = actualTotal;
+        if(calcTotalSpan) calcTotalSpan.textContent = actualTotal;
+    }
+
+    if (rowsInput && colsInput) {
+        rowsInput.addEventListener('input', updateTotalSeats);
+        colsInput.addEventListener('input', updateTotalSeats);
+    }
 
     // Hàm xử lý Ajax khóa/mở ghế
     function toggleSeatStatus(element) {
