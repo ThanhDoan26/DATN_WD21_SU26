@@ -15,24 +15,24 @@ class CheckCinemaAssignment
         $user = $request->user();
 
         if (!$user || !$user->cinema_id) {
-            abort(403, 'Nhân viên chưa được phân công rạp.');
+            abort(403, 'Nhân viên không được phân công rạp.');
         }
 
         $showtime = $request->route()?->parameter('showtime');
         if ($showtime) {
             if (!isset($showtime->room) || $showtime->room->cinema_id !== $user->cinema_id) {
-                abort(403, 'Bạn không có quyền truy cập suất chiếu của rạp khác.');
+                abort(403, 'Bạn không được quyền truy cập suất chiếu của rạp khác.');
             }
         }
 
         $room = $request->route()?->parameter('room');
         if ($room && $room->cinema_id !== $user->cinema_id) {
-            abort(403, 'Bạn không có quyền truy cập phòng chiếu của rạp khác.');
+            abort(403, 'Bạn không được quyền truy cập phòng chiếu của rạp khác.');
         }
 
         $cinema = $request->route()?->parameter('cinema');
         if ($cinema && $cinema->id !== $user->cinema_id) {
-            abort(403, 'Bạn không có quyền truy cập rạp khác.');
+            abort(403, 'Bạn không được quyền truy cập rạp khác.');
         }
 
         return $next($request);
