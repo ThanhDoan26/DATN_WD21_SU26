@@ -41,16 +41,16 @@ class Coupon extends Model
     public function isValid($orderTotal, $userId = null)
     {
         if ($this->status !== 'ACTIVE') {
-            return ['valid' => false, 'message' => 'Mã giảm giá không hoạt động hoặc đã bị khoá.'];
+            return ['valid' => false, 'message' => 'Mã giảm giá không hoạt động hoặc có thể đã bị khóa!'];
         }
 
         $now = now();
         if ($this->start_date && $now->lt($this->start_date)) {
-            return ['valid' => false, 'message' => 'Mã giảm giá chưa đến thời gian sử dụng.'];
+            return ['valid' => false, 'message' => 'Mã giảm giá vẫn chưa đến thời gian sử dụng!'];
         }
 
         if ($this->end_date && $now->gt($this->end_date)) {
-            return ['valid' => false, 'message' => 'Mã giảm giá đã hết hạn sử dụng.'];
+            return ['valid' => false, 'message' => 'Mã giảm giá của bạn đã hết hạn sử dụng!'];
         }
 
         if ($this->quantity > 0 && $this->used_count >= $this->quantity) {
