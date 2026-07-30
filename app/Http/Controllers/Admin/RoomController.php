@@ -103,24 +103,18 @@ class RoomController extends AdminController
                     $rowName = chr(65 + floor($rowIndex / 26) - 1) . chr(65 + ($rowIndex % 26));
                 }
 
-                // Tính số lượng cột cho hàng này để đảm bảo tổng số ghế tạo ra bằng chính xác totalSeats
                 $remainingSeats = $totalSeats - $seatCount;
-                $rowCols = min($totalCols, $remainingSeats);
 
                 if ($r == $totalRows && $totalRows > 1) {
                     $seatType = 'Sweetbox';
-                    $rowCols = (int) floor($rowCols / 2);
+                    $rowCols = (int) floor($totalCols / 2);
                 } elseif ($r <= 3) {
                     $seatType = 'Regular';
-                    $maxCols = $totalCols;
+                    $rowCols = min($totalCols, $remainingSeats);
                 } else {
                     $seatType = 'VIP';
-                    $maxCols = $totalCols;
+                    $rowCols = min($totalCols, $remainingSeats);
                 }
-
-                // Tính số lượng cột cho hàng này để đảm bảo tổng số ghế tạo ra bằng chính xác totalSeats
-                $remainingSeats = $totalSeats - $seatCount;
-                $rowCols = min((int)$maxCols, $remainingSeats);
 
                 for ($c = 1; $c <= $rowCols; $c++) {
                     $seatsData[] = [
@@ -274,21 +268,17 @@ class RoomController extends AdminController
                     }
 
                     $remainingSeats = $totalSeats - $seatCount;
-                    $rowCols = min($totalCols, $remainingSeats);
 
                     if ($r == $totalRows && $totalRows > 1) {
                         $seatType = 'Sweetbox';
-                        $rowCols = (int) floor($rowCols / 2);
+                        $rowCols = (int) floor($totalCols / 2);
                     } elseif ($r <= 3) {
                         $seatType = 'Regular';
-                        $maxCols = $totalCols;
+                        $rowCols = min($totalCols, $remainingSeats);
                     } else {
                         $seatType = 'VIP';
-                        $maxCols = $totalCols;
+                        $rowCols = min($totalCols, $remainingSeats);
                     }
-
-                    $remainingSeats = $totalSeats - $seatCount;
-                    $rowCols = min((int)$maxCols, $remainingSeats);
 
                     for ($c = 1; $c <= $rowCols; $c++) {
                         $seatKey = $rowName . '-' . $c;
