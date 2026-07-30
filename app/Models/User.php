@@ -75,14 +75,6 @@ class User extends Authenticatable
         return $this->hasMany(ComboReview::class);
     }
 
-    /**
-     * Người dùng có nhiều bài viết
-     */
-    public function posts(): HasMany
-    {
-        return $this->hasMany(Post::class, 'author_id');
-    }
-
     // ========================================
     // HELPER METHODS
     // ========================================
@@ -127,5 +119,9 @@ class User extends Authenticatable
         return $this->status === 'ACTIVE';
     }
 
+    public function chatConversations()
+    {
+        return $this->hasMany(ChatConversation::class);
+    }
 
 }
