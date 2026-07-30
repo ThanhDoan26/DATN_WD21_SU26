@@ -322,7 +322,7 @@
     </div>
 
     <!-- Main Content -->
-    <section class="py-16 px-4 min-h-screen">
+    <section class="pt-16 pb-40 px-4 min-h-screen">
         <div class="max-w-6xl mx-auto">
             <!-- Movie & Showtime Info -->
             <div class="bg-slate-800 rounded-lg p-6 mb-8">
@@ -346,11 +346,11 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="w-full">
                 <!-- Seat Map -->
-                <div class="lg:col-span-2">
+                <div class="w-full overflow-x-auto">
                     <!-- Seat Map Container -->
-                    <div class="seat-map-wrapper">
+                    <div class="seat-map-wrapper min-w-max mx-auto">
                         <!-- Legend -->
                         <div class="seat-legend">
                             <div class="legend-item">
@@ -435,66 +435,46 @@
                     </div>
                 </div>
 
-                <!-- Sidebar: Summary & Checkout -->
-                <div>
-                    <form id="seat-selection-form" action="{{ route('checkout') }}" method="GET">
-                        <input type="hidden" name="showtime_id" id="form_showtime_id" value="{{ $showtime->id }}" />
-                        <input type="hidden" name="seat_ids" id="form_seat_ids" value="" />
-
-                        <!-- Summary Card -->
-                        <div class="bg-slate-800 rounded-lg p-6 sticky top-24">
-                            <h3 class="text-xl font-bold mb-6">Thông tin đặt vé</h3>
-
-                            <!-- Selected Seats -->
-                            <div class="mb-6 pb-6 border-b border-slate-700">
-                            <div class="flex justify-between items-center mb-3">
-                                <span class="text-slate-400">Ghế đã chọn:</span>
-                                <span class="text-lg font-bold" id="seatCount">0 ghế</span>
-                            </div>
-                            <div id="selectedSeatsDisplay" class="bg-slate-900 rounded p-3 min-h-12 flex items-center">
-                                <span class="text-slate-400 text-sm">Chọn ghế để tiếp tục</span>
-                            </div>
-                        </div>
-
-                        <!-- Price Breakdown -->
-                        @if($ticketPrices->count() > 0)
-                            <div class="mb-6 pb-6 border-b border-slate-700">
-                                <div class="text-slate-400 text-sm mb-3">Giá vé:</div>
-                                @foreach($ticketPrices as $price)
-                                    <div class="flex justify-between text-sm mb-2">
-                                        <span>{{ $price->type ?? 'Vé bình thường' }}</span>
-                                        <span class="font-bold">{{ number_format($price->price) }}₫</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-
-                        <!-- Total -->
-                        <div class="mb-8">
-                            <div class="flex justify-between items-center text-xl font-bold">
-                                <span>Tổng cộng:</span>
-                                <span class="text-2xl text-primary" id="totalPrice">0₫</span>
-                            </div>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <button type="button"
-                                onclick="proceedToCheckout()"
-                                id="checkoutButton"
-                                onclick="proceedToCheckout()"
-                                disabled
-                                class="w-full bg-primary hover:bg-red-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition mb-3">
-                            <i class="fas fa-arrow-right mr-2"></i>Tiếp tục thanh toán
-                        </button>
-                        <a href="javascript:history.back()" class="block text-center bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg transition">
-                            <i class="fas fa-arrow-left mr-2"></i>Quay lại
-                        </a>
-                    </div>
-                </form>
                 </div>
             </div>
         </div>
     </section>
+
+    <!-- Sticky Bottom Bar: Summary & Checkout -->
+    <form id="seat-selection-form" action="{{ route('checkout') }}" method="GET" class="fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-700 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-50">
+        <input type="hidden" name="showtime_id" id="form_showtime_id" value="{{ $showtime->id }}" />
+        <input type="hidden" name="seat_ids" id="form_seat_ids" value="" />
+        
+        <div class="max-w-7xl mx-auto px-4 py-4 md:py-6 flex flex-col md:flex-row items-center justify-between gap-6">
+            <!-- Selected Seats -->
+            <div class="flex-1 w-full min-w-0">
+                <div class="text-slate-400 text-sm mb-1">Ghế đã chọn: <span id="seatCount" class="text-white font-bold ml-1">0 ghế</span></div>
+                <div id="selectedSeatsDisplay" class="truncate text-lg font-bold text-primary">
+                    <span class="text-slate-500 text-base font-normal">Vui lòng chọn ghế trên sơ đồ</span>
+                </div>
+            </div>
+
+            <!-- Total Price -->
+            <div class="text-left md:text-right w-full md:w-auto">
+                <div class="text-slate-400 text-sm mb-1">Tổng cộng:</div>
+                <div class="text-2xl font-bold text-white" id="totalPrice">0₫</div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-3 w-full md:w-auto mt-2 md:mt-0">
+                <a href="javascript:history.back()" class="bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-lg transition whitespace-nowrap text-center">
+                    Quay lại
+                </a>
+                <button type="button"
+                        onclick="proceedToCheckout()"
+                        id="checkoutButton"
+                        disabled
+                        class="bg-primary hover:bg-red-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-lg transition whitespace-nowrap flex-1 md:flex-none text-center">
+                    Tiếp tục thanh toán <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </form>
 
 @endsection
 
