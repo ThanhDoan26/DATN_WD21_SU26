@@ -40,7 +40,7 @@ class ChatbotService
         $this->conversationService->saveMessage($conversation, 'user', $message, $intent);
 
         // 5. Lấy dữ liệu (Knowledge)
-        $context = $this->knowledgeService->getContext($intent, $user);
+        $context = $this->knowledgeService->getContext($intent, $user, $message, $history);
 
         // 6. Gắn context vào Prompt
         $finalPrompt = $this->promptService->buildPrompt($message, $context, $intent);
