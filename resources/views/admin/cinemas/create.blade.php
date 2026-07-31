@@ -8,9 +8,9 @@
 <div class="breadcrumb-custom">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('admin.cinemas.index') }}">Cinemas</a></li>
-            <li class="breadcrumb-item active">Create</li>
+            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('admin.cinemas.index') }}">Rạp</a></li>
+            <li class="breadcrumb-item active">Thêm mới</li>
         </ol>
     </nav>
 </div>
@@ -23,7 +23,7 @@
 <!-- Form Card -->
 <div class="card">
     <div class="card-header">
-        <i class="fas fa-plus-circle"></i> Cinema Information
+        <i class="fas fa-plus-circle"></i> Thông tin rạp
     </div>
     <div class="card-body">
         <form action="{{ route('admin.cinemas.store') }}" method="POST">
@@ -95,8 +95,8 @@
                         <select class="form-select @error('status') is-invalid @enderror"
                                 id="status" name="status" required>
                             <option value="">-- Chọn trạng thái --</option>
-                            <option value="ACTIVE" {{ old('status') === 'ACTIVE' ? 'selected' : '' }}>Active</option>
-                            <option value="INACTIVE" {{ old('status') === 'INACTIVE' ? 'selected' : '' }}>Inactive</option>
+                            <option value="ACTIVE" {{ old('status') === 'ACTIVE' ? 'selected' : '' }}>Hoạt động</option>
+                            <option value="INACTIVE" {{ old('status') === 'INACTIVE' ? 'selected' : '' }}>Không hoạt động</option>
                         </select>
                         @error('status')
                             <div class="invalid-feedback">{{ $message }}</div>

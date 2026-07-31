@@ -49,9 +49,9 @@
 <div class="breadcrumb-custom">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('admin.rooms.index') }}">Rooms</a></li>
-            <li class="breadcrumb-item active">Details</li>
+            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('admin.rooms.index') }}">Phòng chiếu</a></li>
+            <li class="breadcrumb-item active">Chi tiết</li>
         </ol>
     </nav>
 </div>
@@ -112,13 +112,13 @@
                             <th>Trạng Thái</th>
                             <td>
                                 @if($room->status === 'ACTIVE')
-                                    <span class="badge bg-success"><i class="fas fa-check-circle"></i> Active</span>
+                                    <span class="badge bg-success"><i class="fas fa-check-circle"></i> Hoạt động</span>
                                 @elseif($room->status === 'INACTIVE')
-                                    <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Inactive</span>
+                                    <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Không hoạt động</span>
                                 @elseif($room->status === 'MAINTENANCE')
-                                    <span class="badge bg-warning text-dark"><i class="fas fa-tools"></i> Maintenance</span>
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-tools"></i> Bảo trì</span>
                                 @else
-                                    <span class="badge bg-secondary"><i class="fas fa-lock"></i> Closed</span>
+                                    <span class="badge bg-secondary"><i class="fas fa-lock"></i> Đóng</span>
                                 @endif
                             </td>
                         </tr>
@@ -209,7 +209,7 @@
             <div class="col-md-3 col-6 mb-2">
                 <div class="stat-box border-start border-4 border-info py-3">
                     <div class="stat-number text-info" id="regularCount">0</div>
-                    <div class="stat-label"><i class="fas fa-chair"></i> Regular</div>
+                    <div class="stat-label"><i class="fas fa-chair"></i> Thường</div>
                 </div>
             </div>
             <div class="col-md-3 col-6 mb-2">
@@ -227,7 +227,7 @@
             <div class="col-md-3 col-6 mb-2">
                 <div class="stat-box border-start border-4 border-success py-3">
                     <div class="stat-number text-success" id="availableCount">0</div>
-                    <div class="stat-label"><i class="fas fa-check-circle"></i> Available</div>
+                    <div class="stat-label"><i class="fas fa-check-circle"></i> Còn trống</div>
                 </div>
             </div>
         </div>
@@ -236,7 +236,7 @@
         <div class="seat-legend">
             <div class="legend-item">
                 <div class="legend-box bg-sky">R</div>
-                <span>Regular</span>
+                <span>Thường</span>
             </div>
             <div class="legend-item">
                 <div class="legend-box bg-gold">V</div>
