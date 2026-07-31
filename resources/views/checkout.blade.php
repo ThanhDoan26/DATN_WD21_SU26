@@ -401,9 +401,9 @@
                                 <span>Thanh toán ngay</span>
                                 <i class="fas fa-arrow-right"></i>
                             </button>
-                            <a href="{{ url()->previous() }}" class="w-full rounded-2xl bg-slate-800/50 border border-slate-700 px-6 py-3 text-slate-300 text-base font-bold hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2">
+                            <a href="{{ route('booking.select-seats', $showtime->id) }}" onclick="saveSeatsBeforeBack()" class="w-full rounded-2xl bg-slate-800/50 border border-slate-700 px-6 py-3 text-slate-300 text-base font-bold hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2">
                                 <i class="fas fa-arrow-left"></i>
-                                <span>Quay lại</span>
+                                <span>Quay lại chọn thêm ghế</span>
                             </a>
                         </div>
                     </div>
@@ -447,6 +447,16 @@
 
 @push('scripts')
     <script>
+        // Save current seat IDs to sessionStorage before navigating back
+        function saveSeatsBeforeBack() {
+            const showtimeId = @json($showtimeId ?? '');
+            const seatIds = @json($seatIds ?? []);
+            if (showtimeId && seatIds && seatIds.length > 0) {
+                const storageKey = 'selectedSeats_showtime_' + showtimeId;
+                sessionStorage.setItem(storageKey, JSON.stringify(seatIds));
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             @if(!$showtime || empty($seatSummary))
                 return;
@@ -466,7 +476,7 @@
             const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
             const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
             const TIMEOUT_SECONDS = {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES * 60 }};
-            const seatSelectionUrl = '{{ url()->previous() }}';
+            const seatSelectionUrl = '{{ route('booking.select-seats', $showtime->id ?? 0) }}';
 
             // ===================== COUNTDOWN TIMER =====================
             let countdownInterval = null;
