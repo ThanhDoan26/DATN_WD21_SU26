@@ -1,0 +1,159 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Booking;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class VnPayController extends Controller
+{
+    public function createPayment(Request $request)
+    {
+        $request->validate([
+            'booking_id' => 'required|exists:bookings,id',
+        ]);
+
+        $booking = Booking::findOrFail($request->booking_id);
+
+        if ($booking->status == 'Paid') {
+            return response()->json([
+                'message' => 'Booking này đã được thanh toán.'
+            ], 400);
+        }
+
+        $vnp_TmnCode = config('vnpay.tmn_code');
+        $vnp_HashSecret = config('vnpay.hash_secret');
+        $vnp_Url = config('vnpay.url');
+        $vnp_Returnurl = config('vnpay.return_url');
+
+        if (empty($vnp_TmnCode) || empty($vnp_HashSecret) || empty($vnp_Url)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Chưa cấu hình VNPAY trong file .env.'
+            ], 500);
+        }
+
+        $vnp_TxnRef = $booking->booking_code;
+        $vnp_OrderInfo = "Thanh toan ve xem phim cho don hang: " . $booking->booking_code;
+        $vnp_OrderType = 'billpayment';
+        $vnp_Amount = (int)($booking->total_price * 100);
+        $vnp_Locale = 'vn';
+        $vnp_BankCode = '';
+        $vnp_IpAddr = $request->ip();
+
+        $inputData = array(
+            "vnp_Version" => "2.1.0",
+            "vnp_TmnCode" => $vnp_TmnCode,
+            "vnp_Amount" => $vnp_Amount,
+            "vnp_Command" => "pay",
+            "vnp_CreateDate" => date('YmdHis'),
+            "vnp_CurrCode" => "VND",
+            "vnp_IpAddr" => $vnp_IpAddr,
+            "vnp_Locale" => $vnp_Locale,
+            "vnp_OrderInfo" => $vnp_OrderInfo,
+            "vnp_OrderType" => $vnp_OrderType,
+            "vnp_ReturnUrl" => $vnp_Returnurl,
+            "vnp_TxnRef" => $vnp_TxnRef,
+        );
+
+        if (isset($vnp_BankCode) && $vnp_BankCode != "") {
+            $inputData['vnp_BankCode'] = $vnp_BankCode;
+        }
+
+        ksort($inputData);
+        $query = "";
+        $i = 0;
+        $hashdata = "";
+        foreach ($inputData as $key => $value) {
+            if ($i == 1) {
+                $hashdata .= '&' . urlencode($key) . "=" . urlencode($value);
+            } else {
+                $hashdata .= urlencode($key) . "=" . urlencode($value);
+                $i = 1;
+            }
+            $query .= urlencode($key) . "=" . urlencode($value) . '&';
+        }
+
+        $vnp_Url = $vnp_Url . "?" . $query;
+        if (isset($vnp_HashSecret)) {
+            $vnpSecureHash = hash_hmac('sha512', $hashdata, $vnp_HashSecret);
+            $vnp_Url .= 'vnp_SecureHash=' . $vnpSecureHash;
+        }
+
+        return response()->json([
+            'url' => $vnp_Url,
+        ]);
+    }
+
+    public function return(Request $request)
+    {
+        $vnp_HashSecret = config('vnpay.hash_secret');
+        $inputData = array();
+        foreach ($request->all() as $key => $value) {
+            if (substr($key, 0, 4) == "vnp_") {
+                $inputData[$key] = $value;
+            }
+        }
+        
+        $vnp_SecureHash = $inputData['vnp_SecureHash'] ?? '';
+        unset($inputData['vnp_SecureHash']);
+        unset($inputData['vnp_SecureHashType']);
+        ksort($inputData);
+        $i = 0;
+        $hashData = "";
+        foreach ($inputData as $key => $value) {
+            if ($i == 1) {
+                $hashData = $hashData . '&' . urlencode($key) . "=" . urlencode($value);
+            } else {
+                $hashData = $hashData . urlencode($key) . "=" . urlencode($value);
+                $i = 1;
+            }
+        }
+
+        $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
+        $booking_code = $inputData['vnp_TxnRef'] ?? null;
+        
+        $booking = Booking::with('bookedSeats')->where('booking_code', $booking_code)->first();
+
+        if (!$booking) {
+            return redirect()->route('home')->with('error', 'Không tìm thấy đơn hàng.');
+        }
+
+        if ($secureHash == $vnp_SecureHash) {
+            if ($request->vnp_ResponseCode == '00') {
+                if ($booking->status != 'Paid') {
+                    $booking->status = 'Paid';
+                    $booking->payment_method = 'VNPAY';
+                    $booking->payment_time = now();
+                    $booking->save();
+
+                    DB::table('booked_seats')
+                        ->where('booking_id', $booking->id)
+                        ->update([
+                            'status' => 'PAID',
+                            'updated_at' => now(),
+                        ]);
+                }
+
+                return redirect()->route('checkout.success', [
+                    'booking_id' => $booking->id,
+                ]);
+            } else {
+                return $this->cancelRedirect($booking, 'Giao dịch bị hủy hoặc không thành công.');
+            }
+        } else {
+            return $this->cancelRedirect($booking, 'Chữ ký không hợp lệ.');
+        }
+    }
+
+    private function cancelRedirect($booking, $message)
+    {
+        $seatIds = $booking->bookedSeats->pluck('seat_id')->implode(',');
+
+        return redirect()->route('checkout', [
+            'showtime_id' => $booking->showtime_id,
+            'seat_ids' => $seatIds,
+        ])->with('info', $message . ' Ghế vẫn sẽ được giữ trong 10 phút. Bạn có thể quay lại để tiếp tục.');
+    }
+}
