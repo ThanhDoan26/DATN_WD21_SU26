@@ -8,8 +8,8 @@
 <div class="breadcrumb-custom">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item active">Rooms</li>
+            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item active">Phòng chiếu</li>
         </ol>
     </nav>
 </div>
@@ -112,9 +112,13 @@
                     </td>
                     <td>
                         @if($room->status === 'ACTIVE')
-                            <span class="badge bg-success"><i class="fas fa-check-circle"></i> Active</span>
+                            <span class="badge bg-success"><i class="fas fa-check-circle"></i> Hoạt động</span>
+                        @elseif($room->status === 'INACTIVE')
+                            <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Không hoạt động</span>
+                        @elseif($room->status === 'MAINTENANCE')
+                            <span class="badge bg-black"><i class="fas fa-tools"></i> Bảo trì</span>
                         @else
-                            <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Inactive</span>
+                            <span class="badge bg-secondary"><i class="fas fa-times-circle"></i> Đóng</span>
                         @endif
                     </td>
                     <td>

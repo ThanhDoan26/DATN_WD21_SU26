@@ -8,9 +8,9 @@
 <div class="breadcrumb-custom">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('admin.showtimes.index') }}">Showtimes</a></li>
-            <li class="breadcrumb-item active">Create</li>
+            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('admin.showtimes.index') }}">Lịch chiếu</a></li>
+            <li class="breadcrumb-item active">Tạo mới</li>
         </ol>
     </nav>
 </div>
@@ -149,12 +149,12 @@
                         <div class="small text-muted">Chọn giờ .</div>
                         @error('end_time')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
-<<<<<<< HEAD
+
                             <div class="text-danger small mt-1 d-flex align-items-center gap-1">
                                 <i class="fas fa-circle-exclamation"></i> {{ $message }}
                             </div>
-=======
->>>>>>> 9730541d563131ed93072a9122ca8bda6ec5f09b
+
+
                         @enderror
                     </div>
                 </div>
@@ -223,7 +223,7 @@
                             <div class="seat-legend">
                                 <div class="legend-item">
                                     <div class="legend-box bg-sky">R</div>
-                                    <span>Regular</span>
+                                    <span>Thường</span>
                                 </div>
                                 <div class="legend-item">
                                     <div class="legend-box bg-gold">V</div>
