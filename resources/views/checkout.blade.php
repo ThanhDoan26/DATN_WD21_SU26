@@ -232,30 +232,17 @@
                     <div class="rounded-3xl bg-slate-900 border border-slate-800 shadow-xl p-8">
                         <h2 class="text-2xl font-bold text-white mb-6"><i class="fas fa-wallet mr-2 text-emerald-500"></i> Phương Thức Thanh Toán</h2>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <label class="relative cursor-pointer group">
-                                <input type="radio" name="payment" value="MOMO" class="peer payment-radio hidden" checked>
-                                <div class="border-2 border-slate-700 rounded-2xl p-6 transition-all duration-300 hover:border-slate-500 flex flex-col items-center gap-3 bg-slate-950/30">
-                                    <div class="absolute top-4 right-4 text-primary opacity-0 scale-50 transition-all duration-300 check-icon">
-                                        <i class="fas fa-check-circle text-xl"></i>
-                                    </div>
-                                    <div class="w-16 h-16 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-500 text-3xl mb-2">
-                                        <i class="fas fa-qrcode"></i>
-                                    </div>
-                                    <span class="text-white font-semibold text-lg">Ví điện tử MoMo</span>
-                                </div>
-                            </label>
-
-                            <label class="relative cursor-pointer group">
-                                <input type="radio" name="payment" value="ATM" class="peer payment-radio hidden">
+                                <input type="radio" name="payment" value="VNPAY" class="peer payment-radio hidden" checked>
                                 <div class="border-2 border-slate-700 rounded-2xl p-6 transition-all duration-300 hover:border-slate-500 flex flex-col items-center gap-3 bg-slate-950/30">
                                     <div class="absolute top-4 right-4 text-primary opacity-0 scale-50 transition-all duration-300 check-icon">
                                         <i class="fas fa-check-circle text-xl"></i>
                                     </div>
                                     <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 text-3xl mb-2">
-                                        <i class="fas fa-credit-card"></i>
+                                        <i class="fas fa-money-check-alt"></i>
                                     </div>
-                                    <span class="text-white font-semibold text-lg">Thẻ ATM / Visa</span>
+                                    <span class="text-white font-semibold text-lg">VNPay</span>
                                 </div>
                             </label>
 
@@ -266,9 +253,9 @@
                                         <i class="fas fa-check-circle text-xl"></i>
                                     </div>
                                     <div class="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 text-3xl mb-2">
-                                        <i class="fas fa-lock"></i>
+                                        <i class="fas fa-credit-card"></i>
                                     </div>
-                                    <span class="text-white font-semibold text-lg">Stripe</span>
+                                    <span class="text-white font-semibold text-lg">Thẻ ATM / Visa</span>
                                 </div>
                             </label>
 
@@ -414,9 +401,9 @@
                                 <span>Thanh toán ngay</span>
                                 <i class="fas fa-arrow-right"></i>
                             </button>
-                            <a href="{{ url()->previous() }}" class="w-full rounded-2xl bg-slate-800/50 border border-slate-700 px-6 py-3 text-slate-300 text-base font-bold hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2">
+                            <a href="{{ route('booking.select-seats', $showtime->id) }}" onclick="saveSeatsBeforeBack()" class="w-full rounded-2xl bg-slate-800/50 border border-slate-700 px-6 py-3 text-slate-300 text-base font-bold hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2">
                                 <i class="fas fa-arrow-left"></i>
-                                <span>Quay lại</span>
+                                <span>Quay lại chọn thêm ghế</span>
                             </a>
                         </div>
                     </div>
@@ -460,6 +447,16 @@
 
 @push('scripts')
     <script>
+        // Save current seat IDs to sessionStorage before navigating back
+        function saveSeatsBeforeBack() {
+            const showtimeId = @json($showtimeId ?? '');
+            const seatIds = @json($seatIds ?? []);
+            if (showtimeId && seatIds && seatIds.length > 0) {
+                const storageKey = 'selectedSeats_showtime_' + showtimeId;
+                sessionStorage.setItem(storageKey, JSON.stringify(seatIds));
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             @if(!$showtime || empty($seatSummary))
                 return;
@@ -473,12 +470,13 @@
             const apiApplyCoupon = @json(route('api.apply-coupon', [], false));
             const reserveUrl = @json(route('checkout.reserve', [], false));
             const stripeSessionUrl = @json(route('stripe.session', [], false));
+            const vnpayPaymentUrl = @json(route('vnpay.payment', [], false));
             const successUrl = @json(route('checkout.success', [], false));
             
             const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
             const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
             const TIMEOUT_SECONDS = {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES * 60 }};
-            const seatSelectionUrl = '{{ url()->previous() }}';
+            const seatSelectionUrl = '{{ route('booking.select-seats', $showtime->id ?? 0) }}';
 
             // ===================== COUNTDOWN TIMER =====================
             let countdownInterval = null;
@@ -833,8 +831,13 @@
                         startCountdown(expiresAtMs);
                         // ==========================================
 
-                        // ========== BƯỚC 2: TẠO STRIPE SESSION ==========
-                        return fetch(stripeSessionUrl, {
+                        // ========== BƯỚC 2: TẠO PHIÊN THANH TOÁN (STRIPE HOẶC VNPAY) ==========
+                        let paymentUrl = stripeSessionUrl;
+                        if (selectedPayment === 'VNPAY') {
+                            paymentUrl = vnpayPaymentUrl;
+                        }
+
+                        return fetch(paymentUrl, {
                             method: 'POST',
                             credentials: 'same-origin',
                             headers: {
@@ -852,20 +855,20 @@
                             try {
                                 data = text ? JSON.parse(text) : {};
                             } catch (err) {
-                                throw new Error(`Invalid JSON response from Stripe session: ${text}`);
+                                throw new Error(`Invalid JSON response from payment session: ${text}`);
                             }
                             if (!response.ok) {
                                 const message = data?.message || data?.error || response.statusText;
-                                throw new Error(message || 'Không tạo được phiên thanh toán Stripe');
+                                throw new Error(message || 'Không tạo được phiên thanh toán');
                             }
                             return data;
                         })
                         .then(session => {
                             if (!session.url) {
-                                throw new Error('Stripe không trả về đường dẫn thanh toán');
+                                throw new Error('Không nhận được đường dẫn thanh toán');
                             }
 
-                            // ========== BƯỚC 3: REDIRECT ĐẾN STRIPE CHECKOUT ==========
+                            // ========== BƯỚC 3: REDIRECT ĐẾN TRANG THANH TOÁN ==========
                             window.location.href = session.url;
                         });
                     })

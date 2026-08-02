@@ -8,9 +8,9 @@
 <div class="breadcrumb-custom">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('admin.rooms.index') }}">Rooms</a></li>
-            <li class="breadcrumb-item active">Edit</li>
+            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('admin.rooms.index') }}">Phòng chiếu</a></li>
+            <li class="breadcrumb-item active">Sửa phòng</li>
         </ol>
     </nav>
 </div>
@@ -23,7 +23,7 @@
 <!-- Form Card -->
 <div class="card">
     <div class="card-header">
-        <i class="fas fa-pencil"></i> Room Information
+        <i class="fas fa-pencil"></i> Thông tin phòng chiếu
     </div>
     <div class="card-body">
         <form action="{{ route('admin.rooms.update', $room->id) }}" method="POST">
@@ -128,10 +128,10 @@
                         <select class="form-select @error('status') is-invalid @enderror"
                                 id="status" name="status" required>
                             <option value="">-- Chọn trạng thái --</option>
-                            <option value="ACTIVE" {{ old('status', $room->status) === 'ACTIVE' ? 'selected' : '' }}>Active</option>
-                            <option value="INACTIVE" {{ old('status', $room->status) === 'INACTIVE' ? 'selected' : '' }}>Inactive</option>
-                            <option value="MAINTENANCE" {{ old('status', $room->status) === 'MAINTENANCE' ? 'selected' : '' }}>Maintenance</option>
-                            <option value="CLOSED" {{ old('status', $room->status) === 'CLOSED' ? 'selected' : '' }}>Closed</option>
+                            <option value="ACTIVE" {{ old('status', $room->status) === 'ACTIVE' ? 'selected' : '' }}>Hoạt động</option>
+                            <option value="INACTIVE" {{ old('status', $room->status) === 'INACTIVE' ? 'selected' : '' }}>Không hoạt động</option>
+                            <option value="MAINTENANCE" {{ old('status', $room->status) === 'MAINTENANCE' ? 'selected' : '' }}>Bảo trì</option>
+                            <option value="CLOSED" {{ old('status', $room->status) === 'CLOSED' ? 'selected' : '' }}>Đóng</option>
                         </select>
                         @error('status')
                             <div class="invalid-feedback">{{ $message }}</div>

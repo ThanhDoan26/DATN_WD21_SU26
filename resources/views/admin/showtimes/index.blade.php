@@ -8,8 +8,8 @@
 <div class="breadcrumb-custom">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item active">Showtimes</li>
+            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item active">Lịch chiếu</li>
         </ol>
     </nav>
 </div>
@@ -95,13 +95,13 @@
                         <td>{{ $showtime->start_time->format('d/m/Y H:i') }} - {{ $showtime->end_time->format('H:i') }}</td>
                         <td>
                             @if($showtime->status === \App\Models\Showtime::STATUS_SCHEDULED)
-                                <span class="badge bg-info">SCHEDULED</span>
+                                <span class="badge bg-info">Lên lịch</span>
                             @elseif($showtime->status === \App\Models\Showtime::STATUS_ONGOING)
-                                <span class="badge bg-success">ONGOING</span>
+                                <span class="badge bg-success">Đang chiếu</span>
                             @elseif($showtime->status === \App\Models\Showtime::STATUS_COMPLETED)
-                                <span class="badge bg-secondary">COMPLETED</span>
+                                <span class="badge bg-secondary">Đã chiếu</span>
                             @else
-                                <span class="badge bg-danger">CANCELLED</span>
+                                <span class="badge bg-danger">Đã hủy</span>
                             @endif
                         </td>
                         <td>

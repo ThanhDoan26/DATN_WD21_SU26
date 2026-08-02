@@ -23,26 +23,38 @@ class ReviewController extends Controller
 
         $userId = Auth::id();
 
-        // Kiểm tra xem user có được phép review không
+        // Kiểm tra xem user có được phép review không (đã thanh toán/sử dụng vé và suất chiếu đã kết thúc)
         $canReview = Booking::where('user_id', $userId)
             ->whereIn('status', ['Paid', 'Used'])
             ->whereHas('showtime', function ($query) use ($movie) {
-                $query->where('movie_id', $movie->id);
+                $query->where('movie_id', $movie->id)
+                    ->where('end_time', '<=', now());
             })->exists();
 
         if (!$canReview) {
-            return back()->with('error', 'Bạn chỉ có thể đánh giá sau khi đã mua vé xem bộ phim này.');
+            return back()->with('error', 'Bạn chỉ có thể đánh giá sau khi suất chiếu của bạn đã kết thúc.');
         }
 
-        // Cập nhật hoặc tạo mới review
-        Review::updateOrCreate(
-            ['user_id' => $userId, 'movie_id' => $movie->id],
-            [
+        // Cập nhật hoặc tạo mới review (chỉ cho phép chỉnh sửa trong vòng 5 phút sau khi tạo)
+        $review = Review::where('user_id', $userId)->where('movie_id', $movie->id)->first();
+        if ($review) {
+            if ($review->created_at->addMinutes(5)->isPast()) {
+                return back()->with('error', 'Đã quá thời gian chỉnh sửa đánh giá này (chỉ được sửa trong vòng 5 phút sau khi đánh giá).');
+            }
+            $review->update([
                 'rating' => $validated['rating'],
                 'comment' => $validated['comment'],
                 'status' => 'ACTIVE' // Reset status to ACTIVE if they update
-            ]
-        );
+            ]);
+        } else {
+            Review::create([
+                'user_id' => $userId,
+                'movie_id' => $movie->id,
+                'rating' => $validated['rating'],
+                'comment' => $validated['comment'],
+                'status' => 'ACTIVE'
+            ]);
+        }
 
         // Cập nhật các đánh giá Combo nếu có
         if (!empty($validated['combos'])) {

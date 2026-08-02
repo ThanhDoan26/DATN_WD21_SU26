@@ -279,7 +279,7 @@
                         <!-- Review Form -->
                         @auth
                             @if($userReview || $canReview)
-                                <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 mb-8 shadow-xl">
+                                <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 mb-8 shadow-xl" x-data="{ isEditing: {{ $userReview ? 'false' : 'true' }}, rating: {{ $userReview ? $userReview->rating : 5 }}, hoverRating: 0 }">
                                     <form action="{{ route('movies.reviews.store', $movie->id) }}" method="POST">
                                         @csrf
                                         
@@ -289,7 +289,7 @@
 
                                         @if($userReview)
                                             <!-- Static Movie Review if already reviewed -->
-                                            <div class="mb-8">
+                                            <div class="mb-8" x-show="!isEditing">
                                                 <div class="flex items-center gap-2 mb-2 text-yellow-400 text-lg">
                                                     @for($i = 1; $i <= 5; $i++)
                                                         <i class="fas fa-star {{ $i <= $userReview->rating ? '' : 'text-slate-600' }}"></i>
@@ -299,35 +299,44 @@
                                                 @if($userReview->status === 'HIDDEN')
                                                     <p class="text-red-400 text-sm mt-4"><i class="fas fa-eye-slash"></i> Đánh giá của bạn đã bị ẩn bởi quản trị viên.</p>
                                                 @endif
-                                                <input type="hidden" name="rating" value="{{ $userReview->rating }}">
-                                                <input type="hidden" name="comment" value="{{ $userReview->comment }}">
-                                            </div>
-                                        @else
-                                            <!-- Movie Review Input -->
-                                            <div class="mb-8">
-                                                <div class="mb-4">
-                                                    <label class="block text-slate-400 mb-2 font-medium">Chất lượng phim (1-5 sao)</label>
-                                                    <div class="flex gap-2" x-data="{ rating: 5, hoverRating: 0 }">
-                                                        <button type="button" @click="rating = 1" @mouseenter="hoverRating = 1" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 1 || (hoverRating === 0 && rating >= 1)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
-                                                        <button type="button" @click="rating = 2" @mouseenter="hoverRating = 2" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 2 || (hoverRating === 0 && rating >= 2)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
-                                                        <button type="button" @click="rating = 3" @mouseenter="hoverRating = 3" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 3 || (hoverRating === 0 && rating >= 3)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
-                                                        <button type="button" @click="rating = 4" @mouseenter="hoverRating = 4" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 4 || (hoverRating === 0 && rating >= 4)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
-                                                        <button type="button" @click="rating = 5" @mouseenter="hoverRating = 5" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 5 || (hoverRating === 0 && rating >= 5)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
-                                                        <input type="hidden" name="rating" :value="rating">
-                                                    </div>
-                                                    @error('rating')
-                                                        <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
-                                                    @enderror
-                                                </div>
-                                                <div class="mb-4">
-                                                    <label for="comment" class="block text-slate-400 mb-2 font-medium">Bình luận phim</label>
-                                                    <textarea id="comment" name="comment" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-white placeholder-slate-500 focus:ring-primary focus:border-primary" placeholder="Nhập cảm nhận của bạn về bộ phim này..."></textarea>
-                                                    @error('comment')
-                                                        <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
-                                                    @enderror
+                                                <div class="mt-4">
+                                                    @if($canEditReview)
+                                                        <button type="button" @click="isEditing = true" class="inline-flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-full transition-all text-sm">
+                                                            <i class="fas fa-edit"></i> Chỉnh sửa đánh giá
+                                                        </button>
+                                                    @else
+                                                        <span class="text-slate-500 text-sm italic">
+                                                            <i class="fas fa-info-circle"></i> Đã quá thời hạn 5 phút chỉnh sửa đánh giá.
+                                                        </span>
+                                                    @endif
                                                 </div>
                                             </div>
                                         @endif
+
+                                        <!-- Movie Review Input -->
+                                        <div class="mb-8" x-show="isEditing">
+                                            <div class="mb-4">
+                                                <label class="block text-slate-400 mb-2 font-medium">Chất lượng phim (1-5 sao)</label>
+                                                <div class="flex gap-2">
+                                                    <button type="button" @click="rating = 1" @mouseenter="hoverRating = 1" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 1 || (hoverRating === 0 && rating >= 1)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                    <button type="button" @click="rating = 2" @mouseenter="hoverRating = 2" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 2 || (hoverRating === 0 && rating >= 2)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                    <button type="button" @click="rating = 3" @mouseenter="hoverRating = 3" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 3 || (hoverRating === 0 && rating >= 3)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                    <button type="button" @click="rating = 4" @mouseenter="hoverRating = 4" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 4 || (hoverRating === 0 && rating >= 4)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                    <button type="button" @click="rating = 5" @mouseenter="hoverRating = 5" @mouseleave="hoverRating = 0" class="text-3xl focus:outline-none transition-colors" :style="(hoverRating >= 5 || (hoverRating === 0 && rating >= 5)) ? 'color: #ffc107;' : 'color: #475569;'"><i class="fas fa-star"></i></button>
+                                                    <input type="hidden" name="rating" :value="rating">
+                                                </div>
+                                                @error('rating')
+                                                    <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+                                            <div class="mb-4">
+                                                <label for="comment" class="block text-slate-400 mb-2 font-medium">Bình luận phim</label>
+                                                <textarea id="comment" name="comment" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-white placeholder-slate-500 focus:ring-primary focus:border-primary" placeholder="Nhập cảm nhận của bạn về bộ phim này...">{{ $userReview ? $userReview->comment : '' }}</textarea>
+                                                @error('comment')
+                                                    <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+                                        </div>
 
                                         <!-- COMBO REVIEW -->
                                         @if(isset($purchasedCombos) && $purchasedCombos->count() > 0)
@@ -374,9 +383,16 @@
                                         @endif
 
                                         <div class="text-center pt-4 border-t border-slate-700/50">
-                                            <button type="submit" class="bg-primary hover:bg-red-700 text-white font-bold py-3 px-12 rounded-full transition-all text-lg tracking-wider">
-                                                GỬI ĐÁNH GIÁ
-                                            </button>
+                                            <div class="flex justify-center gap-4">
+                                                @if($userReview)
+                                                    <button type="button" x-show="isEditing" @click="isEditing = false; rating = {{ $userReview->rating }}; document.getElementById('comment').value = `{{ addslashes($userReview->comment) }}`" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-8 rounded-full transition-all text-lg tracking-wider">
+                                                        HỦY
+                                                    </button>
+                                                @endif
+                                                <button type="submit" x-show="isEditing" class="bg-primary hover:bg-red-700 text-white font-bold py-3 px-12 rounded-full transition-all text-lg tracking-wider">
+                                                    {{ $userReview ? 'CẬP NHẬT ĐÁNH GIÁ' : 'GỬI ĐÁNH GIÁ' }}
+                                                </button>
+                                            </div>
                                         </div>
                                     </form>
                                 </div>

@@ -5,12 +5,14 @@
         /* Seat Map Styles */
         .seat-map-wrapper {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            padding: 40px;
+            padding: 30px 20px;
             border-radius: 16px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
             align-items: center;
+            overflow-x: auto;
+            width: 100%;
         }
 
         .cinema-screen {
@@ -34,9 +36,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             width: 100%;
-            min-width: 480px;
             padding: 10px 0;
         }
 
@@ -45,7 +46,15 @@
             align-items: center;
             justify-content: center;
             width: 100%;
-            gap: 8px;
+            gap: 6px;
+        }
+
+        /* Sweetbox rows use tighter gap */
+        .seat-row.sweetbox-row {
+            gap: 6px;
+        }
+        .seat-row.sweetbox-row .row-seats {
+            gap: 4px;
         }
 
         .row-label {
@@ -105,11 +114,37 @@
 
         /* Double / Sweetbox Seat (Hồng) */
         .seat.sweetbox {
-            background-color: #ec4899;
-            width: 92px; /* 2 seats (42px * 2) + gap (8px) = 92px */
-            border-color: #db2777;
+            background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+            width: 60px;
+            height: 40px;
+            border-color: #be185d;
             color: #ffffff;
             font-weight: 800;
+            border-radius: 10px;
+            position: relative;
+            font-size: 0.65rem;
+            letter-spacing: 0.3px;
+        }
+
+        .seat.sweetbox::before {
+            content: '♥';
+            position: absolute;
+            top: -6px;
+            right: -4px;
+            font-size: 0.55rem;
+            color: #fda4af;
+            filter: drop-shadow(0 0 2px rgba(236, 72, 153, 0.6));
+            animation: sweetboxHeartBeat 2s infinite;
+        }
+
+        @keyframes sweetboxHeartBeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+        }
+
+        .seat.sweetbox.selected::before {
+            color: #bbf7d0;
+            filter: drop-shadow(0 0 2px rgba(34, 197, 94, 0.6));
         }
 
         /* Selected Seat */
@@ -391,7 +426,10 @@
                             @endphp
 
                             @foreach($groupedSeats as $row => $seats)
-                                <div class="seat-row">
+                                @php
+                                    $hasSweetbox = $seats->contains(fn($s) => $s->seat_type === 'Sweetbox' || $s->seat_type === 'Double');
+                                @endphp
+                                <div class="seat-row {{ $hasSweetbox ? 'sweetbox-row' : '' }}">
                                     <span class="row-label">{{ $row }}</span>
                                     <div class="row-seats">
                                         @foreach($seats->sortBy(fn($s) => (int)$s->seat_number) as $seat)
@@ -484,6 +522,41 @@
         const surcharge = {{ $showtime->surcharge ?? 0 }};
         const selectedSeats = new Set();
         const ticketPrices = @json($ticketPrices->mapWithKeys(fn($price) => [$price->seat_type => (float) $price->price]));
+        const STORAGE_KEY = 'selectedSeats_showtime_' + showtimeId;
+
+        // Restore previously selected seats from sessionStorage (e.g. when navigating back from checkout)
+        function restoreSelectedSeats() {
+            try {
+                const saved = sessionStorage.getItem(STORAGE_KEY);
+                if (!saved) return;
+
+                const seatIds = JSON.parse(saved);
+                if (!Array.isArray(seatIds) || seatIds.length === 0) return;
+
+                seatIds.forEach(id => {
+                    const button = document.querySelector(`[data-seat-id="${id}"]`);
+                    if (button && !button.classList.contains('booked') && !button.classList.contains('broken') && !button.disabled) {
+                        selectedSeats.add(id);
+                        button.classList.add('selected');
+                    }
+                });
+
+                if (selectedSeats.size > 0) {
+                    updateSummary();
+                }
+
+                // Clear after restoring so it doesn't persist indefinitely
+                sessionStorage.removeItem(STORAGE_KEY);
+            } catch (e) {
+                // Ignore parse errors
+            }
+        }
+
+        // Save selected seats to sessionStorage
+        function saveSelectedSeats() {
+            const ids = Array.from(selectedSeats);
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+        }
 
         function toggleSeat(seatId, button) {
             if (button.classList.contains('booked') || button.classList.contains('broken')) {
@@ -592,9 +665,15 @@
                 return;
             }
 
+            // Save selected seats before navigating to checkout
+            saveSelectedSeats();
+
             const seatIds = Array.from(selectedSeats).join(',');
             document.getElementById('form_seat_ids').value = seatIds;
             document.getElementById('seat-selection-form').submit();
         }
+
+        // Restore seats on page load
+        document.addEventListener('DOMContentLoaded', restoreSelectedSeats);
     </script>
 @endpush
