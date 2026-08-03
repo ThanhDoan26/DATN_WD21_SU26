@@ -17,7 +17,7 @@ class KnowledgeService
     {
         switch ($intent) {
             case 'ask_movies':
-                $movies = Movie::whereIn('status', ['Showing', 'Coming Soon'])
+                $movies = Movie::whereIn('status', ['NOW_SHOWING', 'COMING_SOON'])
                     ->with('categories:name')
                     ->get();
                 if ($movies->isEmpty()) return "Hiện tại không có phim nào đang chiếu hoặc sắp chiếu.";
@@ -36,38 +36,88 @@ class KnowledgeService
             case 'ask_movie_information':
             case 'ask_movie_status':
             case 'ask_movie_compare':
-                $movies = Movie::whereIn('status', ['Showing', 'Coming Soon'])
-                    ->with('categories:name')
-                    ->get();
-                if ($movies->isEmpty()) return "Không có thông tin phim.";
-                $data = $movies->map(function ($m) {
+                $allMovies = Movie::with('categories:name')->get();
+                
+                $normMsg = \Illuminate\Support\Str::slug($message, ' ');
+                $msgWords = array_diff(explode(' ', $normMsg), ['phim', 'rap', 'cho', 'toi', 'xem', 'noi', 'dung', 'biet', 'la', 'gi', 'co', 'hay', 'khong', 'the', 'loai', 'ai', 'dong', 'dao', 'dien', 'bao', 'lau', 've', 'nhe', 'nha', 'cua', 'nay']);
+                
+                $scoredMovies = $allMovies->map(function ($movie) use ($normMsg, $msgWords) {
+                    $score = 0;
+                    $normTitle = \Illuminate\Support\Str::slug($movie->title, ' ');
+                    $titleWords = explode(' ', $normTitle);
+                    
+                    // 1. Lớp 1: Tin nhắn chứa trọn vẹn Tên phim
+                    if (str_contains($normMsg, $normTitle)) {
+                        $score += 100 + strlen($normTitle);
+                    }
+                    
+                    // 2. Lớp 2: Tên phim chứa Tin nhắn
+                    if (strlen($normMsg) >= 3 && str_contains($normTitle, $normMsg)) {
+                        $score += 80;
+                    }
+                    
+                    // 3. Lớp 3: Word Intersect
+                    $matched = array_intersect($titleWords, $msgWords);
+                    $score += count($matched) * 20;
+                    
+                    // Lớp 5: Substring Word Match (Chống lỗi dính chữ - vd: Spider Man vs Spiderman)
+                    $compactTitle = str_replace(' ', '', $normTitle);
+                    $subMatchCount = 0;
+                    foreach ($msgWords as $mWord) {
+                        if (strlen($mWord) >= 3 && str_contains($compactTitle, $mWord)) {
+                            $subMatchCount++;
+                        }
+                    }
+                    $score += $subMatchCount * 15;
+                    
+                    // 4. Lớp 4: Levenshtein (Fuzzy - Sai chính tả)
+                    if (count($matched) == 0) {
+                        foreach ($titleWords as $tWord) {
+                            if (strlen($tWord) <= 3) continue;
+                            foreach ($msgWords as $mWord) {
+                                if (strlen($mWord) <= 3) continue;
+                                if (levenshtein($tWord, $mWord) <= 2) {
+                                    $score += 15;
+                                }
+                            }
+                        }
+                    }
+                    
+                    $movie->relevance_score = $score;
+                    return $movie;
+                });
+                
+                $matchedMovies = $scoredMovies->filter(function ($m) {
+                    return $m->relevance_score >= 15;
+                })->sortByDesc('relevance_score')->take(2)->values();
+                
+                if ($matchedMovies->isEmpty()) {
+                    return "Hệ thống Database nội bộ KHÔNG TÌM THẤY bộ phim nào khớp với tên mà người dùng nhắc đến. CHỈ THỊ BẮT BUỘC: Bạn tuyệt đối không tự dùng kiến thức bên ngoài internet để bịa chuyện kể về phim. Hãy trả lời khách là hệ thống hiện không có thông tin về phim này và đề xuất họ kiểm tra lại tên phim hoặc xem danh sách phim đang chiếu.";
+                }
+                
+                $data = $matchedMovies->map(function ($m) {
                     return [
                         'ten_phim' => $m->title,
                         'dao_dien' => $m->director,
                         'dien_vien' => $m->cast,
-                        'quoc_gia' => $m->country,
-                        'ngon_ngu' => $m->language,
                         'the_loai' => $m->categories->pluck('name')->implode(', '),
                         'thoi_luong' => $m->duration . ' phút',
                         'gioi_han_tuoi' => $m->age_rating,
-                        'dinh_dang' => $m->format,
                         'mo_ta' => $m->description,
-                        'trang_thai' => $m->status,
-                        'poster' => $m->poster_url,
-                        'trailer' => $m->trailer_url
+                        'trang_thai' => $m->status
                     ];
                 });
                 return "Thông tin chi tiết các phim: " . json_encode($data->toArray(), JSON_UNESCAPED_UNICODE);
 
             case 'ask_movie_review':
-                $movies = Movie::where('status', 'Showing')
+                $movies = Movie::where('status', 'NOW_SHOWING')
                     ->withAvg('reviews', 'rating')
                     ->withCount('reviews')
                     ->get(['id', 'title']);
                 return "Đánh giá các phim đang chiếu: " . json_encode($movies->toArray(), JSON_UNESCAPED_UNICODE);
 
             case 'ask_movie_recommendation':
-                $movies = Movie::whereIn('status', ['Showing', 'Coming Soon'])
+                $movies = Movie::whereIn('status', ['NOW_SHOWING', 'COMING_SOON'])
                     ->with('categories:name')
                     ->get(['id', 'title', 'age_rating', 'status']);
                 $data = $movies->map(function ($m) {

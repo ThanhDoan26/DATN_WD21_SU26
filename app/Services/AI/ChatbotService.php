@@ -34,7 +34,7 @@ class ChatbotService
         $history = $this->conversationService->getHistory($conversation, 6);
 
         // 3. Phân tích ý định (Intent)
-        $intent = $this->intentService->detectIntent($message);
+        $intent = $this->intentService->detectIntent($message, $history);
 
         // 4. Lưu tin nhắn của User
         $this->conversationService->saveMessage($conversation, 'user', $message, $intent);
