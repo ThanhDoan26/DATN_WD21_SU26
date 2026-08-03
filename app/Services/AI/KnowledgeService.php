@@ -18,32 +18,67 @@ class KnowledgeService
         switch ($intent) {
             case 'ask_movies':
                 $movies = Movie::whereIn('status', ['Showing', 'Coming Soon'])
-                    ->select('title', 'director', 'status', 'duration', 'age_rating')
+                    ->with('categories:name')
                     ->get();
                 if ($movies->isEmpty()) return "Hiện tại không có phim nào đang chiếu hoặc sắp chiếu.";
-                return "Danh sách phim đang chiếu/sắp chiếu: " . json_encode($movies->toArray(), JSON_UNESCAPED_UNICODE);
+                $data = $movies->map(function ($m) {
+                    return [
+                        'ten_phim' => $m->title,
+                        'dao_dien' => $m->director,
+                        'the_loai' => $m->categories->pluck('name')->implode(', '),
+                        'thoi_luong' => $m->duration . ' phút',
+                        'gioi_han_tuoi' => $m->age_rating,
+                        'trang_thai' => $m->status
+                    ];
+                });
+                return "Danh sách phim đang chiếu/sắp chiếu: " . json_encode($data->toArray(), JSON_UNESCAPED_UNICODE);
 
             case 'ask_movie_information':
             case 'ask_movie_status':
             case 'ask_movie_compare':
                 $movies = Movie::whereIn('status', ['Showing', 'Coming Soon'])
-                    ->select('title', 'director', 'cast', 'duration', 'age_rating', 'format', 'description', 'status')
+                    ->with('categories:name')
                     ->get();
                 if ($movies->isEmpty()) return "Không có thông tin phim.";
-                return "Thông tin chi tiết các phim: " . json_encode($movies->toArray(), JSON_UNESCAPED_UNICODE);
+                $data = $movies->map(function ($m) {
+                    return [
+                        'ten_phim' => $m->title,
+                        'dao_dien' => $m->director,
+                        'dien_vien' => $m->cast,
+                        'quoc_gia' => $m->country,
+                        'ngon_ngu' => $m->language,
+                        'the_loai' => $m->categories->pluck('name')->implode(', '),
+                        'thoi_luong' => $m->duration . ' phút',
+                        'gioi_han_tuoi' => $m->age_rating,
+                        'dinh_dang' => $m->format,
+                        'mo_ta' => $m->description,
+                        'trang_thai' => $m->status,
+                        'poster' => $m->poster_url,
+                        'trailer' => $m->trailer_url
+                    ];
+                });
+                return "Thông tin chi tiết các phim: " . json_encode($data->toArray(), JSON_UNESCAPED_UNICODE);
 
             case 'ask_movie_review':
                 $movies = Movie::where('status', 'Showing')
                     ->withAvg('reviews', 'rating')
                     ->withCount('reviews')
-                    ->get(['title', 'id']);
+                    ->get(['id', 'title']);
                 return "Đánh giá các phim đang chiếu: " . json_encode($movies->toArray(), JSON_UNESCAPED_UNICODE);
 
             case 'ask_movie_recommendation':
                 $movies = Movie::whereIn('status', ['Showing', 'Coming Soon'])
                     ->with('categories:name')
-                    ->get(['title', 'age_rating', 'status']);
-                return "Gợi ý phim: " . json_encode($movies->toArray(), JSON_UNESCAPED_UNICODE);
+                    ->get(['id', 'title', 'age_rating', 'status']);
+                $data = $movies->map(function ($m) {
+                    return [
+                        'ten_phim' => $m->title,
+                        'the_loai' => $m->categories->pluck('name')->implode(', '),
+                        'gioi_han_tuoi' => $m->age_rating,
+                        'trang_thai' => $m->status
+                    ];
+                });
+                return "Gợi ý phim: " . json_encode($data->toArray(), JSON_UNESCAPED_UNICODE);
 
             case 'ask_movie_post':
                 $posts = Post::where('status', 'published')->latest()->take(3)->get(['title', 'summary']);
