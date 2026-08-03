@@ -9,10 +9,12 @@ class IntentService
         $this->geminiService = $geminiService;
     }
 
-    public function detectIntent(string $message): string
+    public function detectIntent(string $message, array $history = []): string
     {
-        $systemInstruction = "Bạn là hệ thống phân tích ý định (Intent Classifier). 
-Nhiệm vụ của bạn là đọc câu hỏi của người dùng và phân loại vào một trong các intent sau:
+        $historyText = empty($history) ? 'Không có' : json_encode($history, JSON_UNESCAPED_UNICODE);
+        $systemInstruction = "Bạn là hệ thống phân tích ý định (Intent Classifier).
+Ngữ cảnh lịch sử trò chuyện (nếu có): {$historyText}
+Dựa vào lịch sử (để hiểu các đại từ như 'phim này', 'ai', 'dài bao lâu') và câu hỏi mới nhất của người dùng, hãy phân loại vào một trong các intent sau:
 - ask_movies: Hỏi danh sách phim nói chung.
 - ask_movie_information: Nội dung, thể loại, đạo diễn, diễn viên, thời lượng...
 - ask_movie_status: Hỏi phim đang chiếu, sắp chiếu, ngừng chiếu.
