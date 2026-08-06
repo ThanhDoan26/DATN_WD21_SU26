@@ -71,7 +71,7 @@
 <!-- Quick Filters Group -->
 <div class="row mb-3">
     <div class="col-12">
-        <div class="d-flex flex-wrap gap-2 align-items-center bg-white p-3 rounded-3 shadow-sm border border-light">
+        <div class="d-flex flex-wrap gap-2 align-items-center p-3 rounded-3 shadow-sm border quick-filter-wrapper" style="background-color: var(--bg-surface); border-color: var(--border-light) !important;">
             <span class="text-muted fw-bold me-2"><i class="fas fa-bolt text-warning"></i> Lọc nhanh:</span>
             <button type="button" class="btn btn-sm btn-outline-secondary quick-filter-btn" data-type="today">Hôm nay</button>
             <button type="button" class="btn btn-sm btn-outline-secondary quick-filter-btn" data-type="yesterday">Hôm qua</button>
@@ -481,26 +481,26 @@
         <p class="card-text text-muted">
             Hệ thống Quản lý Đặt vé Xem phim. Sử dụng menu bên trái để quản lý:
         </p>
-        <ul class="list-group list-group-flush mt-2">
-            <li class="list-group-item text-muted border-light px-0">
+        <ul class="list-group list-group-flush mt-2 welcome-list">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-building text-primary me-2" style="width: 20px;"></i> Cụm rạp</strong> - Quản lý cụm rạp chiếu phim
             </li>
-            <li class="list-group-item text-muted border-light px-0">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-door-open text-primary me-2" style="width: 20px;"></i> Phòng chiếu</strong> - Quản lý phòng chiếu
             </li>
-            <li class="list-group-item text-muted border-light px-0">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-chair text-primary me-2" style="width: 20px;"></i> Ghế</strong> - Quản lý sơ đồ ghế ngồi
             </li>
-            <li class="list-group-item text-muted border-light px-0">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-video text-primary me-2" style="width: 20px;"></i> Phim</strong> - Quản lý danh sách phim
             </li>
-            <li class="list-group-item text-muted border-light px-0">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-calendar-alt text-primary me-2" style="width: 20px;"></i> Lịch chiếu</strong> - Quản lý lịch chiếu
             </li>
-            <li class="list-group-item text-muted border-light px-0">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-ticket-alt text-primary me-2" style="width: 20px;"></i> Đơn hàng</strong> - Quản lý đơn hàng
             </li>
-            <li class="list-group-item text-muted border-light px-0">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-users text-primary me-2" style="width: 20px;"></i> Người dùng</strong> - Quản lý người dùng
             </li>
         </ul>
