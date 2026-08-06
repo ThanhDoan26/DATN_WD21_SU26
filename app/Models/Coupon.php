@@ -58,7 +58,7 @@ class Coupon extends Model
         }
 
         if ($orderTotal < $this->min_order_value) {
-            return ['valid' => false, 'message' => 'Giá trị đơn hàng chưa đạt mức tối thiểu (' . number_format($this->min_order_value, 0, ',', '.') . ' VNĐ) để sử dụng mã này.'];
+            return ['valid' => false, 'message' => 'Gia trị đơn hàng cảu bạn chưa đạt mức tối thiểu (' . number_format($this->min_order_value, 0, ',', '.') . ' VNĐ) để sử dụng mã này.'];
         }
 
         // Kiểm tra xem User này đã sử dụng mã này chưa (nếu có truyền userId)
@@ -74,7 +74,7 @@ class Coupon extends Model
             }
         }
 
-        return ['valid' => true, 'message' => 'Mã giảm giá hợp lệ.'];
+        return ['valid' => true, 'message' => 'Mã giảm của bạn hợp lệ!'];
     }
 
     /**
