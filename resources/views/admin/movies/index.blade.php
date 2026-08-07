@@ -61,10 +61,10 @@
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-bordered table-hover align-middle">
+            <table class="table table-bordered table-hover align-middle custom-table">
                 <thead>
                     <tr>
-                        <th width="80">Poster</th>
+                        <th width="90">Poster</th>
                         <th>Tên phim</th>
                         <th>Danh mục</th>
                         <th width="110">Định dạng</th>
@@ -77,13 +77,20 @@
                     @forelse($movies as $movie)
                     <tr>
                         <td>
-                            @if($movie->poster_url)
-                                <img src="{{ asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="img-thumbnail" style="width: 60px; height: 80px; object-fit: cover;">
-                            @else
-                                <div class="bg-light d-flex align-items-center justify-content-center text-muted" style="width: 60px; height: 80px; font-size: 10px;">
-                                    No Image
-                                </div>
-                            @endif
+                            <div class="poster-container">
+                                @php
+                                    $posterUrl = $movie->poster_url
+                                        ? (str_starts_with($movie->poster_url, 'http')
+                                            ? $movie->poster_url
+                                            : asset('storage/' . $movie->poster_url))
+                                        : null;
+                                @endphp
+                                @if($posterUrl)
+                                    <img src="{{ $posterUrl }}" alt="{{ $movie->title }}" class="movie-poster">
+                                @else
+                                    <div class="d-flex align-items-center justify-content-center text-muted" style="width: 100%; height: 100%; font-size: 11px;">No Image</div>
+                                @endif
+                            </div>
                         </td>
                         <td>
                             <strong>{{ $movie->title }}</strong><br>
@@ -129,7 +136,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="text-center">Chưa có dữ liệu phim</td>
+                        <td colspan="7" class="text-center">Chưa có dữ liệu phim</td>
                     </tr>
                     @endforelse
                 </tbody>
