@@ -316,13 +316,26 @@
                             </div>
 
                             <!-- Filters + Button -->
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
                                 <!-- Status -->
                                 <div class="relative">
                                     <select name="status" class="search-select w-full rounded-xl py-3 px-4 pr-10 text-sm cursor-pointer">
                                         <option value="">Tất cả trạng thái</option>
                                         <option value="NOW_SHOWING" {{ request('status') == 'NOW_SHOWING' ? 'selected' : '' }}>Đang chiếu</option>
                                         <option value="COMING_SOON" {{ request('status') == 'COMING_SOON' ? 'selected' : '' }}>Sắp chiếu</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                        <i class="fas fa-chevron-down text-xs"></i>
+                                    </div>
+                                </div>
+
+                                <!-- Cinema -->
+                                <div class="relative">
+                                    <select name="cinema_id" class="search-select w-full rounded-xl py-3 px-4 pr-10 text-sm cursor-pointer">
+                                        <option value="">Tất cả rạp</option>
+                                        @foreach($cinemas as $cinema)
+                                            <option value="{{ $cinema->id }}" {{ request('cinema_id') == $cinema->id ? 'selected' : '' }}>{{ $cinema->name }}</option>
+                                        @endforeach
                                     </select>
                                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
                                         <i class="fas fa-chevron-down text-xs"></i>
@@ -343,7 +356,7 @@
                                 </div>
 
                                 <!-- Submit -->
-                                <button type="submit" class="btn-primary-hero flex items-center justify-center gap-2 text-white px-6 py-3 rounded-xl font-semibold text-sm tracking-wide">
+                                <button type="submit" class="btn-primary-hero flex items-center justify-center gap-2 text-white px-6 py-3 rounded-xl font-semibold text-sm tracking-wide w-full">
                                     <i class="fas fa-search"></i> Tìm kiếm
                                 </button>
                             </div>

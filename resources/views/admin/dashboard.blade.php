@@ -102,6 +102,16 @@
             </div>
 
             <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label fw-bold text-muted small" for="filter-movie">Phim</label>
+                <select id="filter-movie" name="movie_id" class="form-select border-2">
+                    <option value="">Tất cả phim</option>
+                    @foreach($movies ?? [] as $movie)
+                        <option value="{{ $movie->id }}" @if(($selectedMovieId ?? null) == $movie->id) selected @endif>{{ $movie->title }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-3">
                 <label class="form-label fw-bold text-muted small" for="filter-report-type">Loại báo cáo</label>
                 <select id="filter-report-type" name="report_type" class="form-select border-2 text-dark fw-semibold">
                     <option value="date" @if(($selectedReportType ?? 'month') == 'date') selected @endif>Theo ngày</option>
@@ -189,11 +199,11 @@
                 </div>
                 <div class="text-md-end">
                     <h5 class="fw-bold text-primary mb-1" id="header-cinema">
-                        @if($selectedCinemaId && $cinemas->firstWhere('id', $selectedCinemaId))
-                            {{ $cinemas->firstWhere('id', $selectedCinemaId)->name }}
-                        @else
-                            Tất cả cụm rạp
-                        @endif
+                        @php
+                            $headerCinemaText = ($selectedCinemaId && $cinemas->firstWhere('id', $selectedCinemaId)) ? $cinemas->firstWhere('id', $selectedCinemaId)->name : 'Tất cả cụm rạp';
+                            $headerMovieText = ($selectedMovieId ?? null) && $movies->firstWhere('id', $selectedMovieId) ? ' - ' . $movies->firstWhere('id', $selectedMovieId)->title : '';
+                        @endphp
+                        {{ $headerCinemaText }}{{ $headerMovieText }}
                     </h5>
                     <p class="text-muted mb-0 fw-semibold" id="header-time">
                         @if(($selectedReportType ?? 'month') == 'date')
@@ -917,7 +927,12 @@
             else if (data.selectedReportType === 'year') reportTypeText = 'Theo năm';
             
             document.getElementById('header-report-type').innerText = reportTypeText;
-            document.getElementById('header-cinema').innerText = data.cinemaName;
+            
+            let headerCinemaText = data.cinemaName;
+            if (data.movieName && data.movieName !== 'Tất cả phim') {
+                headerCinemaText += ' - ' + data.movieName;
+            }
+            document.getElementById('header-cinema').innerText = headerCinemaText;
             
             let timeText = '';
             if (data.selectedReportType === 'date') {
@@ -1033,6 +1048,7 @@
         form.reset();
         
         document.getElementById('filter-cinema').value = '';
+        document.getElementById('filter-movie').value = '';
         document.getElementById('filter-report-type').value = 'month';
         
         const today = new Date();

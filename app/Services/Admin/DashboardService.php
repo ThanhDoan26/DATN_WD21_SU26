@@ -24,7 +24,8 @@ class DashboardService
         string $reportType = 'month',
         string $fromDate = null,
         string $toDate = null,
-        int $week = null
+        int $week = null,
+        int $movieId = null
     ): array
     {
         // 1. Tổng số người dùng (đang hoạt động)
@@ -43,16 +44,24 @@ class DashboardService
                 $q->where('cinema_id', $cinemaId);
             });
         }
+        if ($movieId) {
+            $totalShowtimesQuery->where('movie_id', $movieId);
+        }
         $totalShowtimes = $totalShowtimesQuery->count();
 
         $paidStatuses = ['Paid', 'Used'];
 
         // 5. Tổng số vé đã bán (thuộc các booking đã thanh toán hoặc đã sử dụng)
-        $totalTicketsSold = BookedSeat::whereHas('booking', function ($query) use ($paidStatuses, $cinemaId) {
+        $totalTicketsSold = BookedSeat::whereHas('booking', function ($query) use ($paidStatuses, $cinemaId, $movieId) {
             $query->whereIn('status', $paidStatuses);
             if ($cinemaId) {
                 $query->whereHas('showtime.room', function ($q) use ($cinemaId) {
                     $q->where('cinema_id', $cinemaId);
+                });
+            }
+            if ($movieId) {
+                $query->whereHas('showtime', function ($q) use ($movieId) {
+                    $q->where('movie_id', $movieId);
                 });
             }
         })->count();
@@ -71,6 +80,11 @@ class DashboardService
                 $q->where('cinema_id', $cinemaId);
             });
         }
+        if ($movieId) {
+            $allTimeRevenueQuery->whereHas('showtime', function ($q) use ($movieId) {
+                $q->where('movie_id', $movieId);
+            });
+        }
         $allTimeRevenue = $allTimeRevenueQuery->sum('total_price');
 
         $dailyRevenueQuery = Booking::whereIn('status', $paidStatuses)
@@ -78,6 +92,11 @@ class DashboardService
         if ($cinemaId) {
             $dailyRevenueQuery->whereHas('showtime.room', function ($q) use ($cinemaId) {
                 $q->where('cinema_id', $cinemaId);
+            });
+        }
+        if ($movieId) {
+            $dailyRevenueQuery->whereHas('showtime', function ($q) use ($movieId) {
+                $q->where('movie_id', $movieId);
             });
         }
         $dailyRevenue = $dailyRevenueQuery->sum('total_price');
@@ -90,6 +109,11 @@ class DashboardService
                 $q->where('cinema_id', $cinemaId);
             });
         }
+        if ($movieId) {
+            $monthlyRevenueQuery->whereHas('showtime', function ($q) use ($movieId) {
+                $q->where('movie_id', $movieId);
+            });
+        }
         $monthlyRevenue = $monthlyRevenueQuery->sum('total_price');
 
         $yearlyRevenueQuery = Booking::whereIn('status', $paidStatuses)
@@ -97,6 +121,11 @@ class DashboardService
         if ($cinemaId) {
             $yearlyRevenueQuery->whereHas('showtime.room', function ($q) use ($cinemaId) {
                 $q->where('cinema_id', $cinemaId);
+            });
+        }
+        if ($movieId) {
+            $yearlyRevenueQuery->whereHas('showtime', function ($q) use ($movieId) {
+                $q->where('movie_id', $movieId);
             });
         }
         $yearlyRevenue = $yearlyRevenueQuery->sum('total_price');
@@ -108,12 +137,22 @@ class DashboardService
                 $q->where('cinema_id', $cinemaId);
             });
         }
+        if ($movieId) {
+            $periodRevenueQuery->whereHas('showtime', function ($q) use ($movieId) {
+                $q->where('movie_id', $movieId);
+            });
+        }
 
         $bookingsQuery = Booking::with(['user', 'showtime.movie', 'showtime.room.cinema', 'bookedSeats'])
             ->whereIn('status', $paidStatuses);
         if ($cinemaId) {
             $bookingsQuery->whereHas('showtime.room', function ($q) use ($cinemaId) {
                 $q->where('cinema_id', $cinemaId);
+            });
+        }
+        if ($movieId) {
+            $bookingsQuery->whereHas('showtime', function ($q) use ($movieId) {
+                $q->where('movie_id', $movieId);
             });
         }
 
@@ -157,6 +196,9 @@ class DashboardService
             $topMoviesQuery->join('rooms', 'showtimes.room_id', '=', 'rooms.id')
                            ->where('rooms.cinema_id', $cinemaId);
         }
+        if ($movieId) {
+            $topMoviesQuery->where('movies.id', $movieId);
+        }
 
         // Áp dụng điều kiện thời gian
         if ($selectedReportType === 'date') {
@@ -192,6 +234,9 @@ class DashboardService
         if ($cinemaId) {
             $movieStatisticsQuery->join('rooms', 'showtimes.room_id', '=', 'rooms.id')
                 ->where('rooms.cinema_id', $cinemaId);
+        }
+        if ($movieId) {
+            $movieStatisticsQuery->where('movies.id', $movieId);
         }
 
         if ($selectedReportType === 'date') {
