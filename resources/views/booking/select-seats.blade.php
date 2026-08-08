@@ -5,12 +5,14 @@
         /* Seat Map Styles */
         .seat-map-wrapper {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            padding: 40px;
+            padding: 30px 20px;
             border-radius: 16px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
             align-items: center;
+            overflow-x: auto;
+            width: 100%;
         }
 
         .cinema-screen {
@@ -34,9 +36,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             width: 100%;
-            min-width: 480px;
             padding: 10px 0;
         }
 
@@ -45,7 +46,15 @@
             align-items: center;
             justify-content: center;
             width: 100%;
-            gap: 8px;
+            gap: 6px;
+        }
+
+        /* Sweetbox rows use tighter gap */
+        .seat-row.sweetbox-row {
+            gap: 6px;
+        }
+        .seat-row.sweetbox-row .row-seats {
+            gap: 4px;
         }
 
         .row-label {
@@ -105,11 +114,37 @@
 
         /* Double / Sweetbox Seat (Hồng) */
         .seat.sweetbox {
-            background-color: #ec4899;
-            width: 92px; /* 2 seats (42px * 2) + gap (8px) = 92px */
-            border-color: #db2777;
+            background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+            width: 60px;
+            height: 40px;
+            border-color: #be185d;
             color: #ffffff;
             font-weight: 800;
+            border-radius: 10px;
+            position: relative;
+            font-size: 0.65rem;
+            letter-spacing: 0.3px;
+        }
+
+        .seat.sweetbox::before {
+            content: '♥';
+            position: absolute;
+            top: -6px;
+            right: -4px;
+            font-size: 0.55rem;
+            color: #fda4af;
+            filter: drop-shadow(0 0 2px rgba(236, 72, 153, 0.6));
+            animation: sweetboxHeartBeat 2s infinite;
+        }
+
+        @keyframes sweetboxHeartBeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+        }
+
+        .seat.sweetbox.selected::before {
+            color: #bbf7d0;
+            filter: drop-shadow(0 0 2px rgba(34, 197, 94, 0.6));
         }
 
         /* Selected Seat */
@@ -322,7 +357,7 @@
     </div>
 
     <!-- Main Content -->
-    <section class="py-16 px-4 min-h-screen">
+    <section class="pt-16 pb-40 px-4 min-h-screen">
         <div class="max-w-6xl mx-auto">
             <!-- Movie & Showtime Info -->
             <div class="bg-slate-800 rounded-lg p-6 mb-8">
@@ -346,11 +381,11 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="w-full">
                 <!-- Seat Map -->
-                <div class="lg:col-span-2">
+                <div class="w-full overflow-x-auto">
                     <!-- Seat Map Container -->
-                    <div class="seat-map-wrapper">
+                    <div class="seat-map-wrapper min-w-max mx-auto">
                         <!-- Legend -->
                         <div class="seat-legend">
                             <div class="legend-item">
@@ -391,7 +426,10 @@
                             @endphp
 
                             @foreach($groupedSeats as $row => $seats)
-                                <div class="seat-row">
+                                @php
+                                    $hasSweetbox = $seats->contains(fn($s) => $s->seat_type === 'Sweetbox' || $s->seat_type === 'Double');
+                                @endphp
+                                <div class="seat-row {{ $hasSweetbox ? 'sweetbox-row' : '' }}">
                                     <span class="row-label">{{ $row }}</span>
                                     <div class="row-seats">
                                         @foreach($seats->sortBy(fn($s) => (int)$s->seat_number) as $seat)
@@ -435,66 +473,46 @@
                     </div>
                 </div>
 
-                <!-- Sidebar: Summary & Checkout -->
-                <div>
-                    <form id="seat-selection-form" action="{{ route('checkout') }}" method="GET">
-                        <input type="hidden" name="showtime_id" id="form_showtime_id" value="{{ $showtime->id }}" />
-                        <input type="hidden" name="seat_ids" id="form_seat_ids" value="" />
-
-                        <!-- Summary Card -->
-                        <div class="bg-slate-800 rounded-lg p-6 sticky top-24">
-                            <h3 class="text-xl font-bold mb-6">Thông tin đặt vé</h3>
-
-                            <!-- Selected Seats -->
-                            <div class="mb-6 pb-6 border-b border-slate-700">
-                            <div class="flex justify-between items-center mb-3">
-                                <span class="text-slate-400">Ghế đã chọn:</span>
-                                <span class="text-lg font-bold" id="seatCount">0 ghế</span>
-                            </div>
-                            <div id="selectedSeatsDisplay" class="bg-slate-900 rounded p-3 min-h-12 flex items-center">
-                                <span class="text-slate-400 text-sm">Chọn ghế để tiếp tục</span>
-                            </div>
-                        </div>
-
-                        <!-- Price Breakdown -->
-                        @if($ticketPrices->count() > 0)
-                            <div class="mb-6 pb-6 border-b border-slate-700">
-                                <div class="text-slate-400 text-sm mb-3">Giá vé:</div>
-                                @foreach($ticketPrices as $price)
-                                    <div class="flex justify-between text-sm mb-2">
-                                        <span>{{ $price->type ?? 'Vé bình thường' }}</span>
-                                        <span class="font-bold">{{ number_format($price->price) }}₫</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-
-                        <!-- Total -->
-                        <div class="mb-8">
-                            <div class="flex justify-between items-center text-xl font-bold">
-                                <span>Tổng cộng:</span>
-                                <span class="text-2xl text-primary" id="totalPrice">0₫</span>
-                            </div>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <button type="button"
-                                onclick="proceedToCheckout()"
-                                id="checkoutButton"
-                                onclick="proceedToCheckout()"
-                                disabled
-                                class="w-full bg-primary hover:bg-red-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition mb-3">
-                            <i class="fas fa-arrow-right mr-2"></i>Tiếp tục thanh toán
-                        </button>
-                        <a href="javascript:history.back()" class="block text-center bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg transition">
-                            <i class="fas fa-arrow-left mr-2"></i>Quay lại
-                        </a>
-                    </div>
-                </form>
                 </div>
             </div>
         </div>
     </section>
+
+    <!-- Sticky Bottom Bar: Summary & Checkout -->
+    <form id="seat-selection-form" action="{{ route('checkout') }}" method="GET" class="fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-700 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-50">
+        <input type="hidden" name="showtime_id" id="form_showtime_id" value="{{ $showtime->id }}" />
+        <input type="hidden" name="seat_ids" id="form_seat_ids" value="" />
+        
+        <div class="max-w-7xl mx-auto px-4 py-4 md:py-6 flex flex-col md:flex-row items-center justify-between gap-6">
+            <!-- Selected Seats -->
+            <div class="flex-1 w-full min-w-0">
+                <div class="text-slate-400 text-sm mb-1">Ghế đã chọn: <span id="seatCount" class="text-white font-bold ml-1">0 ghế</span></div>
+                <div id="selectedSeatsDisplay" class="truncate text-lg font-bold text-primary">
+                    <span class="text-slate-500 text-base font-normal">Vui lòng chọn ghế trên sơ đồ</span>
+                </div>
+            </div>
+
+            <!-- Total Price -->
+            <div class="text-left md:text-right w-full md:w-auto">
+                <div class="text-slate-400 text-sm mb-1">Tổng cộng:</div>
+                <div class="text-2xl font-bold text-white" id="totalPrice">0₫</div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-3 w-full md:w-auto mt-2 md:mt-0">
+                <a href="javascript:history.back()" class="bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-lg transition whitespace-nowrap text-center">
+                    Quay lại
+                </a>
+                <button type="button"
+                        onclick="proceedToCheckout()"
+                        id="checkoutButton"
+                        disabled
+                        class="bg-primary hover:bg-red-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-lg transition whitespace-nowrap flex-1 md:flex-none text-center">
+                    Tiếp tục thanh toán <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </form>
 
 @endsection
 
@@ -504,6 +522,41 @@
         const surcharge = {{ $showtime->surcharge ?? 0 }};
         const selectedSeats = new Set();
         const ticketPrices = @json($ticketPrices->mapWithKeys(fn($price) => [$price->seat_type => (float) $price->price]));
+        const STORAGE_KEY = 'selectedSeats_showtime_' + showtimeId;
+
+        // Restore previously selected seats from sessionStorage (e.g. when navigating back from checkout)
+        function restoreSelectedSeats() {
+            try {
+                const saved = sessionStorage.getItem(STORAGE_KEY);
+                if (!saved) return;
+
+                const seatIds = JSON.parse(saved);
+                if (!Array.isArray(seatIds) || seatIds.length === 0) return;
+
+                seatIds.forEach(id => {
+                    const button = document.querySelector(`[data-seat-id="${id}"]`);
+                    if (button && !button.classList.contains('booked') && !button.classList.contains('broken') && !button.disabled) {
+                        selectedSeats.add(id);
+                        button.classList.add('selected');
+                    }
+                });
+
+                if (selectedSeats.size > 0) {
+                    updateSummary();
+                }
+
+                // Clear after restoring so it doesn't persist indefinitely
+                sessionStorage.removeItem(STORAGE_KEY);
+            } catch (e) {
+                // Ignore parse errors
+            }
+        }
+
+        // Save selected seats to sessionStorage
+        function saveSelectedSeats() {
+            const ids = Array.from(selectedSeats);
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+        }
 
         function toggleSeat(seatId, button) {
             if (button.classList.contains('booked') || button.classList.contains('broken')) {
@@ -612,9 +665,15 @@
                 return;
             }
 
+            // Save selected seats before navigating to checkout
+            saveSelectedSeats();
+
             const seatIds = Array.from(selectedSeats).join(',');
             document.getElementById('form_seat_ids').value = seatIds;
             document.getElementById('seat-selection-form').submit();
         }
+
+        // Restore seats on page load
+        document.addEventListener('DOMContentLoaded', restoreSelectedSeats);
     </script>
 @endpush

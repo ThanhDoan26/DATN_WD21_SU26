@@ -105,6 +105,15 @@ Route::middleware('auth')->group(function () {
         [StripeController::class,'cancel'])
         ->name('stripe.cancel');
 
+    // VNPAY routes
+    Route::post('/vnpay/payment',
+        [\App\Http\Controllers\VnPayController::class, 'createPayment'])
+        ->name('vnpay.payment');
+
+    Route::get('/vnpay/return',
+        [\App\Http\Controllers\VnPayController::class, 'return'])
+        ->name('vnpay.return');
+
 });
 
 // Native App QR Scanner Redirection

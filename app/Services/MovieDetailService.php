@@ -58,6 +58,7 @@ class MovieDetailService
         
         $canReview = false;
         $userReview = null;
+        $canEditReview = false;
         $purchasedCombos = collect();
         
         if (auth()->check()) {
@@ -65,15 +66,17 @@ class MovieDetailService
             
             // Check if user has reviewed
             $userReview = $movie->reviews()->where('user_id', $userId)->first();
-            
-            // If they haven't reviewed, check if they can review
-            if (!$userReview) {
-                $canReview = \App\Models\Booking::where('user_id', $userId)
-                    ->whereIn('status', ['Paid', 'Used'])
-                    ->whereHas('showtime', function ($query) use ($id) {
-                        $query->where('movie_id', $id);
-                    })->exists();
+            if ($userReview) {
+                $canEditReview = $userReview->created_at->addMinutes(5)->isFuture();
             }
+            
+            // Check if they can review (booking paid/used and showtime ended)
+            $canReview = \App\Models\Booking::where('user_id', $userId)
+                ->whereIn('status', ['Paid', 'Used'])
+                ->whereHas('showtime', function ($query) use ($id) {
+                    $query->where('movie_id', $id)
+                        ->where('end_time', '<=', now());
+                })->exists();
 
             // Fetch combos purchased during this movie's bookings
             $bookingsWithCombos = \App\Models\Booking::where('user_id', $userId)
@@ -118,6 +121,7 @@ class MovieDetailService
             'reviews' => $reviews,
             'canReview' => $canReview,
             'userReview' => $userReview,
+            'canEditReview' => $canEditReview,
             'purchasedCombos' => $purchasedCombos,
             'comboReviews' => $comboReviews,
         ];
