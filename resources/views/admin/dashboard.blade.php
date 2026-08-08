@@ -309,116 +309,6 @@
         </div>
     </div>
 
-    <!-- Budget Usage & Low Stock Alert Row -->
-    <div class="row g-3 mb-4">
-        <!-- Budget Usage & Room Capacity Bar -->
-        <div class="col-12 col-xl-7">
-            <div class="card border-0 shadow-sm h-100 modern-card">
-                <div class="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between">
-                    <h5 class="mb-0 text-dark fw-bold d-flex align-items-center gap-2">
-                        <i class="fas fa-wallet text-success"></i> Budget Usage & Tỷ lệ Lấp đầy Phòng
-                    </h5>
-                    <span class="badge bg-success-light text-success fw-bold px-3 py-2 rounded-pill">
-                        <i class="fas fa-arrow-up me-1"></i> +8.4% Hiệu suất
-                    </span>
-                </div>
-                <div class="card-body p-4">
-                    <!-- Budget Bar Item 1 -->
-                    <div class="mb-4 budget-interactive-item" data-bs-toggle="tooltip" data-bs-html="true" title="<b>Ngân sách Quảng cáo & Marketing</b><br>Đã chi: 42.500.000 đ / 50.000.000 đ (85%)<br><span class='text-warning'>⚠️ Sắp đạt hạn mức</span>">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="fw-semibold text-dark text-sm"><i class="fas fa-bullhorn text-primary me-2"></i>Ngân sách Quảng cáo & Marketing</span>
-                            <span class="fw-bold text-primary text-sm">85% (42.5M / 50M)</span>
-                        </div>
-                        <div class="progress budget-progress-bar" style="height: 10px; border-radius: 999px;">
-                            <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar" style="width: 85%"></div>
-                        </div>
-                    </div>
-
-                    <!-- Budget Bar Item 2 -->
-                    <div class="mb-4 budget-interactive-item" data-bs-toggle="tooltip" data-bs-html="true" title="<b>Tỷ lệ Lấp đầy Ghế Phòng VIP</b><br>Đã đặt: 1.480 / 1.800 ghế (82%)<br><span class='text-success'>🟢 Tốc độ lấp đầy cao</span>">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="fw-semibold text-dark text-sm"><i class="fas fa-couch text-warning me-2"></i>Tỷ lệ Lấp đầy Phòng VIP</span>
-                            <span class="fw-bold text-warning text-sm">82% (1,480 / 1,800 ghế)</span>
-                        </div>
-                        <div class="progress budget-progress-bar" style="height: 10px; border-radius: 999px;">
-                            <div class="progress-bar bg-warning" role="progressbar" style="width: 82%"></div>
-                        </div>
-                    </div>
-
-                    <!-- Budget Bar Item 3 -->
-                    <div class="mb-0 budget-interactive-item" data-bs-toggle="tooltip" data-bs-html="true" title="<b>Hạn mức Voucher & Ưu đãi Tháng</b><br>Đã phát hành: 68% tổng hạn mức<br><span class='text-info'>ℹ️ 3.200 lượt đổi mã</span>">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="fw-semibold text-dark text-sm"><i class="fas fa-ticket-alt text-success me-2"></i>Ngân sách Khuyến mãi & Coupon</span>
-                            <span class="fw-bold text-success text-sm">68% (34M / 50M)</span>
-                        </div>
-                        <div class="progress budget-progress-bar" style="height: 10px; border-radius: 999px;">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: 68%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Low Stock Alert Card (Smart Animate Collapsible) -->
-        <div class="col-12 col-xl-5">
-            <div class="card border-0 shadow-sm h-100 modern-card border-start border-4 border-danger position-relative overflow-hidden">
-                <div class="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between">
-                    <h5 class="mb-0 text-danger fw-bold d-flex align-items-center gap-2">
-                        <i class="fas fa-exclamation-triangle text-danger pulse-icon"></i> Low Stock Alert
-                    </h5>
-                    <span class="badge bg-danger text-white rounded-pill px-3 py-1 text-xs pulse-glow-badge">
-                        3 Cảnh báo mới
-                    </span>
-                </div>
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center justify-content-between p-3 rounded-3 bg-danger-light mb-3 alert-item-hover">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="alert-icon-box bg-white text-danger rounded-circle p-2 shadow-xs">
-                                <i class="fas fa-couch fs-5"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold text-dark text-sm">Suất 20:00 - Avatar 3 (Phòng 1)</div>
-                                <small class="text-danger fw-semibold"><i class="fas fa-fire me-1"></i>Chỉ còn 4 ghế trống!</small>
-                            </div>
-                        </div>
-                        <a href="{{ route('admin.showtimes.index') }}" class="btn btn-sm btn-outline-danger rounded-pill fw-bold">Mở thêm</a>
-                    </div>
-
-                    <div class="d-flex align-items-center justify-content-between p-3 rounded-3 bg-warning-light mb-3 alert-item-hover">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="alert-icon-box bg-white text-warning rounded-circle p-2 shadow-xs">
-                                <i class="fas fa-popcorn fs-5"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold text-dark text-sm">Combo Bỏng Ngô Khổng Lồ</div>
-                                <small class="text-warning fw-semibold"><i class="fas fa-box-open me-1"></i>Sắp hết hàng (Còn 12 phần)</small>
-                            </div>
-                        </div>
-                        <a href="{{ route('admin.combos.index') }}" class="btn btn-sm btn-outline-warning rounded-pill fw-bold">Nhập thêm</a>
-                    </div>
-
-                    <!-- Smart Animate Toggle Button -->
-                    <button type="button" class="btn btn-link text-primary p-0 fw-bold text-decoration-none d-flex align-items-center gap-1 mt-2 smart-animate-toggle-btn" onclick="toggleLowStockDrawer()">
-                        <span id="low-stock-toggle-text">Mở rộng chi tiết cảnh báo</span>
-                        <i class="fas fa-chevron-down smart-chevron" id="low-stock-chevron"></i>
-                    </button>
-
-                    <!-- Smart Animate Collapsible Drawer -->
-                    <div class="smart-animate-drawer mt-3" id="low-stock-drawer">
-                        <div class="p-3 bg-light rounded-3 border border-light text-sm">
-                            <div class="fw-bold text-dark mb-1"><i class="fas fa-info-circle text-info me-1"></i> Tóm tắt cảnh báo hệ thống</div>
-                            <p class="text-muted text-xs mb-2">Các suất chiếu từ 18:00 - 22:00 hôm nay có tỷ lệ đặt lấp đầy > 90%. Vui lòng kiểm tra bổ sung phòng chiếu phụ nếu cần.</p>
-                            <div class="d-flex gap-2">
-                                <span class="badge bg-secondary text-xs">Cơ sở: Cinema Central</span>
-                                <span class="badge bg-primary text-xs">Cập nhật: 1 phút trước</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Tables row 1: Top Movies & Top Combo -->
     <div class="row">
         <!-- Top Movies -->
@@ -962,6 +852,18 @@
             document.getElementById('top-combos-wrapper').innerHTML = data.html_top_combos;
             document.getElementById('top-movies-wrapper').innerHTML = data.html_top_movies;
             document.getElementById('movie-statistics-wrapper').innerHTML = data.html_movie_statistics;
+            
+            // Cập nhật Chart
+            if (data.chartData) {
+                chartDatasets = data.chartData;
+                const activeBtn = document.querySelector('#sales-chart-toggle .smart-btn.active');
+                if (activeBtn) {
+                    const period = activeBtn.getAttribute('onclick').match(/'([^']+)'/)[1];
+                    updateSalesChartPeriod(period, activeBtn);
+                } else {
+                    updateSalesChartPeriod('7days');
+                }
+            }
         })
         .catch(err => {
             console.error('Fetch error:', err);
@@ -1139,23 +1041,11 @@
     // =====================================================================
     let salesChart = null;
 
-    const chartDatasets = {
-        '7days': {
-            labels: ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'],
-            revenue: [12500000, 18200000, 14300000, 22500000, 31000000, 48500000, 52000000],
-            tickets: [140, 210, 165, 260, 350, 540, 590]
-        },
-        '30days': {
-            labels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4'],
-            revenue: [145000000, 178000000, 210000000, 195000000],
-            tickets: [1650, 1980, 2400, 2150]
-        },
-        '12months': {
-            labels: ['Thg 1', 'Thg 2', 'Thg 3', 'Thg 4', 'Thg 5', 'Thg 6', 'Thg 7', 'Thg 8', 'Thg 9', 'Thg 10', 'Thg 11', 'Thg 12'],
-            revenue: [450000000, 520000000, 480000000, 610000000, 730000000, 890000000, 920000000, 850000000, 710000000, 680000000, 790000000, 950000000],
-            tickets: [5100, 5900, 5400, 6800, 8100, 9800, 10200, 9400, 7900, 7600, 8800, 10500]
-        }
-    };
+    let chartDatasets = {!! json_encode($chartData ?? [
+        '7days' => ['labels' => [], 'revenue' => [], 'tickets' => []],
+        '30days' => ['labels' => [], 'revenue' => [], 'tickets' => []],
+        '12months' => ['labels' => [], 'revenue' => [], 'tickets' => []]
+    ]) !!};
 
     function initSalesChart() {
         const ctx = document.getElementById('salesAnalyticsChart');

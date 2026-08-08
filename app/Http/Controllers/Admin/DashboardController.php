@@ -88,6 +88,7 @@ class DashboardController extends AdminController
             'topMovies'        => $statistics['topMovies'],
             'movieStatistics'  => $statistics['movieStatistics'] ?? collect(),
             'detailedBookings' => $statistics['detailedBookings'],
+            'chartData'        => $statistics['chartData'],
         ];
 
         if (request()->ajax()) {
@@ -112,6 +113,7 @@ class DashboardController extends AdminController
                 'selectedMovieId'  => $data['selectedMovieId'],
                 'cinemaName'       => $cinemaId && $data['cinemas']->firstWhere('id', $cinemaId) ? $data['cinemas']->firstWhere('id', $cinemaId)->name : 'Tất cả cụm rạp',
                 'movieName'        => $movieId && $data['movies']->firstWhere('id', $movieId) ? $data['movies']->firstWhere('id', $movieId)->title : 'Tất cả phim',
+                'chartData'        => $data['chartData'],
                 'html_revenue_table' => view('admin.partials.revenue_table', $data)->render(),
                 'html_top_combos'    => view('admin.partials.top_combos', $data)->render(),
                 'html_top_movies'    => view('admin.partials.top_movies', $data)->render(),
