@@ -179,14 +179,19 @@
 <script>
     function previewImage(input) {
         if (input.files && input.files[0]) {
-            var reader = new FileReader();
-            reader.onload = function (e) {
-                document.getElementById('poster_preview').src = e.target.result;
-                document.getElementById('poster_preview').style.display = 'block';
-                document.getElementById('poster_placeholder').style.display = 'none';
-                document.getElementById('poster_overlay').style.display = 'flex';
+            const preview = document.getElementById('poster_preview');
+            const placeholder = document.getElementById('poster_placeholder');
+            const overlay = document.getElementById('poster_overlay');
+
+            preview.src = window.URL.createObjectURL(input.files[0]);
+            preview.style.setProperty('display', 'block', 'important');
+            
+            if (placeholder) {
+                placeholder.style.setProperty('display', 'none', 'important');
             }
-            reader.readAsDataURL(input.files[0]);
+            if (overlay) {
+                overlay.style.setProperty('display', 'flex', 'important');
+            }
         }
     }
 

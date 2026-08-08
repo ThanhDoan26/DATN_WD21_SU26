@@ -1,19 +1,27 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Manager;
 
+use App\Http\Controllers\Controller;
 use App\Models\Movie;
 use App\Models\Room;
 use App\Models\Showtime;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
 
-class ShowtimeController extends AdminController
+class ShowtimeController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Showtime::with(['movie', 'room.cinema'])->orderBy('start_time');
+        $cinemaId = Auth::user()->cinema_id;
+
+        $query = Showtime::with(['movie', 'room.cinema'])
+            ->whereHas('room', function ($q) use ($cinemaId) {
+                $q->where('cinema_id', $cinemaId);
+            })
+            ->orderBy('start_time');
 
         if ($request->filled('movie_id')) {
             $query->where('movie_id', $request->movie_id);
@@ -28,25 +36,35 @@ class ShowtimeController extends AdminController
         }
 
         $showtimes = $query->paginate(15)->withQueryString();
+        
         $movies = Movie::orderBy('title')->get();
-        $rooms = Room::with('cinema')->orderBy('name')->get();
+        $rooms = Room::where('cinema_id', $cinemaId)->orderBy('name')->get();
 
-        return view('admin.showtimes.index', compact('showtimes', 'movies', 'rooms'));
+        return view('manager.showtimes.index', compact('showtimes', 'movies', 'rooms'));
     }
 
     public function create()
     {
-        $movies = Movie::orderBy('title')->get();
-        $rooms = Room::with('cinema')->orderBy('name')->get();
+        $cinemaId = Auth::user()->cinema_id;
 
-        return view('admin.showtimes.create', compact('movies', 'rooms'));
+        $movies = Movie::orderBy('title')->get();
+        $rooms = Room::where('cinema_id', $cinemaId)->orderBy('name')->get();
+
+        return view('manager.showtimes.create', compact('movies', 'rooms'));
     }
 
     public function store(Request $request)
     {
+        $cinemaId = Auth::user()->cinema_id;
+
         $validated = $request->validate([
             'movie_id' => 'required|exists:movies,id',
-            'room_id' => 'required|exists:rooms,id',
+            'room_id' => [
+                'required',
+                Rule::exists('rooms', 'id')->where(function ($query) use ($cinemaId) {
+                    return $query->where('cinema_id', $cinemaId);
+                })
+            ],
             'start_time' => [
                 'required',
                 'date',
@@ -90,7 +108,7 @@ class ShowtimeController extends AdminController
             'movie_id.required' => 'Phim là bắt buộc',
             'movie_id.exists' => 'Phim chọn không hợp lệ',
             'room_id.required' => 'Phòng chiếu là bắt buộc',
-            'room_id.exists' => 'Phòng chiếu chọn không hợp lệ',
+            'room_id.exists' => 'Phòng chiếu chọn không hợp lệ (phòng phải thuộc rạp của bạn)',
             'start_time.required' => 'Thời gian bắt đầu là bắt buộc',
             'start_time.date' => 'Thời gian bắt đầu không hợp lệ',
             'end_time.required' => 'Thời gian kết thúc là bắt buộc',
@@ -120,24 +138,39 @@ class ShowtimeController extends AdminController
             }
         }
 
-        return redirect()->route('admin.showtimes.index')
+        return redirect()->route('manager.showtimes.index')
             ->with('success', 'Thêm suất chiếu thành công!');
     }
 
-    public function edit(Showtime $showtime)
+    public function edit($id)
     {
+        $cinemaId = Auth::user()->cinema_id;
+        $showtime = Showtime::whereHas('room', function($q) use ($cinemaId) {
+            $q->where('cinema_id', $cinemaId);
+        })->findOrFail($id);
+
         $showtime->load(['movie', 'room.cinema', 'ticketPrices']);
         $movies = Movie::orderBy('title')->get();
-        $rooms = Room::with('cinema')->orderBy('name')->get();
+        $rooms = Room::where('cinema_id', $cinemaId)->orderBy('name')->get();
 
-        return view('admin.showtimes.edit', compact('showtime', 'movies', 'rooms'));
+        return view('manager.showtimes.edit', compact('showtime', 'movies', 'rooms'));
     }
 
-    public function update(Request $request, Showtime $showtime)
+    public function update(Request $request, $id)
     {
+        $cinemaId = Auth::user()->cinema_id;
+        $showtime = Showtime::whereHas('room', function($q) use ($cinemaId) {
+            $q->where('cinema_id', $cinemaId);
+        })->findOrFail($id);
+
         $validated = $request->validate([
             'movie_id' => 'required|exists:movies,id',
-            'room_id' => 'required|exists:rooms,id',
+            'room_id' => [
+                'required',
+                Rule::exists('rooms', 'id')->where(function ($query) use ($cinemaId) {
+                    return $query->where('cinema_id', $cinemaId);
+                })
+            ],
             'start_time' => [
                 'required',
                 'date',
@@ -216,82 +249,93 @@ class ShowtimeController extends AdminController
             }
         }
 
-        return redirect()->route('admin.showtimes.index')
+        return redirect()->route('manager.showtimes.index')
             ->with('success', 'Cập nhật suất chiếu thành công!');
     }
 
     public function show($id)
     {
+        $cinemaId = Auth::user()->cinema_id;
         $showtime = Showtime::withTrashed()
+            ->whereHas('room', function($q) use ($cinemaId) {
+                $q->where('cinema_id', $cinemaId);
+            })
             ->with(['movie', 'room.cinema'])
             ->findOrFail($id);
 
-        return view('admin.showtimes.show', compact('showtime'));
+        return view('manager.showtimes.show', compact('showtime'));
     }
 
     public function trashed(Request $request)
     {
+        $cinemaId = Auth::user()->cinema_id;
         $showtimes = Showtime::onlyTrashed()
+            ->whereHas('room', function($q) use ($cinemaId) {
+                $q->where('cinema_id', $cinemaId);
+            })
             ->with(['movie', 'room.cinema'])
             ->orderBy('deleted_at', 'desc')
             ->paginate(15)
             ->withQueryString();
 
-        return view('admin.showtimes.trashed', compact('showtimes'));
+        return view('manager.showtimes.trashed', compact('showtimes'));
     }
 
     public function restore($id)
     {
-        $showtime = Showtime::withTrashed()->findOrFail($id);
+        $cinemaId = Auth::user()->cinema_id;
+        $showtime = Showtime::withTrashed()
+            ->whereHas('room', function($q) use ($cinemaId) {
+                $q->where('cinema_id', $cinemaId);
+            })
+            ->findOrFail($id);
 
         if (! $showtime->trashed()) {
-            return redirect()->route('admin.showtimes.trashed')
+            return redirect()->route('manager.showtimes.trashed')
                 ->with('error', 'Suất chiếu không nằm trong thùng rác.');
         }
 
         $showtime->restore();
 
-        return redirect()->route('admin.showtimes.trashed')
+        return redirect()->route('manager.showtimes.trashed')
             ->with('success', 'Khôi phục suất chiếu thành công!');
     }
 
     public function forceDelete($id)
     {
-        $showtime = Showtime::withTrashed()->findOrFail($id);
+        $cinemaId = Auth::user()->cinema_id;
+        $showtime = Showtime::withTrashed()
+            ->whereHas('room', function($q) use ($cinemaId) {
+                $q->where('cinema_id', $cinemaId);
+            })
+            ->findOrFail($id);
 
         if (! $showtime->trashed()) {
-            return redirect()->route('admin.showtimes.trashed')
+            return redirect()->route('manager.showtimes.trashed')
                 ->with('error', 'Suất chiếu không nằm trong thùng rác.');
         }
 
         $showtime->forceDelete();
 
-        return redirect()->route('admin.showtimes.trashed')
+        return redirect()->route('manager.showtimes.trashed')
             ->with('success', 'Xóa vĩnh viễn suất chiếu thành công!');
     }
 
-    public function destroy(Showtime $showtime)
+    public function destroy($id)
     {
+        $cinemaId = Auth::user()->cinema_id;
+        $showtime = Showtime::whereHas('room', function($q) use ($cinemaId) {
+            $q->where('cinema_id', $cinemaId);
+        })->findOrFail($id);
+        
         $showtime->delete();
 
-        return redirect()->route('admin.showtimes.index')
+        return redirect()->route('manager.showtimes.index')
             ->with('success', 'Xóa suất chiếu thành công!');
     }
 
-    /**
-     * Kiểm tra xung đột lịch chiếu trong cùng phòng.
-     *
-     * Logic: Hai khoảng thời gian [A_start, A_end) và [B_start, B_end) bị chồng lên nhau
-     * khi và chỉ khi: A_start < B_end AND A_end > B_start
-     *
-     * @param  int|string  $roomId      ID phòng chiếu cần kiểm tra
-     * @param  string      $startTime   Thời gian bắt đầu của suất chiếu mới
-     * @param  string|null $endTime     Thời gian kết thúc của suất chiếu mới
-     * @param  int|null    $excludeId   ID suất chiếu hiện tại cần bỏ qua (khi chỉnh sửa)
-     * @param  callable    $fail        Callback từ Laravel validation để báo lỗi
-     */
     private function validateNoOverlap(
-        int|string $roomId,
+        int|string|null $roomId,
         string $startTime,
         ?string $endTime,
         ?int $excludeId,
@@ -307,7 +351,6 @@ class ShowtimeController extends AdminController
         $conflict = Showtime::where('room_id', $roomId)
             ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
             ->whereNotNull('end_time')
-            // Overlap: existing.start_time < newEnd AND existing.end_time > newStart
             ->where('start_time', '<', $newEnd)
             ->where('end_time', '>', $newStart)
             ->with('movie')
