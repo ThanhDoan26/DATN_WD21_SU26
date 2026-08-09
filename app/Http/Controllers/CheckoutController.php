@@ -160,6 +160,19 @@ class CheckoutController extends Controller
             return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 ghế.'], 422);
         }
 
+        $seatCount = count(array_unique($seatIds));
+        if ($seatCount > 10) {
+            return response()->json(['success' => false, 'message' => 'Bạn chỉ được đặt tối đa 10 vé cho mỗi đơn.'], 422);
+        }
+
+        $userId = Auth::id();
+        if ($userId) {
+            $existingTicketCount = (new BookingService())->getUserBookedSeatCount($userId);
+            if ($existingTicketCount + $seatCount > 10) {
+                return response()->json(['success' => false, 'message' => 'Bạn chỉ được đặt tối đa 10 vé cho mỗi khách hàng.'], 422);
+            }
+        }
+
         // Chặn ghế hỏng hoặc đã đặt (phòng trường hợp hack request)
         $invalidSeats = Seat::whereIn('id', $seatIds)
             ->whereIn('status', [Seat::STATUS_BROKEN, Seat::STATUS_BOOKED])

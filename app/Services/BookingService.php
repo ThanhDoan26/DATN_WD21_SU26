@@ -49,6 +49,18 @@ class BookingService
             throw new Exception('Vui lòng chọn ít nhất 1 ghế');
         }
 
+        $selectedSeatCount = count(array_unique(array_values($selectedSeatIds)));
+        if ($selectedSeatCount > 10) {
+            throw new Exception('Bạn chỉ được đặt tối đa 10 vé cho mỗi đơn.');
+        }
+
+        if ($userId) {
+            $existingTicketCount = $this->getUserBookedSeatCount($userId);
+            if ($existingTicketCount + $selectedSeatCount > 10) {
+                throw new Exception('Bạn chỉ được đặt tối đa 10 vé cho mỗi khách hàng.');
+            }
+        }
+
         try {
             // 1. Tự động dọn dẹp các booking quá hạn trước khi kiểm tra
             $this->cleanupExpiredPendingBookings();
@@ -333,6 +345,27 @@ class BookingService
      *
      * @return int
      */
+    public function getUserBookedSeatCount(?int $userId): int
+    {
+        if (!$userId) {
+            return 0;
+        }
+
+        $bookingIds = DB::table('bookings')
+            ->where('user_id', $userId)
+            ->whereIn('status', ['Pending', 'Paid', 'Used'])
+            ->pluck('id')
+            ->toArray();
+
+        if (empty($bookingIds)) {
+            return 0;
+        }
+
+        return DB::table('booked_seats')
+            ->whereIn('booking_id', $bookingIds)
+            ->count();
+    }
+
     public function cleanupExpiredPendingBookings(): int
     {
         return DB::transaction(function () {
