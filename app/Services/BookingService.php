@@ -55,9 +55,11 @@ class BookingService
         }
 
         if ($userId) {
-            $existingTicketCount = $this->getUserBookedSeatCount($userId);
+            $movieId = $this->getMovieIdFromShowtime($showtimeId);
+            $this->cancelUserPendingBookingsForMovie($userId, $movieId);
+            $existingTicketCount = $this->getUserBookedSeatCount($userId, $movieId);
             if ($existingTicketCount + $selectedSeatCount > 10) {
-                throw new Exception('Bạn chỉ được đặt tối đa 10 vé cho mỗi khách hàng.');
+                throw new Exception('Bạn chỉ được đặt tối đa 10 vé cho mỗi khách hàng cho mỗi phim.');
             }
         }
 
@@ -345,17 +347,22 @@ class BookingService
      *
      * @return int
      */
-    public function getUserBookedSeatCount(?int $userId): int
+    public function getUserBookedSeatCount(?int $userId, ?int $movieId = null): int
     {
         if (!$userId) {
             return 0;
         }
 
-        $bookingIds = DB::table('bookings')
-            ->where('user_id', $userId)
-            ->whereIn('status', ['Pending', 'Paid', 'Used'])
-            ->pluck('id')
-            ->toArray();
+        $bookingQuery = DB::table('bookings')
+            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+            ->where('bookings.user_id', $userId)
+            ->whereIn('bookings.status', ['Paid', 'Used']);
+
+        if ($movieId) {
+            $bookingQuery->where('showtimes.movie_id', $movieId);
+        }
+
+        $bookingIds = $bookingQuery->pluck('bookings.id')->toArray();
 
         if (empty($bookingIds)) {
             return 0;
@@ -364,6 +371,60 @@ class BookingService
         return DB::table('booked_seats')
             ->whereIn('booking_id', $bookingIds)
             ->count();
+    }
+
+    private function getMovieIdFromShowtime(int $showtimeId): ?int
+    {
+        $showtime = DB::table('showtimes')->where('id', $showtimeId)->first();
+
+        return $showtime ? (int) $showtime->movie_id : null;
+    }
+
+    private function cancelUserPendingBookingsForMovie(?int $userId, ?int $movieId): void
+    {
+        if (!$userId || !$movieId) {
+            return;
+        }
+
+        $pendingBookingIds = DB::table('bookings')
+            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+            ->where('bookings.user_id', $userId)
+            ->where('showtimes.movie_id', $movieId)
+            ->where('bookings.status', 'Pending')
+            ->pluck('bookings.id')
+            ->toArray();
+
+        if (empty($pendingBookingIds)) {
+            return;
+        }
+
+        $bookingsWithCoupons = DB::table('bookings')
+            ->whereIn('id', $pendingBookingIds)
+            ->whereNotNull('coupon_id')
+            ->get();
+
+        foreach ($bookingsWithCoupons as $b) {
+            DB::table('coupons')
+                ->where('id', $b->coupon_id)
+                ->where('used_count', '>', 0)
+                ->decrement('used_count');
+        }
+
+        DB::table('bookings')
+            ->whereIn('id', $pendingBookingIds)
+            ->update([
+                'status' => 'Cancelled',
+                'cancellation_reason' => 'Replaced by a new booking request',
+                'cancelled_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        DB::table('booked_seats')
+            ->whereIn('booking_id', $pendingBookingIds)
+            ->update([
+                'status' => 'CANCELLED',
+                'updated_at' => now(),
+            ]);
     }
 
     public function cleanupExpiredPendingBookings(): int

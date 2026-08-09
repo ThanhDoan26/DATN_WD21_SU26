@@ -167,9 +167,11 @@ class CheckoutController extends Controller
 
         $userId = Auth::id();
         if ($userId) {
-            $existingTicketCount = (new BookingService())->getUserBookedSeatCount($userId);
+            $bookingService = new BookingService();
+            $movieId = Showtime::find((int) $request->input('showtime_id'))?->movie_id;
+            $existingTicketCount = $bookingService->getUserBookedSeatCount($userId, $movieId);
             if ($existingTicketCount + $seatCount > 10) {
-                return response()->json(['success' => false, 'message' => 'Bạn chỉ được đặt tối đa 10 vé cho mỗi khách hàng.'], 422);
+                return response()->json(['success' => false, 'message' => 'Bạn chỉ được đặt tối đa 10 vé cho mỗi khách hàng cho mỗi phim.'], 422);
             }
         }
 
