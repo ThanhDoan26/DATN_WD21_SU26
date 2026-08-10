@@ -127,6 +127,7 @@ class CheckoutController extends Controller
             }
 
             if ($matchesExactly) {
+                // Giữ nguyên booking_time ban đầu để thời gian đếm ngược tiếp tục chạy theo thời gian thực
                 $expiresAtMs = ($pendingBooking->booking_time->timestamp + BookingService::getHoldDuration() * 60) * 1000;
             } else {
                 // TẠO BOOKING NGAY ĐỂ GIỮ GHẾ (Khi vừa click Tiếp tục thanh toán vào trang Checkout)
@@ -217,26 +218,71 @@ class CheckoutController extends Controller
 
         try {
             $bookingService = new BookingService();
-            $bookingId = $bookingService->createBooking(
-                Auth::id(),
-                (int) $request->input('showtime_id'),
-                $seatIds,
-                $request->input('payment_method', 'ONLINE'),
-                $request->input('coupon_code'),
-                $request->input('combos', [])
-            );
+            $showtimeId = (int) $request->input('showtime_id');
 
-            $bookingDetails = $bookingService->getBookingDetails($bookingId);
+            // Kiểm tra xem user đã có đơn Pending khớp chính xác danh sách ghế này chưa
+            $existingPending = Booking::where('user_id', Auth::id())
+                ->where('showtime_id', $showtimeId)
+                ->where('status', 'Pending')
+                ->with('bookedSeats')
+                ->orderBy('booking_time', 'desc')
+                ->first();
+
+            $matches = false;
+            if ($existingPending) {
+                $bookedSeatIds = $existingPending->bookedSeats->pluck('seat_id')->toArray();
+                sort($bookedSeatIds);
+                $requestedSeatIds = $seatIds;
+                sort($requestedSeatIds);
+                if ($bookedSeatIds === $requestedSeatIds) {
+                    $matches = true;
+                }
+            }
+
+            if ($matches && $existingPending) {
+                // Đã có booking Pending trùng ghế -> giữ nguyên booking_time, chỉ cập nhật thông tin thanh toán/combo/mã giảm giá
+                $bookingId = $existingPending->id;
+
+                if ($request->filled('payment_method')) {
+                    $existingPending->payment_method = $request->input('payment_method');
+                }
+                if ($request->filled('coupon_code')) {
+                    $coupon = Coupon::where('code', strtoupper(trim($request->input('coupon_code'))))
+                        ->where('status', 'ACTIVE')
+                        ->first();
+                    if ($coupon) {
+                        $existingPending->coupon_id = $coupon->id;
+                    }
+                }
+                $existingPending->save();
+                $bookingDetails = $bookingService->getBookingDetails($bookingId);
+                $bookingTime = $existingPending->booking_time;
+            } else {
+                // Tạo booking mới nếu danh sách ghế thay đổi
+                $bookingId = $bookingService->createBooking(
+                    Auth::id(),
+                    $showtimeId,
+                    $seatIds,
+                    $request->input('payment_method', 'ONLINE'),
+                    $request->input('coupon_code'),
+                    $request->input('combos', [])
+                );
+                $bookingDetails = $bookingService->getBookingDetails($bookingId);
+                $newBooking = Booking::find($bookingId);
+                $bookingTime = $newBooking ? $newBooking->booking_time : now();
+            }
 
             $timeoutMinutes = BookingService::getHoldDuration();
+            $expiresAtMs = ($bookingTime->timestamp + $timeoutMinutes * 60) * 1000;
 
             return response()->json([
                 'success' => true,
-                'message' => "Đã giữ ghế thành công. Vui lòng thanh toán trong {$timeoutMinutes} phút.",
+                'message' => "Đã giữ ghế thành công.",
                 'data' => [
                     'booking_id' => $bookingId,
                     'booking_time' => $bookingDetails['booking_time'],
                     'timeout_minutes' => $timeoutMinutes,
+                    'expires_at_ms' => $expiresAtMs,
                     'booking_code' => $bookingDetails['booking_code'],
                     'total_price' => $bookingDetails['total_price'],
                 ],

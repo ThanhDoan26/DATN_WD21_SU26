@@ -825,8 +825,8 @@
 
                         // ===== KHỞI ĐỘNG ĐỒNG HỒ ĐẾM NGƯỢC =====
                         const timeoutMs = (data.data?.timeout_minutes ?? {{ \App\Services\BookingService::getHoldDuration() }}) * 60 * 1000;
-                        const expiresAtMs = Date.now() + timeoutMs;
-                        // Lưu vào sessionStorage để timer vẫn chạy nếu Stripe redirect về
+                        const expiresAtMs = data.data?.expires_at_ms ? parseInt(data.data.expires_at_ms, 10) : (Date.now() + timeoutMs);
+                        // Lưu vào sessionStorage để timer vẫn chạy nếu Stripe/VNPay redirect về
                         sessionStorage.setItem('booking_expires_at', expiresAtMs.toString());
                         startCountdown(expiresAtMs);
                         // ==========================================
