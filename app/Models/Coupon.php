@@ -41,16 +41,16 @@ class Coupon extends Model
     public function isValid($orderTotal, $userId = null)
     {
         if ($this->status !== 'ACTIVE') {
-            return ['valid' => false, 'message' => 'Mã giảm giá không hoạt động hoặc đã bị khoá.'];
+            return ['valid' => false, 'message' => 'Mã giảm giá cảu bạn không thể hoạt động hoặc có thể bị khoá'];
         }
 
         $now = now();
         if ($this->start_date && $now->lt($this->start_date)) {
-            return ['valid' => false, 'message' => 'Mã giảm giá chưa đến thời gian sử dụng.'];
+            return ['valid' => false, 'message' => 'Mã giam giá của bạn vẫn chưa đến thời gian sử dụng!'];
         }
 
         if ($this->end_date && $now->gt($this->end_date)) {
-            return ['valid' => false, 'message' => 'Mã giảm giá đã hết hạn sử dụng.'];
+            return ['valid' => false, 'message' => 'Mã giảm giá của bạn đã hết hạn sử dụng!'];
         }
 
         if ($this->quantity > 0 && $this->used_count >= $this->quantity) {
@@ -58,7 +58,7 @@ class Coupon extends Model
         }
 
         if ($orderTotal < $this->min_order_value) {
-            return ['valid' => false, 'message' => 'Giá trị đơn hàng chưa đạt mức tối thiểu (' . number_format($this->min_order_value, 0, ',', '.') . ' VNĐ) để sử dụng mã này.'];
+            return ['valid' => false, 'message' => 'Gia trị đơn hàng cảu bạn chưa đạt mức tối thiểu (' . number_format($this->min_order_value, 0, ',', '.') . ' VNĐ) để sử dụng mã này.'];
         }
 
         // Kiểm tra xem User này đã sử dụng mã này chưa (nếu có truyền userId)
@@ -74,7 +74,7 @@ class Coupon extends Model
             }
         }
 
-        return ['valid' => true, 'message' => 'Mã giảm giá hợp lệ.'];
+        return ['valid' => true, 'message' => 'Mã giảm của bạn hợp lệ!'];
     }
 
     /**
