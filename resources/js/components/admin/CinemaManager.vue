@@ -23,7 +23,7 @@
                       <th>Tên Rạp</th>
                       <th>Địa chỉ</th>
                       <th>Thành phố</th>
-                      <th>Điện thoại</th>
+                      <th>Hotline</th>
                       <th>Trạng thái</th>
                       <th>Hành động</th>
                   </tr>

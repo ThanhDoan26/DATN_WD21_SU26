@@ -78,7 +78,7 @@
                 </div>
                 <div class="col-md-6">
                     <div class="mb-3">
-                        <label for="phone" class="form-label">Điện thoại</label>
+                        <label for="phone" class="form-label">Hotline</label>
                         <input type="text" class="form-control @error('phone') is-invalid @enderror"
                                id="phone" name="phone" value="{{ old('phone') }}">
                         @error('phone')
