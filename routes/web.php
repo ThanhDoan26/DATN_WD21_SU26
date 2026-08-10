@@ -74,6 +74,9 @@ Route::prefix('api/booking')->controller(\App\Http\Controllers\BookingController
 
     // Bước 3: Lấy danh sách suất chiếu
     Route::get('/showtimes', 'getShowtimes')->name('api.booking.showtimes');
+
+    // Cập nhật Real-time (Polling): Lấy danh sách ghế đã được đặt/giữ
+    Route::get('/showtime/{showtime}/booked-seats', 'getBookedSeatsAPI')->name('api.booking.booked-seats');
 });
 
 // Frontend API/AJAX routes

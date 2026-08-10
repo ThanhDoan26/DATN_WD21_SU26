@@ -1,19 +1,15 @@
 <?php
+require 'vendor/autoload.php';
+$app = require_once 'bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
-require __DIR__.'/vendor/autoload.php';
-$app = require_once __DIR__.'/bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
-$kernel->bootstrap();
+use App\Models\Booking;
+use App\Services\BookingService;
 
-$movies = App\Models\Movie::all();
-foreach ($movies as $movie) {
-    echo "Movie: {$movie->title} (ID: {$movie->id})\n";
-    $cinemas = App\Models\Cinema::whereHas('rooms', function ($query) use ($movie) {
-        $query->whereHas('showtimes', function ($q) use ($movie) {
-            $q->where('movie_id', $movie->id)
-              ->whereIn('status', [\App\Models\Showtime::STATUS_SCHEDULED, \App\Models\Showtime::STATUS_ONGOING])
-              ->where('start_time', '>', now());
-        });
-    })->get();
-    echo "Cinemas found: " . $cinemas->count() . "\n";
+try {
+    $bookingService = new BookingService();
+    $id = $bookingService->createBooking(1, 11, [1, 2, 3], 'ONLINE');
+    echo 'OK: ' . $id . PHP_EOL;
+} catch (\Exception $e) {
+    echo 'ERROR: ' . $e->getMessage() . PHP_EOL;
 }

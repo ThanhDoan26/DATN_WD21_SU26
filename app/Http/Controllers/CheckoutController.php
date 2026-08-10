@@ -19,6 +19,8 @@ class CheckoutController extends Controller
 {
     public function index(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info('Checkout Init: ', $request->all());
+
         $bookingService = new BookingService();
         $bookingService->cleanupExpiredPendingBookings();
 
@@ -103,18 +105,49 @@ class CheckoutController extends Controller
                 $total += $seatFinalPrice;
             }
 
-            // Check if there is an existing pending booking for this user, showtime and these seats
+            // Lấy đơn Pending gần nhất của user cho suất chiếu này
             $pendingBooking = Booking::where('user_id', Auth::id())
                 ->where('showtime_id', $showtimeId)
                 ->where('status', 'Pending')
-                ->whereHas('bookedSeats', function ($q) use ($seatIds) {
-                    $q->whereIn('seat_id', $seatIds);
-                })
+                ->with('bookedSeats')
                 ->orderBy('booking_time', 'desc')
                 ->first();
 
+            $matchesExactly = false;
             if ($pendingBooking) {
+                $bookedSeatIds = $pendingBooking->bookedSeats->pluck('seat_id')->toArray();
+                sort($bookedSeatIds);
+                
+                $requestedSeatIds = $seatIds;
+                sort($requestedSeatIds);
+                
+                if ($bookedSeatIds === $requestedSeatIds) {
+                    $matchesExactly = true;
+                }
+            }
+
+            if ($matchesExactly) {
                 $expiresAtMs = ($pendingBooking->booking_time->timestamp + BookingService::getHoldDuration() * 60) * 1000;
+            } else {
+                // TẠO BOOKING NGAY ĐỂ GIỮ GHẾ (Khi vừa click Tiếp tục thanh toán vào trang Checkout)
+                try {
+                    $bookingId = $bookingService->createBooking(
+                        Auth::id(),
+                        $showtimeId,
+                        $seatIds,
+                        'ONLINE'
+                    );
+                    $newPendingBooking = Booking::find($bookingId);
+                    if ($newPendingBooking) {
+                        $expiresAtMs = ($newPendingBooking->booking_time->timestamp + BookingService::getHoldDuration() * 60) * 1000;
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Checkout Init Error: ' . $e->getMessage());
+                    // Nếu lỗi (ví dụ: ghế vừa bị người khác lấy mất 1 mili-giây trước), quay lại trang chọn ghế
+                    return redirect()
+                        ->route('booking.select-seats', ['showtime' => $showtimeId])
+                        ->with('error', $e->getMessage());
+                }
             }
         }
 

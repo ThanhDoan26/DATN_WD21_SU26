@@ -151,19 +151,32 @@
         .seat.selected {
             background-color: #22c55e !important;
             border-color: #16a34a !important;
-            color: #ffffff !important;
+            color: transparent !important;
             outline: none !important;
             transform: translateY(-2px);
             box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
             animation: pulseSelection 1.5s infinite;
+            position: relative;
+        }
+
+        .seat.selected::after {
+            content: '✓';
+            color: #ffffff !important;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.9rem;
+            font-weight: 700;
         }
 
         .seat.selected.vip {
             background-color: #22c55e !important;
             border-color: #16a34a !important;
-            color: #ffffff !important;
+            color: transparent !important;
             outline: none !important;
             box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
+            position: relative;
         }
 
         /* Booked Seat */
@@ -435,6 +448,7 @@
                                         @foreach($seats->sortBy(fn($s) => (int)$s->seat_number) as $seat)
                                             @php
                                                 $isBooked = in_array($seat->id, $bookedSeats);
+                                                $isMyPending = in_array($seat->id, $myPendingSeats ?? []);
                                                 $isBroken = $seat->status === \App\Models\Seat::STATUS_BROKEN;
                                                 $isVip = $seat->seat_type === 'VIP';
                                                 $isSweetbox = $seat->seat_type === 'Sweetbox' || $seat->seat_type === 'Double';
@@ -443,6 +457,9 @@
                                                     $seatClass = 'broken';
                                                 } elseif ($isBooked) {
                                                     $seatClass = 'booked';
+                                                } elseif ($isMyPending) {
+                                                    // Nếu là ghế đang giữ của chính user, hiển thị như "Ghế đã chọn" (màu xanh)
+                                                    $seatClass = 'selected ' . ($isSweetbox ? 'sweetbox' : ($isVip ? 'vip' : 'regular'));
                                                 } elseif ($isSweetbox) {
                                                     $seatClass = 'sweetbox';
                                                 } elseif ($isVip) {
@@ -527,24 +544,28 @@
         // Restore previously selected seats from sessionStorage (e.g. when navigating back from checkout)
         function restoreSelectedSeats() {
             try {
-                const saved = sessionStorage.getItem(STORAGE_KEY);
-                if (!saved) return;
-
-                const seatIds = JSON.parse(saved);
-                if (!Array.isArray(seatIds) || seatIds.length === 0) return;
-
-                seatIds.forEach(id => {
-                    const button = document.querySelector(`[data-seat-id="${id}"]`);
-                    if (button && !button.classList.contains('booked') && !button.classList.contains('broken') && !button.disabled) {
-                        selectedSeats.add(id);
-                        button.classList.add('selected');
+                // 1. Phục hồi các ghế đang giữ (Pending) từ Database do PHP render sẵn
+                document.querySelectorAll('.seat.selected').forEach(button => {
+                    const seatId = parseInt(button.getAttribute('data-seat-id'));
+                    if (!isNaN(seatId)) {
+                        selectedSeats.add(seatId);
                     }
                 });
 
-                if (selectedSeats.size > 0) {
-                    updateSummary();
+                // 2. Phục hồi các ghế từ sessionStorage (nếu người dùng vừa F5)
+                const stored = sessionStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const ids = JSON.parse(stored);
+                    ids.forEach(id => {
+                        const button = document.querySelector(`[data-seat-id="${id}"]`);
+                        if (button && !button.disabled && !button.classList.contains('booked') && !button.classList.contains('broken')) {
+                            selectedSeats.add(id);
+                            button.classList.add('selected');
+                        }
+                    });
                 }
-
+                
+                updateSummary();
                 // Clear after restoring so it doesn't persist indefinitely
                 sessionStorage.removeItem(STORAGE_KEY);
             } catch (e) {
@@ -673,7 +694,54 @@
             document.getElementById('seat-selection-form').submit();
         }
 
-        // Restore seats on page load
-        document.addEventListener('DOMContentLoaded', restoreSelectedSeats);
+        // --- Xử lý thông báo lỗi từ session ---
+        @if(session('error'))
+            alert("{{ session('error') }}");
+        @endif
+
+        // --- Real-time Polling Logic ---
+        function pollBookedSeats() {
+            fetch(`/api/booking/showtime/${showtimeId}/booked-seats`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.bookedSeats) {
+                        const bookedSeatIds = data.bookedSeats;
+                        
+                        document.querySelectorAll('.seat').forEach(button => {
+                            const seatId = parseInt(button.getAttribute('data-seat-id'));
+                            const isCurrentlyBooked = button.classList.contains('booked');
+                            const shouldBeBooked = bookedSeatIds.includes(seatId);
+
+                            if (shouldBeBooked && !isCurrentlyBooked) {
+                                // Ghế vừa bị người khác đặt
+                                button.classList.add('booked');
+                                button.disabled = true;
+                                button.title = "Ghế đã được đặt";
+                                
+                                // Nếu người dùng đang chọn ghế này thì phải bỏ chọn
+                                if (selectedSeats.has(seatId)) {
+                                    selectedSeats.delete(seatId);
+                                    button.classList.remove('selected');
+                                    alert("Rất tiếc! Một trong những ghế bạn đang chọn vừa được người khác đặt trước. Vui lòng chọn ghế khác.");
+                                }
+                            } else if (!shouldBeBooked && isCurrentlyBooked) {
+                                // Ghế vừa được giải phóng
+                                button.classList.remove('booked');
+                                button.disabled = false;
+                                button.title = button.getAttribute('data-seat-code');
+                            }
+                        });
+
+                        updateSummary();
+                    }
+                })
+                .catch(error => console.error('Error polling seats:', error));
+        }
+
+        // Restore seats on page load, then start polling every 3 seconds
+        document.addEventListener('DOMContentLoaded', () => {
+            restoreSelectedSeats();
+            setInterval(pollBookedSeats, 3000);
+        });
     </script>
 @endpush

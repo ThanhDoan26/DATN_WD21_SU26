@@ -86,17 +86,17 @@ class BookingService
                     ->pluck('id')
                     ->toArray();
 
-                if (!empty($userPendingBookingIds)) {
-                    // ── Anti-Abuse: Mark released cho tracking (cancel bình thường, KHÔNG phải abuse) ──
-                    try {
-                        $abuseServiceCleanup = new SeatHoldAbuseService();
-                        foreach ($userPendingBookingIds as $pendingId) {
-                            $abuseServiceCleanup->markReleased($pendingId);
-                        }
-                    } catch (\Exception $trackingEx) {
-                        \Illuminate\Support\Facades\Log::warning('Tracking markReleased failed: ' . $trackingEx->getMessage());
-                    }
+                $cartUpdateCount = DB::table('bookings')
+                    ->where('user_id', $userId)
+                    ->where('showtime_id', $showtimeId)
+                    ->where('status', 'Cancelled')
+                    ->where('cancellation_reason', 'User initiated a new booking request')
+                    ->where('created_at', '>=', now()->subMinutes(15))
+                    ->count();
 
+                $isSpamUpdate = ($cartUpdateCount >= 1); // Đã update 1 lần (Lần 2). Lần này là Lần 3.
+
+                if (!empty($userPendingBookingIds)) {
                     // Hoàn lại lượt dùng mã giảm giá nếu có
                     $bookingsWithCoupons = DB::table('bookings')
                         ->whereIn('id', $userPendingBookingIds)
@@ -110,11 +110,12 @@ class BookingService
                             ->decrement('used_count');
                     }
 
+                    // Hủy booking cũ trước
                     DB::table('bookings')
                         ->whereIn('id', $userPendingBookingIds)
                         ->update([
                             'status' => 'Cancelled',
-                            'cancellation_reason' => 'User initiated a new booking request',
+                            'cancellation_reason' => $isSpamUpdate ? 'Cart update abuse' : 'User initiated a new booking request',
                             'cancelled_at' => now(),
                             'updated_at' => now(),
                         ]);
@@ -125,57 +126,45 @@ class BookingService
                             'status' => 'CANCELLED',
                             'updated_at' => now(),
                         ]);
+
+                    // ── Anti-Abuse: Mark released/expired cho tracking ──
+                    $isRestrictedNow = false;
+                    try {
+                        $abuseServiceCleanup = new SeatHoldAbuseService();
+                        foreach ($userPendingBookingIds as $pendingId) {
+                            if ($isSpamUpdate) {
+                                // Lần 3 trở đi: Tính Spam
+                                $abuseServiceCleanup->markExpired($pendingId);
+                            } else {
+                                // Lần 2: Bình thường, KHÔNG tính Spam
+                                $abuseServiceCleanup->markReleased($pendingId);
+                            }
+                        }
+                        
+                        if ($isSpamUpdate) {
+                            $abuseStatus = $abuseServiceCleanup->checkAndApplyAbuse($userId);
+                            if ($abuseStatus === 'restriction' || $abuseServiceCleanup->isRestricted($userId)) {
+                                $isRestrictedNow = true;
+                            }
+                        }
+                    } catch (\Exception $trackingEx) {
+                        \Illuminate\Support\Facades\Log::warning('Tracking markReleased failed: ' . $trackingEx->getMessage());
+                    }
                 }
             }
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Pre-booking cleanup failed: ' . $e->getMessage());
         }
 
+        if (isset($isRestrictedNow) && $isRestrictedNow) {
+            throw new Exception("Hệ thống phát hiện Spam: Tài khoản của bạn bị giới hạn đặt ghế tạm thời do thay đổi số lượng ghế liên tục quá nhiều lần.");
+        }
+
         // 3. Thực hiện validate sau khi đã giải phóng các ghế hết hạn và ghế cũ của chính user
         $seatValidationService = new SeatSelectionValidationService();
         $seatValidationService->validateSelectedSeats($showtimeId, $selectedSeatIds);
 
-        // ── Anti-Abuse: Validate max active holds (SOFT CHECK, staff exempt) ──
-        // Chạy NGOÀI transaction, không lock seat_holds.
-        // Staff booking_source: 'walk_in', 'counter', etc. — anything that isn't 'online'.
-        $bookingSource = $extraData['booking_source'] ?? 'online';
-        $isStaffBooking = ($bookingSource !== 'online');
-        if ($userId && !$isStaffBooking) {
-            $abuseService = new SeatHoldAbuseService();
-            $maxActiveSeats = (int) config('booking.seat_hold.max_active_seats_per_user', 8);
-            $currentHeldSeats = $abuseService->countActiveHeldSeats($userId);
-            $newSeatCount = count($selectedSeatIds);
-
-            if (($currentHeldSeats + $newSeatCount) > $maxActiveSeats) {
-                $remaining = max(0, $maxActiveSeats - $currentHeldSeats);
-                throw new Exception(
-                    "Bạn đang giữ {$currentHeldSeats} ghế. Chỉ có thể giữ thêm tối đa {$remaining} ghế nữa."
-                );
-            }
-        }
-
-        // ── Anti-Abuse: Seat-Level Cooldown (15 phút) ──────────────
-        // Trám kẽ hở: User tự hủy ghế rồi lập tức chọn lại chính ghế đó để giam vĩnh viễn
-        if ($userId && !$isStaffBooking) {
-            $cooldownMinutes = 15;
-            $recentAbusedSeats = DB::table('bookings')
-                ->join('booked_seats', 'bookings.id', '=', 'booked_seats.booking_id')
-                ->where('bookings.user_id', $userId)
-                ->where('bookings.showtime_id', $showtimeId)
-                ->whereIn('bookings.status', ['Cancelled']) // Đơn bị tự hủy hoặc hết hạn
-                ->where('bookings.created_at', '>=', now()->subMinutes($cooldownMinutes))
-                ->whereIn('booked_seats.seat_id', $selectedSeatIds)
-                ->select('booked_seats.seat_id')
-                ->get();
-
-            if ($recentAbusedSeats->count() > 0) {
-                throw new Exception(
-                    "Bạn vừa thao tác (giữ/hủy) trên một trong những ghế này trong {$cooldownMinutes} phút qua. Vui lòng chọn ghế khác hoặc thử lại sau!"
-                );
-            }
-        }
-
-        // ── Triển khai Redis Lock (Anti Race Condition) ──────────────
+        // ── Bước 1: Xin khóa Redis (Anti Race Condition) ──────────────
         $locks = [];
         $sortedSeatIds = $selectedSeatIds;
         sort($sortedSeatIds); // Đảm bảo thứ tự xin khóa đồng nhất, tránh Deadlock
@@ -192,6 +181,51 @@ class BookingService
                 $locks[] = $lock;
             }
 
+            // ── Bước 2: Kiểm tra Chống Spam (Anti-abuse) ──────────────
+            // Chạy TRONG block try (sau khi đã có khóa Redis) nhưng NGOÀI transaction để tránh giữ DB lock quá lâu
+            $bookingSource = $extraData['booking_source'] ?? 'online';
+            $isStaffBooking = ($bookingSource !== 'online');
+            
+            if ($userId && !$isStaffBooking) {
+                $abuseService = new SeatHoldAbuseService();
+                $maxActiveSeats = (int) config('booking.seat_hold.max_active_seats_per_user', 8);
+                $currentHeldSeats = $abuseService->countActiveHeldSeats($userId);
+                $newSeatCount = count($selectedSeatIds);
+
+                if (($currentHeldSeats + $newSeatCount) > $maxActiveSeats) {
+                    $remaining = max(0, $maxActiveSeats - $currentHeldSeats);
+                    throw new Exception(
+                        "Bạn đang giữ {$currentHeldSeats} ghế. Chỉ có thể giữ thêm tối đa {$remaining} ghế nữa."
+                    );
+                }
+
+                // Kiểm tra Cooldown 15 phút (chống giam ghế)
+                // Bám sát 3 Level Anti-spam: Nếu user chỉ đang "chọn thêm ghế" ở lượt đầu (update giỏ hàng),
+                // hệ thống sẽ tự động hủy đơn cũ với lý do 'User initiated a new booking request'.
+                // Ta PHẢI LOẠI TRỪ lý do này để không hiểu lầm họ là spammer.
+                $cooldownMinutes = 15;
+                $recentAbusedSeats = DB::table('bookings')
+                    ->join('booked_seats', 'bookings.id', '=', 'booked_seats.booking_id')
+                    ->where('bookings.user_id', $userId)
+                    ->where('bookings.showtime_id', $showtimeId)
+                    ->where('bookings.status', 'Cancelled') // Đơn bị tự hủy hoặc hết hạn
+                    ->whereNotIn('bookings.cancellation_reason', [
+                        'User initiated a new booking request',
+                        'Cart update abuse'
+                    ]) // 🟢 BỎ QUA việc update giỏ hàng
+                    ->where('bookings.created_at', '>=', now()->subMinutes($cooldownMinutes))
+                    ->whereIn('booked_seats.seat_id', $selectedSeatIds)
+                    ->select('booked_seats.seat_id')
+                    ->get();
+
+                if ($recentAbusedSeats->count() > 0) {
+                    throw new Exception(
+                        "Bạn vừa thao tác (giữ/hủy) trên một trong những ghế này trong {$cooldownMinutes} phút qua. Vui lòng chọn ghế khác hoặc thử lại sau!"
+                    );
+                }
+            }
+
+            // ── Bước 3: Cập nhật giữ ghế (Thực thi an toàn) ──────────────
             $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData) {
 
                 // ================================================================
