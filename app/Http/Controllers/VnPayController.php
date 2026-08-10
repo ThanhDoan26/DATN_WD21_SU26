@@ -25,7 +25,7 @@ class VnPayController extends Controller
         $vnp_TmnCode = config('vnpay.tmn_code');
         $vnp_HashSecret = config('vnpay.hash_secret');
         $vnp_Url = config('vnpay.url');
-        $vnp_Returnurl = config('vnpay.return_url');
+        $vnp_Returnurl = route('vnpay.return');
 
         if (empty($vnp_TmnCode) || empty($vnp_HashSecret) || empty($vnp_Url)) {
             return response()->json([

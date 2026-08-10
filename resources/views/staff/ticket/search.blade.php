@@ -20,6 +20,7 @@
     .badge-used { background-color: #e0f2fe; color: #0369a1; }
     .badge-pending { background-color: #fef3c7; color: #d97706; }
     .badge-cancelled { background-color: #fee2e2; color: #dc2626; }
+    .badge-printed { background-color: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe; }
     
     .ticket-card {
         border: none;
@@ -295,15 +296,27 @@
                         <div class="col-12">
                             @foreach($result->bookedSeats as $seat)
                                 <div class="seat-item">
-                                    <div>
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
                                         <span class="seat-code">{{ $seat->seat ? ($seat->seat->row_name . $seat->seat->seat_number) : 'N/A' }}</span>
-                                        <span class="ms-2 badge bg-secondary-subtle text-secondary-emphasis">{{ $seat->seat->seat_type ?? 'Regular' }}</span>
-                                        <span class="ms-2 text-muted">{{ number_format($seat->price_at_booking) }}đ</span>
+                                        <span class="badge bg-secondary-subtle text-secondary-emphasis">{{ $seat->seat->seat_type ?? 'Regular' }}</span>
+                                        <span class="text-muted">{{ number_format($seat->price_at_booking) }}đ</span>
+                                        
+                                        @if($seat->printed_at || ($seat->print_count ?? 0) > 0)
+                                            <span class="badge badge-printed" title="Thời gian in gần nhất: {{ $seat->printed_at ? $seat->printed_at->format('H:i:s d/m/Y') : 'N/A' }}">
+                                                <i class="fas fa-print me-1"></i>Đã in (Lần {{ $seat->print_count ?: 1 }} - {{ $seat->printed_at ? $seat->printed_at->format('H:i d/m/Y') : '' }})
+                                            </span>
+                                        @else
+                                            <span class="badge bg-light text-secondary border">
+                                                <i class="fas fa-print me-1 opacity-50"></i>Chưa in vé
+                                            </span>
+                                        @endif
                                     </div>
                                     <div class="d-flex align-items-center gap-2">
-                                        <a href="{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $seat->id]) }}" target="_blank" class="btn btn-sm btn-outline-dark fw-bold px-3"><i class="fas fa-print me-1"></i> In vé</a>
+                                        <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $seat->id]) }}')" class="btn btn-sm {{ ($seat->printed_at || ($seat->print_count ?? 0) > 0) ? 'btn-outline-purple' : 'btn-outline-dark' }} fw-bold px-3">
+                                            <i class="fas fa-print me-1"></i> {{ ($seat->printed_at || ($seat->print_count ?? 0) > 0) ? 'In lại' : 'In vé' }}
+                                        </button>
                                         @if($seat->status === 'PAID')
-                                            <span class="badge badge-paid me-2"><i class="fas fa-check-circle me-1"></i>Sẵn sàng check-in</span>
+                                            <span class="badge badge-paid"><i class="fas fa-check-circle me-1"></i>Sẵn sàng check-in</span>
                                             
                                             <!-- Individual Seat Check-in form -->
                                             <form action="{{ route('staff.ticket.checkin') }}" method="POST" class="m-0 d-inline-block">
@@ -313,11 +326,9 @@
                                                 <input type="hidden" name="seat_id" value="{{ $seat->id }}">
                                                 <button type="submit" class="btn btn-sm btn-warning fw-bold px-3">Check-in ghế</button>
                                             </form>
-                                            <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $seat->id]) }}')" class="btn btn-sm btn-outline-secondary ms-1" title="In vé"><i class="fas fa-print"></i></button>
                                         @elseif($seat->status === 'USED')
                                             <span class="badge badge-used"><i class="fas fa-check-double me-1"></i>Đã sử dụng</span>
-                                            <small class="text-muted ms-2">{{ $seat->checked_in_at ? $seat->checked_in_at->format('H:i d/m') : '' }}</small>
-                                            <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $seat->id]) }}')" class="btn btn-sm btn-outline-secondary ms-2" title="In vé"><i class="fas fa-print"></i></button>
+                                            <small class="text-muted ms-1">{{ $seat->checked_in_at ? $seat->checked_in_at->format('H:i d/m') : '' }}</small>
                                         @elseif($seat->status === 'RESERVED')
                                             <span class="badge badge-pending">Chờ thanh toán</span>
                                         @elseif($seat->status === 'CANCELLED')
@@ -330,10 +341,13 @@
                     </div>
 
                     <!-- Overall actions for booking -->
+                    @php
+                        $hasAnyPrinted = $result->bookedSeats->contains(fn($s) => $s->printed_at || ($s->print_count ?? 0) > 0);
+                    @endphp
                     <div class="mt-4 text-center d-flex justify-content-center gap-3">
-                        <a href="{{ route('staff.ticket.print', ['type' => 'booking', 'id' => $result->id]) }}" target="_blank" class="btn btn-dark fw-bold px-4 py-3 fs-5 shadow">
-                            <i class="fas fa-print me-2"></i> IN TOÀN BỘ VÉ
-                        </a>
+                        <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'booking', 'id' => $result->id]) }}')" class="btn btn-dark fw-bold px-4 py-3 fs-5 shadow">
+                            <i class="fas fa-print me-2"></i> {{ $hasAnyPrinted ? 'IN LẠI TOÀN BỘ VÉ' : 'IN TOÀN BỘ VÉ' }}
+                        </button>
                         @if($canCheckIn)
                             <form action="{{ route('staff.ticket.checkin') }}" method="POST" class="d-inline-block">
                                 @csrf
@@ -349,13 +363,25 @@
                 @else
                     <!-- Case 2: Search by Seat QR code - display single seat info with big button -->
                     <div class="seat-item p-3 mb-4">
-                        <div>
+                        <div class="d-flex align-items-center flex-wrap gap-2">
                             <span class="seat-code">{{ $result->seat ? ($result->seat->row_name . $result->seat->seat_number) : 'N/A' }}</span>
-                            <span class="ms-2 badge bg-secondary-subtle text-secondary-emphasis">{{ $result->seat->seat_type ?? 'Regular' }}</span>
-                            <span class="ms-2 text-muted">{{ number_format($result->price_at_booking) }}đ</span>
+                            <span class="badge bg-secondary-subtle text-secondary-emphasis">{{ $result->seat->seat_type ?? 'Regular' }}</span>
+                            <span class="text-muted">{{ number_format($result->price_at_booking) }}đ</span>
+                            
+                            @if($result->printed_at || ($result->print_count ?? 0) > 0)
+                                <span class="badge badge-printed" title="Thời gian in gần nhất: {{ $result->printed_at ? $result->printed_at->format('H:i:s d/m/Y') : 'N/A' }}">
+                                    <i class="fas fa-print me-1"></i>Đã in (Lần {{ $result->print_count ?: 1 }} - {{ $result->printed_at ? $result->printed_at->format('H:i d/m/Y') : '' }})
+                                </span>
+                            @else
+                                <span class="badge bg-light text-secondary border">
+                                    <i class="fas fa-print me-1 opacity-50"></i>Chưa in vé
+                                </span>
+                            @endif
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $result->id]) }}" target="_blank" class="btn btn-outline-dark fw-bold px-3 py-1"><i class="fas fa-print me-1"></i> In vé</a>
+                            <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $result->id]) }}')" class="btn btn-outline-dark fw-bold px-3 py-1">
+                                <i class="fas fa-print me-1"></i> {{ ($result->printed_at || ($result->print_count ?? 0) > 0) ? 'In lại' : 'In vé' }}
+                            </button>
                             @if($result->status === 'PAID')
                                 <span class="badge badge-paid"><i class="fas fa-check-circle me-1"></i>Sẵn sàng check-in</span>
                             @elseif($result->status === 'USED')
@@ -382,7 +408,7 @@
 
                         @if($result->status === 'PAID' || $result->status === 'USED')
                             <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $result->id]) }}')" class="btn btn-secondary fw-bold px-5 py-3 fs-5 shadow">
-                                <i class="fas fa-print me-2"></i> IN VÉ
+                                <i class="fas fa-print me-2"></i> {{ ($result->printed_at || ($result->print_count ?? 0) > 0) ? 'IN LẠI VÉ' : 'IN VÉ' }}
                             </button>
                         @endif
                     </div>
@@ -466,7 +492,7 @@
             // Không log lỗi liên tục tránh tràn console
         }
 
-        // Handle iframe printing
+        // Handle iframe printing in same tab
         window.printTicketIframe = function(url) {
             let iframe = document.getElementById('print-iframe');
             if (!iframe) {
@@ -476,6 +502,11 @@
                 document.body.appendChild(iframe);
             }
             iframe.src = url;
+
+            // Tự động làm mới trang sau khi phát lệnh in để cập nhật trạng thái "Đã in vé" và thời gian in
+            setTimeout(function() {
+                window.location.reload();
+            }, 1800);
         };
 
         // Tự động bật camera nếu URL có tham số scan=1
