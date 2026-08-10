@@ -189,7 +189,7 @@
                         @elseif($booking->status === 'Paid')
                             <p class="text-slate-400 text-[10px] text-center uppercase font-bold tracking-widest leading-relaxed">Xuất trình mã này tại quầy<br/>để nhận vé vào phòng chiếu</p>
                         @elseif($booking->status === 'Pending')
-                             <button class="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold py-3 rounded-2xl transition-all shadow-lg shadow-amber-500/20">THANH TOÁN NGAY</button>
+                             <a href="{{ route('checkout', ['showtime_id' => $booking->showtime_id, 'seat_ids' => $booking->bookedSeats->pluck('seat_id')->implode(',')]) }}" class="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold py-3 px-6 rounded-2xl transition-all shadow-lg shadow-amber-500/20 block text-center">THANH TOÁN NGAY</a>
                         @endif
                     </div>
                 </div>

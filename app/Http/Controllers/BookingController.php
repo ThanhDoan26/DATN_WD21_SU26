@@ -184,6 +184,19 @@ class BookingController extends Controller
         $myPendingSeats = array_values(array_unique($myPendingSeats));
         $bookedSeats = array_values(array_unique($bookedSeats));
 
+        $expiresAtMs = null;
+        if ($userId && !empty($myPendingSeats)) {
+            $myPendingBooking = \App\Models\Booking::where('user_id', $userId)
+                ->where('showtime_id', $showtime->id)
+                ->where('status', 'Pending')
+                ->orderBy('booking_time', 'desc')
+                ->first();
+
+            if ($myPendingBooking) {
+                $expiresAtMs = ($myPendingBooking->booking_time->timestamp + \App\Services\BookingService::getHoldDuration() * 60) * 1000;
+            }
+        }
+
         $room = $showtime->room()->with(['seats' => function ($q) {
             $q->orderBy('row_name')
               ->orderBy('seat_number');
@@ -197,6 +210,7 @@ class BookingController extends Controller
             'bookedSeats' => $bookedSeats,
             'myPendingSeats' => $myPendingSeats,
             'ticketPrices' => $ticketPrices,
+            'expiresAtMs' => $expiresAtMs,
         ]);
     }
 

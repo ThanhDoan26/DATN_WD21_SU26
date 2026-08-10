@@ -531,6 +531,36 @@
         </div>
     </form>
 
+    {{-- ======== COUNTDOWN TIMER BAR (sticky top) ======== --}}
+    <div id="booking-timer-bar">
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+            <i class="far fa-clock" style="color:#facc15;font-size:1.1rem"></i>
+            <span style="color:#94a3b8;font-size:0.85rem;font-weight:500" class="hidden-xs">Thời gian giữ ghế</span>
+            <span id="timer-digits">10:00</span>
+        </div>
+        <div id="timer-progress-track">
+            <div id="timer-progress-fill"></div>
+        </div>
+        <span style="font-size:0.75rem;color:#64748b;flex-shrink:0" class="hidden-xs">Thanh toán trước khi hết giờ</span>
+    </div>
+
+    {{-- ======== SESSION EXPIRED OVERLAY ======== --}}
+    <div id="booking-expired-overlay">
+        <div class="expired-card">
+            <div class="expired-icon"><i class="fas fa-clock"></i></div>
+            <h2 style="font-size:1.5rem;font-weight:800;color:#fff;margin-bottom:12px">Thời gian giữ ghế đã hết</h2>
+            <p style="color:#94a3b8;font-size:0.9rem;line-height:1.6;margin-bottom:28px">
+                Quá <strong style="color:#fff">10 phút</strong> mà chưa hoàn tất thanh toán,<br>
+                ghế của bạn đã được giải phóng.<br>
+                Vui lòng chọn lại ghế.
+            </p>
+            <button onclick="location.reload()"
+               style="display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#e50914;color:#fff;font-weight:700;padding:14px 32px;border-radius:16px;border:none;cursor:pointer;width:100%;transition:background 0.2s">
+                <i class="fas fa-redo"></i> Chọn lại ghế
+            </button>
+        </div>
+    </div>
+
 @endsection
 
 @push('scripts')
@@ -738,9 +768,69 @@
                 .catch(error => console.error('Error polling seats:', error));
         }
 
+        // --- Real-time Timer Logic ---
+        const TIMEOUT_SECONDS = {{ \App\Services\BookingService::getHoldDuration() * 60 }};
+        const serverExpiresAt = @json($expiresAtMs ?? null);
+
+        function initSelectSeatsTimer() {
+            let expiresAtMs = null;
+            if (serverExpiresAt) {
+                expiresAtMs = parseInt(serverExpiresAt, 10);
+                sessionStorage.setItem('booking_expires_at', expiresAtMs.toString());
+            } else {
+                const stored = sessionStorage.getItem('booking_expires_at');
+                if (stored) {
+                    expiresAtMs = parseInt(stored, 10);
+                }
+            }
+
+            if (!expiresAtMs || expiresAtMs <= Date.now()) {
+                sessionStorage.removeItem('booking_expires_at');
+                return;
+            }
+
+            const timerBar = document.getElementById('booking-timer-bar');
+            const timerDigits = document.getElementById('timer-digits');
+            const timerFill = document.getElementById('timer-progress-fill');
+            const expiredOverlay = document.getElementById('booking-expired-overlay');
+
+            if (timerBar) timerBar.style.display = 'flex';
+
+            function tick() {
+                const now = Date.now();
+                const remaining = Math.max(0, Math.floor((expiresAtMs - now) / 1000));
+                const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
+                const secs = String(remaining % 60).padStart(2, '0');
+                const display = `${mins}:${secs}`;
+
+                if (timerDigits) timerDigits.textContent = display;
+                const pct = (remaining / TIMEOUT_SECONDS) * 100;
+                if (timerFill) {
+                    timerFill.style.width = pct + '%';
+                    timerFill.style.backgroundPosition = `${100 - pct}% 50%`;
+                }
+
+                if (remaining <= 90) {
+                    if (timerDigits) timerDigits.classList.add('urgent');
+                } else {
+                    if (timerDigits) timerDigits.classList.remove('urgent');
+                }
+
+                if (remaining <= 0) {
+                    sessionStorage.removeItem('booking_expires_at');
+                    if (timerBar) timerBar.style.display = 'none';
+                    if (expiredOverlay) expiredOverlay.classList.add('active');
+                }
+            }
+
+            tick();
+            setInterval(tick, 1000);
+        }
+
         // Restore seats on page load, then start polling every 3 seconds
         document.addEventListener('DOMContentLoaded', () => {
             restoreSelectedSeats();
+            initSelectSeatsTimer();
             setInterval(pollBookedSeats, 3000);
         });
     </script>
