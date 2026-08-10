@@ -484,20 +484,22 @@ class BookingService
      */
     public function cleanupExpiredPendingBookings(): int
     {
-        $expiredBookingIds = []; // Capture for tracking after transaction
+        $expiredBookings = []; // Capture for tracking after transaction
 
-        $result = DB::transaction(function () use (&$expiredBookingIds) {
+        $result = DB::transaction(function () use (&$expiredBookings) {
             $expiredAt = now()->subMinutes(self::getHoldDuration());
 
-            $expiredBookingIds = DB::table('bookings')
+            $expiredBookings = DB::table('bookings')
                 ->where('status', 'Pending')
                 ->where('booking_time', '<', $expiredAt)
-                ->pluck('id')
-                ->toArray();
+                ->select('id', 'user_id')
+                ->get();
 
-            if (empty($expiredBookingIds)) {
+            if ($expiredBookings->isEmpty()) {
                 return 0;
             }
+            
+            $expiredBookingIds = $expiredBookings->pluck('id')->toArray();
 
             // Hoàn lại lượt dùng mã giảm giá
             $bookingsWithCoupons = DB::table('bookings')
@@ -529,13 +531,21 @@ class BookingService
         });
 
         // ── Anti-Abuse: Mark expired holds cho abuse detection ──
-        // Expired holds là signal chính cho abuse detection.
-        // Chạy SAU transaction thành công.
-        if (!empty($expiredBookingIds)) {
+        if (!empty($expiredBookings) && count($expiredBookings) > 0) {
             try {
                 $abuseService = new SeatHoldAbuseService();
-                foreach ($expiredBookingIds as $expiredId) {
-                    $abuseService->markExpired($expiredId);
+                $userIds = [];
+                foreach ($expiredBookings as $booking) {
+                    $abuseService->markExpired($booking->id);
+                    if ($booking->user_id) {
+                        $userIds[] = $booking->user_id;
+                    }
+                }
+                
+                // Trigger abuse detection for affected users
+                $userIds = array_unique($userIds);
+                foreach ($userIds as $userId) {
+                    $abuseService->checkAndApplyAbuse($userId);
                 }
             } catch (\Exception $trackingEx) {
                 \Illuminate\Support\Facades\Log::warning('Tracking markExpired in cleanup failed: ' . $trackingEx->getMessage());

@@ -97,7 +97,7 @@
             </div>
             @if($bookings->hasPages())
                 <div class="px-6 py-6 border-t border-slate-700/50 bg-slate-900/30">
-                    {{ $bookings->links() }}
+                    {{ $bookings->links('pagination::tailwind') }}
                 </div>
             @endif
         @endif
