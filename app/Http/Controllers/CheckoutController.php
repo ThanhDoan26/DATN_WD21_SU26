@@ -114,7 +114,7 @@ class CheckoutController extends Controller
                 ->first();
 
             if ($pendingBooking) {
-                $expiresAtMs = ($pendingBooking->booking_time->timestamp + BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES * 60) * 1000;
+                $expiresAtMs = ($pendingBooking->booking_time->timestamp + BookingService::getHoldDuration() * 60) * 1000;
             }
         }
 
@@ -160,6 +160,15 @@ class CheckoutController extends Controller
             return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 ghế.'], 422);
         }
 
+        // ── Anti-Abuse: Early validation — max seats per booking ──────
+        $maxSeatsPerBooking = (int) config('booking.seat_hold.max_seats_per_booking', 8);
+        if (count($seatIds) > $maxSeatsPerBooking) {
+            return response()->json([
+                'success' => false,
+                'message' => "Bạn chỉ có thể chọn tối đa {$maxSeatsPerBooking} ghế mỗi lần đặt.",
+            ], 422);
+        }
+
         // Chặn ghế hỏng hoặc đã đặt (phòng trường hợp hack request)
         $invalidSeats = Seat::whereIn('id', $seatIds)
             ->whereIn('status', [Seat::STATUS_BROKEN, Seat::STATUS_BOOKED])
@@ -186,13 +195,15 @@ class CheckoutController extends Controller
 
             $bookingDetails = $bookingService->getBookingDetails($bookingId);
 
+            $timeoutMinutes = BookingService::getHoldDuration();
+
             return response()->json([
                 'success' => true,
-                'message' => 'Đã giữ ghế thành công. Vui lòng thanh toán trong 10 phút.',
+                'message' => "Đã giữ ghế thành công. Vui lòng thanh toán trong {$timeoutMinutes} phút.",
                 'data' => [
                     'booking_id' => $bookingId,
                     'booking_time' => $bookingDetails['booking_time'],
-                    'timeout_minutes' => BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES,
+                    'timeout_minutes' => $timeoutMinutes,
                     'booking_code' => $bookingDetails['booking_code'],
                     'total_price' => $bookingDetails['total_price'],
                 ],

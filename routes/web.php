@@ -80,7 +80,6 @@ Route::prefix('api/booking')->controller(\App\Http\Controllers\BookingController
 Route::post('/api/apply-coupon', [\App\Http\Controllers\CheckoutController::class, 'applyCoupon'])->name('api.apply-coupon');
 
 Route::middleware('auth')->group(function () {
-    Route::post('/checkout/reserve', [\App\Http\Controllers\CheckoutController::class, 'reserve'])->name('checkout.reserve');
     Route::get('/checkout', [\App\Http\Controllers\CheckoutController::class, 'index'])->name('checkout');
     Route::get('/checkout/success', [\App\Http\Controllers\CheckoutController::class, 'success'])->name('checkout.success');
 
@@ -90,6 +89,11 @@ Route::middleware('auth')->group(function () {
     
     // Đánh giá Combo
     Route::post('/booking-history/combo-rate', [\App\Http\Controllers\ComboReviewController::class, 'store'])->name('combo-reviews.store');
+});
+
+// ── Anti-Abuse: Reserve endpoint với rate limiting + restriction check ──
+Route::middleware(['auth', 'throttle:booking', 'check.booking.restriction'])->group(function () {
+    Route::post('/checkout/reserve', [\App\Http\Controllers\CheckoutController::class, 'reserve'])->name('checkout.reserve');
 });
 Route::middleware('auth')->group(function () {
 

@@ -202,7 +202,7 @@ class BookingController extends Controller
             ->where('status', '!=', 'Cancelled')
             ->where(function ($q) {
                 $q->where('status', '!=', 'Pending')
-                  ->orWhere('booking_time', '>=', now()->subMinutes(10));
+                  ->orWhere('booking_time', '>=', now()->subMinutes(config('booking.seat_hold.duration_minutes', 10)));
             })
             ->with('bookedSeats')
             ->get()
@@ -252,7 +252,7 @@ class BookingController extends Controller
                         $q->where('status', 'Paid')
                           ->orWhere(function ($q2) {
                               $q2->where('status', 'Pending')
-                                 ->where('booking_time', '>=', now()->subMinutes(10));
+                                 ->where('booking_time', '>=', now()->subMinutes(config('booking.seat_hold.duration_minutes', 10)));
                           });
                     });
             })

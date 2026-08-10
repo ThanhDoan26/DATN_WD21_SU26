@@ -475,7 +475,7 @@
             
             const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
             const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
-            const TIMEOUT_SECONDS = {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES * 60 }};
+            const TIMEOUT_SECONDS = {{ \App\Services\BookingService::getHoldDuration() * 60 }};
             const seatSelectionUrl = '{{ route('booking.select-seats', $showtime->id ?? 0) }}';
 
             // ===================== COUNTDOWN TIMER =====================
@@ -824,7 +824,7 @@
                         const bookingId = data.data.booking_id;
 
                         // ===== KHỞI ĐỘNG ĐỒNG HỒ ĐẾM NGƯỢC =====
-                        const timeoutMs = (data.data?.timeout_minutes ?? {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES }}) * 60 * 1000;
+                        const timeoutMs = (data.data?.timeout_minutes ?? {{ \App\Services\BookingService::getHoldDuration() }}) * 60 * 1000;
                         const expiresAtMs = Date.now() + timeoutMs;
                         // Lưu vào sessionStorage để timer vẫn chạy nếu Stripe redirect về
                         sessionStorage.setItem('booking_expires_at', expiresAtMs.toString());

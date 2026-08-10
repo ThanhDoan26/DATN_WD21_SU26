@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 use Exception;
+use App\Services\SeatHoldAbuseService;
 
 /**
  * ========================================
@@ -24,7 +25,21 @@ use Exception;
  */
 class BookingService
 {
+    /**
+     * Giữ tên constant cho backward-compatibility (frontend blade references).
+     * Giá trị thực tế lấy từ config('booking.seat_hold.duration_minutes').
+     * @see config/booking.php
+     */
     public const PENDING_PAYMENT_TIMEOUT_MINUTES = 10;
+
+    /**
+     * Lấy thời gian hold từ config — SINGLE SOURCE OF TRUTH.
+     * Fallback = PENDING_PAYMENT_TIMEOUT_MINUTES nếu config chưa load.
+     */
+    public static function getHoldDuration(): int
+    {
+        return (int) config('booking.seat_hold.duration_minutes', self::PENDING_PAYMENT_TIMEOUT_MINUTES);
+    }
 
     /**
      * Tạo booking với protection chống race condition
@@ -49,6 +64,14 @@ class BookingService
             throw new Exception('Vui lòng chọn ít nhất 1 ghế');
         }
 
+        // ── Anti-Abuse: Validate max seats per booking ──────────────
+        $maxSeatsPerBooking = (int) config('booking.seat_hold.max_seats_per_booking', 8);
+        if (count($selectedSeatIds) > $maxSeatsPerBooking) {
+            throw new Exception(
+                "Bạn chỉ có thể chọn tối đa {$maxSeatsPerBooking} ghế mỗi lần đặt."
+            );
+        }
+
         try {
             // 1. Tự động dọn dẹp các booking quá hạn trước khi kiểm tra
             $this->cleanupExpiredPendingBookings();
@@ -63,6 +86,16 @@ class BookingService
                     ->toArray();
 
                 if (!empty($userPendingBookingIds)) {
+                    // ── Anti-Abuse: Mark released cho tracking (cancel bình thường, KHÔNG phải abuse) ──
+                    try {
+                        $abuseServiceCleanup = new SeatHoldAbuseService();
+                        foreach ($userPendingBookingIds as $pendingId) {
+                            $abuseServiceCleanup->markReleased($pendingId);
+                        }
+                    } catch (\Exception $trackingEx) {
+                        \Illuminate\Support\Facades\Log::warning('Tracking markReleased failed: ' . $trackingEx->getMessage());
+                    }
+
                     // Hoàn lại lượt dùng mã giảm giá nếu có
                     $bookingsWithCoupons = DB::table('bookings')
                         ->whereIn('id', $userPendingBookingIds)
@@ -101,8 +134,27 @@ class BookingService
         $seatValidationService = new SeatSelectionValidationService();
         $seatValidationService->validateSelectedSeats($showtimeId, $selectedSeatIds);
 
+        // ── Anti-Abuse: Validate max active holds (SOFT CHECK, staff exempt) ──
+        // Chạy NGOÀI transaction, không lock seat_holds.
+        // Staff booking_source: 'walk_in', 'counter', etc. — anything that isn't 'online'.
+        $bookingSource = $extraData['booking_source'] ?? 'online';
+        $isStaffBooking = ($bookingSource !== 'online');
+        if ($userId && !$isStaffBooking) {
+            $abuseService = new SeatHoldAbuseService();
+            $maxActiveSeats = (int) config('booking.seat_hold.max_active_seats_per_user', 8);
+            $currentHeldSeats = $abuseService->countActiveHeldSeats($userId);
+            $newSeatCount = count($selectedSeatIds);
+
+            if (($currentHeldSeats + $newSeatCount) > $maxActiveSeats) {
+                $remaining = max(0, $maxActiveSeats - $currentHeldSeats);
+                throw new Exception(
+                    "Bạn đang giữ {$currentHeldSeats} ghế. Chỉ có thể giữ thêm tối đa {$remaining} ghế nữa."
+                );
+            }
+        }
+
         try {
-            return DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos) {
+            $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos) {
 
                 // ================================================================
                 // Step 1: Lock các hàng ghế (chỉ 1 request được giữ lock)
@@ -118,7 +170,7 @@ class BookingService
                     ->where('bookings.status', '!=', 'Cancelled')
                     ->where(function ($q) {
                         $q->where('bookings.status', '!=', 'Pending')
-                          ->orWhere('bookings.booking_time', '>=', now()->subMinutes(10));
+                          ->orWhere('bookings.booking_time', '>=', now()->subMinutes(self::getHoldDuration()));
                     })
                     ->lockForUpdate() // 🔒 CRITICAL: SELECT ... FOR UPDATE
                     ->select('booked_seats.seat_id', 'booked_seats.status')
@@ -316,6 +368,26 @@ class BookingService
 
             }, 5); // Retry tối đa 5 lần nếu xảy ra Deadlock
 
+            // ── Anti-Abuse: Record hold AFTER transaction thành công (TRACKING ONLY) ──
+            // Nếu transaction rollback → code này không chạy → đúng behavior.
+            if ($userId) {
+                try {
+                    $holdAbuseService = new SeatHoldAbuseService();
+                    $holdAbuseService->recordHold(
+                        $userId,
+                        $showtimeId,
+                        $bookingId,
+                        count($selectedSeatIds),
+                        request()?->ip()
+                    );
+                } catch (\Exception $trackingEx) {
+                    // Tracking failure KHÔNG được block booking flow
+                    \Illuminate\Support\Facades\Log::warning('SeatHold tracking failed: ' . $trackingEx->getMessage());
+                }
+            }
+
+            return $bookingId;
+
         } catch (\Illuminate\Database\QueryException $e) {
             // Xử lý Deadlock Exception (error code 40001 - Serialization failure)
             if ($e->getCode() === '40001' || $e->getCode() === '1213') {
@@ -335,8 +407,10 @@ class BookingService
      */
     public function cleanupExpiredPendingBookings(): int
     {
-        return DB::transaction(function () {
-            $expiredAt = now()->subMinutes(self::PENDING_PAYMENT_TIMEOUT_MINUTES);
+        $expiredBookingIds = []; // Capture for tracking after transaction
+
+        $result = DB::transaction(function () use (&$expiredBookingIds) {
+            $expiredAt = now()->subMinutes(self::getHoldDuration());
 
             $expiredBookingIds = DB::table('bookings')
                 ->where('status', 'Pending')
@@ -376,6 +450,22 @@ class BookingService
 
             return count($expiredBookingIds);
         });
+
+        // ── Anti-Abuse: Mark expired holds cho abuse detection ──
+        // Expired holds là signal chính cho abuse detection.
+        // Chạy SAU transaction thành công.
+        if (!empty($expiredBookingIds)) {
+            try {
+                $abuseService = new SeatHoldAbuseService();
+                foreach ($expiredBookingIds as $expiredId) {
+                    $abuseService->markExpired($expiredId);
+                }
+            } catch (\Exception $trackingEx) {
+                \Illuminate\Support\Facades\Log::warning('Tracking markExpired in cleanup failed: ' . $trackingEx->getMessage());
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -393,7 +483,7 @@ class BookingService
         array $additionalData = []
     ): bool {
         \Illuminate\Support\Facades\Log::info("BookingService::completePayment [Step: Complete Payment] - Starting for Booking ID: {$bookingId}, Method: {$paymentMethod}");
-        return DB::transaction(function () use ($bookingId, $paymentMethod, $additionalData) {
+        $result = DB::transaction(function () use ($bookingId, $paymentMethod, $additionalData) {
 
             // Kiểm tra booking tồn tại + status = Pending
             $booking = DB::table('bookings')
@@ -436,6 +526,17 @@ class BookingService
             return true;
 
         });
+
+        // ── Anti-Abuse: Mark hold completed SAU transaction thành công ──
+        // Payment thành công → hold tracking chuyển active → completed.
+        try {
+            $abuseService = new SeatHoldAbuseService();
+            $abuseService->markCompleted($bookingId);
+        } catch (\Exception $trackingEx) {
+            \Illuminate\Support\Facades\Log::warning('Tracking markCompleted in completePayment failed: ' . $trackingEx->getMessage());
+        }
+
+        return $result;
     }
 
     /**
@@ -447,7 +548,7 @@ class BookingService
      * @throws Exception
      */
     public function cancelBooking(int $bookingId, string $reason = ''): bool {
-        return DB::transaction(function () use ($bookingId, $reason) {
+        $result = DB::transaction(function () use ($bookingId, $reason) {
 
             $booking = DB::table('bookings')
                 ->where('id', $bookingId)
@@ -490,6 +591,17 @@ class BookingService
             return true;
 
         });
+
+        // ── Anti-Abuse: Mark released cho tracking (cancel bình thường) ──
+        // Chạy SAU transaction thành công.
+        try {
+            $abuseService = new SeatHoldAbuseService();
+            $abuseService->markReleased($bookingId);
+        } catch (\Exception $trackingEx) {
+            \Illuminate\Support\Facades\Log::warning('Tracking markReleased in cancelBooking failed: ' . $trackingEx->getMessage());
+        }
+
+        return $result;
     }
 
     /**
