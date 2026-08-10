@@ -24,7 +24,8 @@ class DashboardService
         string $reportType = 'month',
         string $fromDate = null,
         string $toDate = null,
-        int $week = null
+        int $week = null,
+        int $movieId = null
     ): array
     {
         // 1. Tổng số người dùng (đang hoạt động)
@@ -43,16 +44,24 @@ class DashboardService
                 $q->where('cinema_id', $cinemaId);
             });
         }
+        if ($movieId) {
+            $totalShowtimesQuery->where('movie_id', $movieId);
+        }
         $totalShowtimes = $totalShowtimesQuery->count();
 
         $paidStatuses = ['Paid', 'Used'];
 
         // 5. Tổng số vé đã bán (thuộc các booking đã thanh toán hoặc đã sử dụng)
-        $totalTicketsSold = BookedSeat::whereHas('booking', function ($query) use ($paidStatuses, $cinemaId) {
+        $totalTicketsSold = BookedSeat::whereHas('booking', function ($query) use ($paidStatuses, $cinemaId, $movieId) {
             $query->whereIn('status', $paidStatuses);
             if ($cinemaId) {
                 $query->whereHas('showtime.room', function ($q) use ($cinemaId) {
                     $q->where('cinema_id', $cinemaId);
+                });
+            }
+            if ($movieId) {
+                $query->whereHas('showtime', function ($q) use ($movieId) {
+                    $q->where('movie_id', $movieId);
                 });
             }
         })->count();
@@ -71,6 +80,11 @@ class DashboardService
                 $q->where('cinema_id', $cinemaId);
             });
         }
+        if ($movieId) {
+            $allTimeRevenueQuery->whereHas('showtime', function ($q) use ($movieId) {
+                $q->where('movie_id', $movieId);
+            });
+        }
         $allTimeRevenue = $allTimeRevenueQuery->sum('total_price');
 
         $dailyRevenueQuery = Booking::whereIn('status', $paidStatuses)
@@ -78,6 +92,11 @@ class DashboardService
         if ($cinemaId) {
             $dailyRevenueQuery->whereHas('showtime.room', function ($q) use ($cinemaId) {
                 $q->where('cinema_id', $cinemaId);
+            });
+        }
+        if ($movieId) {
+            $dailyRevenueQuery->whereHas('showtime', function ($q) use ($movieId) {
+                $q->where('movie_id', $movieId);
             });
         }
         $dailyRevenue = $dailyRevenueQuery->sum('total_price');
@@ -90,6 +109,11 @@ class DashboardService
                 $q->where('cinema_id', $cinemaId);
             });
         }
+        if ($movieId) {
+            $monthlyRevenueQuery->whereHas('showtime', function ($q) use ($movieId) {
+                $q->where('movie_id', $movieId);
+            });
+        }
         $monthlyRevenue = $monthlyRevenueQuery->sum('total_price');
 
         $yearlyRevenueQuery = Booking::whereIn('status', $paidStatuses)
@@ -97,6 +121,11 @@ class DashboardService
         if ($cinemaId) {
             $yearlyRevenueQuery->whereHas('showtime.room', function ($q) use ($cinemaId) {
                 $q->where('cinema_id', $cinemaId);
+            });
+        }
+        if ($movieId) {
+            $yearlyRevenueQuery->whereHas('showtime', function ($q) use ($movieId) {
+                $q->where('movie_id', $movieId);
             });
         }
         $yearlyRevenue = $yearlyRevenueQuery->sum('total_price');
@@ -108,12 +137,22 @@ class DashboardService
                 $q->where('cinema_id', $cinemaId);
             });
         }
+        if ($movieId) {
+            $periodRevenueQuery->whereHas('showtime', function ($q) use ($movieId) {
+                $q->where('movie_id', $movieId);
+            });
+        }
 
         $bookingsQuery = Booking::with(['user', 'showtime.movie', 'showtime.room.cinema', 'bookedSeats'])
             ->whereIn('status', $paidStatuses);
         if ($cinemaId) {
             $bookingsQuery->whereHas('showtime.room', function ($q) use ($cinemaId) {
                 $q->where('cinema_id', $cinemaId);
+            });
+        }
+        if ($movieId) {
+            $bookingsQuery->whereHas('showtime', function ($q) use ($movieId) {
+                $q->where('movie_id', $movieId);
             });
         }
 
@@ -157,6 +196,9 @@ class DashboardService
             $topMoviesQuery->join('rooms', 'showtimes.room_id', '=', 'rooms.id')
                            ->where('rooms.cinema_id', $cinemaId);
         }
+        if ($movieId) {
+            $topMoviesQuery->where('movies.id', $movieId);
+        }
 
         // Áp dụng điều kiện thời gian
         if ($selectedReportType === 'date') {
@@ -193,6 +235,9 @@ class DashboardService
             $movieStatisticsQuery->join('rooms', 'showtimes.room_id', '=', 'rooms.id')
                 ->where('rooms.cinema_id', $cinemaId);
         }
+        if ($movieId) {
+            $movieStatisticsQuery->where('movies.id', $movieId);
+        }
 
         if ($selectedReportType === 'date') {
             $movieStatisticsQuery->whereBetween('bookings.payment_time', $dateRange);
@@ -218,6 +263,74 @@ class DashboardService
             ->take(15)
             ->get();
 
+        // 9. Dữ liệu biểu đồ (Chart Data)
+        $chartBaseQuery = Booking::whereIn('status', $paidStatuses);
+        if ($cinemaId) {
+            $chartBaseQuery->whereHas('showtime.room', function ($q) use ($cinemaId) {
+                $q->where('cinema_id', $cinemaId);
+            });
+        }
+        if ($movieId) {
+            $chartBaseQuery->whereHas('showtime', function ($q) use ($movieId) {
+                $q->where('movie_id', $movieId);
+            });
+        }
+
+        $chartData = [
+            '7days' => ['labels' => [], 'revenue' => [], 'tickets' => []],
+            '30days' => ['labels' => [], 'revenue' => [], 'tickets' => []],
+            '12months' => ['labels' => [], 'revenue' => [], 'tickets' => []],
+        ];
+
+        // 7 Days
+        $startDate7 = Carbon::today()->subDays(6)->startOfDay();
+        $endDate7 = Carbon::today()->endOfDay();
+        $bookings7Days = (clone $chartBaseQuery)->whereBetween('payment_time', [$startDate7, $endDate7])
+            ->select('payment_time', 'total_price', 'id')
+            ->withCount('bookedSeats')->get();
+        
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today()->subDays($i);
+            $chartData['7days']['labels'][] = $date->format('d/m');
+            $dayBookings = $bookings7Days->filter(function($b) use ($date) {
+                return Carbon::parse($b->payment_time)->format('Y-m-d') === $date->format('Y-m-d');
+            });
+            $chartData['7days']['revenue'][] = $dayBookings->sum('total_price');
+            $chartData['7days']['tickets'][] = $dayBookings->sum('booked_seats_count');
+        }
+
+        // 30 Days (4 Weeks)
+        $startDate30 = Carbon::today()->subDays(27)->startOfDay();
+        $endDate30 = Carbon::today()->endOfDay();
+        $bookings30Days = (clone $chartBaseQuery)->whereBetween('payment_time', [$startDate30, $endDate30])
+            ->select('payment_time', 'total_price', 'id')
+            ->withCount('bookedSeats')->get();
+        
+        for ($i = 3; $i >= 0; $i--) {
+            $startWeek = Carbon::today()->subDays(($i * 7) + 6)->startOfDay();
+            $endWeek = Carbon::today()->subDays($i * 7)->endOfDay();
+            $chartData['30days']['labels'][] = $startWeek->format('d/m') . ' - ' . $endWeek->format('d/m');
+            $weekBookings = $bookings30Days->filter(function($b) use ($startWeek, $endWeek) {
+                return Carbon::parse($b->payment_time)->between($startWeek, $endWeek);
+            });
+            $chartData['30days']['revenue'][] = $weekBookings->sum('total_price');
+            $chartData['30days']['tickets'][] = $weekBookings->sum('booked_seats_count');
+        }
+
+        // 12 Months
+        $bookings12Months = (clone $chartBaseQuery)->whereYear('payment_time', $selectedYear)
+            ->select('payment_time', 'total_price', 'id')
+            ->withCount('bookedSeats')->get();
+            
+        for ($m = 1; $m <= 12; $m++) {
+            $chartData['12months']['labels'][] = 'Thg ' . $m;
+            $monthBookings = $bookings12Months->filter(function($b) use ($m) {
+                return Carbon::parse($b->payment_time)->month === $m;
+            });
+            $chartData['12months']['revenue'][] = $monthBookings->sum('total_price');
+            $chartData['12months']['tickets'][] = $monthBookings->sum('booked_seats_count');
+        }
+
         return [
             'totalActiveUsers' => $totalActiveUsers,
             'totalMovies'      => $totalMovies,
@@ -239,6 +352,7 @@ class DashboardService
             'detailedBookings' => $detailedBookings,
             'topMovies'        => $topMovies,
             'movieStatistics'  => $movieStatistics,
+            'chartData'        => $chartData,
         ];
     }
 }

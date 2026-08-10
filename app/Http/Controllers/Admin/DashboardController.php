@@ -27,19 +27,30 @@ class DashboardController extends AdminController
         $fromDate = request()->query('from_date');
         $toDate = request()->query('to_date');
         $week = request()->query('week') ? (int) request()->query('week') : null;
+        $movieId = request()->query('movie_id') ? (int) request()->query('movie_id') : null;
 
         $topCombosQuery = \App\Models\Combo::query();
-        $topCombosQuery->withCount(['comboReviews as total_reviews' => function ($query) use ($cinemaId) {
+        $topCombosQuery->withCount(['comboReviews as total_reviews' => function ($query) use ($cinemaId, $movieId) {
             if ($cinemaId) {
                 $query->whereHas('booking.showtime.room', function ($q) use ($cinemaId) {
                     $q->where('cinema_id', $cinemaId);
                 });
             }
+            if ($movieId) {
+                $query->whereHas('booking.showtime', function ($q) use ($movieId) {
+                    $q->where('movie_id', $movieId);
+                });
+            }
         }])
-        ->withAvg(['comboReviews as average_rating' => function ($query) use ($cinemaId) {
+        ->withAvg(['comboReviews as average_rating' => function ($query) use ($cinemaId, $movieId) {
             if ($cinemaId) {
                 $query->whereHas('booking.showtime.room', function ($q) use ($cinemaId) {
                     $q->where('cinema_id', $cinemaId);
+                });
+            }
+            if ($movieId) {
+                $query->whereHas('booking.showtime', function ($q) use ($movieId) {
+                    $q->where('movie_id', $movieId);
                 });
             }
         }], 'rating');
@@ -50,7 +61,7 @@ class DashboardController extends AdminController
             ->take(5)
             ->get();
 
-        $statistics = $this->dashboardService->getStatistics($month, $year, $cinemaId, $reportType, $fromDate, $toDate, $week);
+        $statistics = $this->dashboardService->getStatistics($month, $year, $cinemaId, $reportType, $fromDate, $toDate, $week, $movieId);
         
         $data = [
             'totalActiveUsers' => $statistics['totalActiveUsers'],
@@ -70,11 +81,14 @@ class DashboardController extends AdminController
             'fromDate'         => $statistics['fromDate'],
             'toDate'           => $statistics['toDate'],
             'selectedCinemaId' => $cinemaId,
+            'selectedMovieId'  => $movieId,
             'cinemas'          => \App\Models\Cinema::all(),
+            'movies'           => \App\Models\Movie::all(),
             'topCombos'        => $topCombos,
             'topMovies'        => $statistics['topMovies'],
             'movieStatistics'  => $statistics['movieStatistics'] ?? collect(),
             'detailedBookings' => $statistics['detailedBookings'],
+            'chartData'        => $statistics['chartData'],
         ];
 
         if (request()->ajax()) {
@@ -96,7 +110,10 @@ class DashboardController extends AdminController
                 'fromDate'         => $data['fromDate'],
                 'toDate'           => $data['toDate'],
                 'selectedCinemaId' => $data['selectedCinemaId'],
+                'selectedMovieId'  => $data['selectedMovieId'],
                 'cinemaName'       => $cinemaId && $data['cinemas']->firstWhere('id', $cinemaId) ? $data['cinemas']->firstWhere('id', $cinemaId)->name : 'Tất cả cụm rạp',
+                'movieName'        => $movieId && $data['movies']->firstWhere('id', $movieId) ? $data['movies']->firstWhere('id', $movieId)->title : 'Tất cả phim',
+                'chartData'        => $data['chartData'],
                 'html_revenue_table' => view('admin.partials.revenue_table', $data)->render(),
                 'html_top_combos'    => view('admin.partials.top_combos', $data)->render(),
                 'html_top_movies'    => view('admin.partials.top_movies', $data)->render(),

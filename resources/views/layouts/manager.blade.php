@@ -113,23 +113,18 @@
                 </a>
             </li>
             <li>
-                <a href="#" class="">
+                <a href="{{ route('manager.rooms.index') }}" class="@if(request()->routeIs('manager.rooms.*')) active @endif">
                     <i class="fas fa-building"></i> <span>Quản lý phòng chiếu</span>
                 </a>
             </li>
             <li>
-                <a href="#" class="">
-                    <i class="fas fa-chair"></i> <span>Quản lý sơ đồ ghế</span>
-                </a>
-            </li>
-            <li>
-                <a href="#" class="">
+                <a href="{{ route('manager.showtimes.index') }}" class="@if(request()->routeIs('manager.showtimes.*')) active @endif">
                     <i class="fas fa-calendar-alt"></i> <span>Quản lý suất chiếu</span>
                 </a>
             </li>
             <li>
-                <a href="#" class="">
-                    <i class="fas fa-hamburger"></i> <span>Quản lý Combo</span>
+                <a href="{{ route('manager.combos.index') }}" class="@if(request()->routeIs('manager.combos.*')) active @endif">
+                    <i class="fas fa-hamburger"></i> <span>Danh sách Combo</span>
                 </a>
             </li>
             <li>

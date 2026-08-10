@@ -1,87 +1,83 @@
 <x-guest-layout>
     <!-- Header -->
-    <div class="auth-header mb-2">
-        <h2 class="auth-title">Đặt Lại Mật Khẩu</h2>
-        <p class="auth-subtitle">Tạo mật khẩu mới cho tài khoản của bạn</p>
+    <div class="mb-8 text-center">
+        <h2 class="text-2xl font-bold text-white mb-2">Đặt Lại Mật Khẩu</h2>
+        <p class="text-slate-400">Tạo mật khẩu mới cho tài khoản của bạn</p>
     </div>
 
     <!-- Form -->
-    <form method="POST" action="{{ route('password.store') }}" class="space-y-5">
+    <form method="POST" action="{{ route('password.store') }}">
         @csrf
 
         <!-- Hidden Token -->
         <input type="hidden" name="token" value="{{ $request->route('token') ?? $request->token }}">
 
         <!-- Email -->
-        <div class="form-group">
-            <label for="email" class="form-label">Địa chỉ Email</label>
-            <div class="form-input-wrapper">
-                <input
-                    id="email"
-                    type="email"
-                    name="email"
-                    value="{{ old('email', $request->email) }}"
-                    required
-                    autofocus
-                    autocomplete="email"
-                    class="form-input"
-                    placeholder="you@example.com"
-                />
-            </div>
+        <div class="mb-5">
+            <label for="email" class="block text-sm font-medium text-slate-300 mb-2">Địa chỉ Email <span class="text-primary">*</span></label>
+            <input
+                id="email"
+                type="email"
+                name="email"
+                value="{{ old('email', $request->email) }}"
+                required
+                autofocus
+                autocomplete="email"
+                class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                placeholder="you@example.com"
+            />
             @error('email')
-                <div class="form-error">{{ $message }}</div>
+                <p class="mt-2 text-sm text-primary">{{ $message }}</p>
             @enderror
         </div>
 
         <!-- New Password -->
-        <div class="form-group">
-            <label for="password" class="form-label">Mật Khẩu Mới</label>
-            <div class="form-input-wrapper">
-                <input
-                    id="password"
-                    type="password"
-                    name="password"
-                    required
-                    autocomplete="new-password"
-                    class="form-input"
-                    placeholder="Nhập mật khẩu mới"
-                />
-            </div>
-            <p class="form-hint">Tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường và số</p>
+        <div class="mb-5">
+            <label for="password" class="block text-sm font-medium text-slate-300 mb-2">Mật Khẩu Mới <span class="text-primary">*</span></label>
+            <input
+                id="password"
+                type="password"
+                name="password"
+                required
+                autocomplete="new-password"
+                class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                placeholder="Nhập mật khẩu mới"
+            />
+            <p class="mt-2 text-xs text-slate-400">Tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường và số</p>
             @error('password')
-                <div class="form-error">{{ $message }}</div>
+                <p class="mt-2 text-sm text-primary">{{ $message }}</p>
             @enderror
         </div>
 
         <!-- Confirm Password -->
-        <div class="form-group">
-            <label for="password_confirmation" class="form-label">Xác Nhận Mật Khẩu</label>
-            <div class="form-input-wrapper">
-                <input
-                    id="password_confirmation"
-                    type="password"
-                    name="password_confirmation"
-                    required
-                    autocomplete="new-password"
-                    class="form-input"
-                    placeholder="Nhập lại mật khẩu"
-                />
-            </div>
+        <div class="mb-6">
+            <label for="password_confirmation" class="block text-sm font-medium text-slate-300 mb-2">Xác Nhận Mật Khẩu <span class="text-primary">*</span></label>
+            <input
+                id="password_confirmation"
+                type="password"
+                name="password_confirmation"
+                required
+                autocomplete="new-password"
+                class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                placeholder="Nhập lại mật khẩu"
+            />
             @error('password_confirmation')
-                <div class="form-error">{{ $message }}</div>
+                <p class="mt-2 text-sm text-primary">{{ $message }}</p>
             @enderror
-        </div>
-
-        <!-- Show Password Checkbox -->
-        <div style="margin-top: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" id="show-password" onclick="togglePasswordVisibility()" style="cursor: pointer; width: 16px; height: 16px;">
-            <label for="show-password" style="cursor: pointer; font-size: 14px; color: #9ca3af; user-select: none;">Hiển thị mật khẩu</label>
+            
+            <div class="flex items-center justify-between mt-3">
+                <!-- Show Password Checkbox -->
+                <label class="flex items-center cursor-pointer">
+                    <input type="checkbox" id="show-password" onclick="togglePasswordVisibility()" class="w-4 h-4 rounded border-slate-700 bg-slate-800 text-primary focus:ring-primary focus:ring-offset-slate-900">
+                    <span class="ml-2 text-xs text-slate-400 hover:text-slate-300 transition-colors">Hiển thị mật khẩu</span>
+                </label>
+            </div>
         </div>
 
         <!-- Submit Button -->
-        <button type="submit" class="btn btn-primary btn-block btn-lg">
+        <button type="submit" class="w-full bg-primary hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition-all transform hover:scale-[1.02] shadow-lg shadow-red-500/30 flex justify-center items-center gap-2">
             <span>Cập Nhật Mật Khẩu</span>
-            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
             </svg>
         </button>

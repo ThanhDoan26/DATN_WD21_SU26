@@ -10,7 +10,7 @@
             </div>
 
             <!-- Filters Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <!-- Status -->
                 <div class="relative">
                     <select name="status" class="w-full bg-slate-800/80 border border-slate-600 text-white rounded-xl py-3 px-4 appearance-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none hover:border-slate-500 cursor-pointer">
@@ -23,7 +23,18 @@
                     </div>
                 </div>
 
-                    <!-- Removed Cinemas completely per user intent -->
+                <!-- Cinema -->
+                <div class="relative">
+                    <select name="cinema_id" class="w-full bg-slate-800/80 border border-slate-600 text-white rounded-xl py-3 px-4 appearance-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none hover:border-slate-500 cursor-pointer">
+                        <option value="">Tất cả rạp</option>
+                        @foreach($cinemas as $cinema)
+                            <option value="{{ $cinema->id }}" {{ request('cinema_id') == $cinema->id ? 'selected' : '' }}>{{ $cinema->name }}</option>
+                        @endforeach
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
 
                 <!-- Categories -->
                 <div class="relative">
@@ -37,8 +48,10 @@
                         <i class="fas fa-chevron-down"></i>
                     </div>
                 </div>
-                <div class="relative" style="margin-left: 40px;">
-                    <button type="submit" class="bg-primary hover:bg-red-700 text-white px-8 py-3 rounded-xl font-semibold transition-all shadow-lg shadow-red-500/30 flex items-center gap-2 transform hover:-translate-y-1">
+
+                <!-- Search Button -->
+                <div class="relative">
+                    <button type="submit" class="w-full bg-primary hover:bg-red-700 text-white px-8 py-3 rounded-xl font-semibold transition-all shadow-lg shadow-red-500/30 flex items-center justify-center gap-2 transform hover:-translate-y-1">
                         <i class="fas fa-search"></i> Tìm kiếm
                     </button>
                 </div>
