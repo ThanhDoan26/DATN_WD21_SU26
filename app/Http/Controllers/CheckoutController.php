@@ -291,7 +291,7 @@ class CheckoutController extends Controller
         if (!$coupon) {
             return response()->json([
                 'success' => false,
-                'message' => 'Mã giảm giá không tồn tại.'
+                'message' => 'Mãgiamr giá không tồn tại.'
             ], 404);
         }
 
