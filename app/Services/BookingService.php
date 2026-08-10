@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\DB;
 use Exception;
 use App\Services\SeatHoldAbuseService;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * ========================================
@@ -153,8 +154,45 @@ class BookingService
             }
         }
 
+        // ── Anti-Abuse: Seat-Level Cooldown (15 phút) ──────────────
+        // Trám kẽ hở: User tự hủy ghế rồi lập tức chọn lại chính ghế đó để giam vĩnh viễn
+        if ($userId && !$isStaffBooking) {
+            $cooldownMinutes = 15;
+            $recentAbusedSeats = DB::table('bookings')
+                ->join('booked_seats', 'bookings.id', '=', 'booked_seats.booking_id')
+                ->where('bookings.user_id', $userId)
+                ->where('bookings.showtime_id', $showtimeId)
+                ->whereIn('bookings.status', ['Cancelled']) // Đơn bị tự hủy hoặc hết hạn
+                ->where('bookings.created_at', '>=', now()->subMinutes($cooldownMinutes))
+                ->whereIn('booked_seats.seat_id', $selectedSeatIds)
+                ->select('booked_seats.seat_id')
+                ->get();
+
+            if ($recentAbusedSeats->count() > 0) {
+                throw new Exception(
+                    "Bạn vừa thao tác (giữ/hủy) trên một trong những ghế này trong {$cooldownMinutes} phút qua. Vui lòng chọn ghế khác hoặc thử lại sau!"
+                );
+            }
+        }
+
+        // ── Triển khai Redis Lock (Anti Race Condition) ──────────────
+        $locks = [];
+        $sortedSeatIds = $selectedSeatIds;
+        sort($sortedSeatIds); // Đảm bảo thứ tự xin khóa đồng nhất, tránh Deadlock
+
         try {
-            $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos) {
+            // Cố gắng lấy khóa từng ghế
+            foreach ($sortedSeatIds as $seatId) {
+                $lockKey = "seat_hold_showtime_{$showtimeId}_seat_{$seatId}";
+                $lock = Cache::lock($lockKey, 10); // Khóa trong 10 giây
+                
+                if (!$lock->get()) {
+                    throw new Exception("Ghế bạn chọn đang có người khác thao tác. Vui lòng thử lại!");
+                }
+                $locks[] = $lock;
+            }
+
+            $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData) {
 
                 // ================================================================
                 // Step 1: Lock các hàng ghế (chỉ 1 request được giữ lock)
@@ -397,6 +435,11 @@ class BookingService
                 );
             }
             throw $e;
+        } finally {
+            // Giải phóng toàn bộ Redis Lock
+            foreach ($locks as $lock) {
+                $lock->release();
+            }
         }
     }
 
