@@ -124,7 +124,7 @@
                 <!-- Pagination -->
                 @if(isset($showtimes) && $showtimes->hasPages())
                     <div class="mt-4" style="margin-top: 1rem;">
-                        {{ $showtimes->appends(['date' => $date])->links() }}
+                        {{ $showtimes->appends(['date' => $date])->links('pagination::tailwind') }}
                     </div>
                 @endif
             </div>
