@@ -178,7 +178,7 @@ class SeatSelectionValidationService
             ->where('bookings.status', '!=', 'Cancelled')
             ->where(function ($q) {
                 $q->where('bookings.status', '!=', 'Pending')
-                  ->orWhere('bookings.booking_time', '>=', now()->subMinutes(10));
+                  ->orWhere('bookings.booking_time', '>=', now()->subMinutes(config('booking.seat_hold.duration_minutes', 10)));
             })
             ->pluck('booked_seats.seat_id')
             ->toArray();

@@ -19,6 +19,8 @@ class CheckoutController extends Controller
 {
     public function index(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info('Checkout Init: ', $request->all());
+
         $bookingService = new BookingService();
         $bookingService->cleanupExpiredPendingBookings();
 
@@ -103,18 +105,49 @@ class CheckoutController extends Controller
                 $total += $seatFinalPrice;
             }
 
-            // Check if there is an existing pending booking for this user, showtime and these seats
+            // Lấy đơn Pending gần nhất của user cho suất chiếu này
             $pendingBooking = Booking::where('user_id', Auth::id())
                 ->where('showtime_id', $showtimeId)
                 ->where('status', 'Pending')
-                ->whereHas('bookedSeats', function ($q) use ($seatIds) {
-                    $q->whereIn('seat_id', $seatIds);
-                })
+                ->with('bookedSeats')
                 ->orderBy('booking_time', 'desc')
                 ->first();
 
+            $matchesExactly = false;
             if ($pendingBooking) {
-                $expiresAtMs = ($pendingBooking->booking_time->timestamp + BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES * 60) * 1000;
+                $bookedSeatIds = $pendingBooking->bookedSeats->pluck('seat_id')->toArray();
+                sort($bookedSeatIds);
+                
+                $requestedSeatIds = $seatIds;
+                sort($requestedSeatIds);
+                
+                if ($bookedSeatIds === $requestedSeatIds) {
+                    $matchesExactly = true;
+                }
+            }
+
+            if ($matchesExactly) {
+                $expiresAtMs = ($pendingBooking->booking_time->timestamp + BookingService::getHoldDuration() * 60) * 1000;
+            } else {
+                // TẠO BOOKING NGAY ĐỂ GIỮ GHẾ (Khi vừa click Tiếp tục thanh toán vào trang Checkout)
+                try {
+                    $bookingId = $bookingService->createBooking(
+                        Auth::id(),
+                        $showtimeId,
+                        $seatIds,
+                        'ONLINE'
+                    );
+                    $newPendingBooking = Booking::find($bookingId);
+                    if ($newPendingBooking) {
+                        $expiresAtMs = ($newPendingBooking->booking_time->timestamp + BookingService::getHoldDuration() * 60) * 1000;
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Checkout Init Error: ' . $e->getMessage());
+                    // Nếu lỗi (ví dụ: ghế vừa bị người khác lấy mất 1 mili-giây trước), quay lại trang chọn ghế
+                    return redirect()
+                        ->route('booking.select-seats', ['showtime' => $showtimeId])
+                        ->with('error', $e->getMessage());
+                }
             }
         }
 
@@ -160,6 +193,15 @@ class CheckoutController extends Controller
             return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 ghế.'], 422);
         }
 
+        // ── Anti-Abuse: Early validation — max seats per booking ──────
+        $maxSeatsPerBooking = (int) config('booking.seat_hold.max_seats_per_booking', 8);
+        if (count($seatIds) > $maxSeatsPerBooking) {
+            return response()->json([
+                'success' => false,
+                'message' => "Bạn chỉ có thể chọn tối đa {$maxSeatsPerBooking} ghế mỗi lần đặt.",
+            ], 422);
+        }
+
         // Chặn ghế hỏng hoặc đã đặt (phòng trường hợp hack request)
         $invalidSeats = Seat::whereIn('id', $seatIds)
             ->whereIn('status', [Seat::STATUS_BROKEN, Seat::STATUS_BOOKED])
@@ -186,13 +228,15 @@ class CheckoutController extends Controller
 
             $bookingDetails = $bookingService->getBookingDetails($bookingId);
 
+            $timeoutMinutes = BookingService::getHoldDuration();
+
             return response()->json([
                 'success' => true,
-                'message' => 'Đã giữ ghế thành công. Vui lòng thanh toán trong 10 phút.',
+                'message' => "Đã giữ ghế thành công. Vui lòng thanh toán trong {$timeoutMinutes} phút.",
                 'data' => [
                     'booking_id' => $bookingId,
                     'booking_time' => $bookingDetails['booking_time'],
-                    'timeout_minutes' => BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES,
+                    'timeout_minutes' => $timeoutMinutes,
                     'booking_code' => $bookingDetails['booking_code'],
                     'total_price' => $bookingDetails['total_price'],
                 ],
