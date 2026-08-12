@@ -101,19 +101,25 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="format" class="form-label">Định dạng phim <i class="fas fa-info-circle text-muted" title="Ví dụ: 2D, 3D, IMAX, 4DX..."></i></label>
-                        <select class="form-select @error('format') is-invalid @enderror" id="format" name="format">
-                            <option value="">-- Chọn định dạng phim --</option>
-                            <option value="2D" {{ old('format', $movie->format) == '2D' ? 'selected' : '' }}>🎬 2D (Standard)</option>
-                            <option value="3D" {{ old('format', $movie->format) == '3D' ? 'selected' : '' }}>🕶️ 3D</option>
-                            <option value="IMAX" {{ old('format', $movie->format) == 'IMAX' ? 'selected' : '' }}>📽️ IMAX 2D / 3D</option>
-                            <option value="4DX" {{ old('format', $movie->format) == '4DX' ? 'selected' : '' }}>💺 4DX</option>
-                            <option value="2D Phụ Đề" {{ old('format', $movie->format) == '2D Phụ Đề' ? 'selected' : '' }}>💬 2D Phụ đề</option>
-                            <option value="2D Lồng Tiếng" {{ old('format', $movie->format) == '2D Lồng Tiếng' ? 'selected' : '' }}>🗣️ 2D Lồng tiếng</option>
-                            <option value="3D Lồng Tiếng" {{ old('format', $movie->format) == '3D Lồng Tiếng' ? 'selected' : '' }}>🗣️ 3D Lồng tiếng</option>
-                        </select>
-                        <small class="text-muted">Định dạng công chiếu chính của phim (ví dụ: 2D, 3D, IMAX...)</small>
-                        @error('format') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <label class="form-label fw-bold">Định dạng phim <i class="fas fa-info-circle text-muted" title="Chọn các định dạng chiếu khả dụng cho phim này"></i></label>
+                        <div class="d-flex flex-wrap gap-3 p-3 border rounded bg-light">
+                            @foreach($formats as $fmt)
+                                <div class="form-check me-2">
+                                    <input class="form-check-input @error('format') is-invalid @enderror" 
+                                           type="checkbox" 
+                                           name="format[]" 
+                                           id="format_{{ $loop->index }}" 
+                                           value="{{ $fmt }}"
+                                           {{ in_array($fmt, old('format', $movie->format ?? [])) ? 'checked' : '' }}>
+                                    <label class="form-check-label fw-normal" for="format_{{ $loop->index }}">
+                                        {{ $fmt }}
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                        <small class="text-muted d-block mt-1">Chọn định dạng công chiếu của phim (ví dụ: 2D, 3D, IMAX...)</small>
+                        @error('format') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        @error('format.*') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
                 </div>
             </div>
