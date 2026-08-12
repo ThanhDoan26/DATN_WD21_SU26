@@ -217,6 +217,7 @@ class TicketConfirmationMail extends Mailable implements ShouldQueue
 
         return new Content(
             view: 'emails.ticket-confirmation',
+            text: 'emails.ticket-confirmation-text',
             with: [
                 'qrCode' => $this->qrCodeData,
                 'barcode' => $this->barcodeData,
