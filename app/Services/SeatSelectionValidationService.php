@@ -250,6 +250,10 @@ class SeatSelectionValidationService
                 }
             }
 
+            if (empty($selectedIndices)) {
+                continue;
+            }
+
             // Nếu block này có nhiều hơn 1 ghế được chọn, kiểm tra xem chúng có liên tiếp không
             if (count($selectedIndices) > 1) {
                 $firstIndex = min($selectedIndices);
@@ -262,6 +266,17 @@ class SeatSelectionValidationService
                 if ($countInRange > count($selectedIndices)) {
                     throw new Exception($this->buildValidationMessage());
                 }
+            }
+
+            // Bổ sung: Kiểm tra không để trống đúng 1 ghế ở hai đầu dải ghế đã chọn trong block
+            $firstIndex = min($selectedIndices);
+            $lastIndex = max($selectedIndices);
+
+            $emptyLeft = $firstIndex; 
+            $emptyRight = count($block) - 1 - $lastIndex;
+
+            if ($emptyLeft === 1 || $emptyRight === 1) {
+                throw new Exception("Không được để trống 1 ghế đơn lẻ bên cạnh các ghế đã chọn.");
             }
         }
     }
