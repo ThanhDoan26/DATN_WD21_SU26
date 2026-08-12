@@ -19,7 +19,7 @@ class BookingHistoryService
     {
         return Booking::where('user_id', $userId)
             ->with(['showtime.movie', 'showtime.room.cinema'])
-            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
             ->paginate($perPage);
     }
 
