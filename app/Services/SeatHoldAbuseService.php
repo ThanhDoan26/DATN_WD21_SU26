@@ -66,15 +66,17 @@ class SeatHoldAbuseService
     }
 
     /**
-     * Đếm tổng số ghế đang được hold (active) bởi user.
+     * Đếm tổng số ghế đang được hold (active) bởi user cho một suất chiếu.
      * Đây là SOFT CHECK — chạy ngoài transaction, không lock seat_holds.
      *
      * @param int $userId
+     * @param int $showtimeId
      * @return int
      */
-    public function countActiveHeldSeats(int $userId): int
+    public function countActiveHeldSeats(int $userId, int $showtimeId): int
     {
         return (int) SeatHold::forUser($userId)
+            ->where('showtime_id', $showtimeId)
             ->active()
             ->sum('seat_count');
     }

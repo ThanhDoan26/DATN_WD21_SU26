@@ -189,13 +189,13 @@ class BookingService
             if ($userId && !$isStaffBooking) {
                 $abuseService = new SeatHoldAbuseService();
                 $maxActiveSeats = (int) config('booking.seat_hold.max_active_seats_per_user', 8);
-                $currentHeldSeats = $abuseService->countActiveHeldSeats($userId);
+                $currentHeldSeats = $abuseService->countActiveHeldSeats($userId, $showtimeId);
                 $newSeatCount = count($selectedSeatIds);
 
                 if (($currentHeldSeats + $newSeatCount) > $maxActiveSeats) {
                     $remaining = max(0, $maxActiveSeats - $currentHeldSeats);
                     throw new Exception(
-                        "Bạn đang giữ {$currentHeldSeats} ghế. Chỉ có thể giữ thêm tối đa {$remaining} ghế nữa."
+                        "Bạn đang giữ {$currentHeldSeats} ghế cho suất chiếu này. Chỉ có thể giữ thêm tối đa {$remaining} ghế nữa."
                     );
                 }
 
