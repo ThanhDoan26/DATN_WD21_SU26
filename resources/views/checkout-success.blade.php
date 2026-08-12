@@ -35,9 +35,27 @@
                                             <div class="text-slate-500 text-xs">{{ $seat->status }}</div>
                                         </div>
                                     </div>
-                                </div>
                             @endforeach
                         </div>
+                        
+                        @if(!empty($booking['combos']) && count($booking['combos']) > 0)
+                            <h2 class="text-lg font-semibold mt-6 mb-4 text-white">Combo đã chọn</h2>
+                            <div class="space-y-3 text-sm text-slate-300">
+                                @foreach($booking['combos'] as $combo)
+                                    <div class="rounded-2xl bg-slate-800 p-4 border border-slate-700">
+                                        <div class="flex justify-between gap-4">
+                                            <div>
+                                                <div class="font-semibold text-white">{{ $combo->name }}</div>
+                                                <div class="text-slate-400 text-xs">Số lượng: {{ $combo->quantity }}</div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="font-semibold text-white">{{ number_format($combo->price * $combo->quantity, 0, ',', '.') }} đ</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
                 </div>
                 @if(session('success'))

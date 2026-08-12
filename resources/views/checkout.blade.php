@@ -774,6 +774,15 @@
                     const selectedPayment = document.querySelector('input[name="payment"]:checked').value;
                     const couponCode = document.querySelector('input[name="coupon"]:checked').value || '';
 
+                    const formattedCombos = {};
+                    Object.keys(selectedCombos).forEach(id => {
+                        if (selectedCombos[id].qty > 0) {
+                            formattedCombos[id] = {
+                                qty: selectedCombos[id].qty
+                            };
+                        }
+                    });
+
                     confirmReservationButton.disabled = true;
                     confirmReservationButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Đang xử lý...';
 
@@ -789,7 +798,7 @@
                         body: JSON.stringify({
                             showtime_id: showtimeId,
                             seat_ids: Array.isArray(seatIds) ? seatIds.join(',') : seatIds,
-                            combos: selectedCombos,
+                            combos: formattedCombos,
                             payment_method: selectedPayment,
                             coupon_code: couponCode,
                             customer_name: document.getElementById('customer_name') ? document.getElementById('customer_name').value : null,

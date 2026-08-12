@@ -179,7 +179,7 @@ class CheckoutController extends Controller
             'payment_method' => 'nullable|string|max:100',
             'coupon_code' => 'nullable|string|max:50',
         ]);
-
+        
         $seatIdsInput = $request->input('seat_ids');
         if (is_string($seatIdsInput)) {
             $seatIds = array_filter(array_map('intval', explode(',', $seatIdsInput)));

@@ -28,7 +28,7 @@ class BookingController extends AdminController
         $paymentMethod = request('payment_method');
         $minPrice = request('min_price');
         $maxPrice = request('max_price');
-        $sortBy = request('sort_by', 'created_at');
+        $sortBy = request('sort_by', 'id');
         $sortOrder = request('sort_order', 'desc');
         $perPage = request('per_page', 10);
 
