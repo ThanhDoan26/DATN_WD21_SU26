@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => AdminMiddleware::class,
             'role' => \App\Http\Middleware\CheckRole::class,
             'cinema.assignment' => \App\Http\Middleware\CheckCinemaAssignment::class,
+            'check.booking.restriction' => \App\Http\Middleware\CheckBookingRestriction::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

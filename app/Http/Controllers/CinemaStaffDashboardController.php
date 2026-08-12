@@ -628,6 +628,10 @@ class CinemaStaffDashboardController extends Controller
             }
 
             $seatsToPrint = $booking->bookedSeats;
+            foreach ($seatsToPrint as $seatItem) {
+                $seatItem->increment('print_count');
+                $seatItem->update(['printed_at' => now()]);
+            }
         } elseif ($type === 'seat') {
             $bookedSeat = BookedSeat::with([
                 'seat',
@@ -643,6 +647,8 @@ class CinemaStaffDashboardController extends Controller
                 return abort(403, 'Không có quyền in vé thuộc rạp khác.');
             }
 
+            $bookedSeat->increment('print_count');
+            $bookedSeat->update(['printed_at' => now()]);
             $seatsToPrint->push($bookedSeat);
         } else {
             return abort(404, 'Loại in vé không hợp lệ.');

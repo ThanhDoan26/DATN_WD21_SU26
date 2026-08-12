@@ -151,19 +151,32 @@
         .seat.selected {
             background-color: #22c55e !important;
             border-color: #16a34a !important;
-            color: #ffffff !important;
+            color: transparent !important;
             outline: none !important;
             transform: translateY(-2px);
             box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
             animation: pulseSelection 1.5s infinite;
+            position: relative;
+        }
+
+        .seat.selected::after {
+            content: '✓';
+            color: #ffffff !important;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.9rem;
+            font-weight: 700;
         }
 
         .seat.selected.vip {
             background-color: #22c55e !important;
             border-color: #16a34a !important;
-            color: #ffffff !important;
+            color: transparent !important;
             outline: none !important;
             box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
+            position: relative;
         }
 
         /* Booked Seat */
@@ -435,6 +448,7 @@
                                         @foreach($seats->sortBy(fn($s) => (int)$s->seat_number) as $seat)
                                             @php
                                                 $isBooked = in_array($seat->id, $bookedSeats);
+                                                $isMyPending = in_array($seat->id, $myPendingSeats ?? []);
                                                 $isBroken = $seat->status === \App\Models\Seat::STATUS_BROKEN;
                                                 $isVip = $seat->seat_type === 'VIP';
                                                 $isSweetbox = $seat->seat_type === 'Sweetbox' || $seat->seat_type === 'Double';
@@ -443,6 +457,9 @@
                                                     $seatClass = 'broken';
                                                 } elseif ($isBooked) {
                                                     $seatClass = 'booked';
+                                                } elseif ($isMyPending) {
+                                                    // Nếu là ghế đang giữ của chính user, hiển thị như "Ghế đã chọn" (màu xanh)
+                                                    $seatClass = 'selected ' . ($isSweetbox ? 'sweetbox' : ($isVip ? 'vip' : 'regular'));
                                                 } elseif ($isSweetbox) {
                                                     $seatClass = 'sweetbox';
                                                 } elseif ($isVip) {
@@ -514,6 +531,36 @@
         </div>
     </form>
 
+    {{-- ======== COUNTDOWN TIMER BAR (sticky top) ======== --}}
+    <div id="booking-timer-bar">
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+            <i class="far fa-clock" style="color:#facc15;font-size:1.1rem"></i>
+            <span style="color:#94a3b8;font-size:0.85rem;font-weight:500" class="hidden-xs">Thời gian giữ ghế</span>
+            <span id="timer-digits">10:00</span>
+        </div>
+        <div id="timer-progress-track">
+            <div id="timer-progress-fill"></div>
+        </div>
+        <span style="font-size:0.75rem;color:#64748b;flex-shrink:0" class="hidden-xs">Thanh toán trước khi hết giờ</span>
+    </div>
+
+    {{-- ======== SESSION EXPIRED OVERLAY ======== --}}
+    <div id="booking-expired-overlay">
+        <div class="expired-card">
+            <div class="expired-icon"><i class="fas fa-clock"></i></div>
+            <h2 style="font-size:1.5rem;font-weight:800;color:#fff;margin-bottom:12px">Thời gian giữ ghế đã hết</h2>
+            <p style="color:#94a3b8;font-size:0.9rem;line-height:1.6;margin-bottom:28px">
+                Quá <strong style="color:#fff">10 phút</strong> mà chưa hoàn tất thanh toán,<br>
+                ghế của bạn đã được giải phóng.<br>
+                Vui lòng chọn lại ghế.
+            </p>
+            <button onclick="location.reload()"
+               style="display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#e50914;color:#fff;font-weight:700;padding:14px 32px;border-radius:16px;border:none;cursor:pointer;width:100%;transition:background 0.2s">
+                <i class="fas fa-redo"></i> Chọn lại ghế
+            </button>
+        </div>
+    </div>
+
 @endsection
 
 @push('scripts')
@@ -527,24 +574,28 @@
         // Restore previously selected seats from sessionStorage (e.g. when navigating back from checkout)
         function restoreSelectedSeats() {
             try {
-                const saved = sessionStorage.getItem(STORAGE_KEY);
-                if (!saved) return;
-
-                const seatIds = JSON.parse(saved);
-                if (!Array.isArray(seatIds) || seatIds.length === 0) return;
-
-                seatIds.forEach(id => {
-                    const button = document.querySelector(`[data-seat-id="${id}"]`);
-                    if (button && !button.classList.contains('booked') && !button.classList.contains('broken') && !button.disabled) {
-                        selectedSeats.add(id);
-                        button.classList.add('selected');
+                // 1. Phục hồi các ghế đang giữ (Pending) từ Database do PHP render sẵn
+                document.querySelectorAll('.seat.selected').forEach(button => {
+                    const seatId = parseInt(button.getAttribute('data-seat-id'));
+                    if (!isNaN(seatId)) {
+                        selectedSeats.add(seatId);
                     }
                 });
 
-                if (selectedSeats.size > 0) {
-                    updateSummary();
+                // 2. Phục hồi các ghế từ sessionStorage (nếu người dùng vừa F5)
+                const stored = sessionStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const ids = JSON.parse(stored);
+                    ids.forEach(id => {
+                        const button = document.querySelector(`[data-seat-id="${id}"]`);
+                        if (button && !button.disabled && !button.classList.contains('booked') && !button.classList.contains('broken')) {
+                            selectedSeats.add(id);
+                            button.classList.add('selected');
+                        }
+                    });
                 }
-
+                
+                updateSummary();
                 // Clear after restoring so it doesn't persist indefinitely
                 sessionStorage.removeItem(STORAGE_KEY);
             } catch (e) {
@@ -673,7 +724,114 @@
             document.getElementById('seat-selection-form').submit();
         }
 
-        // Restore seats on page load
-        document.addEventListener('DOMContentLoaded', restoreSelectedSeats);
+        // --- Xử lý thông báo lỗi từ session ---
+        @if(session('error'))
+            alert("{{ session('error') }}");
+        @endif
+
+        // --- Real-time Polling Logic ---
+        function pollBookedSeats() {
+            fetch(`/api/booking/showtime/${showtimeId}/booked-seats`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.bookedSeats) {
+                        const bookedSeatIds = data.bookedSeats;
+                        
+                        document.querySelectorAll('.seat').forEach(button => {
+                            const seatId = parseInt(button.getAttribute('data-seat-id'));
+                            const isCurrentlyBooked = button.classList.contains('booked');
+                            const shouldBeBooked = bookedSeatIds.includes(seatId);
+
+                            if (shouldBeBooked && !isCurrentlyBooked) {
+                                // Ghế vừa bị người khác đặt
+                                button.classList.add('booked');
+                                button.disabled = true;
+                                button.title = "Ghế đã được đặt";
+                                
+                                // Nếu người dùng đang chọn ghế này thì phải bỏ chọn
+                                if (selectedSeats.has(seatId)) {
+                                    selectedSeats.delete(seatId);
+                                    button.classList.remove('selected');
+                                    alert("Rất tiếc! Một trong những ghế bạn đang chọn vừa được người khác đặt trước. Vui lòng chọn ghế khác.");
+                                }
+                            } else if (!shouldBeBooked && isCurrentlyBooked) {
+                                // Ghế vừa được giải phóng
+                                button.classList.remove('booked');
+                                button.disabled = false;
+                                button.title = button.getAttribute('data-seat-code');
+                            }
+                        });
+
+                        updateSummary();
+                    }
+                })
+                .catch(error => console.error('Error polling seats:', error));
+        }
+
+        // --- Real-time Timer Logic ---
+        const TIMEOUT_SECONDS = {{ \App\Services\BookingService::getHoldDuration() * 60 }};
+        const serverExpiresAt = @json($expiresAtMs ?? null);
+
+        function initSelectSeatsTimer() {
+            let expiresAtMs = null;
+            if (serverExpiresAt) {
+                expiresAtMs = parseInt(serverExpiresAt, 10);
+                sessionStorage.setItem('booking_expires_at', expiresAtMs.toString());
+            } else {
+                const stored = sessionStorage.getItem('booking_expires_at');
+                if (stored) {
+                    expiresAtMs = parseInt(stored, 10);
+                }
+            }
+
+            if (!expiresAtMs || expiresAtMs <= Date.now()) {
+                sessionStorage.removeItem('booking_expires_at');
+                return;
+            }
+
+            const timerBar = document.getElementById('booking-timer-bar');
+            const timerDigits = document.getElementById('timer-digits');
+            const timerFill = document.getElementById('timer-progress-fill');
+            const expiredOverlay = document.getElementById('booking-expired-overlay');
+
+            if (timerBar) timerBar.style.display = 'flex';
+
+            function tick() {
+                const now = Date.now();
+                const remaining = Math.max(0, Math.floor((expiresAtMs - now) / 1000));
+                const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
+                const secs = String(remaining % 60).padStart(2, '0');
+                const display = `${mins}:${secs}`;
+
+                if (timerDigits) timerDigits.textContent = display;
+                const pct = (remaining / TIMEOUT_SECONDS) * 100;
+                if (timerFill) {
+                    timerFill.style.width = pct + '%';
+                    timerFill.style.backgroundPosition = `${100 - pct}% 50%`;
+                }
+
+                if (remaining <= 90) {
+                    if (timerDigits) timerDigits.classList.add('urgent');
+                } else {
+                    if (timerDigits) timerDigits.classList.remove('urgent');
+                }
+
+                if (remaining <= 0) {
+                    sessionStorage.removeItem('booking_expires_at');
+                    if (timerBar) timerBar.style.display = 'none';
+                    if (expiredOverlay) expiredOverlay.classList.add('active');
+                }
+            }
+
+            tick();
+            setInterval(tick, 1000);
+        }
+
+        // Restore seats on page load, then start polling every 3 seconds
+        document.addEventListener('DOMContentLoaded', () => {
+            restoreSelectedSeats();
+            initSelectSeatsTimer();
+            setInterval(pollBookedSeats, 3000);
+        });
     </script>
 @endpush

@@ -20,10 +20,14 @@ class BookedSeat extends Model
         'status',
         'qr_code',
         'checked_in_at',
+        'printed_at',
+        'print_count',
     ];
 
     protected $casts = [
         'checked_in_at' => 'datetime',
+        'printed_at' => 'datetime',
+        'print_count' => 'integer',
     ];
 
     public function booking(): BelongsTo
