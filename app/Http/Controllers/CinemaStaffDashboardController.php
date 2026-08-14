@@ -173,7 +173,8 @@ class CinemaStaffDashboardController extends Controller
                 'showtime.room',
                 'showtime.room.cinema',
                 'bookedSeats',
-                'bookedSeats.seat'
+                'bookedSeats.seat',
+                'combos'
             ])->where('booking_code', $code);
 
             if (!empty($extractedToken)) {
@@ -240,7 +241,8 @@ class CinemaStaffDashboardController extends Controller
                     'booking.showtime',
                     'booking.showtime.movie',
                     'booking.showtime.room',
-                    'booking.showtime.room.cinema'
+                    'booking.showtime.room.cinema',
+                    'booking.combos'
                 ])->where('qr_code', $code)->first();
 
                 if ($bookedSeat) {
