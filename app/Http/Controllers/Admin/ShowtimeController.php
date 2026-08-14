@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Models\Movie;
 use App\Models\Room;
 use App\Models\Showtime;
+use App\Rules\CompatibleFormatRule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -46,7 +47,11 @@ class ShowtimeController extends AdminController
     {
         $validated = $request->validate([
             'movie_id' => 'required|exists:movies,id',
-            'room_id' => 'required|exists:rooms,id',
+            'room_id' => [
+                'required',
+                'exists:rooms,id',
+                new CompatibleFormatRule($request->input('movie_id')),
+            ],
             'start_time' => [
                 'required',
                 'date',
@@ -138,7 +143,11 @@ class ShowtimeController extends AdminController
     {
         $validated = $request->validate([
             'movie_id' => 'required|exists:movies,id',
-            'room_id' => 'required|exists:rooms,id',
+            'room_id' => [
+                'required',
+                'exists:rooms,id',
+                new CompatibleFormatRule($request->input('movie_id')),
+            ],
             'start_time' => [
                 'required',
                 'date',

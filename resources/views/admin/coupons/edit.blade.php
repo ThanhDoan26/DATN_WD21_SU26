@@ -75,7 +75,13 @@
             <div class="row mb-3">
                 <div class="col-md-6">
                     <label class="form-label fw-bold">Số lượng giới hạn <span class="text-danger">*</span></label>
-                    <input type="number" name="quantity" class="form-control @error('quantity') is-invalid @enderror" value="{{ old('quantity', $coupon->quantity) }}" required min="0">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="unlimited_quantity" name="unlimited_quantity" value="1" {{ old('quantity', $coupon->quantity) == 0 ? 'checked' : '' }}>
+                        <label class="form-check-label" for="unlimited_quantity">
+                            Vô hạn (Không giới hạn lượt sử dụng)
+                        </label>
+                    </div>
+                    <input type="number" name="quantity" id="quantity_input" class="form-control @error('quantity') is-invalid @enderror" value="{{ old('quantity', $coupon->quantity) }}" required min="0">
                     @error('quantity')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -153,8 +159,32 @@ document.addEventListener('DOMContentLoaded', function() {
                     input.value = cleanNumber(input.value);
                 }
             });
+            if (document.getElementById('unlimited_quantity').checked) {
+                document.getElementById('quantity_input').value = 0;
+            }
         });
     });
+
+    const unlimitedCheckbox = document.getElementById('unlimited_quantity');
+    const quantityInput = document.getElementById('quantity_input');
+    
+    function toggleQuantity() {
+        if (unlimitedCheckbox.checked) {
+            quantityInput.style.display = 'none';
+            if (quantityInput.value != 0) {
+                quantityInput.setAttribute('data-old-value', quantityInput.value);
+            }
+            quantityInput.value = 0;
+        } else {
+            quantityInput.style.display = 'block';
+            if (quantityInput.value == 0) {
+                quantityInput.value = quantityInput.getAttribute('data-old-value') || 100;
+            }
+        }
+    }
+    
+    unlimitedCheckbox.addEventListener('change', toggleQuantity);
+    toggleQuantity();
 });
 </script>
 @endsection
