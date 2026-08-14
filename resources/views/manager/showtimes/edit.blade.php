@@ -627,17 +627,13 @@
             input.addEventListener('change', function () {
                 enforce24OnlyZeroMinute(startHourInput, startMinuteInput);
                 updateStartHidden();
-                if (endAutoComputed || !hiddenEndInput.value) {
-                    updateEndFromStart();
-                }
+                updateEndFromStart();
             });
         });
 
         startDateInput.addEventListener('change', function () {
             updateStartHidden();
-            if (endAutoComputed || !hiddenEndInput.value) {
-                updateEndFromStart();
-            }
+            updateEndFromStart();
         });
 
         [endHourInput, endMinuteInput, endDateInput].forEach(input => {
@@ -649,9 +645,7 @@
 
         movieSelect.addEventListener('change', function () {
             updateStartHidden();
-            if (endAutoComputed) {
-                updateEndFromStart();
-            }
+            updateEndFromStart();
         });
 
         syncAllTimeFields();
