@@ -32,6 +32,14 @@ class Coupon extends Model
     ];
 
     /**
+     * Tự động chuyển type về chữ thường khi lấy dữ liệu để tránh lỗi case-sensitive
+     */
+    public function getTypeAttribute($value)
+    {
+        return $value ? strtolower($value) : $value;
+    }
+
+    /**
      * Kiểm tra xem mã giảm giá có hợp lệ cho đơn hàng hiện tại không.
      *
      * @param float $orderTotal Giá trị đơn hàng tạm tính

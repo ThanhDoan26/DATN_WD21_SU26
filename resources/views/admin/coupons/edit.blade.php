@@ -94,15 +94,15 @@
 
             <div class="row mb-4">
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Thời gian bắt đầu</label>
-                    <input type="datetime-local" name="start_date" class="form-control @error('start_date') is-invalid @enderror" value="{{ old('start_date', $coupon->start_date ? $coupon->start_date->format('Y-m-d\TH:i') : '') }}">
+                    <label class="form-label fw-bold">Thời gian bắt đầu <span class="text-danger">*</span></label>
+                    <input type="datetime-local" name="start_date" class="form-control @error('start_date') is-invalid @enderror" value="{{ old('start_date', $coupon->start_date ? $coupon->start_date->format('Y-m-d\TH:i') : '') }}" required>
                     @error('start_date')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Thời gian kết thúc</label>
-                    <input type="datetime-local" name="end_date" class="form-control @error('end_date') is-invalid @enderror" value="{{ old('end_date', $coupon->end_date ? $coupon->end_date->format('Y-m-d\TH:i') : '') }}">
+                    <label class="form-label fw-bold">Thời gian kết thúc <span class="text-danger">*</span></label>
+                    <input type="datetime-local" name="end_date" class="form-control @error('end_date') is-invalid @enderror" value="{{ old('end_date', $coupon->end_date ? $coupon->end_date->format('Y-m-d\TH:i') : '') }}" required>
                     @error('end_date')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const forms = document.querySelectorAll('.card-body form');
     forms.forEach(form => {
         form.addEventListener('submit', function() {
-            inputs.forEach(input => {
+            document.querySelectorAll('.format-number').forEach(input => {
                 if (input.value) {
                     input.value = cleanNumber(input.value);
                 }
@@ -164,6 +164,32 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    const typeSelect = document.querySelector('select[name="type"]');
+    const valueInput = document.getElementById('value');
+    const maxDiscountInput = document.getElementById('max_discount_amount');
+    const maxDiscountContainer = maxDiscountInput.closest('.col-md-6');
+
+    function handleTypeChange() {
+        if (typeSelect.value === 'percent') {
+            valueInput.classList.remove('format-number');
+            let val = cleanNumber(valueInput.value);
+            valueInput.value = val;
+            valueInput.setAttribute('max', '100');
+            maxDiscountContainer.style.display = 'block';
+        } else {
+            valueInput.classList.add('format-number');
+            valueInput.removeAttribute('max');
+            maxDiscountContainer.style.display = 'none';
+            if (valueInput.value) {
+                let val = cleanNumber(valueInput.value);
+                valueInput.value = formatNumber(val);
+            }
+        }
+    }
+
+    typeSelect.addEventListener('change', handleTypeChange);
+    handleTypeChange();
 
     const unlimitedCheckbox = document.getElementById('unlimited_quantity');
     const quantityInput = document.getElementById('quantity_input');
@@ -185,6 +211,26 @@ document.addEventListener('DOMContentLoaded', function() {
     
     unlimitedCheckbox.addEventListener('change', toggleQuantity);
     toggleQuantity();
+
+    const startDateInput = document.querySelector('input[name="start_date"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
+
+    if (startDateInput && endDateInput) {
+        startDateInput.addEventListener('change', function() {
+            if (this.value) {
+                endDateInput.min = this.value;
+            } else {
+                endDateInput.removeAttribute('min');
+            }
+        });
+        
+        endDateInput.addEventListener('change', function() {
+            if (startDateInput.value && this.value && this.value <= startDateInput.value) {
+                alert('Thời gian kết thúc phải lớn hơn thời gian bắt đầu!');
+                this.value = '';
+            }
+        });
+    }
 });
 </script>
 @endsection
