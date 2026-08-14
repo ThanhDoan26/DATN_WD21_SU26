@@ -53,7 +53,7 @@
                             <option value="">-- Chọn phim --</option>
                             @foreach($movies as $movie)
                                 <option value="{{ $movie->id }}" data-duration="{{ $movie->duration }}" {{ old('movie_id') == $movie->id ? 'selected' : '' }}>
-                                    {{ $movie->title }}
+                                    {{ $movie->title }} ({{ is_array($movie->format) ? implode(', ', $movie->format) : $movie->format }})
                                 </option>
                             @endforeach
                         </select>
@@ -69,7 +69,7 @@
                             <option value="">-- Chọn phòng --</option>
                             @foreach($rooms as $room)
                                 <option value="{{ $room->id }}" {{ old('room_id') == $room->id ? 'selected' : '' }}>
-                                    {{ $room->cinema?->name ?? 'N/A' }} / {{ $room->name }}
+                                    {{ $room->cinema?->name ?? 'N/A' }} / {{ $room->name }} - {{ $room->format }}
                                 </option>
                             @endforeach
                         </select>

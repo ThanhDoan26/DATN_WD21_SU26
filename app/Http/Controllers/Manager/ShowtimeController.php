@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Movie;
 use App\Models\Room;
 use App\Models\Showtime;
+use App\Rules\CompatibleFormatRule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -63,7 +64,8 @@ class ShowtimeController extends Controller
                 'required',
                 Rule::exists('rooms', 'id')->where(function ($query) use ($cinemaId) {
                     return $query->where('cinema_id', $cinemaId);
-                })
+                }),
+                new CompatibleFormatRule($request->input('movie_id')),
             ],
             'start_time' => [
                 'required',
@@ -169,7 +171,8 @@ class ShowtimeController extends Controller
                 'required',
                 Rule::exists('rooms', 'id')->where(function ($query) use ($cinemaId) {
                     return $query->where('cinema_id', $cinemaId);
-                })
+                }),
+                new CompatibleFormatRule($request->input('movie_id')),
             ],
             'start_time' => [
                 'required',

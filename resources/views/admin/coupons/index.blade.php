@@ -78,7 +78,7 @@
                                 @endif
                             </td>
                             <td>{{ number_format($coupon->min_order_value, 0, ',', '.') }} đ</td>
-                            <td>{{ $coupon->quantity }}</td>
+                            <td>{{ $coupon->quantity == 0 ? 'Vô hạn' : $coupon->quantity }}</td>
                             <td>{{ $coupon->used_count }}</td>
                             <td style="font-size: 0.85rem;">
                                 Bắt đầu: {{ $coupon->start_date ? $coupon->start_date->format('d/m/Y H:i') : '-' }}<br>
@@ -87,7 +87,9 @@
                                 </span>
                             </td>
                             <td>
-                                @if ($coupon->status === 'ACTIVE')
+                                @if ($coupon->end_date && $coupon->end_date->isPast())
+                                    <span class="badge bg-secondary">Hết hạn sử dụng</span>
+                                @elseif ($coupon->status === 'ACTIVE')
                                     <span class="badge bg-success">Hoạt động</span>
                                 @else
                                     <span class="badge bg-danger">Khóa</span>
