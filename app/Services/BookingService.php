@@ -736,6 +736,139 @@ class BookingService
     }
 
     /**
+     * Cập nhật thông tin booking Pending (combos, coupon, payment_method, total_price)
+     *
+     * @param int $bookingId
+     * @param string|null $paymentMethod
+     * @param string|null $couponCode
+     * @param array $combos Format: [combo_id => ['qty' => int]]
+     * @return \App\Models\Booking
+     * @throws Exception
+     */
+    public function updatePendingBooking(
+        int $bookingId,
+        ?string $paymentMethod = null,
+        ?string $couponCode = null,
+        array $combos = []
+    ): \App\Models\Booking {
+        return DB::transaction(function () use ($bookingId, $paymentMethod, $couponCode, $combos) {
+            $booking = \App\Models\Booking::with('bookedSeats')->where('id', $bookingId)->lockForUpdate()->first();
+
+            if (!$booking) {
+                throw new Exception("Booking không tồn tại.");
+            }
+
+            if ($booking->status !== 'Pending') {
+                throw new Exception("Không thể cập nhật đơn đặt vé không ở trạng thái chờ thanh toán.");
+            }
+
+            // 1. Tính tổng tiền ghế từ các ghế đã đặt trong booking
+            $seatTotalPrice = 0;
+            foreach ($booking->bookedSeats as $seat) {
+                $seatTotalPrice += (float) $seat->price_at_booking;
+            }
+
+            // 2. Cập nhật Combos
+            // Xóa toàn bộ combos cũ của booking này trong bảng booking_combos
+            DB::table('booking_combos')->where('booking_id', $bookingId)->delete();
+
+            $comboTotalPrice = 0;
+            $comboDetails = [];
+
+            if (!empty($combos)) {
+                $comboIds = array_keys($combos);
+                $dbCombos = DB::table('combos')
+                    ->whereIn('id', $comboIds)
+                    ->get()
+                    ->keyBy('id');
+
+                foreach ($combos as $comboId => $comboData) {
+                    $qty = (int) ($comboData['qty'] ?? 0);
+                    if ($qty > 0) {
+                        if (!isset($dbCombos[$comboId])) {
+                            throw new Exception("Combo không tồn tại.");
+                        }
+
+                        $comboPrice = (float) $dbCombos[$comboId]->price;
+                        $comboTotalPrice += ($comboPrice * $qty);
+
+                        $comboDetails[] = [
+                            'booking_id' => $bookingId,
+                            'combo_id' => $comboId,
+                            'quantity' => $qty,
+                            'price' => $comboPrice,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                }
+
+                if (!empty($comboDetails)) {
+                    DB::table('booking_combos')->insert($comboDetails);
+                }
+            }
+
+            $subtotal = $seatTotalPrice + $comboTotalPrice;
+
+            // 3. Xử lý Mã giảm giá (Coupon)
+            $couponId = null;
+            $discountAmount = 0;
+
+            if (!empty($couponCode)) {
+                $coupon = \App\Models\Coupon::where('code', strtoupper(trim($couponCode)))
+                    ->where('status', 'ACTIVE')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$coupon) {
+                    throw new Exception("Mã giảm giá không hợp lệ hoặc đã hết hạn.");
+                }
+
+                $validation = $coupon->isValid($subtotal, $booking->user_id);
+                if (!$validation['valid']) {
+                    throw new Exception($validation['message']);
+                }
+
+                $discountAmount = $coupon->calculateDiscount($subtotal);
+                $couponId = $coupon->id;
+
+                // Nếu đổi mã coupon mới hoặc trước đó chưa dùng mã này
+                if ($booking->coupon_id !== $couponId) {
+                    if ($booking->coupon_id) {
+                        DB::table('coupons')
+                            ->where('id', $booking->coupon_id)
+                            ->where('used_count', '>', 0)
+                            ->decrement('used_count');
+                    }
+                    $coupon->increment('used_count');
+                }
+            } else {
+                // Hủy mã giảm giá nếu trước đó có áp dụng mà giờ bỏ
+                if ($booking->coupon_id) {
+                    DB::table('coupons')
+                        ->where('id', $booking->coupon_id)
+                        ->where('used_count', '>', 0)
+                        ->decrement('used_count');
+                }
+            }
+
+            $finalTotalPrice = max(0, $subtotal - $discountAmount);
+
+            // 4. Lưu thông tin đã cập nhật vào booking
+            $booking->total_price = $finalTotalPrice;
+            $booking->coupon_id = $couponId;
+            $booking->discount_amount = $discountAmount;
+            if ($paymentMethod) {
+                $booking->payment_method = $paymentMethod;
+            }
+            $booking->save();
+
+            return $booking;
+        });
+    }
+
+
+    /**
      * Checkout khách - lấy thông tin booking + booked_seats
      *
      * @param int $bookingId
