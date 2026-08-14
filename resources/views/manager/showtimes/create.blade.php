@@ -86,7 +86,7 @@
                         <label class="form-label">Thời Gian Bắt Đầu *</label>
                         <div class="row g-2 align-items-center">
                             <div class="col-md-5">
-                                <input type="date" id="start_date" class="form-control @error('start_time') is-invalid @enderror" value="{{ old('start_time') ? \Carbon\Carbon::parse(old('start_time'))->format('Y-m-d') : '' }}" required>
+                                <input type="date" id="start_date" class="form-control @error('start_time') is-invalid @enderror" value="{{ old('start_time') ? \Carbon\Carbon::parse(old('start_time'))->format('Y-m-d') : \Carbon\Carbon::now()->format('Y-m-d') }}" required>
                             </div>
                             <div class="col-md-3">
                                 <select id="start_hour" class="form-select" required>
@@ -124,7 +124,7 @@
                         <label class="form-label">Thời Gian Kết Thúc *</label>
                         <div class="row g-2 align-items-center">
                             <div class="col-md-5">
-                                <input type="date" id="end_date" class="form-control @error('end_time') is-invalid @enderror" value="{{ old('end_time') ? \Carbon\Carbon::parse(old('end_time'))->format('Y-m-d') : '' }}" required>
+                                <input type="date" id="end_date" class="form-control @error('end_time') is-invalid @enderror" value="{{ old('end_time') ? \Carbon\Carbon::parse(old('end_time'))->format('Y-m-d') : \Carbon\Carbon::now()->format('Y-m-d') }}" required>
                             </div>
                             <div class="col-md-3">
                                 <select id="end_hour" class="form-select" required>
@@ -149,12 +149,9 @@
                         <div class="small text-muted">Chọn giờ .</div>
                         @error('end_time')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
-<<<<<<< HEAD
                             <div class="text-danger small mt-1 d-flex align-items-center gap-1">
                                 <i class="fas fa-circle-exclamation"></i> {{ $message }}
                             </div>
-=======
->>>>>>> 9730541d563131ed93072a9122ca8bda6ec5f09b
                         @enderror
                     </div>
                 </div>
@@ -631,17 +628,13 @@
             input.addEventListener('change', function () {
                 enforce24OnlyZeroMinute(startHourInput, startMinuteInput);
                 updateStartHidden();
-                if (endAutoComputed || !hiddenEndInput.value) {
-                    updateEndFromStart();
-                }
+                updateEndFromStart();
             });
         });
 
         startDateInput.addEventListener('change', function () {
             updateStartHidden();
-            if (endAutoComputed || !hiddenEndInput.value) {
-                updateEndFromStart();
-            }
+            updateEndFromStart();
         });
 
         [endHourInput, endMinuteInput, endDateInput].forEach(input => {
