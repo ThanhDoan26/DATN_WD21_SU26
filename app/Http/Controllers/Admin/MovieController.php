@@ -43,7 +43,15 @@ class MovieController extends Controller
     public function create()
     {
         $categories = Category::all();
-        return view('admin.movies.create', ['categories' => $categories]);
+
+        $defaultFormats = ['2D', '3D', 'IMAX', '4DX', '2D Phụ Đề', '2D Lồng Tiếng', '3D Lồng Tiếng'];
+        $roomFormats = \App\Models\Room::distinct()->pluck('format')->filter()->toArray();
+        $formats = array_values(array_unique(array_merge($defaultFormats, $roomFormats)));
+
+        return view('admin.movies.create', [
+            'categories' => $categories,
+            'formats' => $formats
+        ]);
     }
 
     public function store(Request $request)
@@ -57,7 +65,8 @@ class MovieController extends Controller
             'trailer_url' => 'nullable|url|max:255',
             'duration' => 'required|integer|min:30|max:300', // in minutes
             'age_rating' => 'nullable|string|max:50',
-            'format' => 'nullable|string|max:100',
+            'format' => 'nullable|array',
+            'format.*' => 'string|max:100',
             'language' => 'nullable|string|max:50',
             'country' => 'nullable|string|max:100',
             'status' => 'required|in:COMING_SOON,NOW_SHOWING,ENDED',
@@ -73,6 +82,7 @@ class MovieController extends Controller
         ]);
 
         $data = collect($validated)->except(['poster', 'categories'])->toArray();
+        $data['format'] = $request->input('format', []);
 
         if ($request->hasFile('poster')) {
             $data['poster_url'] = $request->file('poster')->store('posters', 'public');
@@ -96,7 +106,16 @@ class MovieController extends Controller
     public function edit(Movie $movie)
     {
         $categories = Category::all();
-        return view('admin.movies.edit', ['movie' => $movie, 'categories' => $categories]);
+
+        $defaultFormats = ['2D', '3D', 'IMAX', '4DX', '2D Phụ Đề', '2D Lồng Tiếng', '3D Lồng Tiếng'];
+        $roomFormats = \App\Models\Room::distinct()->pluck('format')->filter()->toArray();
+        $formats = array_values(array_unique(array_merge($defaultFormats, $roomFormats)));
+
+        return view('admin.movies.edit', [
+            'movie' => $movie,
+            'categories' => $categories,
+            'formats' => $formats
+        ]);
     }
 
     public function update(Request $request, Movie $movie)
@@ -110,7 +129,8 @@ class MovieController extends Controller
             'trailer_url' => 'nullable|url|max:255',
             'duration' => 'required|integer|min:30|max:300',
             'age_rating' => 'nullable|string|max:50',
-            'format' => 'nullable|string|max:100',
+            'format' => 'nullable|array',
+            'format.*' => 'string|max:100',
             'language' => 'nullable|string|max:50',
             'country' => 'nullable|string|max:100',
             'status' => 'required|in:COMING_SOON,NOW_SHOWING,ENDED',
@@ -124,6 +144,7 @@ class MovieController extends Controller
         ]);
 
         $data = collect($validated)->except(['poster', 'categories'])->toArray();
+        $data['format'] = $request->input('format', []);
 
         if ($request->hasFile('poster')) {
             if ($movie->poster_url && \Illuminate\Support\Facades\Storage::disk('public')->exists($movie->poster_url)) {

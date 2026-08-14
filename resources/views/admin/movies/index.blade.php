@@ -95,8 +95,12 @@
                             @endforeach
                         </td>
                         <td>
-                            @if($movie->format)
-                                <span class="badge bg-info text-dark fw-bold">{{ $movie->format }}</span>
+                            @if(is_array($movie->format) && count($movie->format) > 0)
+                                @foreach($movie->format as $fmt)
+                                    <span class="badge bg-info text-dark fw-bold mb-1 d-inline-block">{{ $fmt }}</span>
+                                @endforeach
+                            @elseif(is_string($movie->format) && $movie->format !== '')
+                                <span class="badge bg-info text-dark fw-bold mb-1 d-inline-block">{{ $movie->format }}</span>
                             @else
                                 <span class="text-muted" style="font-size:12px;">--</span>
                             @endif
