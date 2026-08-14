@@ -12,3 +12,7 @@ Artisan::command('inspire', function () {
 // SUPPLEMENTAL: Booking hoạt động đúng cả khi schedule không chạy.
 // Để kích hoạt: cron job chạy `php artisan schedule:run` mỗi phút.
 Schedule::command('booking:cleanup-expired')->everyFiveMinutes();
+
+// ── Tự động xóa tạm các suất chiếu đã kết thúc ──
+Schedule::command('showtimes:cleanup-past')->hourly();
+

@@ -73,34 +73,26 @@ class ShowtimeController extends Controller
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id'))),
                 function ($attribute, $value, $fail) use ($request) {
+                    $endTime = $request->input('end_time');
+                    if (!$endTime && $request->filled('movie_id') && $request->filled('start_time')) {
+                        $movie = Movie::find($request->movie_id);
+                        if ($movie && $movie->duration) {
+                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15)->format('Y-m-d H:i:s');
+                        }
+                    }
+
                     $this->validateNoOverlap(
                         roomId: $request->input('room_id'),
                         startTime: $value,
-                        endTime: $request->input('end_time'),
+                        endTime: $endTime,
                         excludeId: null,
                         fail: $fail,
                     );
                 },
             ],
             'end_time' => [
-                'required',
+                'nullable',
                 'date',
-                'after:start_time',
-                function ($attribute, $value, $fail) use ($request) {
-                    if (! $request->filled('movie_id') || ! $request->filled('start_time')) {
-                        return;
-                    }
-
-                    $movie = Movie::find($request->movie_id);
-                    if (! $movie || ! $movie->duration) {
-                        return;
-                    }
-
-                    $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15);
-                    if (! Carbon::parse($value)->equalTo($expected)) {
-                        $fail("Thời gian kết thúc phải bằng thời gian bắt đầu + {$movie->duration} phút phim + 15 phút dọn phòng.");
-                    }
-                },
             ],
             'status' => ['required', Rule::in(Showtime::STATUSES)],
             'surcharge' => 'nullable|numeric|min:0',
@@ -126,6 +118,14 @@ class ShowtimeController extends Controller
         ]);
 
         $validated['surcharge'] = $validated['surcharge'] ?? 0;
+
+        if ($request->filled('movie_id') && $request->filled('start_time')) {
+            $movie = Movie::find($request->movie_id);
+            if ($movie && $movie->duration) {
+                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15);
+                $validated['end_time'] = $expected->format('Y-m-d H:i:s');
+            }
+        }
 
         $showtime = Showtime::create($validated);
 
@@ -181,34 +181,26 @@ class ShowtimeController extends Controller
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id')))
                     ->ignore($showtime->id),
                 function ($attribute, $value, $fail) use ($request, $showtime) {
+                    $endTime = $request->input('end_time');
+                    if (!$endTime && $request->filled('movie_id') && $request->filled('start_time')) {
+                        $movie = Movie::find($request->movie_id);
+                        if ($movie && $movie->duration) {
+                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15)->format('Y-m-d H:i:s');
+                        }
+                    }
+
                     $this->validateNoOverlap(
                         roomId: $request->input('room_id'),
                         startTime: $value,
-                        endTime: $request->input('end_time'),
+                        endTime: $endTime,
                         excludeId: $showtime->id,
                         fail: $fail,
                     );
                 },
             ],
             'end_time' => [
-                'required',
+                'nullable',
                 'date',
-                'after:start_time',
-                function ($attribute, $value, $fail) use ($request) {
-                    if (! $request->filled('movie_id') || ! $request->filled('start_time')) {
-                        return;
-                    }
-
-                    $movie = Movie::find($request->movie_id);
-                    if (! $movie || ! $movie->duration) {
-                        return;
-                    }
-
-                    $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15);
-                    if (! Carbon::parse($value)->equalTo($expected)) {
-                        $fail("Thời gian kết thúc phải bằng thời gian bắt đầu + {$movie->duration} phút phim + 15 phút dọn phòng.");
-                    }
-                },
             ],
             'status' => ['required', Rule::in(Showtime::STATUSES)],
             'surcharge' => 'nullable|numeric|min:0',
@@ -234,6 +226,14 @@ class ShowtimeController extends Controller
         ]);
 
         $validated['surcharge'] = $validated['surcharge'] ?? 0;
+
+        if ($request->filled('movie_id') && $request->filled('start_time')) {
+            $movie = Movie::find($request->movie_id);
+            if ($movie && $movie->duration) {
+                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15);
+                $validated['end_time'] = $expected->format('Y-m-d H:i:s');
+            }
+        }
 
         $showtime->update($validated);
 
