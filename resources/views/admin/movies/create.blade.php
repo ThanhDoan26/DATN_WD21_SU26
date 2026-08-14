@@ -93,27 +93,14 @@
                         @error('age_rating') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Định dạng phim <i class="fas fa-info-circle text-muted" title="Chọn các định dạng chiếu khả dụng cho phim này"></i></label>
-                        <div class="d-flex flex-wrap gap-3 p-3 border rounded bg-light">
-                            @foreach($formats as $fmt)
-                                <div class="form-check me-2">
-                                    <input class="form-check-input @error('format') is-invalid @enderror" 
-                                           type="checkbox" 
-                                           name="format[]" 
-                                           id="format_{{ $loop->index }}" 
-                                           value="{{ $fmt }}"
-                                           {{ in_array($fmt, old('format', [])) ? 'checked' : '' }}>
-                                    <label class="form-check-label fw-normal" for="format_{{ $loop->index }}">
-                                        {{ $fmt }}
-                                    </label>
-                                </div>
-                            @endforeach
-                        </div>
-                        <small class="text-muted d-block mt-1">Chọn định dạng công chiếu của phim (ví dụ: 2D, 3D, IMAX...)</small>
-                        @error('format') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                        @error('format.*') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                    </div>
+                    <x-format-select
+                        :formats="$formats"
+                        :selected="old('format', [])"
+                        name="format[]"
+                        label="Định dạng phim"
+                        placeholder="Chọn định dạng phim…"
+                        id="create-format" />
+                    <small class="text-muted d-block mt-1">Chọn định dạng công chiếu của phim (ví dụ: 2D, 3D, IMAX...)</small>
                 </div>
             </div>
 

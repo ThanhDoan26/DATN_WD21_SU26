@@ -1,10 +1,10 @@
 @props([
-    'categories' => [],       // Collection hoặc array các category (id, name)
-    'selected'   => [],       // Array các id đã được chọn (cho edit mode)
-    'name'       => 'categories[]',
-    'label'      => 'Danh mục phim',
-    'placeholder'=> 'Tìm thể loại...',
-    'id'         => 'genre-select',
+    'formats'    => [],       // Array các format (ví dụ: ['2D', '3D', ...])
+    'selected'   => [],       // Array các format đã được chọn (cho edit mode)
+    'name'       => 'format[]',
+    'label'      => 'Định dạng phim',
+    'placeholder'=> 'Chọn định dạng phim…',
+    'id'         => 'format-select',
 ])
 
 @php
@@ -18,7 +18,7 @@
     </label>
 
     {{-- ═══════ TRIGGER BUTTON ═══════ --}}
-    <div style="position:relative;" id="{{ $componentId }}-root" data-event-name="genre-change">
+    <div style="position:relative;" id="{{ $componentId }}-root" data-event-name="format-change">
         <button type="button"
                 id="{{ $componentId }}-trigger"
                 aria-haspopup="listbox"
@@ -39,7 +39,7 @@
                     min-height:42px;
                 ">
             <span id="{{ $componentId }}-label" style="flex:1;min-width:0;overflow:hidden;">
-                <span class="mgs-placeholder" style="color:#94a3b8;">Chọn thể loại phim…</span>
+                <span class="mgs-placeholder" style="color:#94a3b8;">{{ $placeholder }}</span>
             </span>
             <span style="display:flex;align-items:center;gap:.4rem;flex-shrink:0;">
                 <span id="{{ $componentId }}-count"
@@ -77,7 +77,7 @@
                        style="position:absolute;left:.75rem;color:#94a3b8;font-size:.8rem;pointer-events:none;"></i>
                     <input type="text"
                            id="{{ $componentId }}-search"
-                           placeholder="{{ $placeholder }}"
+                           placeholder="Tìm định dạng..."
                            autocomplete="off"
                            oninput="mgSelect_filter('{{ $componentId }}')"
                            style="
@@ -93,7 +93,7 @@
                            "
                            onfocus="this.style.borderColor='#9333ea'"
                            onblur="this.style.borderColor=''"
-                           aria-label="Tìm kiếm thể loại">
+                           aria-label="Tìm kiếm định dạng">
                     <button type="button"
                             id="{{ $componentId }}-clear-search"
                             onclick="mgSelect_clearSearch('{{ $componentId }}')"
@@ -128,13 +128,13 @@
                     <span id="{{ $componentId }}-empty-msg">Không tìm thấy kết quả</span>
                 </div>
 
-                @foreach($categories as $cat)
+                @foreach($formats as $fmt)
                 <div class="mgs-option"
-                     id="{{ $componentId }}-opt-{{ $cat->id }}"
+                     id="{{ $componentId }}-opt-{{ $loop->index }}"
                      role="option"
                      aria-selected="false"
-                     data-id="{{ $cat->id }}"
-                     data-name="{{ $cat->name }}"
+                     data-id="{{ $fmt }}"
+                     data-name="{{ $fmt }}"
                      data-component="{{ $componentId }}"
                      onclick="mgSelect_toggle_item(this)"
                      tabindex="-1"
@@ -150,7 +150,7 @@
                      "
                      onmouseenter="this.style.background='rgba(147,51,234,.08)'"
                      onmouseleave="this.style.background=this.classList.contains('selected')?'rgba(147,51,234,.06)':'transparent'">
-                    <span class="mgs-opt-name">{{ $cat->name }}</span>
+                    <span class="mgs-opt-name">{{ $fmt }}</span>
                     <span class="mgs-check-icon"
                           style="
                               width:20px; height:20px; border-radius:6px;
@@ -164,10 +164,10 @@
                     {{-- Hidden checkbox that actually submits --}}
                     <input type="checkbox"
                            name="{{ $name }}"
-                           value="{{ $cat->id }}"
-                           id="chk_{{ $componentId }}_{{ $cat->id }}"
+                           value="{{ $fmt }}"
+                           id="chk_{{ $componentId }}_{{ $loop->index }}"
                            style="display:none;"
-                           {{ in_array($cat->id, $selectedIds) ? 'checked' : '' }}>
+                           {{ in_array($fmt, $selectedIds) ? 'checked' : '' }}>
                 </div>
                 @endforeach
             </div>
@@ -212,7 +212,7 @@
         </div>
     </div>
 
-    @error('categories')
+    @error('format')
         <div style="color:#ef4444;font-size:.78rem;margin-top:.3rem;">
             <i class="fas fa-exclamation-circle me-1"></i>{{ $message }}
         </div>
