@@ -89,6 +89,9 @@
                             <td>{{ $review->created_at->format('d/m/Y H:i') }}</td>
                             <td class="text-end">
                                 <div class="btn-group">
+                                    <a href="{{ route('admin.reviews.show', $review->id) }}" class="btn btn-sm btn-primary" title="Xem chi tiết">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
                                     <form action="{{ route('admin.reviews.toggle-status', $review->id) }}" method="POST" class="d-inline">
                                         @csrf
                                         @method('PATCH')

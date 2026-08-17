@@ -21,6 +21,12 @@ class CinemaReviewController extends Controller
         return view('admin.cinema-reviews.index', compact('reviews'));
     }
 
+    public function show($id)
+    {
+        $review = CinemaReview::with(['user', 'cinema', 'booking'])->findOrFail($id);
+        return view('admin.cinema-reviews.show', compact('review'));
+    }
+
     public function toggleStatus($id)
     {
         $review = CinemaReview::findOrFail($id);

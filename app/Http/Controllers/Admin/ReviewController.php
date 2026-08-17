@@ -24,6 +24,12 @@ class ReviewController extends Controller
         return redirect()->back()->with('success', 'Đã phê duyệt đánh giá.');
     }
 
+    public function show($id)
+    {
+        $review = Review::with(['user', 'movie'])->findOrFail($id);
+        return view('admin.reviews.show', compact('review'));
+    }
+
     public function destroy($id)
     {
         $review = Review::findOrFail($id);
