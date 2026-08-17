@@ -20,7 +20,7 @@ class Room extends Model
 
     public function cinema(): BelongsTo
     {
-        return $this->belongsTo(Cinema::class);
+        return $this->belongsTo(Cinema::class)->withTrashed();
     }
 
     public function seats(): HasMany

@@ -659,60 +659,78 @@
         }
 
         function validateSeatSelection() {
-            let isValid = true;
+            let result = { isValid: true, bypassRule: null };
             
-            document.querySelectorAll('.row-seats').forEach(rowElement => {
+            const rows = document.querySelectorAll('.row-seats');
+            for (let r = 0; r < rows.length; r++) {
+                const rowElement = rows[r];
                 const seats = Array.from(rowElement.querySelectorAll('.seat'));
+                const totalSeats = seats.length;
                 
-                // Split into blocks by unavailable seats
-                let blocks = [];
-                let currentBlock = [];
+                let emptyBlocks = [];
+                let currentEmptyBlock = [];
                 
-                seats.forEach(seat => {
-                    if (seat.classList.contains('booked') || seat.disabled) {
-                        if (currentBlock.length > 0) {
-                            blocks.push(currentBlock);
-                            currentBlock = [];
-                        }
+                seats.forEach((seat, index) => {
+                    let isBookedOrBroken = seat.classList.contains('booked') || seat.classList.contains('broken') || seat.disabled;
+                    let isSelected = seat.classList.contains('selected');
+                    let isAvailableEmpty = !isBookedOrBroken && !isSelected;
+                    
+                    if (isAvailableEmpty) {
+                        currentEmptyBlock.push(index);
                     } else {
-                        currentBlock.push(seat);
+                        if (currentEmptyBlock.length > 0) {
+                            emptyBlocks.push(currentEmptyBlock);
+                            currentEmptyBlock = [];
+                        }
                     }
                 });
                 
-                if (currentBlock.length > 0) {
-                    blocks.push(currentBlock);
+                if (currentEmptyBlock.length > 0) {
+                    emptyBlocks.push(currentEmptyBlock);
                 }
                 
-                // Check each block
-                blocks.forEach(block => {
-                    let selectedIndices = [];
-                    block.forEach((seat, index) => {
-                        if (seat.classList.contains('selected')) {
-                            selectedIndices.push(index);
-                        }
-                    });
-                    
-                    if (selectedIndices.length > 1) {
-                        let first = Math.min(...selectedIndices);
-                        let last = Math.max(...selectedIndices);
-                        let countInRange = last - first + 1;
+                // Check each empty block for gap = 1
+                for (let i = 0; i < emptyBlocks.length; i++) {
+                    const block = emptyBlocks[i];
+                    if (block.length === 1) {
+                        let emptyIndex = block[0];
                         
-                        // If there is a gap, the range will be larger than the number of selected seats
-                        if (countInRange > selectedIndices.length) {
-                            isValid = false;
+                        let leftAdjacent = (emptyIndex > 0) ? seats[emptyIndex - 1] : null;
+                        let rightAdjacent = (emptyIndex < totalSeats - 1) ? seats[emptyIndex + 1] : null;
+                        
+                        let isLeftSelected = leftAdjacent && leftAdjacent.classList.contains('selected');
+                        let isRightSelected = rightAdjacent && rightAdjacent.classList.contains('selected');
+                        
+                        // We only care if this single empty seat is adjacent to at least one selected seat
+                        if (isLeftSelected || isRightSelected) {
+                            let isAbsoluteStart = (emptyIndex === 0);
+                            let isAbsoluteEnd = (emptyIndex === totalSeats - 1);
+                            
+                            if (isAbsoluteStart || isAbsoluteEnd) {
+                                // Boundary Exception applies
+                                result.bypassRule = 'BOUNDARY_EXCEPTION';
+                            } else {
+                                // REJECTED: Single seat in the middle
+                                return { 
+                                    isValid: false, 
+                                    errorCode: 'SINGLE_SEAT_IN_MIDDLE', 
+                                    message: 'Không thể bỏ trống 1 ghế ở giữa. Vui lòng chọn ghế sát mép hoặc chọn liên tiếp.' 
+                                };
+                            }
                         }
                     }
-                });
-            });
+                }
+            }
             
-            return isValid;
+            return result;
         }
 
         function proceedToCheckout() {
             if (selectedSeats.size === 0) return;
 
-            if (!validateSeatSelection()) {
-                alert("Bạn chỉ được chọn các ghế liền kề nhau. Không được để trống ghế ở giữa.");
+            const validation = validateSeatSelection();
+            if (!validation.isValid) {
+                alert(validation.message || "Ghế không hợp lệ.");
                 return;
             }
 
@@ -728,6 +746,70 @@
         @if(session('error'))
             alert("{{ session('error') }}");
         @endif
+
+        // --- Unit Tests cho Boundary Exception ---
+        function runSeatValidationTests() {
+            console.log("Running Seat Validation Tests...");
+            
+            function createMockRow(totalSeats, selectedIndexes) {
+                let row = document.createElement('div');
+                row.className = 'row-seats';
+                for (let i = 0; i < totalSeats; i++) {
+                    let seat = document.createElement('div');
+                    seat.className = 'seat';
+                    if (selectedIndexes.includes(i)) {
+                        seat.classList.add('selected');
+                    }
+                    row.appendChild(seat);
+                }
+                return row;
+            }
+
+            const originalQuerySelectorAll = document.querySelectorAll.bind(document);
+            let mockRows = [];
+            
+            document.querySelectorAll = function(selector) {
+                if (selector === '.row-seats') return mockRows;
+                return originalQuerySelectorAll(selector);
+            };
+
+            try {
+                // Scenario A1 (Boundary Left): 5 seats [1,2,3,4,5], user selects [2,3,4,5] -> indices [1,2,3,4]
+                mockRows = [createMockRow(5, [1, 2, 3, 4])];
+                let resA1 = validateSeatSelection();
+                console.assert(resA1.isValid === true && resA1.bypassRule === 'BOUNDARY_EXCEPTION', "Test A1 Failed");
+                if (resA1.isValid) console.log("Scenario A1 Passed");
+
+                // Scenario A2 (Boundary Right): 5 seats [1,2,3,4,5], user selects [1,2,3,4] -> indices [0,1,2,3]
+                mockRows = [createMockRow(5, [0, 1, 2, 3])];
+                let resA2 = validateSeatSelection();
+                console.assert(resA2.isValid === true && resA2.bypassRule === 'BOUNDARY_EXCEPTION', "Test A2 Failed");
+                if (resA2.isValid) console.log("Scenario A2 Passed");
+
+                // Scenario B1 (Middle Gap): 5 seats [1,2,3,4,5], user selects [1,2,4,5] -> indices [0,1,3,4], empty [2]
+                mockRows = [createMockRow(5, [0, 1, 3, 4])];
+                let resB1 = validateSeatSelection();
+                console.assert(resB1.isValid === false && resB1.errorCode === 'SINGLE_SEAT_IN_MIDDLE', "Test B1 Failed");
+                if (!resB1.isValid) console.log("Scenario B1 Passed");
+                
+                // Scenario C1 (Trapped next to booked): 5 seats, index 4 booked, user selects 0,1,2. Empty at 3.
+                let mockRowC1 = createMockRow(5, [0, 1, 2]);
+                mockRowC1.children[4].classList.add('booked');
+                mockRows = [mockRowC1];
+                let resC1 = validateSeatSelection();
+                console.assert(resC1.isValid === false && resC1.errorCode === 'SINGLE_SEAT_IN_MIDDLE', "Test C1 Failed");
+                if (!resC1.isValid) console.log("Scenario C1 Passed (Trapped next to booked)");
+            } catch (e) {
+                console.error("Test execution failed:", e);
+            } finally {
+                // Restore original function
+                document.querySelectorAll = originalQuerySelectorAll;
+                console.log("Tests Completed.");
+            }
+        }
+        
+        // Execute tests automatically on load for verification
+        runSeatValidationTests();
 
         // --- Real-time Polling Logic ---
         function pollBookedSeats() {

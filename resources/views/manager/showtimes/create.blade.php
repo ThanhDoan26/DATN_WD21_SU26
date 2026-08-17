@@ -352,7 +352,7 @@
                 return;
             }
 
-            fetch(`/admin/seats/by-room/${roomId}`)
+            fetch(`/manager/seats/by-room/${roomId}`)
                 .then(response => response.json())
                 .then(seats => {
                     const grid = document.getElementById('seatsGrid');

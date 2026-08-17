@@ -333,4 +333,17 @@ class RoomController extends Controller
             'message' => 'Cập nhật trạng thái ghế thành công!'
         ]);
     }
+
+    public function getBySeatsByRoom($roomId)
+    {
+        // Kiểm tra phòng có thuộc rạp của Manager không
+        $room = Room::where('cinema_id', Auth::user()->cinema_id)->findOrFail($roomId);
+        
+        $seats = Seat::where('room_id', $room->id)
+            ->orderBy('row_name')
+            ->orderBy('seat_number')
+            ->get();
+
+        return response()->json($seats);
+    }
 }
