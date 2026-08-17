@@ -60,8 +60,8 @@
                         <select id="movie_id" name="movie_id" class="form-select @error('movie_id') is-invalid @enderror" required>
                             <option value="">-- Chọn phim --</option>
                             @foreach($movies as $movie)
-                                <option value="{{ $movie->id }}" data-duration="{{ $movie->duration }}" {{ old('movie_id', $showtime->movie_id) == $movie->id ? 'selected' : '' }}>
-                                    {{ $movie->title }}
+                                <option value="{{ $movie->id }}" data-duration="{{ $movie->duration }}" data-formats="{{ is_array($movie->format) ? implode(',', $movie->format) : $movie->format }}" {{ old('movie_id', $showtime->movie_id) == $movie->id ? 'selected' : '' }}>
+                                    {{ $movie->title }} ({{ is_array($movie->format) ? implode(', ', $movie->format) : $movie->format }})
                                 </option>
                             @endforeach
                         </select>
@@ -76,8 +76,8 @@
                         <select id="room_id" name="room_id" class="form-select @error('room_id') is-invalid @enderror" required>
                             <option value="">-- Chọn phòng --</option>
                             @foreach($rooms as $room)
-                                <option value="{{ $room->id }}" {{ old('room_id', $showtime->room_id) == $room->id ? 'selected' : '' }}>
-                                    {{ $room->cinema?->name ?? 'N/A' }} / {{ $room->name }}
+                                <option value="{{ $room->id }}" data-format="{{ $room->format }}" {{ old('room_id', $showtime->room_id) == $room->id ? 'selected' : '' }}>
+                                    {{ $room->cinema?->name ?? 'N/A' }} / {{ $room->name }} - {{ $room->format }}
                                 </option>
                             @endforeach
                         </select>
@@ -627,17 +627,13 @@
             input.addEventListener('change', function () {
                 enforce24OnlyZeroMinute(startHourInput, startMinuteInput);
                 updateStartHidden();
-                if (endAutoComputed || !hiddenEndInput.value) {
-                    updateEndFromStart();
-                }
+                updateEndFromStart();
             });
         });
 
         startDateInput.addEventListener('change', function () {
             updateStartHidden();
-            if (endAutoComputed || !hiddenEndInput.value) {
-                updateEndFromStart();
-            }
+            updateEndFromStart();
         });
 
         [endHourInput, endMinuteInput, endDateInput].forEach(input => {
@@ -647,11 +643,88 @@
             });
         });
 
+        // --- FORMAT COMPATIBILITY LOGIC ---
+        const COMPATIBILITY_MATRIX = {
+            '2D': ['2D', '3D', '4DX', '5D', 'IMAX'],
+            '3D': ['3D', '4DX', '5D'],
+            '4DX': ['4DX', '5D'],
+            '5D': ['5D'],
+            'IMAX': ['IMAX']
+        };
+
+        function normalizeFormatStr(formatStr) {
+            if (!formatStr) return '2D';
+            formatStr = formatStr.toUpperCase();
+            if (formatStr.includes('IMAX')) return 'IMAX';
+            if (formatStr.includes('5D')) return '5D';
+            if (formatStr.includes('4D') || formatStr.includes('4DX')) return '4DX';
+            if (formatStr.includes('3D')) return '3D';
+            return '2D';
+        }
+
+        function checkFormatCompatibility(movieFormats, roomFormat) {
+            const normalizedRoom = normalizeFormatStr(roomFormat);
+            const formatArray = movieFormats.split(',').map(f => f.trim());
+            
+            for (let fmt of formatArray) {
+                const normalizedMovie = normalizeFormatStr(fmt);
+                const allowedRooms = COMPATIBILITY_MATRIX[normalizedMovie] || ['2D'];
+                if (allowedRooms.includes(normalizedRoom)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function filterCompatibleRooms() {
+            const selectedMovieOption = movieSelect.options[movieSelect.selectedIndex];
+            if (!selectedMovieOption || !selectedMovieOption.value) {
+                Array.from(roomSelect.options).forEach(opt => {
+                    if (opt.value) {
+                        opt.disabled = false;
+                        opt.text = opt.text.replace(' (Không hỗ trợ)', '');
+                    }
+                });
+                return;
+            }
+
+            const movieFormats = selectedMovieOption.getAttribute('data-formats') || '';
+            let roomSelectionInvalidated = false;
+
+            Array.from(roomSelect.options).forEach(opt => {
+                if (!opt.value) return; 
+                
+                const roomFormat = opt.getAttribute('data-format') || '';
+                const isCompatible = checkFormatCompatibility(movieFormats, roomFormat);
+                
+                let originalText = opt.text.replace(' (Không hỗ trợ)', '');
+                
+                if (!isCompatible) {
+                    opt.disabled = true;
+                    opt.text = originalText + ' (Không hỗ trợ)';
+                    if (opt.selected) {
+                        roomSelectionInvalidated = true;
+                    }
+                } else {
+                    opt.disabled = false;
+                    opt.text = originalText;
+                }
+            });
+
+            if (roomSelectionInvalidated) {
+                roomSelect.value = '';
+                roomSelect.dispatchEvent(new Event('change'));
+            }
+        }
+        
+        filterCompatibleRooms();
+
         movieSelect.addEventListener('change', function () {
             updateStartHidden();
             if (endAutoComputed) {
                 updateEndFromStart();
             }
+            filterCompatibleRooms();
         });
 
         syncAllTimeFields();

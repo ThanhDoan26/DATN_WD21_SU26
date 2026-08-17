@@ -475,7 +475,7 @@
             
             const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
             const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
-            const TIMEOUT_SECONDS = {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES * 60 }};
+            const TIMEOUT_SECONDS = {{ \App\Services\BookingService::getHoldDuration() * 60 }};
             const seatSelectionUrl = '{{ route('booking.select-seats', $showtime->id ?? 0) }}';
 
             // ===================== COUNTDOWN TIMER =====================
@@ -774,6 +774,15 @@
                     const selectedPayment = document.querySelector('input[name="payment"]:checked').value;
                     const couponCode = document.querySelector('input[name="coupon"]:checked').value || '';
 
+                    const formattedCombos = {};
+                    Object.keys(selectedCombos).forEach(id => {
+                        if (selectedCombos[id].qty > 0) {
+                            formattedCombos[id] = {
+                                qty: selectedCombos[id].qty
+                            };
+                        }
+                    });
+
                     confirmReservationButton.disabled = true;
                     confirmReservationButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Đang xử lý...';
 
@@ -789,7 +798,7 @@
                         body: JSON.stringify({
                             showtime_id: showtimeId,
                             seat_ids: Array.isArray(seatIds) ? seatIds.join(',') : seatIds,
-                            combos: selectedCombos,
+                            combos: formattedCombos,
                             payment_method: selectedPayment,
                             coupon_code: couponCode,
                             customer_name: document.getElementById('customer_name') ? document.getElementById('customer_name').value : null,
@@ -824,9 +833,9 @@
                         const bookingId = data.data.booking_id;
 
                         // ===== KHỞI ĐỘNG ĐỒNG HỒ ĐẾM NGƯỢC =====
-                        const timeoutMs = (data.data?.timeout_minutes ?? {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES }}) * 60 * 1000;
-                        const expiresAtMs = Date.now() + timeoutMs;
-                        // Lưu vào sessionStorage để timer vẫn chạy nếu Stripe redirect về
+                        const timeoutMs = (data.data?.timeout_minutes ?? {{ \App\Services\BookingService::getHoldDuration() }}) * 60 * 1000;
+                        const expiresAtMs = data.data?.expires_at_ms ? parseInt(data.data.expires_at_ms, 10) : (Date.now() + timeoutMs);
+                        // Lưu vào sessionStorage để timer vẫn chạy nếu Stripe/VNPay redirect về
                         sessionStorage.setItem('booking_expires_at', expiresAtMs.toString());
                         startCountdown(expiresAtMs);
                         // ==========================================

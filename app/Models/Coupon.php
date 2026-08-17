@@ -32,6 +32,24 @@ class Coupon extends Model
     ];
 
     /**
+     * Scope lọc các mã giảm giá đang hoạt động và hợp lệ về thời hạn & số lượt
+     */
+    public function scopeActiveAndValid($query)
+    {
+        $now = now();
+        return $query->where('status', 'ACTIVE')
+            ->where(function ($q) use ($now) {
+                $q->whereNull('start_date')->orWhere('start_date', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->whereNull('end_date')->orWhere('end_date', '>=', $now);
+            })
+            ->where(function ($q) {
+                $q->where('quantity', 0)->orWhereRaw('used_count < quantity');
+            });
+    }
+
+    /**
      * Kiểm tra xem mã giảm giá có hợp lệ cho đơn hàng hiện tại không.
      *
      * @param float $orderTotal Giá trị đơn hàng tạm tính
@@ -41,16 +59,16 @@ class Coupon extends Model
     public function isValid($orderTotal, $userId = null)
     {
         if ($this->status !== 'ACTIVE') {
-            return ['valid' => false, 'message' => 'Mã giảm giá không hoạt động hoặc đã bị khoá.'];
+            return ['valid' => false, 'message' => 'Mã giảm giá của bạn không hoạt động hoặc có thể bị khóa.'];
         }
 
         $now = now();
         if ($this->start_date && $now->lt($this->start_date)) {
-            return ['valid' => false, 'message' => 'Mã giảm giá chưa đến thời gian sử dụng.'];
+            return ['valid' => false, 'message' => 'Mã giảm giá của bạn vẫn chưa đến thời gian sử dụng!'];
         }
 
         if ($this->end_date && $now->gt($this->end_date)) {
-            return ['valid' => false, 'message' => 'Mã giảm giá đã hết hạn sử dụng.'];
+            return ['valid' => false, 'message' => 'Mã giảm giá của bạn đã hết hạn sử dụng!'];
         }
 
         if ($this->quantity > 0 && $this->used_count >= $this->quantity) {
@@ -58,7 +76,7 @@ class Coupon extends Model
         }
 
         if ($orderTotal < $this->min_order_value) {
-            return ['valid' => false, 'message' => 'Giá trị đơn hàng chưa đạt mức tối thiểu (' . number_format($this->min_order_value, 0, ',', '.') . ' VNĐ) để sử dụng mã này.'];
+            return ['valid' => false, 'message' => 'Giá trị đơn hàng của bạn chưa đạt mức tối thiểu (' . number_format($this->min_order_value, 0, ',', '.') . ' VNĐ) để sử dụng mã này.'];
         }
 
         // Kiểm tra xem User này đã sử dụng mã này chưa (nếu có truyền userId)
@@ -74,7 +92,7 @@ class Coupon extends Model
             }
         }
 
-        return ['valid' => true, 'message' => 'Mã giảm giá hợp lệ.'];
+        return ['valid' => true, 'message' => 'Mã giảm giá của bạn hợp lệ!'];
     }
 
     /**

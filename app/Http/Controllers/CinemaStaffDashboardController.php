@@ -173,7 +173,8 @@ class CinemaStaffDashboardController extends Controller
                 'showtime.room',
                 'showtime.room.cinema',
                 'bookedSeats',
-                'bookedSeats.seat'
+                'bookedSeats.seat',
+                'combos'
             ])->where('booking_code', $code);
 
             if (!empty($extractedToken)) {
@@ -240,7 +241,8 @@ class CinemaStaffDashboardController extends Controller
                     'booking.showtime',
                     'booking.showtime.movie',
                     'booking.showtime.room',
-                    'booking.showtime.room.cinema'
+                    'booking.showtime.room.cinema',
+                    'booking.combos'
                 ])->where('qr_code', $code)->first();
 
                 if ($bookedSeat) {
@@ -628,6 +630,10 @@ class CinemaStaffDashboardController extends Controller
             }
 
             $seatsToPrint = $booking->bookedSeats;
+            foreach ($seatsToPrint as $seatItem) {
+                $seatItem->increment('print_count');
+                $seatItem->update(['printed_at' => now()]);
+            }
         } elseif ($type === 'seat') {
             $bookedSeat = BookedSeat::with([
                 'seat',
@@ -643,6 +649,8 @@ class CinemaStaffDashboardController extends Controller
                 return abort(403, 'Không có quyền in vé thuộc rạp khác.');
             }
 
+            $bookedSeat->increment('print_count');
+            $bookedSeat->update(['printed_at' => now()]);
             $seatsToPrint->push($bookedSeat);
         } else {
             return abort(404, 'Loại in vé không hợp lệ.');

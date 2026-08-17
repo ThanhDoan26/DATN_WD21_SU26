@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('cinemas', function (Blueprint $table) {
-            $table->softDeletes();
+        Schema::table('booked_seats', function (Blueprint $table) {
+            $table->dateTime('printed_at')->nullable()->after('checked_in_at');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('cinemas', function (Blueprint $table) {
-            $table->dropSoftDeletes();
+        Schema::table('booked_seats', function (Blueprint $table) {
+            $table->dropColumn('printed_at');
         });
     }
 };

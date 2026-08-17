@@ -73,6 +73,6 @@ class ReviewController extends Controller
             }
         }
 
-        return back()->with('success', 'Đánh giá của bạn đã được gửi thành công!');
+        return back()->with('success', 'Đánh giá cảu bạn đã gửi tành công!');
     }
 }

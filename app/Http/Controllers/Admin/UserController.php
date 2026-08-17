@@ -132,6 +132,23 @@ class UserController extends AdminController
      */
     public function destroy(User $user)
     {
+        // Kiểm tra xem người dùng có booking vé chưa sử dụng/chưa hết hạn không
+        $hasActiveBookings = $user->bookings()
+            ->whereNotIn('bookings.status', ['Cancelled', 'Used'])
+            ->whereHas('showtime', function ($query) {
+                // Suất chiếu chưa bắt đầu hoặc đang chiếu (vé chưa hết hạn)
+                $query->where('start_time', '>=', now());
+            })
+            ->exists();
+
+        if ($hasActiveBookings) {
+            return redirect()->route('admin.users.index')
+                             ->with('error', 'Không thể xóa người dùng này vì họ đang có vé chưa sử dụng!');
+        }
+
+        // Gỡ liên kết user_id cho các booking đã hết hạn/sử dụng/hủy để tránh lỗi foreign key (onDelete restrict)
+        $user->bookings()->update(['user_id' => null]);
+
         $user->delete();
 
         return redirect()->route('admin.users.index')

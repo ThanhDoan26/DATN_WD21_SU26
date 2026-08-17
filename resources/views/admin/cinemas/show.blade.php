@@ -52,7 +52,7 @@
                 <p>{{ $cinema->address }}</p>
             </div>
             <div class="col-md-6">
-                <h6 class="text-muted mb-2">Số điện thoại</h6>
+                <h6 class="text-muted mb-2">Hotline</h6>
                 <p>{{ $cinema->phone ?? 'N/A' }}</p>
             </div>
         </div>
