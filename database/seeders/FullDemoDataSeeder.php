@@ -268,9 +268,9 @@ class FullDemoDataSeeder extends Seeder
 
             // Tạo phòng chiếu cho rạp nếu chưa có
             $roomTypes = [
-                ['name' => 'Phòng 01 (Standard 2D)', 'format' => '2D', 'total_seats' => 60],
-                ['name' => 'Phòng 02 (3D Digital)',    'format' => '3D', 'total_seats' => 60],
-                ['name' => 'Phòng 03 (IMAX Laser)',   'format' => 'IMAX', 'total_seats' => 80],
+                ['name' => 'Phòng 01 (Standard 2D)', 'format' => '2D', 'total_seats' => 90],
+                ['name' => 'Phòng 02 (3D Digital)',    'format' => '3D', 'total_seats' => 90],
+                ['name' => 'Phòng 03 (IMAX Laser)',   'format' => 'IMAX', 'total_seats' => 90],
             ];
 
             foreach ($roomTypes as $rData) {
@@ -285,11 +285,15 @@ class FullDemoDataSeeder extends Seeder
 
                 // Tạo ghế mẫu cho phòng nếu chưa có
                 if ($room->seats()->count() == 0) {
-                    $rows = ['A', 'B', 'C', 'D', 'E', 'F'];
+                    $rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
                     foreach ($rows as $rIdx => $rowLetter) {
-                        for ($num = 1; $num <= 10; $num++) {
-                            $type = ($rIdx >= 4) ? 'VIP' : 'Regular';
-                            if ($rIdx == 5 && ($num == 5 || $num == 6)) {
+                        $numSeats = ($rIdx == 7) ? 6 : 12; // Row H (Sweetbox) has 6 seats
+                        for ($num = 1; $num <= $numSeats; $num++) {
+                            if ($rIdx < 3) {
+                                $type = 'Regular';
+                            } elseif ($rIdx < 7) {
+                                $type = 'VIP';
+                            } else {
                                 $type = 'Sweetbox';
                             }
                             Seat::create([

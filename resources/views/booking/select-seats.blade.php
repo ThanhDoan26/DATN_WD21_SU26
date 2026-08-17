@@ -49,12 +49,12 @@
             gap: 6px;
         }
 
-        /* Sweetbox rows use tighter gap */
+        /* Sweetbox rows gap matches regular rows */
         .seat-row.sweetbox-row {
             gap: 6px;
         }
         .seat-row.sweetbox-row .row-seats {
-            gap: 4px;
+            gap: 8px;
         }
 
         .row-label {
@@ -115,8 +115,8 @@
         /* Double / Sweetbox Seat (Hồng) */
         .seat.sweetbox {
             background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
-            width: 60px;
-            height: 40px;
+            width: 92px;
+            height: 42px;
             border-color: #be185d;
             color: #ffffff;
             font-weight: 800;

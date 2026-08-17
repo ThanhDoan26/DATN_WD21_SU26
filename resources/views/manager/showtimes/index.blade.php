@@ -61,7 +61,9 @@
                     <select name="status" class="form-select">
                         <option value="">Tất cả</option>
                         @foreach(\App\Models\Showtime::STATUSES as $status)
-                            <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>{{ ucfirst(strtolower($status)) }}</option>
+                            <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>
+                                {{ \App\Models\Showtime::STATUS_LABELS[$status] ?? ucfirst(strtolower($status)) }}
+                            </option>
                         @endforeach
                     </select>
                 </div>

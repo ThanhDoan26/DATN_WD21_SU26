@@ -171,7 +171,7 @@
                             <option value="">-- Chọn trạng thái --</option>
                             @foreach(\App\Models\Showtime::STATUSES as $status)
                                 <option value="{{ $status }}" {{ old('status', $showtime->status) == $status ? 'selected' : '' }}>
-                                    {{ ucfirst(strtolower($status)) }}
+                                    {{ \App\Models\Showtime::STATUS_LABELS[$status] ?? ucfirst(strtolower($status)) }}
                                 </option>
                             @endforeach
                         </select>

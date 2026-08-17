@@ -14,6 +14,9 @@ class ShowtimeController extends AdminController
 {
     public function index(Request $request)
     {
+        // Tự động cập nhật trạng thái các suất chiếu đã chiếu / đang chiếu
+        Showtime::syncAllStatuses();
+
         $query = Showtime::with(['movie', 'room.cinema'])->orderBy('start_time');
 
         if ($request->filled('movie_id')) {

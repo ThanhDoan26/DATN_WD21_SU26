@@ -164,8 +164,8 @@
                         <select id="status" name="status" class="form-select @error('status') is-invalid @enderror" required>
                             <option value="">-- Chọn trạng thái --</option>
                             @foreach(\App\Models\Showtime::STATUSES as $status)
-                                <option value="{{ $status }}" {{ old('status') == $status ? 'selected' : '' }}>
-                                    {{ ucfirst(strtolower($status)) }}
+                                <option value="{{ $status }}" {{ old('status', \App\Models\Showtime::STATUS_SCHEDULED) == $status ? 'selected' : '' }}>
+                                    {{ \App\Models\Showtime::STATUS_LABELS[$status] ?? ucfirst(strtolower($status)) }}
                                 </option>
                             @endforeach
                         </select>

@@ -63,13 +63,9 @@ class CheckoutController extends Controller
                 abort(404, 'Suất chiếu không tồn tại.');
             }
 
-            // Check if showtime is still valid for booking
-            if (!in_array($showtime->status, [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])) {
-                abort(404, 'Suất chiếu này không còn khả dụng.');
-            }
-
-            if ($showtime->start_time <= now()) {
-                abort(404, 'Suất chiếu này đã bắt đầu hoặc kết thúc.');
+            // Check if showtime is still valid for online booking (cut off 15 mins before showtime)
+            if (!$showtime->isOnlineBookable()) {
+                return redirect()->route('home')->with('error', 'Suất chiếu này đã đóng cổng đặt vé trực tuyến (cần đặt trước giờ chiếu tối thiểu 15 phút). Vui lòng mua vé trực tiếp tại quầy.');
             }
 
             // Get ticket prices for this showtime
@@ -219,6 +215,14 @@ class CheckoutController extends Controller
         try {
             $bookingService = new BookingService();
             $showtimeId = (int) $request->input('showtime_id');
+            $showtime = Showtime::find($showtimeId);
+
+            if (!$showtime || !$showtime->isOnlineBookable()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Suất chiếu này đã đóng cổng đặt vé trực tuyến (cần đặt trước giờ chiếu tối thiểu 15 phút). Vui lòng mua vé trực tiếp tại quầy hoặc chọn suất chiếu khác.'
+                ], 422);
+            }
 
             // Kiểm tra xem user đã có đơn Pending khớp chính xác danh sách ghế này chưa
             $existingPending = Booking::where('user_id', Auth::id())

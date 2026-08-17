@@ -16,6 +16,9 @@ class ShowtimeController extends Controller
 {
     public function index(Request $request)
     {
+        // Tự động cập nhật trạng thái các suất chiếu đã chiếu / đang chiếu
+        Showtime::syncAllStatuses();
+
         $cinemaId = Auth::user()->cinema_id;
 
         $query = Showtime::with(['movie', 'room.cinema'])
