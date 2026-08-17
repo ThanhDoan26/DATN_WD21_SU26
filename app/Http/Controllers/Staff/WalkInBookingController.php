@@ -202,7 +202,7 @@ class WalkInBookingController extends Controller
         }
 
         $combos = Combo::where('status', 'ACTIVE')->get();
-        $coupons = Coupon::where('status', 'ACTIVE')->get();
+        $coupons = Coupon::activeAndValid()->get();
 
         return view('staff.walkin.checkout', compact(
             'showtime',

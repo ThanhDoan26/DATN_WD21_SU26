@@ -153,7 +153,7 @@ class CheckoutController extends Controller
         }
 
         $combos = Combo::where('status', 'ACTIVE')->get();
-        $coupons = Coupon::where('status', 'ACTIVE')->get();
+        $coupons = Coupon::activeAndValid()->get();
 
         return view('checkout', compact(
             'showtime',
@@ -240,23 +240,16 @@ class CheckoutController extends Controller
             }
 
             if ($matches && $existingPending) {
-                // Đã có booking Pending trùng ghế -> giữ nguyên booking_time, chỉ cập nhật thông tin thanh toán/combo/mã giảm giá
-                $bookingId = $existingPending->id;
-
-                if ($request->filled('payment_method')) {
-                    $existingPending->payment_method = $request->input('payment_method');
-                }
-                if ($request->filled('coupon_code')) {
-                    $coupon = Coupon::where('code', strtoupper(trim($request->input('coupon_code'))))
-                        ->where('status', 'ACTIVE')
-                        ->first();
-                    if ($coupon) {
-                        $existingPending->coupon_id = $coupon->id;
-                    }
-                }
-                $existingPending->save();
+                // Đã có booking Pending trùng ghế -> giữ nguyên booking_time, cập nhật combos, mã giảm giá, phương thức thanh toán và tổng tiền
+                $updatedBooking = $bookingService->updatePendingBooking(
+                    $existingPending->id,
+                    $request->input('payment_method', 'ONLINE'),
+                    $request->input('coupon_code'),
+                    $request->input('combos', [])
+                );
+                $bookingId = $updatedBooking->id;
                 $bookingDetails = $bookingService->getBookingDetails($bookingId);
-                $bookingTime = $existingPending->booking_time;
+                $bookingTime = $updatedBooking->booking_time;
             } else {
                 // Tạo booking mới nếu danh sách ghế thay đổi
                 $bookingId = $bookingService->createBooking(
