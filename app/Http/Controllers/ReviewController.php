@@ -2,77 +2,81 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Movie;
 use App\Models\Review;
-use App\Models\Booking;
+use App\Models\Showtime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ReviewController extends Controller
 {
-    public function store(Request $request, Movie $movie)
+    /**
+     * Store a review from a user who has watched the movie.
+     */
+    public function store(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
+            'movie_id' => 'sometimes|exists:movies,id',
             'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string|max:1000',
-            'combos' => 'nullable|array',
-            'combos.*.booking_id' => 'required|exists:bookings,id',
-            'combos.*.rating' => 'required|integer|min:1|max:5',
-            'combos.*.comment' => 'nullable|string|max:1000',
+            'body' => 'sometimes|string|min:10',
+            'comment' => 'sometimes|string|min:10',
         ]);
 
         $userId = Auth::id();
-
-        // Kiểm tra xem user có được phép review không (đã thanh toán/sử dụng vé và suất chiếu đã kết thúc)
-        $canReview = Booking::where('user_id', $userId)
-            ->whereIn('status', ['Paid', 'Used'])
-            ->whereHas('showtime', function ($query) use ($movie) {
-                $query->where('movie_id', $movie->id)
-                    ->where('end_time', '<=', now());
-            })->exists();
-
-        if (!$canReview) {
-            return back()->with('error', 'Bạn chỉ có thể đánh giá sau khi suất chiếu của bạn đã kết thúc.');
+        if (!$userId) {
+            return response()->json(['success' => false, 'message' => 'Bạn cần đăng nhập để đánh giá.'], 403);
         }
 
-        // Cập nhật hoặc tạo mới review (chỉ cho phép chỉnh sửa trong vòng 5 phút sau khi tạo)
-        $review = Review::where('user_id', $userId)->where('movie_id', $movie->id)->first();
-        if ($review) {
-            if ($review->created_at->addMinutes(5)->isPast()) {
-                return back()->with('error', 'Đã quá thời gian chỉnh sửa đánh giá này (chỉ được sửa trong vòng 5 phút sau khi đánh giá).');
-            }
-            $review->update([
-                'rating' => $validated['rating'],
-                'comment' => $validated['comment'],
-                'status' => 'ACTIVE' // Reset status to ACTIVE if they update
-            ]);
+        $movieParam = $request->input('movie_id') ?? $request->route('movie');
+        if (is_object($movieParam) && isset($movieParam->id)) {
+            $movieId = (int) $movieParam->id;
         } else {
-            Review::create([
-                'user_id' => $userId,
-                'movie_id' => $movie->id,
-                'rating' => $validated['rating'],
-                'comment' => $validated['comment'],
-                'status' => 'ACTIVE'
-            ]);
+            $movieId = (int) $movieParam;
         }
 
-        // Cập nhật các đánh giá Combo nếu có
-        if (!empty($validated['combos'])) {
-            foreach ($validated['combos'] as $comboId => $comboData) {
-                \App\Models\ComboReview::updateOrCreate(
-                    [
-                        'user_id' => $userId,
-                        'combo_id' => $comboId,
-                    ],
-                    [
-                        'booking_id' => $comboData['booking_id'],
-                        'rating' => $comboData['rating'],
-                        'comment' => $comboData['comment'] ?? null,
-                    ]
-                );
-            }
+        // Verify user has a booking for this movie and the showtime has passed or booking marked as Used
+        $hasWatched = DB::table('bookings')
+            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+            ->where('bookings.user_id', $userId)
+            ->where('showtimes.movie_id', $movieId)
+            ->where(function ($q) {
+                $q->where('bookings.status', 'Used')
+                  ->orWhere(function ($q2) {
+                      $q2->where('bookings.status', 'Paid')
+                         ->where('showtimes.start_time', '<', now());
+                  });
+            })
+            ->exists();
+
+        if (!$hasWatched) {
+            return response()->json(['success' => false, 'message' => 'Chỉ có thể đánh giá phim sau khi đã xem.'], 403);
         }
 
-        return back()->with('success', 'Đánh giá cảu bạn đã gửi tành công!');
+        $body = $request->input('body') ?? $request->input('comment');
+
+        $attributes = [
+            'user_id' => $userId,
+            'movie_id' => $movieId,
+        ];
+
+        $values = [
+            'rating' => (int) $request->input('rating'),
+            'comment' => $body,
+            // When a user creates/edits a review, mark it HIDDEN for moderation
+            'status' => 'HIDDEN',
+        ];
+
+        $review = Review::updateOrCreate($attributes, $values);
+
+        // If the request expects JSON (AJAX), return the created/updated review payload.
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'data' => $review]);
+        }
+
+        // For normal form posts, redirect back to the movie detail so the page reloads
+        // and the user's review is visible immediately in the reviews section.
+        return redirect()->to(route('movies.show', $movieId) . '#reviews-section')
+            ->with('success', 'Cảm ơn! Đánh giá của bạn đã được gửi và sẽ hiển thị ngay.');
     }
 }
+

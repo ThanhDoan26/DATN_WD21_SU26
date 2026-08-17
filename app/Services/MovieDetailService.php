@@ -54,7 +54,19 @@ class MovieDetailService
         }
 
         // 4. Load reviews and check review permission
-        $reviews = $movie->reviews()->with('user')->where('status', 'ACTIVE')->orderBy('created_at', 'desc')->get();
+        // By default only show ACTIVE reviews. If the current user has submitted
+        // a review (pending approval), include it so the author can see their own review.
+        $reviewsQuery = $movie->reviews()->with('user')->orderBy('created_at', 'desc');
+
+        if (auth()->check()) {
+            $userId = auth()->id();
+            $reviews = $reviewsQuery->where(function($q) use ($userId) {
+                $q->where('status', 'ACTIVE')
+                  ->orWhere('user_id', $userId);
+            })->get();
+        } else {
+            $reviews = $reviewsQuery->where('status', 'ACTIVE')->get();
+        }
         
         $canReview = false;
         $userReview = null;

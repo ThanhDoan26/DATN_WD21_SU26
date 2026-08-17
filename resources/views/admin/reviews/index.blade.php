@@ -77,7 +77,7 @@
                                 </div>
                             </td>
                             <td class="text-break" style="max-width: 300px;">
-                                {{ Str::limit($review->comment, 100) }}
+                                {{ \Illuminate\Support\Str::limit($review->comment, 100) }}
                             </td>
                             <td>
                                 @if($review->status === 'ACTIVE')

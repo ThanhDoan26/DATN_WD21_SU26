@@ -2,55 +2,43 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\Review;
 use Illuminate\Http\Request;
 
-class ReviewController extends AdminController
+class ReviewController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
-        $query = Review::with(['user', 'movie']);
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            })->orWhereHas('movie', function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%");
-            });
-        }
-
-        $reviews = $query->orderBy('created_at', 'desc')->paginate(15)->appends($request->all());
+        $reviews = Review::with(['user', 'movie'])->orderBy('created_at', 'desc')->paginate(20);
 
         return view('admin.reviews.index', compact('reviews'));
     }
 
-    /**
-     * Toggle status (ACTIVE/HIDDEN)
-     */
-    public function toggleStatus(Review $review)
+    public function approve($id)
     {
-        $review->status = $review->status === 'ACTIVE' ? 'HIDDEN' : 'ACTIVE';
+        $review = Review::findOrFail($id);
+        $review->status = 'ACTIVE';
         $review->save();
 
-        return back()->with('success', 'Trạng thái đánh giá đã được cập nhật.');
+        return redirect()->back()->with('success', 'Đã phê duyệt đánh giá.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Review $review)
+    public function destroy($id)
     {
+        $review = Review::findOrFail($id);
         $review->delete();
 
-        return back()->with('success', 'Đánh giá đã được xóa thành công.');
+        return redirect()->back()->with('success', 'Đã xóa đánh giá.');
+    }
+
+    public function toggleStatus($id)
+    {
+        $review = Review::findOrFail($id);
+        $review->status = ($review->status === 'ACTIVE') ? 'HIDDEN' : 'ACTIVE';
+        $review->save();
+
+        return redirect()->back()->with('success', 'Trạng thái đánh giá đã được cập nhật.');
     }
 }
+
