@@ -128,6 +128,11 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::patch('reviews/{review}/toggle-status', [ReviewController::class, 'toggleStatus'])->name('admin.reviews.toggle-status');
     Route::delete('reviews/{review}', [ReviewController::class, 'destroy'])->name('admin.reviews.destroy');
 
+    // Cinema Reviews
+    Route::get('cinema-reviews', [\App\Http\Controllers\Admin\CinemaReviewController::class, 'index'])->name('admin.cinema-reviews.index');
+    Route::patch('cinema-reviews/{review}/toggle-status', [\App\Http\Controllers\Admin\CinemaReviewController::class, 'toggleStatus'])->name('admin.cinema-reviews.toggle-status');
+    Route::delete('cinema-reviews/{review}', [\App\Http\Controllers\Admin\CinemaReviewController::class, 'destroy'])->name('admin.cinema-reviews.destroy');
+
     // Phân quyền chỉ cho ADMIN
     Route::middleware(['role:ADMIN'])->group(function () {
         // Users
