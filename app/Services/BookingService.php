@@ -77,9 +77,10 @@ class BookingService
             $movieId = $this->getMovieIdFromShowtime($showtimeId);
             $this->cancelUserPendingBookingsForMovie($userId, $movieId);
             $existingTicketCount = $this->getUserBookedSeatCount($userId, $movieId);
-            $hardLimitPerMovie = 10;
+            // Use config-driven max seats per booking as per product rules.
+            $hardLimitPerMovie = (int) config('booking.seat_hold.max_seats_per_booking', 8);
             if ($existingTicketCount + $selectedSeatCount > $hardLimitPerMovie) {
-                throw new Exception('Bạn chỉ được đặt tối đa 10 vé cho mỗi khách hàng cho mỗi phim.');
+                throw new Exception("Bạn chỉ được đặt tối đa {$hardLimitPerMovie} vé cho mỗi khách hàng cho mỗi phim.");
             }
         }
 

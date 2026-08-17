@@ -161,8 +161,9 @@ class CheckoutController extends Controller
         }
 
         $seatCount = count(array_unique($seatIds));
-        if ($seatCount > 10) {
-            return response()->json(['success' => false, 'message' => 'Bạn chỉ được đặt tối đa 10 vé cho mỗi đơn.'], 422);
+        $maxSeatsPerBooking = (int) config('booking.seat_hold.max_seats_per_booking', 8);
+        if ($seatCount > $maxSeatsPerBooking) {
+            return response()->json(['success' => false, 'message' => "Bạn chỉ được đặt tối đa {$maxSeatsPerBooking} vé cho mỗi đơn."], 422);
         }
 
         $userId = Auth::id();
@@ -170,8 +171,9 @@ class CheckoutController extends Controller
             $bookingService = new BookingService();
             $movieId = Showtime::find((int) $request->input('showtime_id'))?->movie_id;
             $existingTicketCount = $bookingService->getUserBookedSeatCount($userId, $movieId);
-            if ($existingTicketCount + $seatCount > 10) {
-                return response()->json(['success' => false, 'message' => 'Bạn chỉ được đặt tối đa 10 vé cho mỗi khách hàng cho mỗi phim.'], 422);
+            $hardLimitPerMovie = (int) config('booking.seat_hold.max_seats_per_booking', 8);
+            if ($existingTicketCount + $seatCount > $hardLimitPerMovie) {
+                return response()->json(['success' => false, 'message' => "Bạn chỉ được đặt tối đa {$hardLimitPerMovie} vé cho mỗi khách hàng cho mỗi phim."], 422);
             }
         }
 
