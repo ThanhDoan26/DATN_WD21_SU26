@@ -101,6 +101,7 @@ class ShowtimeController extends Controller
             'end_time' => [
                 'nullable',
                 'date',
+                'after:start_time',
             ],
             'status' => ['required', Rule::in(Showtime::STATUSES)],
             'surcharge' => 'nullable|numeric|min:0',
@@ -239,6 +240,7 @@ class ShowtimeController extends Controller
             'end_time' => [
                 'nullable',
                 'date',
+                'after:start_time',
             ],
             'status' => ['required', Rule::in(Showtime::STATUSES)],
             'surcharge' => 'nullable|numeric|min:0',

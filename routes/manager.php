@@ -16,6 +16,7 @@ Route::middleware(['auth', 'role:MANAGER'])->prefix('manager')->name('manager.')
     Route::post('rooms/{id}/restore', [RoomController::class, 'restore'])->name('rooms.restore');
     Route::delete('rooms/{id}/force-delete', [RoomController::class, 'forceDelete'])->name('rooms.forceDelete');
     Route::post('rooms/{room}/seats/{seat}/toggle-status', [RoomController::class, 'toggleSeatStatus'])->name('rooms.seats.toggleStatus');
+    Route::get('seats/by-room/{roomId}', [RoomController::class, 'getBySeatsByRoom'])->name('seats.by-room');
     Route::resource('rooms', RoomController::class);
 
     // Quản lý Suất chiếu (Manager)
@@ -26,4 +27,7 @@ Route::middleware(['auth', 'role:MANAGER'])->prefix('manager')->name('manager.')
 
     // Xem danh sách Combo (Read-only)
     Route::resource('combos', ComboController::class)->only(['index', 'show']);
+
+    // Xem danh sách Phim (Read-only)
+    Route::resource('movies', \App\Http\Controllers\Manager\MovieController::class)->only(['index', 'show']);
 });

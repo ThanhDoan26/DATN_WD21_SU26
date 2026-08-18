@@ -128,6 +128,11 @@
                 </a>
             </li>
             <li>
+                <a href="{{ route('manager.movies.index') }}" class="@if(request()->routeIs('manager.movies.*')) active @endif">
+                    <i class="fas fa-film"></i> <span>Danh sách Phim</span>
+                </a>
+            </li>
+            <li>
                 <a href="#" class="">
                     <i class="fas fa-chart-bar"></i> <span>Thống kê phòng chiếu</span>
                 </a>
