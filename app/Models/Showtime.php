@@ -45,15 +45,22 @@ class Showtime extends Model
 
     /**
      * Tự động đồng bộ trạng thái thực tế của tất cả các suất chiếu dựa trên thời gian hiện tại:
-     * - Đã qua giờ kết thúc (end_time <= now) -> COMPLETED
+     * - Đã qua giờ kết thúc (end_time <= now) hoặc quá 3 tiếng nếu chưa có end_time -> COMPLETED
      * - Đang trong giờ chiếu (start_time <= now < end_time) -> ONGOING
      */
     public static function syncAllStatuses(): void
     {
         // 1. Chuyển các suất đã kết thúc sang COMPLETED
         self::where('status', '!=', self::STATUS_CANCELLED)
-            ->whereNotNull('end_time')
-            ->where('end_time', '<=', now())
+            ->where(function ($q) {
+                $q->where(function ($sub) {
+                    $sub->whereNotNull('end_time')
+                        ->where('end_time', '<=', now());
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('end_time')
+                        ->where('start_time', '<=', now()->subHours(3));
+                });
+            })
             ->where('status', '!=', self::STATUS_COMPLETED)
             ->update(['status' => self::STATUS_COMPLETED]);
 
@@ -61,8 +68,11 @@ class Showtime extends Model
         self::where('status', '!=', self::STATUS_CANCELLED)
             ->where('start_time', '<=', now())
             ->where(function ($q) {
-                $q->whereNull('end_time')
-                  ->orWhere('end_time', '>', now());
+                $q->where('end_time', '>', now())
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('end_time')
+                          ->where('start_time', '>', now()->subHours(3));
+                  });
             })
             ->where('status', '!=', self::STATUS_ONGOING)
             ->update(['status' => self::STATUS_ONGOING]);
