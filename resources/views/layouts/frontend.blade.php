@@ -46,6 +46,15 @@
     <!-- Navigation Bar -->
     @include('layouts.guest-navigation')
 
+    @if(request()->routeIs('home'))
+        @if(isset($activePendingBooking) && $activePendingBooking)
+            @include('components.booking.active-indicator', ['booking' => $activePendingBooking])
+        @elseif(session('show_active_booking_modal'))
+            {{-- Fallback if for some reason the booking was passed via session only, but usually activePendingBooking is global --}}
+            @include('components.booking.active-indicator', ['booking' => null])
+        @endif
+    @endif
+
     <!-- Main Content -->
     @yield('content')
 

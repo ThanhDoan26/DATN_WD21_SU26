@@ -32,6 +32,7 @@ class SeatHoldAbuseService
      * @param int $bookingId
      * @param int $seatCount
      * @param string|null $ipAddress
+     * @param \Carbon\Carbon|null $customExpiresAt
      * @return SeatHold
      */
     public function recordHold(
@@ -39,7 +40,8 @@ class SeatHoldAbuseService
         int $showtimeId,
         int $bookingId,
         int $seatCount,
-        ?string $ipAddress = null
+        ?string $ipAddress = null,
+        ?\Carbon\Carbon $customExpiresAt = null
     ): SeatHold {
         $durationMinutes = (int) config('booking.seat_hold.duration_minutes', 10);
 
@@ -51,7 +53,7 @@ class SeatHoldAbuseService
             'status'      => SeatHold::STATUS_ACTIVE,
             'ip_address'  => $ipAddress,
             'held_at'     => now(),
-            'expires_at'  => now()->addMinutes($durationMinutes),
+            'expires_at'  => $customExpiresAt ?? now()->addMinutes($durationMinutes),
         ]);
 
         Log::info('seat_hold_created', [

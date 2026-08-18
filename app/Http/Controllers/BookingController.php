@@ -152,6 +152,14 @@ class BookingController extends Controller
         $bookingService = new \App\Services\BookingService();
         $bookingService->cleanupExpiredPendingBookings();
 
+        // ── ACTIVE PENDING BOOKING GUARD (Frontend UX) ──
+        if (\Illuminate\Support\Facades\Auth::check()) {
+            $activePendingBooking = $bookingService->getActivePendingBooking(\Illuminate\Support\Facades\Auth::id());
+            if ($activePendingBooking && $activePendingBooking->showtime_id != $showtime->id) {
+                return redirect()->route('home')->with('show_active_booking_modal', true);
+            }
+        }
+
         // Không tự ý hủy booking của user ở đây. BookingService::createBooking() sẽ lo việc đó.
 
         // Lấy thông tin ghế và những ghế đã đặt (chỉ lấy ghế chưa hủy và chưa hết hạn)
@@ -284,5 +292,58 @@ class BookingController extends Controller
             'bookedSeats' => $bookedSeats,
             'myPendingSeats' => $myPendingSeats
         ]);
+    }
+
+    /**
+     * API: Hủy chủ động (Explicit Cancellation) lượt đặt vé Pending của User
+     */
+    public function cancelExplicit(Request $request)
+    {
+        $request->validate([
+            'showtime_id' => 'required|integer'
+        ]);
+
+        $userId = Auth::id();
+        if (!$userId) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // Tìm đúng Booking Pending của user cho suất chiếu này
+        $booking = \App\Models\Booking::where('user_id', $userId)
+            ->where('showtime_id', $request->showtime_id)
+            ->where('status', 'Pending')
+            ->first();
+
+        // Nếu không có, coi như đã hủy hoặc hết hạn -> Trả về success (Idempotent)
+        if (!$booking) {
+            return response()->json(['success' => true, 'message' => 'No active pending booking found.']);
+        }
+
+        try {
+            DB::transaction(function () use ($booking) {
+                // 1. Cập nhật trạng thái Booking
+                $booking->status = 'Cancelled';
+                $booking->cancellation_reason = 'User cancelled explicitly';
+                $booking->cancelled_at = now();
+                $booking->save();
+
+                // 2. Cập nhật trạng thái Ghế
+                DB::table('booked_seats')
+                    ->where('booking_id', $booking->id)
+                    ->update([
+                        'status' => 'CANCELLED',
+                        'updated_at' => now()
+                    ]);
+
+                // 3. Nhả SeatHold an toàn (Không tính Spam)
+                $abuseService = new \App\Services\SeatHoldAbuseService();
+                $abuseService->markReleased($booking->id);
+            });
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Explicit cancel failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Cancellation failed'], 500);
+        }
     }
 }
