@@ -43,6 +43,20 @@ class BookingService
     }
 
     /**
+     * Lấy Active Pending Booking của user (Single Source of Truth)
+     */
+    public function getActivePendingBooking(?int $userId)
+    {
+        if (!$userId) return null;
+        
+        return \App\Models\Booking::with(['showtime.movie', 'bookedSeats.seat'])
+            ->where('user_id', $userId)
+            ->where('status', 'Pending')
+            ->where('booking_time', '>=', now()->subMinutes(self::getHoldDuration()))
+            ->first();
+    }
+
+    /**
      * Tạo booking với protection chống race condition
      *
      * @param int $userId User ID (nullable cho guest)
@@ -61,26 +75,41 @@ class BookingService
         array $combos = [],
         array $extraData = []
     ): int {
-        if (empty($selectedSeatIds)) {
-            throw new Exception('Vui lòng chọn ít nhất 1 ghế');
+        $userLock = $userId ? Cache::lock("user_booking_lock_{$userId}", 10) : null;
+        if ($userLock && !$userLock->get()) {
+            throw new Exception("Hệ thống đang xử lý giao dịch của bạn. Vui lòng thử lại sau.");
         }
-
-        // ── Anti-Abuse: Validate max seats per booking ──────────────
-        $maxSeatsPerBooking = (int) config('booking.seat_hold.max_seats_per_booking', 8);
-        if (count($selectedSeatIds) > $maxSeatsPerBooking) {
-            throw new Exception(
-                "Bạn chỉ có thể chọn tối đa {$maxSeatsPerBooking} ghế mỗi lần đặt."
-            );
-        }
-
-        $inheritedBookingTime = null;
 
         try {
-            // 1. Tự động dọn dẹp các booking quá hạn trước khi kiểm tra
-            $this->cleanupExpiredPendingBookings();
+            if (empty($selectedSeatIds)) {
+                throw new Exception('Vui lòng chọn ít nhất 1 ghế');
+            }
 
-            // 2. Hủy các booking Pending cũ của chính user này đối với suất chiếu này để giải phóng ghế
-            if ($userId) {
+            // ── Anti-Abuse: Validate max seats per booking ──────────────
+            $maxSeatsPerBooking = (int) config('booking.seat_hold.max_seats_per_booking', 8);
+            if (count($selectedSeatIds) > $maxSeatsPerBooking) {
+                throw new Exception(
+                    "Bạn chỉ có thể chọn tối đa {$maxSeatsPerBooking} ghế mỗi lần đặt."
+                );
+            }
+
+            $inheritedBookingTime = null;
+
+            try {
+                // 1. Tự động dọn dẹp các booking quá hạn trước khi kiểm tra
+                $this->cleanupExpiredPendingBookings();
+
+                // 2. ACTIVE PENDING BOOKING GUARD (SSOT)
+                if ($userId) {
+                    $activePendingBooking = $this->getActivePendingBooking($userId);
+                    
+                    if ($activePendingBooking && $activePendingBooking->showtime_id != $showtimeId) {
+                        throw new Exception("Bạn đang có một đơn đặt vé chưa hoàn tất. Vui lòng hoàn thành hoặc hủy đơn hiện tại trước khi đặt vé mới.");
+                    }
+                }
+
+                // 3. Hủy các booking Pending cũ của chính user này đối với suất chiếu này để giải phóng ghế
+                if ($userId) {
                 $userPendingBookings = DB::table('bookings')
                     ->where('user_id', $userId)
                     ->where('showtime_id', $showtimeId)
@@ -189,18 +218,22 @@ class BookingService
                 }
 
                 // Kiểm tra Cooldown 15 phút (chống giam ghế)
-                // Bám sát 3 Level Anti-spam: Nếu user chỉ đang "chọn thêm ghế" ở lượt đầu (update giỏ hàng),
-                // hệ thống sẽ tự động hủy đơn cũ với lý do 'User initiated a new booking request'.
-                // Ta PHẢI LOẠI TRỪ lý do này để không hiểu lầm họ là spammer.
+                // Chỉ chặn các hành vi THỰC SỰ lạm dụng (admin hủy, hệ thống phát hiện abuse).
+                // Các lý do hủy bình thường PHẢI được loại trừ:
+                // - 'User initiated a new booking request': User chọn lại ghế (update giỏ hàng)
+                // - 'Payment timeout expired': Booking hết hạn tự nhiên, user quay lại chọn lại
+                // - 'User cancelled explicitly': User chủ động hủy rồi muốn đặt lại
                 $cooldownMinutes = 15;
                 $recentAbusedSeats = DB::table('bookings')
                     ->join('booked_seats', 'bookings.id', '=', 'booked_seats.booking_id')
                     ->where('bookings.user_id', $userId)
                     ->where('bookings.showtime_id', $showtimeId)
-                    ->where('bookings.status', 'Cancelled') // Đơn bị tự hủy hoặc hết hạn
+                    ->where('bookings.status', 'Cancelled')
                     ->whereNotIn('bookings.cancellation_reason', [
-                        'User initiated a new booking request'
-                    ]) // 🟢 BỎ QUA việc update giỏ hàng
+                        'User initiated a new booking request',
+                        'Payment timeout expired',
+                        'User cancelled explicitly',
+                    ])
                     ->where('bookings.created_at', '>=', now()->subMinutes($cooldownMinutes))
                     ->whereIn('booked_seats.seat_id', $selectedSeatIds)
                     ->select('booked_seats.seat_id')
@@ -461,11 +494,18 @@ class BookingService
             throw $e;
         } finally {
             // Giải phóng toàn bộ Redis Lock
-            foreach ($locks as $lock) {
-                $lock->release();
+            if (isset($locks) && is_array($locks)) {
+                foreach ($locks as $lock) {
+                    $lock->release();
+                }
             }
         }
+    } finally {
+        if (isset($userLock) && $userLock) {
+            $userLock->release();
+        }
     }
+}
 
     /**
      * Hủy các booking Pending quá hạn thanh toán và giải phóng ghế.

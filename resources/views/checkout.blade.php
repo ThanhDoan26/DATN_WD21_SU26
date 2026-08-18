@@ -93,6 +93,14 @@
 @section('content')
 
     <div class="max-w-6xl mx-auto px-4 pt-32 pb-20">
+        <!-- Navigation -->
+        <div class="flex items-center gap-4 mb-6">
+            <a href="{{ route('home') }}" 
+               class="text-slate-300 hover:text-white flex items-center gap-2 transition-colors px-4 py-2 bg-slate-800/50 rounded-lg backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50">
+                <i class="fas fa-home"></i> Trang chủ
+            </a>
+        </div>
+
         <div class="mb-10 text-center">
             <h1 class="text-4xl font-bold text-white mb-2"><i class="fas fa-ticket-alt text-primary mr-3"></i>Thanh Toán Vé</h1>
             <p class="text-slate-400">Hoàn tất các bước cuối cùng để thưởng thức bộ phim của bạn.</p>
@@ -405,6 +413,10 @@
                                 <i class="fas fa-arrow-left"></i>
                                 <span>Quay lại chọn thêm ghế</span>
                             </a>
+                            <button type="button" onclick="document.getElementById('cancelModal').style.display='flex'" class="w-full rounded-2xl bg-transparent border border-red-900/50 px-6 py-3 text-red-500 text-base font-bold hover:bg-red-900/20 transition-all flex items-center justify-center gap-2 mt-2">
+                                <i class="fas fa-times"></i>
+                                <span>Hủy đặt vé</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -440,6 +452,27 @@
                onmouseover="this.style.background='#b80710'" onmouseout="this.style.background='#e50914'">
                 <i class="fas fa-arrow-left"></i> Chọn lại ghế
             </a>
+        </div>
+    </div>
+
+    {{-- ======== CANCEL CONFIRMATION MODAL ======== --}}
+    <div id="cancelModal" style="display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; backdrop-filter: blur(6px);">
+        <div class="expired-card" style="animation: none;">
+            <div class="expired-icon" style="color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.15);">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h2 style="font-size:1.5rem;font-weight:800;color:#fff;margin-bottom:12px">Xác nhận hủy đặt vé</h2>
+            <p style="color:#94a3b8;font-size:0.9rem;line-height:1.6;margin-bottom:28px">
+                Bạn có chắc muốn hủy lượt đặt vé này không?<br> Các ghế bạn đang giữ sẽ được nhả lại cho hệ thống.
+            </p>
+            <div style="display: flex; gap: 1rem;">
+                <button onclick="document.getElementById('cancelModal').style.display='none'" style="flex: 1; padding: 14px; background: #334155; color: white; border-radius: 16px; font-weight: 700; border: none; cursor: pointer; transition: background 0.2s;">
+                    Tiếp tục đặt vé
+                </button>
+                <button onclick="confirmCancelBooking()" id="btnConfirmCancel" style="flex: 1; padding: 14px; background: #ef4444; color: white; border-radius: 16px; font-weight: 700; border: none; cursor: pointer; transition: background 0.2s;">
+                    Hủy đặt vé
+                </button>
+            </div>
         </div>
     </div>
 
@@ -894,5 +927,43 @@
             // Khởi tạo tính toán ban đầu
             updateOrderSummary();
         });
+
+        // --- Xử lý Explicit Cancel ---
+        function confirmCancelBooking() {
+            const btn = document.getElementById('btnConfirmCancel');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang hủy...';
+            
+            fetch("{{ route('api.booking.cancel-explicit') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                },
+                body: JSON.stringify({
+                    showtime_id: {{ $showtime->id }}
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    // Dọn dẹp session timer nếu có
+                    sessionStorage.removeItem('booking_expires_at');
+                    window.location.href = "{{ route('home') }}";
+                } else {
+                    alert(data.error || "Có lỗi xảy ra khi hủy vé.");
+                    document.getElementById('cancelModal').style.display='none';
+                    btn.disabled = false;
+                    btn.innerHTML = 'Hủy đặt vé';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Lỗi kết nối.");
+                document.getElementById('cancelModal').style.display='none';
+                btn.disabled = false;
+                btn.innerHTML = 'Hủy đặt vé';
+            });
+        }
     </script>
 @endpush
