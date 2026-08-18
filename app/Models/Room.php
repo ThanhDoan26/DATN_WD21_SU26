@@ -34,12 +34,19 @@ class Room extends Model
     }
 
     /**
-     * Kiểm tra phòng có suất chiếu hợp lệ (SCHEDULED, ONGOING)
+     * Kiểm tra phòng có suất chiếu hợp lệ
+     * - ONGOING: luôn chặn xóa (đang chiếu)
+     * - SCHEDULED: chỉ chặn nếu chưa qua giờ chiếu (end_time >= now)
      */
     public function hasActiveShowtimes(): bool
     {
         return $this->showtimes()
             ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+            ->where(function ($query) {
+                $query->where('status', Showtime::STATUS_ONGOING)
+                      ->orWhereNull('end_time')
+                      ->orWhere('end_time', '>=', now());
+            })
             ->exists();
     }
 
@@ -50,6 +57,11 @@ class Room extends Model
     {
         return $this->showtimes()
             ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+            ->where(function ($query) {
+                $query->where('status', Showtime::STATUS_ONGOING)
+                      ->orWhereNull('end_time')
+                      ->orWhere('end_time', '>=', now());
+            })
             ->count();
     }
 
@@ -60,6 +72,11 @@ class Room extends Model
     {
         return $this->showtimes()
             ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+            ->where(function ($query) {
+                $query->where('status', Showtime::STATUS_ONGOING)
+                      ->orWhereNull('end_time')
+                      ->orWhere('end_time', '>=', now());
+            })
             ->with('movie')
             ->orderBy('start_time')
             ->get();
