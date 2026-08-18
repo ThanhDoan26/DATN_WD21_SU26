@@ -37,6 +37,31 @@ class MovieDetailService
             });
         });
 
+        // Prepare mapping cinemaName => cinemaId for fetching cinema reviews
+        $cinemaNameToId = [];
+        foreach ($showtimesByCinema as $cinemaName => $group) {
+            $first = $group->flatten()->first();
+            if ($first && $first->room && $first->room->cinema) {
+                $cinemaNameToId[$cinemaName] = $first->room->cinema->id;
+            }
+        }
+
+        // Fetch active cinema reviews for cinemas shown on this movie page
+        $cinemaReviewsByName = collect();
+        if (!empty($cinemaNameToId)) {
+            $cinemaIds = array_values($cinemaNameToId);
+            $cinemaReviews = \App\Models\CinemaReview::with('user')
+                ->whereIn('cinema_id', $cinemaIds)
+                ->where('status', 'ACTIVE')
+                ->orderByDesc('created_at')
+                ->get()
+                ->groupBy('cinema_id');
+
+            foreach ($cinemaNameToId as $name => $cid) {
+                $cinemaReviewsByName[$name] = $cinemaReviews->get($cid, collect());
+            }
+        }
+
         // 3. Lấy ra các phim liên quan (cùng category, ưu tiên Now Showing và Coming Soon)
         $categoryIds = $movie->categories->pluck('id');
         $relatedMovies = collect();
@@ -54,7 +79,19 @@ class MovieDetailService
         }
 
         // 4. Load reviews and check review permission
-        $reviews = $movie->reviews()->with('user')->where('status', 'ACTIVE')->orderBy('created_at', 'desc')->get();
+        // By default only show ACTIVE reviews. If the current user has submitted
+        // a review (pending approval), include it so the author can see their own review.
+        $reviewsQuery = $movie->reviews()->with('user')->orderBy('created_at', 'desc');
+
+        if (auth()->check()) {
+            $userId = auth()->id();
+            $reviews = $reviewsQuery->where(function($q) use ($userId) {
+                $q->where('status', 'ACTIVE')
+                  ->orWhere('user_id', $userId);
+            })->get();
+        } else {
+            $reviews = $reviewsQuery->where('status', 'ACTIVE')->get();
+        }
         
         $canReview = false;
         $userReview = null;
@@ -124,6 +161,7 @@ class MovieDetailService
             'canEditReview' => $canEditReview,
             'purchasedCombos' => $purchasedCombos,
             'comboReviews' => $comboReviews,
+            'cinemaReviewsByName' => $cinemaReviewsByName,
         ];
     }
 }
