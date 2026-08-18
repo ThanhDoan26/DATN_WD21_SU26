@@ -47,9 +47,10 @@ class MovieSearchService
         });
 
         // Tối ưu N+1: eager load categories và showtimes 
-        // Đối với showtimes, chỉ lấy các lịch chiếu hợp lệ để hiển thị
+        // Đối với showtimes, chỉ lấy các lịch chiếu hợp lệ trong tương lai để hiển thị
         $query->with(['categories', 'showtimes' => function ($q) {
             $q->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+              ->where('start_time', '>=', now())
               ->orderBy('start_time');
         }]);
 

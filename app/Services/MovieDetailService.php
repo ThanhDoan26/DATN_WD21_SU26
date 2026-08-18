@@ -20,11 +20,11 @@ class MovieDetailService
         // 1. Fetch movie with categories to avoid N+1
         $movie = Movie::with('categories')->findOrFail($id);
 
-        // 2. Lấy danh sách suất chiếu của phim (chỉ lấy suất SCHEDULED và còn hạn)
+        // 2. Lấy danh sách suất chiếu của phim (chỉ lấy suất SCHEDULED và còn hạn đặt online trước 15 phút)
         // Group by Cinema then by Date
         $showtimes = Showtime::where('movie_id', $id)
             ->where('status', Showtime::STATUS_SCHEDULED)
-            ->where('start_time', '>=', now())
+            ->where('start_time', '>', now()->addMinutes(15))
             ->with(['room.cinema'])
             ->orderBy('start_time', 'asc')
             ->get();

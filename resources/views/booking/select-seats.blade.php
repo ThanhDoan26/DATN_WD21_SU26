@@ -49,12 +49,12 @@
             gap: 6px;
         }
 
-        /* Sweetbox rows use tighter gap */
+        /* Sweetbox rows gap matches regular rows */
         .seat-row.sweetbox-row {
             gap: 6px;
         }
         .seat-row.sweetbox-row .row-seats {
-            gap: 4px;
+            gap: 8px;
         }
 
         .row-label {
@@ -115,8 +115,8 @@
         /* Double / Sweetbox Seat (Hồng) */
         .seat.sweetbox {
             background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
-            width: 60px;
-            height: 40px;
+            width: 92px;
+            height: 42px;
             border-color: #be185d;
             color: #ffffff;
             font-weight: 800;
@@ -359,6 +359,18 @@
     <!-- Page Header -->
     <div class="bg-gradient-to-b from-slate-800 to-slate-900 pt-32 pb-16 px-4">
         <div class="max-w-7xl mx-auto">
+            <!-- Navigation -->
+            <div class="flex items-center gap-4 mb-6">
+                <a href="{{ route('booking.select-dates-showtimes', ['movie' => $showtime->movie_id, 'cinema' => $showtime->room->cinema_id]) }}" 
+                   class="text-slate-300 hover:text-white flex items-center gap-2 transition-colors px-4 py-2 bg-slate-800/50 rounded-lg backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50">
+                    <i class="fas fa-arrow-left"></i> Quay lại
+                </a>
+                <a href="{{ route('home') }}" 
+                   class="text-slate-300 hover:text-white flex items-center gap-2 transition-colors px-4 py-2 bg-slate-800/50 rounded-lg backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50">
+                    <i class="fas fa-home"></i> Trang chủ
+                </a>
+            </div>
+
             <div class="flex items-center gap-4 mb-4">
                 <i class="fas fa-chair text-primary text-4xl"></i>
                 <h1 class="text-5xl md:text-6xl font-bold">Chọn Ghế</h1>
@@ -517,7 +529,12 @@
 
             <!-- Actions -->
             <div class="flex gap-3 w-full md:w-auto mt-2 md:mt-0">
-                <a href="javascript:history.back()" class="bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-lg transition whitespace-nowrap text-center">
+                @if($expiresAtMs)
+                    <button type="button" onclick="document.getElementById('cancelModal').style.display='flex'" class="bg-slate-700 hover:bg-red-600 text-white font-medium py-3 px-6 rounded-lg transition whitespace-nowrap text-center border border-slate-600">
+                        Hủy đặt vé
+                    </button>
+                @endif
+                <a href="{{ route('booking.select-dates-showtimes', ['movie' => $showtime->movie_id, 'cinema' => $showtime->room->cinema_id]) }}" class="bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-lg transition whitespace-nowrap text-center">
                     Quay lại
                 </a>
                 <button type="button"
@@ -558,6 +575,27 @@
                style="display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#e50914;color:#fff;font-weight:700;padding:14px 32px;border-radius:16px;border:none;cursor:pointer;width:100%;transition:background 0.2s">
                 <i class="fas fa-redo"></i> Chọn lại ghế
             </button>
+        </div>
+    </div>
+
+    {{-- ======== CANCEL CONFIRMATION MODAL ======== --}}
+    <div id="cancelModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div style="background: #1e293b; padding: 2rem; border-radius: 1rem; max-width: 400px; width: 90%; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+            <div style="font-size: 3rem; color: #ef4444; text-align: center; margin-bottom: 1rem;">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 style="color: white; font-size: 1.25rem; font-weight: bold; text-align: center; margin-bottom: 1rem;">Xác nhận hủy đặt vé</h3>
+            <p style="color: #94a3b8; text-align: center; margin-bottom: 2rem;">
+                Bạn có chắc muốn hủy lượt đặt vé này không? Các ghế bạn đang giữ sẽ được nhả lại cho hệ thống.
+            </p>
+            <div style="display: flex; gap: 1rem;">
+                <button onclick="document.getElementById('cancelModal').style.display='none'" style="flex: 1; padding: 0.75rem; background: #334155; color: white; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s;">
+                    Tiếp tục đặt vé
+                </button>
+                <button onclick="confirmCancelBooking()" id="btnConfirmCancel" style="flex: 1; padding: 0.75rem; background: #ef4444; color: white; border-radius: 0.5rem; font-weight: bold; transition: background 0.2s;">
+                    Hủy đặt vé
+                </button>
+            </div>
         </div>
     </div>
 
@@ -836,6 +874,42 @@
 
             tick();
             setInterval(tick, 1000);
+        }
+
+        // --- Xử lý Explicit Cancel ---
+        function confirmCancelBooking() {
+            const btn = document.getElementById('btnConfirmCancel');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang hủy...';
+            
+            fetch("{{ route('api.booking.cancel-explicit') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                },
+                body: JSON.stringify({
+                    showtime_id: showtimeId
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    window.location.href = "{{ route('home') }}";
+                } else {
+                    alert(data.error || "Có lỗi xảy ra khi hủy vé.");
+                    document.getElementById('cancelModal').style.display='none';
+                    btn.disabled = false;
+                    btn.innerHTML = 'Hủy đặt vé';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Lỗi kết nối.");
+                document.getElementById('cancelModal').style.display='none';
+                btn.disabled = false;
+                btn.innerHTML = 'Hủy đặt vé';
+            });
         }
 
         // Restore seats on page load, then start polling every 3 seconds

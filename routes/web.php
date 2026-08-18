@@ -79,6 +79,9 @@ Route::prefix('api/booking')->controller(\App\Http\Controllers\BookingController
 
     // Cập nhật Real-time (Polling): Lấy danh sách ghế đã được đặt/giữ
     Route::get('/showtime/{showtime}/booked-seats', 'getBookedSeatsAPI')->name('api.booking.booked-seats');
+
+    // Hủy chủ động (Explicit Cancel)
+    Route::post('/cancel-explicit', 'cancelExplicit')->middleware('auth')->name('api.booking.cancel-explicit');
 });
 
 // Frontend API/AJAX routes

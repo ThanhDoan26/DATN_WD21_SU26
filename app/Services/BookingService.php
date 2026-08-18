@@ -43,6 +43,20 @@ class BookingService
     }
 
     /**
+     * Lấy Active Pending Booking của user (Single Source of Truth)
+     */
+    public function getActivePendingBooking(?int $userId)
+    {
+        if (!$userId) return null;
+        
+        return \App\Models\Booking::with(['showtime.movie', 'bookedSeats.seat'])
+            ->where('user_id', $userId)
+            ->where('status', 'Pending')
+            ->where('booking_time', '>=', now()->subMinutes(self::getHoldDuration()))
+            ->first();
+    }
+
+    /**
      * Tạo booking với protection chống race condition
      *
      * @param int $userId User ID (nullable cho guest)
@@ -61,52 +75,68 @@ class BookingService
         array $combos = [],
         array $extraData = []
     ): int {
-        if (empty($selectedSeatIds)) {
-            throw new Exception('Vui lòng chọn ít nhất 1 ghế');
-        }
-
-        // Anti-abuse: Validate max seats per booking (config-driven)
-        $selectedSeatCount = count(array_unique(array_values($selectedSeatIds)));
-        $maxSeatsPerBooking = (int) config('booking.seat_hold.max_seats_per_booking', 8);
-        if ($selectedSeatCount > $maxSeatsPerBooking) {
-            throw new Exception("Bạn chỉ có thể chọn tối đa {$maxSeatsPerBooking} ghế mỗi lần đặt.");
-        }
-
-        // Hard cap per user per movie: cancel old pending for movie then check existing paid/used seats
-        if ($userId) {
-            $movieId = $this->getMovieIdFromShowtime($showtimeId);
-            $this->cancelUserPendingBookingsForMovie($userId, $movieId);
-            $existingTicketCount = $this->getUserBookedSeatCount($userId, $movieId);
-            // Use config-driven max seats per booking as per product rules.
-            $hardLimitPerMovie = (int) config('booking.seat_hold.max_seats_per_booking', 8);
-            if ($existingTicketCount + $selectedSeatCount > $hardLimitPerMovie) {
-                throw new Exception("Bạn chỉ được đặt tối đa {$hardLimitPerMovie} vé cho mỗi khách hàng cho mỗi phim.");
-            }
+        // Apply user lock to prevent concurrent booking attempts
+        $userLock = $userId ? Cache::lock("user_booking_lock_{$userId}", 10) : null;
+        if ($userLock && !$userLock->get()) {
+            throw new Exception("Hệ thống đang xử lý giao dịch của bạn. Vui lòng thử lại sau.");
         }
 
         try {
+            if (empty($selectedSeatIds)) {
+                throw new Exception('Vui lòng chọn ít nhất 1 ghế');
+            }
+
+            // Anti-abuse: Validate max seats per booking (config-driven)
+            $selectedSeatCount = count(array_unique(array_values($selectedSeatIds)));
+            $maxSeatsPerBooking = (int) config('booking.seat_hold.max_seats_per_booking', 8);
+            if ($selectedSeatCount > $maxSeatsPerBooking) {
+                throw new Exception("Bạn chỉ có thể chọn tối đa {$maxSeatsPerBooking} ghế mỗi lần đặt.");
+            }
+
+            // Hard cap per user per movie: cancel old pending for movie then check existing paid/used seats
+            if ($userId) {
+                $movieId = $this->getMovieIdFromShowtime($showtimeId);
+                $this->cancelUserPendingBookingsForMovie($userId, $movieId);
+                $existingTicketCount = $this->getUserBookedSeatCount($userId, $movieId);
+                // Use config-driven max seats per booking as per product rules.
+                $hardLimitPerMovie = (int) config('booking.seat_hold.max_seats_per_booking', 8);
+                if ($existingTicketCount + $selectedSeatCount > $hardLimitPerMovie) {
+                    throw new Exception("Bạn chỉ được đặt tối đa {$hardLimitPerMovie} vé cho mỗi khách hàng cho mỗi phim.");
+                }
+            }
+
             $this->cleanupExpiredPendingBookings();
 
-            // 2. Hủy các booking Pending cũ của chính user này đối với suất chiếu này để giải phóng ghế
-            if ($userId) {
-                $userPendingBookingIds = DB::table('bookings')
+            $inheritedBookingTime = null;
+
+            try {
+                // 1. Tự động dọn dẹp các booking quá hạn trước khi kiểm tra
+                // 2. ACTIVE PENDING BOOKING GUARD (SSOT)
+                if ($userId) {
+                    $activePendingBooking = $this->getActivePendingBooking($userId);
+                    
+                    if ($activePendingBooking && $activePendingBooking->showtime_id != $showtimeId) {
+                        throw new Exception("Bạn đang có một đơn đặt vé chưa hoàn tất. Vui lòng hoàn thành hoặc hủy đơn hiện tại trước khi đặt vé mới.");
+                    }
+                }
+
+                // 3. Hủy các booking Pending cũ của chính user này đối với suất chiếu này để giải phóng ghế
+                if ($userId) {
+                $userPendingBookings = DB::table('bookings')
                     ->where('user_id', $userId)
                     ->where('showtime_id', $showtimeId)
                     ->where('status', 'Pending')
-                    ->pluck('id')
-                    ->toArray();
-
-                $cartUpdateCount = DB::table('bookings')
-                    ->where('user_id', $userId)
-                    ->where('showtime_id', $showtimeId)
-                    ->where('status', 'Cancelled')
-                    ->where('cancellation_reason', 'User initiated a new booking request')
-                    ->where('created_at', '>=', now()->subMinutes(15))
-                    ->count();
-
-                $isSpamUpdate = ($cartUpdateCount >= 1); // Đã update 1 lần (Lần 2). Lần này là Lần 3.
+                    ->select('id', 'booking_time')
+                    ->get();
+                
+                $userPendingBookingIds = $userPendingBookings->pluck('id')->toArray();
 
                 if (!empty($userPendingBookingIds)) {
+                    $oldestBookingTime = $userPendingBookings->min('booking_time');
+                    if ($oldestBookingTime) {
+                        $inheritedBookingTime = \Carbon\Carbon::parse($oldestBookingTime);
+                    }
+
                     // Hoàn lại lượt dùng mã giảm giá nếu có
                     $bookingsWithCoupons = DB::table('bookings')
                         ->whereIn('id', $userPendingBookingIds)
@@ -125,7 +155,7 @@ class BookingService
                         ->whereIn('id', $userPendingBookingIds)
                         ->update([
                             'status' => 'Cancelled',
-                            'cancellation_reason' => $isSpamUpdate ? 'Cart update abuse' : 'User initiated a new booking request',
+                            'cancellation_reason' => 'User initiated a new booking request',
                             'cancelled_at' => now(),
                             'updated_at' => now(),
                         ]);
@@ -137,25 +167,12 @@ class BookingService
                             'updated_at' => now(),
                         ]);
 
-                    // ── Anti-Abuse: Mark released/expired cho tracking ──
-                    $isRestrictedNow = false;
+                    // ── Anti-Abuse: Mark released cho tracking ──
                     try {
                         $abuseServiceCleanup = new SeatHoldAbuseService();
                         foreach ($userPendingBookingIds as $pendingId) {
-                            if ($isSpamUpdate) {
-                                // Lần 3 trở đi: Tính Spam
-                                $abuseServiceCleanup->markExpired($pendingId);
-                            } else {
-                                // Lần 2: Bình thường, KHÔNG tính Spam
-                                $abuseServiceCleanup->markReleased($pendingId);
-                            }
-                        }
-                        
-                        if ($isSpamUpdate) {
-                            $abuseStatus = $abuseServiceCleanup->checkAndApplyAbuse($userId);
-                            if ($abuseStatus === 'restriction' || $abuseServiceCleanup->isRestricted($userId)) {
-                                $isRestrictedNow = true;
-                            }
+                            // User chủ động sửa giỏ hàng -> nhả ghế tự nguyện -> RELEASED
+                            $abuseServiceCleanup->markReleased($pendingId);
                         }
                     } catch (\Exception $trackingEx) {
                         \Illuminate\Support\Facades\Log::warning('Tracking markReleased failed: ' . $trackingEx->getMessage());
@@ -166,8 +183,11 @@ class BookingService
             \Illuminate\Support\Facades\Log::error('Pre-booking cleanup failed: ' . $e->getMessage());
         }
 
-        if (isset($isRestrictedNow) && $isRestrictedNow) {
-            throw new Exception("Hệ thống phát hiện Spam: Tài khoản của bạn bị giới hạn đặt ghế tạm thời do thay đổi số lượng ghế liên tục quá nhiều lần.");
+        if ($inheritedBookingTime) {
+            $holdDuration = self::getHoldDuration();
+            if ($inheritedBookingTime->copy()->addMinutes($holdDuration)->isPast()) {
+                throw new Exception("Thời gian giữ ghế của bạn đã hết. Vui lòng tải lại trang và chọn lại ghế mới.");
+            }
         }
 
         // 3. Thực hiện validate sau khi đã giải phóng các ghế hết hạn và ghế cũ của chính user
@@ -210,19 +230,22 @@ class BookingService
                 }
 
                 // Kiểm tra Cooldown 15 phút (chống giam ghế)
-                // Bám sát 3 Level Anti-spam: Nếu user chỉ đang "chọn thêm ghế" ở lượt đầu (update giỏ hàng),
-                // hệ thống sẽ tự động hủy đơn cũ với lý do 'User initiated a new booking request'.
-                // Ta PHẢI LOẠI TRỪ lý do này để không hiểu lầm họ là spammer.
+                // Chỉ chặn các hành vi THỰC SỰ lạm dụng (admin hủy, hệ thống phát hiện abuse).
+                // Các lý do hủy bình thường PHẢI được loại trừ:
+                // - 'User initiated a new booking request': User chọn lại ghế (update giỏ hàng)
+                // - 'Payment timeout expired': Booking hết hạn tự nhiên, user quay lại chọn lại
+                // - 'User cancelled explicitly': User chủ động hủy rồi muốn đặt lại
                 $cooldownMinutes = 15;
                 $recentAbusedSeats = DB::table('bookings')
                     ->join('booked_seats', 'bookings.id', '=', 'booked_seats.booking_id')
                     ->where('bookings.user_id', $userId)
                     ->where('bookings.showtime_id', $showtimeId)
-                    ->where('bookings.status', 'Cancelled') // Đơn bị tự hủy hoặc hết hạn
+                    ->where('bookings.status', 'Cancelled')
                     ->whereNotIn('bookings.cancellation_reason', [
                         'User initiated a new booking request',
-                        'Cart update abuse'
-                    ]) // 🟢 BỎ QUA việc update giỏ hàng
+                        'Payment timeout expired',
+                        'User cancelled explicitly',
+                    ])
                     ->where('bookings.created_at', '>=', now()->subMinutes($cooldownMinutes))
                     ->whereIn('booked_seats.seat_id', $selectedSeatIds)
                     ->select('booked_seats.seat_id')
@@ -236,7 +259,7 @@ class BookingService
             }
 
             // ── Bước 3: Cập nhật giữ ghế (Thực thi an toàn) ──────────────
-            $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData) {
+            $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData, $inheritedBookingTime) {
 
                 // ================================================================
                 // Step 1: Lock các hàng ghế (chỉ 1 request được giữ lock)
@@ -305,6 +328,33 @@ class BookingService
 
                 if (!$showtime) {
                     throw new Exception("Suất chiếu $showtimeId không tồn tại");
+                }
+
+                $startTime = \Carbon\Carbon::parse($showtime->start_time);
+                $endTime = $showtime->end_time ? \Carbon\Carbon::parse($showtime->end_time) : null;
+                $isWalkIn = ($extraData['booking_source'] ?? 'online') !== 'online';
+
+                // Kiểm tra trạng thái và thời gian đặt vé theo quy định
+                if ($showtime->status === 'CANCELLED') {
+                    throw new Exception("Suất chiếu này đã bị hủy, không thể đặt vé.");
+                }
+
+                if ($isWalkIn) {
+                    // Tại quầy: Cho phép trong 30 phút đầu kể từ khi bắt đầu chiếu (và chưa kết thúc)
+                    if ($endTime && now()->gte($endTime)) {
+                        throw new Exception("Suất chiếu này đã kết thúc, không thể xuất vé.");
+                    }
+                    if (now()->gt($startTime->copy()->addMinutes(30))) {
+                        throw new Exception("Suất chiếu đã bắt đầu quá 30 phút, hệ thống đã khóa bán vé.");
+                    }
+                } else {
+                    // Trực tuyến (Online): Khóa trước giờ chiếu 15 phút
+                    if ($showtime->status !== 'SCHEDULED') {
+                        throw new Exception("Suất chiếu này không còn mở bán trực tuyến.");
+                    }
+                    if (now()->addMinutes(15)->gte($startTime)) {
+                        throw new Exception("Suất chiếu này đã đóng cổng đặt vé trực tuyến (cần đặt trước giờ chiếu tối thiểu 15 phút). Vui lòng mua vé trực tiếp tại quầy hoặc chọn suất chiếu khác.");
+                    }
                 }
 
                 $ticketPrices = DB::table('ticket_prices')
@@ -407,7 +457,7 @@ class BookingService
                     'discount_amount' => $discountAmount,
                     'status' => 'Pending',
                     'payment_method' => $paymentMethod,
-                    'booking_time' => now(),
+                    'booking_time' => $inheritedBookingTime ?? now(),
                     'booking_code' => $bookingCode,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -455,12 +505,14 @@ class BookingService
             if ($userId) {
                 try {
                     $holdAbuseService = new SeatHoldAbuseService();
+                    $customExpiresAt = $inheritedBookingTime ? $inheritedBookingTime->copy()->addMinutes(self::getHoldDuration()) : null;
                     $holdAbuseService->recordHold(
                         $userId,
                         $showtimeId,
                         $bookingId,
                         count($selectedSeatIds),
-                        request()?->ip()
+                        request()?->ip(),
+                        $customExpiresAt
                     );
                 } catch (\Exception $trackingEx) {
                     // Tracking failure KHÔNG được block booking flow
@@ -481,11 +533,18 @@ class BookingService
             throw $e;
         } finally {
             // Giải phóng toàn bộ Redis Lock
-            foreach ($locks as $lock) {
-                $lock->release();
+            if (isset($locks) && is_array($locks)) {
+                foreach ($locks as $lock) {
+                    $lock->release();
+                }
             }
         }
+    } finally {
+        if (isset($userLock) && $userLock) {
+            $userLock->release();
+        }
     }
+}
 
     /**
      * Hủy các booking Pending quá hạn thanh toán và giải phóng ghế.
