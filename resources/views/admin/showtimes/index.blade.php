@@ -61,7 +61,9 @@
                     <select name="status" class="form-select">
                         <option value="">Tất cả</option>
                         @foreach(\App\Models\Showtime::STATUSES as $status)
-                            <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>{{ ucfirst(strtolower($status)) }}</option>
+                            <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>
+                                {{ \App\Models\Showtime::STATUS_LABELS[$status] ?? ucfirst(strtolower($status)) }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
@@ -108,9 +110,15 @@
                             <a href="{{ route('admin.showtimes.show', $showtime->id) }}" class="btn btn-sm btn-secondary" title="Xem chi tiết">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <a href="{{ route('admin.showtimes.edit', $showtime->id) }}" class="btn btn-sm btn-warning" title="Sửa">
-                                <i class="fas fa-edit"></i>
-                            </a>
+                            @if($showtime->status === \App\Models\Showtime::STATUS_COMPLETED || ($showtime->end_time && $showtime->end_time <= now()))
+                                <button class="btn btn-sm btn-secondary disabled" title="Suất chiếu đã kết thúc trong quá khứ, không thể sửa" disabled style="opacity: 0.5; cursor: not-allowed;">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            @else
+                                <a href="{{ route('admin.showtimes.edit', $showtime->id) }}" class="btn btn-sm btn-warning" title="Sửa">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            @endif
                             <form action="{{ route('admin.showtimes.destroy', $showtime->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa mềm suất chiếu này?');">
                                 @csrf
                                 @method('DELETE')

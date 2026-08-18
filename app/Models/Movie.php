@@ -108,12 +108,18 @@ class Movie extends Model
     }
 
     /**
-     * Kiểm tra phim có suất chiếu hợp lệ (SCHEDULED, ONGOING)
+     * Kiểm tra phim có suất chiếu hợp lệ (SCHEDULED, ONGOING và chưa kết thúc)
      */
     public function hasActiveShowtimes(): bool
     {
         return $this->showtimes()
             ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+            ->where(function ($q) {
+                $q->where('end_time', '>', now())
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('end_time')->where('start_time', '>', now()->subHours(3));
+                  });
+            })
             ->exists();
     }
 
@@ -124,6 +130,12 @@ class Movie extends Model
     {
         return $this->showtimes()
             ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+            ->where(function ($q) {
+                $q->where('end_time', '>', now())
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('end_time')->where('start_time', '>', now()->subHours(3));
+                  });
+            })
             ->count();
     }
 }

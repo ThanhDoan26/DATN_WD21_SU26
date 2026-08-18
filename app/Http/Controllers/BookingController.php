@@ -20,19 +20,19 @@ class BookingController extends Controller
      */
     public function selectCinema(Movie $movie): View
     {
-        // Lấy danh sách rạp có suất chiếu cho phim này
+        // Lấy danh sách rạp có suất chiếu còn mở bán online (trước giờ chiếu tối thiểu 15 phút)
         $cinemas = Cinema::whereHas('rooms', function ($query) use ($movie) {
             $query->whereHas('showtimes', function ($q) use ($movie) {
                 $q->where('movie_id', $movie->id)
-                  ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
-                  ->where('start_time', '>', now());
+                  ->where('status', Showtime::STATUS_SCHEDULED)
+                  ->where('start_time', '>', now()->addMinutes(15));
             });
         })
         ->with(['rooms' => function ($query) use ($movie) {
             $query->whereHas('showtimes', function ($q) use ($movie) {
                 $q->where('movie_id', $movie->id)
-                  ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
-                  ->where('start_time', '>', now());
+                  ->where('status', Showtime::STATUS_SCHEDULED)
+                  ->where('start_time', '>', now()->addMinutes(15));
             });
         }])
         ->get();
@@ -56,7 +56,7 @@ class BookingController extends Controller
 
     /**
      * API: Lấy danh sách ngày chiếu
-     * Bước 2: Chọn ngày chiếu - chỉ hiển thị ngày có suất chiếu
+     * Bước 2: Chọn ngày chiếu - chỉ hiển thị ngày có suất chiếu còn mở bán online
      */
     public function getDates(Request $request): JsonResponse
     {
@@ -68,13 +68,13 @@ class BookingController extends Controller
             return response()->json(['error' => 'Missing parameters'], 400);
         }
 
-        // Lấy danh sách ngày chiếu theo phim + rạp
+        // Lấy danh sách ngày chiếu theo phim + rạp (chỉ lấy suất mở bán online)
         $dates = Showtime::where('movie_id', $movieId)
             ->whereHas('room', function ($query) use ($cinemaId) {
                 $query->where('cinema_id', $cinemaId);
             })
-            ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
-            ->where('start_time', '>', now())
+            ->where('status', Showtime::STATUS_SCHEDULED)
+            ->where('start_time', '>', now()->addMinutes(15))
             ->selectRaw('DATE(start_time) as date')
             ->distinct()
             ->pluck('date')
@@ -91,7 +91,7 @@ class BookingController extends Controller
 
     /**
      * API: Lấy danh sách suất chiếu
-     * Bước 3: Chọn suất chiếu theo phim, rạp, ngày
+     * Bước 3: Chọn suất chiếu theo phim, rạp, ngày (chỉ lấy suất mở bán online)
      */
     public function getShowtimes(Request $request): JsonResponse
     {
@@ -109,9 +109,9 @@ class BookingController extends Controller
             ->whereHas('room', function ($query) use ($cinemaId) {
                 $query->where('cinema_id', $cinemaId);
             })
-            ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+            ->where('status', Showtime::STATUS_SCHEDULED)
             ->whereDate('start_time', $date)
-            ->where('start_time', '>', now())
+            ->where('start_time', '>', now()->addMinutes(15))
             ->with(['room' => function ($q) {
                 $q->select('id', 'name', 'format', 'cinema_id')->with('cinema:id,name');
             }])
@@ -141,20 +141,24 @@ class BookingController extends Controller
      * Bước 4: Chọn ghế và tiến hành đặt vé
      * Hiển thị sơ đồ ghế của suất chiếu
      */
-    public function selectSeats(Showtime $showtime): View
+    public function selectSeats(Showtime $showtime)
     {
-        // Kiểm tra showtime có hợp lệ không
-        if ($showtime->status !== Showtime::STATUS_SCHEDULED && $showtime->status !== Showtime::STATUS_ONGOING) {
-            return abort(404);
-        }
-
-        if ($showtime->start_time <= now()) {
-            return abort(404);
+        // Kiểm tra suất chiếu có còn được phép đặt vé online không
+        if (!$showtime->isOnlineBookable()) {
+            return redirect()->route('home')->with('error', 'Suất chiếu này đã đóng cổng đặt vé trực tuyến (cần đặt trước giờ chiếu tối thiểu 15 phút). Vui lòng mua vé tại quầy hoặc chọn suất chiếu khác.');
         }
 
         // Tự động dọn dẹp các booking quá hạn trước khi hiển thị sơ đồ ghế
         $bookingService = new \App\Services\BookingService();
         $bookingService->cleanupExpiredPendingBookings();
+
+        // ── ACTIVE PENDING BOOKING GUARD (Frontend UX) ──
+        if (\Illuminate\Support\Facades\Auth::check()) {
+            $activePendingBooking = $bookingService->getActivePendingBooking(\Illuminate\Support\Facades\Auth::id());
+            if ($activePendingBooking && $activePendingBooking->showtime_id != $showtime->id) {
+                return redirect()->route('home')->with('show_active_booking_modal', true);
+            }
+        }
 
         // Không tự ý hủy booking của user ở đây. BookingService::createBooking() sẽ lo việc đó.
 
@@ -288,5 +292,58 @@ class BookingController extends Controller
             'bookedSeats' => $bookedSeats,
             'myPendingSeats' => $myPendingSeats
         ]);
+    }
+
+    /**
+     * API: Hủy chủ động (Explicit Cancellation) lượt đặt vé Pending của User
+     */
+    public function cancelExplicit(Request $request)
+    {
+        $request->validate([
+            'showtime_id' => 'required|integer'
+        ]);
+
+        $userId = Auth::id();
+        if (!$userId) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // Tìm đúng Booking Pending của user cho suất chiếu này
+        $booking = \App\Models\Booking::where('user_id', $userId)
+            ->where('showtime_id', $request->showtime_id)
+            ->where('status', 'Pending')
+            ->first();
+
+        // Nếu không có, coi như đã hủy hoặc hết hạn -> Trả về success (Idempotent)
+        if (!$booking) {
+            return response()->json(['success' => true, 'message' => 'No active pending booking found.']);
+        }
+
+        try {
+            DB::transaction(function () use ($booking) {
+                // 1. Cập nhật trạng thái Booking
+                $booking->status = 'Cancelled';
+                $booking->cancellation_reason = 'User cancelled explicitly';
+                $booking->cancelled_at = now();
+                $booking->save();
+
+                // 2. Cập nhật trạng thái Ghế
+                DB::table('booked_seats')
+                    ->where('booking_id', $booking->id)
+                    ->update([
+                        'status' => 'CANCELLED',
+                        'updated_at' => now()
+                    ]);
+
+                // 3. Nhả SeatHold an toàn (Không tính Spam)
+                $abuseService = new \App\Services\SeatHoldAbuseService();
+                $abuseService->markReleased($booking->id);
+            });
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Explicit cancel failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Cancellation failed'], 500);
+        }
     }
 }

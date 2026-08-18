@@ -32,21 +32,11 @@ class Coupon extends Model
     ];
 
     /**
-     * Scope lọc các mã giảm giá đang hoạt động và hợp lệ về thời hạn & số lượt
+     * Tự động chuyển type về chữ thường khi lấy dữ liệu để tránh lỗi case-sensitive
      */
-    public function scopeActiveAndValid($query)
+    public function getTypeAttribute($value)
     {
-        $now = now();
-        return $query->where('status', 'ACTIVE')
-            ->where(function ($q) use ($now) {
-                $q->whereNull('start_date')->orWhere('start_date', '<=', $now);
-            })
-            ->where(function ($q) use ($now) {
-                $q->whereNull('end_date')->orWhere('end_date', '>=', $now);
-            })
-            ->where(function ($q) {
-                $q->where('quantity', 0)->orWhereRaw('used_count < quantity');
-            });
+        return $value ? strtolower($value) : $value;
     }
 
     /**
@@ -59,12 +49,12 @@ class Coupon extends Model
     public function isValid($orderTotal, $userId = null)
     {
         if ($this->status !== 'ACTIVE') {
-            return ['valid' => false, 'message' => 'Mã giảm giá của bạn không hoạt động hoặc có thể bị khóa.'];
+            return ['valid' => false, 'message' => 'Mã giảm giá cảu bạn không thể hoạt động hoặc có thể bị khoá'];
         }
 
         $now = now();
         if ($this->start_date && $now->lt($this->start_date)) {
-            return ['valid' => false, 'message' => 'Mã giảm giá của bạn vẫn chưa đến thời gian sử dụng!'];
+            return ['valid' => false, 'message' => 'Mã giam giá của bạn vẫn chưa đến thời gian sử dụng!'];
         }
 
         if ($this->end_date && $now->gt($this->end_date)) {
@@ -76,7 +66,7 @@ class Coupon extends Model
         }
 
         if ($orderTotal < $this->min_order_value) {
-            return ['valid' => false, 'message' => 'Giá trị đơn hàng của bạn chưa đạt mức tối thiểu (' . number_format($this->min_order_value, 0, ',', '.') . ' VNĐ) để sử dụng mã này.'];
+            return ['valid' => false, 'message' => 'Gia trị đơn hàng cảu bạn chưa đạt mức tối thiểu (' . number_format($this->min_order_value, 0, ',', '.') . ' VNĐ) để sử dụng mã này.'];
         }
 
         // Kiểm tra xem User này đã sử dụng mã này chưa (nếu có truyền userId)
@@ -92,7 +82,7 @@ class Coupon extends Model
             }
         }
 
-        return ['valid' => true, 'message' => 'Mã giảm giá của bạn hợp lệ!'];
+        return ['valid' => true, 'message' => 'Mã giảm của bạn hợp lệ!'];
     }
 
     /**
@@ -112,5 +102,29 @@ class Coupon extends Model
         }
 
         return min($this->value, $orderTotal); // Giảm tối đa bằng giá trị đơn hàng
+    }
+
+    /**
+     * Scope a query to only include active and valid coupons.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeActiveAndValid($query)
+    {
+        $now = now();
+        return $query->where('status', 'ACTIVE')
+            ->where(function ($q) use ($now) {
+                $q->whereNull('start_date')
+                  ->orWhere('start_date', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->whereNull('end_date')
+                  ->orWhere('end_date', '>=', $now);
+            })
+            ->where(function ($q) {
+                $q->where('quantity', '<=', 0)
+                  ->orWhereColumn('used_count', '<', 'quantity');
+            });
     }
 }
