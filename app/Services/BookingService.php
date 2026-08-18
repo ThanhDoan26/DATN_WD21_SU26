@@ -75,6 +75,7 @@ class BookingService
         array $combos = [],
         array $extraData = []
     ): int {
+        // Apply user lock to prevent concurrent booking attempts
         $userLock = $userId ? Cache::lock("user_booking_lock_{$userId}", 10) : null;
         if ($userLock && !$userLock->get()) {
             throw new Exception("Hệ thống đang xử lý giao dịch của bạn. Vui lòng thử lại sau.");
@@ -85,20 +86,31 @@ class BookingService
                 throw new Exception('Vui lòng chọn ít nhất 1 ghế');
             }
 
-            // ── Anti-Abuse: Validate max seats per booking ──────────────
+            // Anti-abuse: Validate max seats per booking (config-driven)
+            $selectedSeatCount = count(array_unique(array_values($selectedSeatIds)));
             $maxSeatsPerBooking = (int) config('booking.seat_hold.max_seats_per_booking', 8);
-            if (count($selectedSeatIds) > $maxSeatsPerBooking) {
-                throw new Exception(
-                    "Bạn chỉ có thể chọn tối đa {$maxSeatsPerBooking} ghế mỗi lần đặt."
-                );
+            if ($selectedSeatCount > $maxSeatsPerBooking) {
+                throw new Exception("Bạn chỉ có thể chọn tối đa {$maxSeatsPerBooking} ghế mỗi lần đặt.");
             }
+
+            // Hard cap per user per movie: cancel old pending for movie then check existing paid/used seats
+            if ($userId) {
+                $movieId = $this->getMovieIdFromShowtime($showtimeId);
+                $this->cancelUserPendingBookingsForMovie($userId, $movieId);
+                $existingTicketCount = $this->getUserBookedSeatCount($userId, $movieId);
+                // Use config-driven max seats per booking as per product rules.
+                $hardLimitPerMovie = (int) config('booking.seat_hold.max_seats_per_booking', 8);
+                if ($existingTicketCount + $selectedSeatCount > $hardLimitPerMovie) {
+                    throw new Exception("Bạn chỉ được đặt tối đa {$hardLimitPerMovie} vé cho mỗi khách hàng cho mỗi phim.");
+                }
+            }
+
+            $this->cleanupExpiredPendingBookings();
 
             $inheritedBookingTime = null;
 
             try {
                 // 1. Tự động dọn dẹp các booking quá hạn trước khi kiểm tra
-                $this->cleanupExpiredPendingBookings();
-
                 // 2. ACTIVE PENDING BOOKING GUARD (SSOT)
                 if ($userId) {
                     $activePendingBooking = $this->getActivePendingBooking($userId);
@@ -539,6 +551,86 @@ class BookingService
      *
      * @return int
      */
+    public function getUserBookedSeatCount(?int $userId, ?int $movieId = null): int
+    {
+        if (!$userId) {
+            return 0;
+        }
+
+        $bookingQuery = DB::table('bookings')
+            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+            ->where('bookings.user_id', $userId)
+            ->whereIn('bookings.status', ['Paid', 'Used']);
+
+        if ($movieId) {
+            $bookingQuery->where('showtimes.movie_id', $movieId);
+        }
+
+        $bookingIds = $bookingQuery->pluck('bookings.id')->toArray();
+
+        if (empty($bookingIds)) {
+            return 0;
+        }
+
+        return DB::table('booked_seats')
+            ->whereIn('booking_id', $bookingIds)
+            ->count();
+    }
+
+    private function getMovieIdFromShowtime(int $showtimeId): ?int
+    {
+        $showtime = DB::table('showtimes')->where('id', $showtimeId)->first();
+
+        return $showtime ? (int) $showtime->movie_id : null;
+    }
+
+    private function cancelUserPendingBookingsForMovie(?int $userId, ?int $movieId): void
+    {
+        if (!$userId || !$movieId) {
+            return;
+        }
+
+        $pendingBookingIds = DB::table('bookings')
+            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+            ->where('bookings.user_id', $userId)
+            ->where('showtimes.movie_id', $movieId)
+            ->where('bookings.status', 'Pending')
+            ->pluck('bookings.id')
+            ->toArray();
+
+        if (empty($pendingBookingIds)) {
+            return;
+        }
+
+        $bookingsWithCoupons = DB::table('bookings')
+            ->whereIn('id', $pendingBookingIds)
+            ->whereNotNull('coupon_id')
+            ->get();
+
+        foreach ($bookingsWithCoupons as $b) {
+            DB::table('coupons')
+                ->where('id', $b->coupon_id)
+                ->where('used_count', '>', 0)
+                ->decrement('used_count');
+        }
+
+        DB::table('bookings')
+            ->whereIn('id', $pendingBookingIds)
+            ->update([
+                'status' => 'Cancelled',
+                'cancellation_reason' => 'Replaced by a new booking request',
+                'cancelled_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        DB::table('booked_seats')
+            ->whereIn('booking_id', $pendingBookingIds)
+            ->update([
+                'status' => 'CANCELLED',
+                'updated_at' => now(),
+            ]);
+    }
+
     public function cleanupExpiredPendingBookings(): int
     {
         $expiredBookings = []; // Capture for tracking after transaction

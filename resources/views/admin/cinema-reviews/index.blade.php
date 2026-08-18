@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
-@section('title', 'Quản Lý Đánh Giá Phim')
-@section('page_title', 'Quản Lý Đánh Giá')
+@section('title', 'Quản Lý Phản Hồi Rạp')
+@section('page_title', 'Phản Hồi Rạp')
 
 @section('content')
 <!-- Breadcrumb -->
@@ -9,22 +9,22 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item active">Reviews</li>
+            <li class="breadcrumb-item active">Phản Hồi Rạp</li>
         </ol>
     </nav>
 </div>
 
 <!-- Page Title & Actions -->
 <div class="page-title d-flex justify-content-between align-items-center">
-    <h2><i class="fas fa-comments"></i> Danh Sách Đánh Giá</h2>
+    <h2><i class="fas fa-building"></i> Danh Sách Phản Hồi Rạp</h2>
 </div>
 
 <!-- Filters -->
 <div class="card mb-4">
     <div class="card-body">
-        <form action="{{ route('admin.reviews.index') }}" method="GET" class="row g-3">
+        <form action="{{ route('admin.cinema-reviews.index') }}" method="GET" class="row g-3">
             <div class="col-md-4">
-                <input type="text" class="form-control" name="search" placeholder="Tìm kiếm theo Tên User, Email hoặc Tên Phim..." value="{{ request('search') }}">
+                <input type="text" class="form-control" name="search" placeholder="Tìm kiếm theo Tên User, Email hoặc Rạp..." value="{{ request('search') }}">
             </div>
             <div class="col-md-3">
                 <select class="form-select" name="status">
@@ -37,7 +37,7 @@
                 <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search"></i> Tìm kiếm</button>
             </div>
             <div class="col-md-2">
-                <a href="{{ route('admin.reviews.index') }}" class="btn btn-secondary w-100"><i class="fas fa-sync"></i> Xóa lọc</a>
+                <a href="{{ route('admin.cinema-reviews.index') }}" class="btn btn-secondary w-100"><i class="fas fa-sync"></i> Xóa lọc</a>
             </div>
         </form>
     </div>
@@ -52,7 +52,7 @@
                     <tr>
                         <th>ID</th>
                         <th>Người Dùng</th>
-                        <th>Phim</th>
+                        <th>Rạp</th>
                         <th>Đánh Giá</th>
                         <th>Bình Luận</th>
                         <th>Trạng Thái</th>
@@ -68,7 +68,7 @@
                                 <strong>{{ $review->user->name }}</strong><br>
                                 <small class="text-muted">{{ $review->user->email }}</small>
                             </td>
-                            <td>{{ $review->movie->title }}</td>
+                            <td>{{ $review->cinema->name ?? 'N/A' }}</td>
                             <td>
                                 <div class="text-warning">
                                     @for($i = 1; $i <= 5; $i++)
@@ -89,23 +89,23 @@
                             <td>{{ $review->created_at->format('d/m/Y H:i') }}</td>
                             <td class="text-end">
                                 <div class="btn-group">
-                                    <a href="{{ route('admin.reviews.show', $review->id) }}" class="btn btn-sm btn-primary" title="Xem chi tiết">
+                                    <a href="{{ route('admin.cinema-reviews.show', $review->id) }}" class="btn btn-sm btn-primary" title="Xem chi tiết">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <form action="{{ route('admin.reviews.toggle-status', $review->id) }}" method="POST" class="d-inline">
+                                    <form action="{{ route('admin.cinema-reviews.toggle-status', $review->id) }}" method="POST" class="d-inline">
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" class="btn btn-sm {{ $review->status === 'ACTIVE' ? 'btn-warning' : 'btn-success' }}" 
-                                                title="{{ $review->status === 'ACTIVE' ? 'Ẩn đánh giá này' : 'Hiện đánh giá này' }}">
+                                                title="{{ $review->status === 'ACTIVE' ? 'Ẩn phản hồi này' : 'Hiện phản hồi này' }}">
                                             <i class="fas {{ $review->status === 'ACTIVE' ? 'fa-eye-slash' : 'fa-eye' }}"></i>
                                         </button>
                                     </form>
 
-                                    <form action="{{ route('admin.reviews.destroy', $review->id) }}" method="POST" class="d-inline"
-                                          onsubmit="return confirm('Bạn có chắc chắn muốn xóa vĩnh viễn đánh giá này không?');">
+                                    <form action="{{ route('admin.cinema-reviews.destroy', $review->id) }}" method="POST" class="d-inline"
+                                          onsubmit="return confirm('Bạn có chắc chắn muốn xóa vĩnh viễn phản hồi này không?');">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-danger" title="Xóa đánh giá">
+                                        <button type="submit" class="btn btn-sm btn-danger" title="Xóa phản hồi">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </form>
@@ -116,7 +116,7 @@
                         <tr>
                             <td colspan="8" class="text-center py-4">
                                 <img src="https://cdn-icons-png.flaticon.com/512/7486/7486831.png" alt="No data" width="80" class="mb-3 opacity-50">
-                                <p class="text-muted mb-0">Chưa có đánh giá nào.</p>
+                                <p class="text-muted mb-0">Chưa có phản hồi nào.</p>
                             </td>
                         </tr>
                     @endforelse

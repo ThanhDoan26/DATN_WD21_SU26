@@ -149,6 +149,100 @@
                         </div>
                     </section>
 
+                @push('scripts')
+                <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const form = document.getElementById('movie-review-form');
+                    if (!form) return;
+
+                    form.addEventListener('submit', async function (e) {
+                        e.preventDefault();
+                        const btn = form.querySelector('button[type="submit"]');
+                        if (btn) btn.disabled = true;
+                        const fd = new FormData(form);
+
+                        try {
+                            const res = await fetch(form.action, {
+                                method: 'POST',
+                                body: fd,
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                                }
+                            });
+
+                            let data;
+                            if (res.ok) {
+                                // try parse json, fallback to text
+                                try { data = await res.json(); } catch (e) { data = { success: false, message: await res.text() }; }
+                            } else if (res.status === 422) {
+                                // validation errors
+                                data = await res.json().catch(() => ({ success: false, message: 'Validation failed' }));
+                            } else {
+                                const text = await res.text();
+                                console.error('Server error', res.status, text);
+                                alert('Lỗi máy chủ khi gửi đánh giá. Vui lòng thử lại sau.');
+                                return;
+                            }
+
+                            if (data && data.success) {
+                                // Insert/replace movie review
+                                if (data.review_html) {
+                                    const container = document.getElementById('movie-reviews-list');
+                                    // remove placeholder if exists
+                                    const placeholder = document.getElementById('no-reviews-placeholder');
+                                    if (placeholder) placeholder.remove();
+
+                                    // parse returned HTML
+                                    const temp = document.createElement('div');
+                                    temp.innerHTML = data.review_html.trim();
+                                    const newItem = temp.firstElementChild;
+                                    if (newItem) {
+                                        const userId = newItem.getAttribute('data-user-id');
+                                        const existing = container.querySelector('.review-item[data-user-id="'+userId+'"]');
+                                        if (existing) existing.remove();
+                                        container.prepend(newItem);
+                                    }
+                                }
+
+                                // Insert cinema review if provided
+                                if (data.cinema_review_html && data.cinema_name_slug) {
+                                    const slug = data.cinema_name_slug;
+                                    const cinemaContainer = document.getElementById('cinema-reviews-' + slug);
+                                    if (cinemaContainer) {
+                                        const temp2 = document.createElement('div');
+                                        temp2.innerHTML = data.cinema_review_html.trim();
+                                        const newC = temp2.firstElementChild;
+                                        if (newC) {
+                                            const uid = newC.getAttribute('data-user-id');
+                                            const existC = cinemaContainer.querySelector('.cinema-review-item[data-user-id="'+uid+'"]');
+                                            if (existC) existC.remove();
+                                            cinemaContainer.prepend(newC);
+                                        }
+                                    }
+                                }
+
+                                // optional success feedback
+                                if (data.cinema_feedback_message) {
+                                    // show to user so they know why cinema feedback wasn't saved
+                                    alert(data.cinema_feedback_message);
+                                }
+                            } else {
+                                console.error('Failed to submit review', data);
+                                const msg = (data && (data.message || data.errors)) ? (data.message || JSON.stringify(data.errors)) : 'Không thể gửi đánh giá.';
+                                alert(msg);
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            alert('Lỗi khi gửi yêu cầu. Vui lòng thử lại.');
+                        } finally {
+                            if (btn) btn.disabled = false;
+                        }
+                    });
+                });
+                </script>
+                @endpush
+
                     <!-- Section 2: TRAILER -->
                     <section id="trailer-section" class="scroll-mt-24">
                         <h2 class="text-2xl font-bold mb-6 flex items-center gap-3 border-b border-slate-800 pb-4">
@@ -257,6 +351,19 @@
                                                     </div>
                                                 </div>
                                             @endforeach
+
+                                            @php
+                                                $cReviews = $cinemaReviewsByName[$cinemaName] ?? collect();
+                                                $cinemaSlug = \Illuminate\Support\Str::slug($cinemaName);
+                                            @endphp
+                                            <div id="cinema-reviews-{{ $cinemaSlug }}" class="mt-4 p-4 bg-slate-900/30 rounded-xl border border-slate-700/30">
+                                                <h5 class="text-white font-bold mb-3">Phản hồi tại {{ $cinemaName }}</h5>
+                                                <div class="space-y-4">
+                                                    @foreach($cReviews as $cReview)
+                                                        @include('movies.partials.cinema_review_item', ['cReview' => $cReview])
+                                                    @endforeach
+                                                </div>
+                                            </div>
                                         </div>
                                     @endforeach
                                 @endif
@@ -279,8 +386,8 @@
                         <!-- Review Form -->
                         @auth
                             @if($userReview || $canReview)
-                                <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 mb-8 shadow-xl" x-data="{ isEditing: {{ $userReview ? 'false' : 'true' }}, rating: {{ $userReview ? $userReview->rating : 5 }}, hoverRating: 0 }">
-                                    <form action="{{ route('movies.reviews.store', $movie->id) }}" method="POST">
+                                <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 mb-8 shadow-xl" x-data="{ isEditing: {{ $userReview ? 'false' : 'true' }}, rating: {{ $userReview ? $userReview->rating : 5 }}, hoverRating: 0, cinemaFeedbackEnabled: false, cinemaRating: 5, cinemaComment: '' }">
+                                    <form id="movie-review-form" action="{{ route('movies.reviews.store', $movie->id) }}" method="POST">
                                         @csrf
                                         
                                         <div class="border-b border-slate-700 pb-4 mb-6">
@@ -335,6 +442,36 @@
                                                 @error('comment')
                                                     <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
                                                 @enderror
+                                            </div>
+                                            <!-- Cinema Feedback (optional) -->
+                                            <div class="mb-4 border-t border-slate-700 pt-4">
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <label class="text-slate-400 font-medium">Gửi phản hồi cho rạp (tùy chọn)</label>
+                                                    <div>
+                                                        <label class="inline-flex items-center gap-2 text-sm text-slate-400">
+                                                            <input type="checkbox" name="cinema_feedback_enabled" x-model="cinemaFeedbackEnabled" class="form-check-input">
+                                                            <span>Kích hoạt</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <div x-show="cinemaFeedbackEnabled" x-cloak>
+                                                    <div class="mb-3">
+                                                        <label class="block text-slate-400 mb-2">Đánh giá rạp (1-5 sao)</label>
+                                                        <div class="flex gap-2">
+                                                            <button type="button" @click="cinemaRating = 1" class="text-2xl">★</button>
+                                                            <button type="button" @click="cinemaRating = 2" class="text-2xl">★</button>
+                                                            <button type="button" @click="cinemaRating = 3" class="text-2xl">★</button>
+                                                            <button type="button" @click="cinemaRating = 4" class="text-2xl">★</button>
+                                                            <button type="button" @click="cinemaRating = 5" class="text-2xl">★</button>
+                                                            <input type="hidden" name="cinema_rating" :value="cinemaRating">
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-slate-400 mb-2">Phản hồi về rạp</label>
+                                                        <textarea name="cinema_comment" rows="3" x-model="cinemaComment" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-white placeholder-slate-500 focus:ring-primary focus:border-primary" placeholder="Chia sẻ trải nghiệm tại rạp (phục vụ, vệ sinh, âm thanh...)..."></textarea>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -411,60 +548,11 @@
                         @endauth
 
                         <!-- Reviews List -->
-                        <div class="space-y-6">
+                        <div class="space-y-6" id="movie-reviews-list">
                             @forelse($reviews as $review)
-                                @php
-                                    $userComboReviews = isset($comboReviews) && $comboReviews->has($review->user_id) ? $comboReviews[$review->user_id] : collect();
-                                @endphp
-                                <div class="bg-slate-800/30 p-6 rounded-2xl border border-slate-700/30 flex gap-4">
-                                    <div class="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center text-xl font-bold text-slate-300 flex-shrink-0">
-                                        {{ substr($review->user->name, 0, 1) }}
-                                    </div>
-                                    <div class="flex-1">
-                                        <div class="flex items-center justify-between mb-2">
-                                            <h4 class="font-bold text-white">{{ $review->user->name }}</h4>
-                                            <span class="text-xs text-slate-500">{{ $review->created_at->diffForHumans() }}</span>
-                                        </div>
-                                        <div class="flex text-yellow-400 text-sm mb-3">
-                                            @for($i = 1; $i <= 5; $i++)
-                                                <i class="fas fa-star {{ $i <= $review->rating ? '' : 'text-slate-600' }}"></i>
-                                            @endfor
-                                        </div>
-                                        <p class="text-slate-300 leading-relaxed">{{ $review->comment }}</p>
-
-                                        @if($userComboReviews->count() > 0)
-                                            <div class="mt-4 pt-4 border-t border-slate-700/50">
-                                                <h5 class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">Đánh giá Combo</h5>
-                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    @foreach($userComboReviews as $cReview)
-                                                        <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 flex gap-3">
-                                                            <div class="w-16 h-16 shrink-0 rounded-md overflow-hidden bg-slate-800">
-                                                                @if($cReview->combo && $cReview->combo->image)
-                                                                    <img src="{{ Storage::url($cReview->combo->image) }}" alt="{{ $cReview->combo->name }}" class="w-full h-full object-cover">
-                                                                @else
-                                                                    <div class="w-full h-full flex items-center justify-center text-slate-600"><i class="fas fa-popcorn text-xl"></i></div>
-                                                                @endif
-                                                            </div>
-                                                            <div class="flex-grow">
-                                                                <h6 class="text-slate-200 font-bold text-sm mb-1 truncate">{{ $cReview->combo->name ?? 'Combo' }}</h6>
-                                                                <div class="flex text-yellow-400 text-xs mb-1">
-                                                                    @for($i = 1; $i <= 5; $i++)
-                                                                        <i class="fas fa-star {{ $i <= $cReview->rating ? '' : 'text-slate-600' }}"></i>
-                                                                    @endfor
-                                                                </div>
-                                                                @if($cReview->comment)
-                                                                    <p class="text-slate-400 text-xs line-clamp-2" title="{{ $cReview->comment }}">{{ $cReview->comment }}</p>
-                                                                @endif
-                                                            </div>
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
+                                @include('movies.partials.review_item', ['review' => $review])
                             @empty
-                                <div class="text-center py-10">
+                                <div class="text-center py-10" id="no-reviews-placeholder">
                                     <i class="far fa-comments text-5xl text-slate-600 mb-4"></i>
                                     <p class="text-slate-400 text-lg">Chưa có đánh giá nào cho phim này.</p>
                                     <p class="text-slate-500 text-sm mt-1">Hãy là người đầu tiên để lại nhận xét!</p>

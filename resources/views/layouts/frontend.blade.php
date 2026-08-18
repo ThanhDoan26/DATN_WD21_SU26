@@ -56,7 +56,9 @@
     @endif
 
     <!-- Main Content -->
-    @yield('content')
+    <main class="pt-20">
+        @yield('content')
+    </main>
 
     <!-- Footer -->
     @include('layouts.guest-footer')

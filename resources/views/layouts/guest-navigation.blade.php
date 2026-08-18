@@ -55,12 +55,17 @@
                                 <i class="fas fa-user-shield text-xs"></i> Nhân viên
                             </a>
                         @endif
-                        <form method="POST" action="{{ route('logout') }}" class="inline">
-                            @csrf
-                            <button type="submit" class="bg-red-600 hover:bg-red-500 text-white px-5 py-2 rounded-full font-medium text-sm transition-all hover:shadow-lg hover:shadow-red-500/30 hover:-translate-y-0.5">
-                                Đăng xuất
-                            </button>
-                        </form>
+                        <div class="flex items-center gap-3">
+                            <a id="nav-profile-btn" href="{{ route('profile.edit') }}" class="inline-flex items-center gap-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-white text-red-600 font-semibold">{{ strtoupper(substr(auth()->user()->name ?? 'U',0,1)) }}</span>
+                            </a>
+                            <form method="POST" action="{{ route('logout') }}" class="m-0">
+                                @csrf
+                                <button type="submit" class="ms-2 inline-flex items-center justify-center h-8 px-3 rounded-full bg-red-600 hover:bg-red-500 text-white text-sm font-semibold" title="Đăng xuất">
+                                    Đăng xuất
+                                </button>
+                            </form>
+                        </div>
                     @else
                         <a href="{{ route('login') }}" class="text-white/70 hover:text-white transition-colors text-sm font-medium">
                             Đăng nhập
@@ -214,4 +219,10 @@
     mobileMenu.querySelectorAll('a').forEach(link => {
         link.addEventListener('click', closeMenu);
     });
+
+    // (no-op)
 </script>
+
+@auth
+    @include('partials.profile_modal')
+@endauth

@@ -2,13 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Review extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'user_id',
         'movie_id',
@@ -26,4 +23,21 @@ class Review extends Model
     {
         return $this->belongsTo(Movie::class);
     }
+
+    // Backwards compatibility with existing views that expect 'comment' and 'status'
+    public function getCommentAttribute()
+    {
+        return $this->attributes['comment'] ?? null;
+    }
+
+    public function setCommentAttribute($value)
+    {
+        $this->attributes['comment'] = $value;
+    }
+
+    public function getStatusAttribute()
+    {
+        return $this->attributes['status'] ?? 'HIDDEN';
+    }
 }
+
