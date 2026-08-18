@@ -86,7 +86,7 @@
                         <label class="form-label">Thời Gian Bắt Đầu *</label>
                         <div class="row g-2 align-items-center">
                             <div class="col-md-5">
-                                <input type="date" id="start_date" class="form-control @error('start_time') is-invalid @enderror" value="{{ old('start_time') ? \Carbon\Carbon::parse(old('start_time'))->format('Y-m-d') : \Carbon\Carbon::now()->format('Y-m-d') }}" required>
+                                <input type="date" id="start_date" min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" class="form-control @error('start_time') is-invalid @enderror" value="{{ old('start_time') ? \Carbon\Carbon::parse(old('start_time'))->format('Y-m-d') : \Carbon\Carbon::now()->format('Y-m-d') }}" required>
                             </div>
                             <div class="col-md-3">
                                 <select id="start_hour" class="form-select" required>
@@ -108,7 +108,10 @@
                             </div>
                         </div>
                         <input type="hidden" id="start_time" name="start_time" value="{{ old('start_time') }}">
-                        <div class="small text-muted">Chọn giờ:.</div>
+                        <div class="small text-muted">Chọn giờ chiếu (chỉ được chọn thời gian từ hiện tại trở đi).</div>
+                        <div id="start_time_client_error" class="text-danger small mt-1 d-none align-items-center gap-1">
+                            <i class="fas fa-circle-exclamation"></i> Không thể lên lịch chiếu cho thời gian đã qua.
+                        </div>
                         @error('start_time')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
 
@@ -124,7 +127,7 @@
                         <label class="form-label">Thời Gian Kết Thúc *</label>
                         <div class="row g-2 align-items-center">
                             <div class="col-md-5">
-                                <input type="date" id="end_date" class="form-control @error('end_time') is-invalid @enderror" value="{{ old('end_time') ? \Carbon\Carbon::parse(old('end_time'))->format('Y-m-d') : \Carbon\Carbon::now()->format('Y-m-d') }}" required>
+                                <input type="date" id="end_date" min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" class="form-control @error('end_time') is-invalid @enderror" value="{{ old('end_time') ? \Carbon\Carbon::parse(old('end_time'))->format('Y-m-d') : \Carbon\Carbon::now()->format('Y-m-d') }}" required>
                             </div>
                             <div class="col-md-3">
                                 <select id="end_hour" class="form-select" required>
@@ -624,17 +627,41 @@
             endAutoComputed = expectedEnd && expectedEnd === hiddenEndInput.value;
         }
 
+        function validateStartTimeNotPast() {
+            const clientErr = document.getElementById('start_time_client_error');
+            if (!hiddenStartInput.value) return true;
+            const parsed = parseDatetimeLocal(hiddenStartInput.value);
+            // So sánh thời gian (cho phép sai số 30s)
+            if (parsed && parsed.getTime() < (Date.now() - 30000)) {
+                if (clientErr) {
+                    clientErr.classList.remove('d-none');
+                    clientErr.classList.add('d-flex');
+                }
+                startDateInput.classList.add('is-invalid');
+                return false;
+            } else {
+                if (clientErr) {
+                    clientErr.classList.add('d-none');
+                    clientErr.classList.remove('d-flex');
+                }
+                startDateInput.classList.remove('is-invalid');
+                return true;
+            }
+        }
+
         [startHourInput, startMinuteInput].forEach(input => {
             input.addEventListener('change', function () {
                 enforce24OnlyZeroMinute(startHourInput, startMinuteInput);
                 updateStartHidden();
                 updateEndFromStart();
+                validateStartTimeNotPast();
             });
         });
 
         startDateInput.addEventListener('change', function () {
             updateStartHidden();
             updateEndFromStart();
+            validateStartTimeNotPast();
         });
 
         [endHourInput, endMinuteInput, endDateInput].forEach(input => {
@@ -732,12 +759,20 @@
 
         const showtimeForm = document.querySelector('form');
         if (showtimeForm) {
-            showtimeForm.addEventListener('submit', function () {
+            showtimeForm.addEventListener('submit', function (e) {
                 updateStartHidden();
                 if (endAutoComputed || !hiddenEndInput.value) {
                     updateEndFromStart();
                 } else {
                     updateEndHidden(true);
+                }
+
+                if (!validateStartTimeNotPast()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    alert('Không thể tạo hoặc chỉnh sửa lịch chiếu cho thời gian đã qua. Vui lòng chọn thời gian bắt đầu từ thời điểm hiện tại trở đi.');
+                    startDateInput.focus();
+                    return false;
                 }
             });
         }
