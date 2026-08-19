@@ -149,11 +149,15 @@ class VnPayController extends Controller
 
     private function cancelRedirect($booking, $message)
     {
-        $seatIds = $booking->bookedSeats->pluck('seat_id')->implode(',');
+        if ($booking) {
+            $seatIds = $booking->bookedSeats ? $booking->bookedSeats->pluck('seat_id')->implode(',') : '';
+            
+            return redirect()->route('checkout', [
+                'showtime_id' => $booking->showtime_id,
+                'seat_ids' => $seatIds,
+            ])->with('info', 'Giao dịch thanh toán qua VNPay chưa hoàn tất. Bạn có thể chọn lại phương thức thanh toán để tiếp tục.');
+        }
 
-        return redirect()->route('checkout', [
-            'showtime_id' => $booking->showtime_id,
-            'seat_ids' => $seatIds,
-        ])->with('info', $message . ' Ghế vẫn sẽ được giữ trong 10 phút. Bạn có thể quay lại để tiếp tục.');
+        return redirect()->route('home')->with('error', $message);
     }
 }
