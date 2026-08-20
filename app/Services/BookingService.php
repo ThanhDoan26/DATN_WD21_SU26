@@ -93,16 +93,11 @@ class BookingService
                 throw new Exception("Bạn chỉ có thể chọn tối đa {$maxSeatsPerBooking} ghế mỗi lần đặt.");
             }
 
-            // Hard cap per user per movie: cancel old pending for movie then check existing paid/used seats
             if ($userId) {
                 $movieId = $this->getMovieIdFromShowtime($showtimeId);
                 $this->cancelUserPendingBookingsForMovie($userId, $movieId);
-                $existingTicketCount = $this->getUserBookedSeatCount($userId, $movieId);
-                // Use config-driven max seats per booking as per product rules.
-                $hardLimitPerMovie = (int) config('booking.seat_hold.max_seats_per_booking', 8);
-                if ($existingTicketCount + $selectedSeatCount > $hardLimitPerMovie) {
-                    throw new Exception("Bạn chỉ được đặt tối đa {$hardLimitPerMovie} vé cho mỗi khách hàng cho mỗi phim.");
-                }
+                // We no longer limit lifetime seats per movie per account.
+                // The per-booking limit is already validated in the CheckoutController.
             }
 
             $this->cleanupExpiredPendingBookings();
@@ -627,6 +622,15 @@ class BookingService
             ->whereIn('booking_id', $pendingBookingIds)
             ->update([
                 'status' => 'CANCELLED',
+                'updated_at' => now(),
+            ]);
+
+        DB::table('seat_holds')
+            ->whereIn('booking_id', $pendingBookingIds)
+            ->where('status', 'active')
+            ->update([
+                'status' => 'released',
+                'released_at' => now(),
                 'updated_at' => now(),
             ]);
     }

@@ -608,7 +608,7 @@
         const selectedSeats = new Set();
         const ticketPrices = @json($ticketPrices->mapWithKeys(fn($price) => [$price->seat_type => (float) $price->price]));
         const STORAGE_KEY = 'selectedSeats_showtime_' + showtimeId;
-        const MAX_TICKETS_PER_BOOKING = 10;
+        const MAX_TICKETS_PER_BOOKING = 8;
 
         // Restore previously selected seats from sessionStorage (e.g. when navigating back from checkout)
         function restoreSelectedSeats() {
@@ -658,7 +658,7 @@
                 button.classList.remove('selected');
             } else {
                 if (selectedSeats.size >= MAX_TICKETS_PER_BOOKING) {
-                    alert('Bạn chỉ được đặt tối đa 10 vé cho mỗi đơn.');
+                    alert(`Bạn chỉ được đặt tối đa ${MAX_TICKETS_PER_BOOKING} vé cho mỗi đơn.`);
                     return;
                 }
 

@@ -164,13 +164,8 @@ class CheckoutController extends Controller
 
         $userId = Auth::id();
         if ($userId) {
-            $bookingService = new BookingService();
-            $movieId = Showtime::find((int) $request->input('showtime_id'))?->movie_id;
-            $existingTicketCount = $bookingService->getUserBookedSeatCount($userId, $movieId);
-            $hardLimitPerMovie = (int) config('booking.seat_hold.max_seats_per_booking', 8);
-            if ($existingTicketCount + $seatCount > $hardLimitPerMovie) {
-                return response()->json(['success' => false, 'message' => "Bạn chỉ được đặt tối đa {$hardLimitPerMovie} vé cho mỗi khách hàng cho mỗi phim."], 422);
-            }
+            // Lifetime limit per movie removed. 
+            // We only enforce the per-booking transaction limit above.
         }
 
         // Chặn ghế hỏng hoặc đã đặt (phòng trường hợp hack request)
