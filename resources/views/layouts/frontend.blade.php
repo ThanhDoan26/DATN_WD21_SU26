@@ -55,6 +55,29 @@
         @endif
     @endif
 
+    <!-- Global Toast Notifications -->
+    @if(session('success') || session('info') || session('error'))
+        <div id="global-toast" class="fixed top-24 right-5 z-[99999] max-w-sm w-full bg-slate-900/95 border {{ session('error') ? 'border-red-500/50 text-red-300' : (session('info') ? 'border-blue-500/50 text-blue-300' : 'border-emerald-500/50 text-emerald-300') }} p-4 rounded-2xl shadow-2xl backdrop-blur-md flex items-center justify-between gap-3 transform transition-all duration-500">
+            <div class="flex items-center gap-3">
+                <i class="fas {{ session('error') ? 'fa-exclamation-circle text-red-500' : (session('info') ? 'fa-info-circle text-blue-400' : 'fa-check-circle text-emerald-500') }} text-xl"></i>
+                <p class="text-sm font-medium text-white">{{ session('success') ?? session('info') ?? session('error') }}</p>
+            </div>
+            <button onclick="document.getElementById('global-toast').remove()" class="text-slate-400 hover:text-white transition">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <script>
+            setTimeout(() => {
+                const toast = document.getElementById('global-toast');
+                if (toast) {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateY(-20px)';
+                    setTimeout(() => toast.remove(), 500);
+                }
+            }, 4000);
+        </script>
+    @endif
+
     <!-- Main Content -->
     <main class="pt-20">
         @yield('content')

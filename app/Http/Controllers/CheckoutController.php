@@ -99,7 +99,6 @@ class CheckoutController extends Controller
                 $total += $seatFinalPrice;
             }
 
-            // Check if there is an existing pending booking for this user, showtime and these seats
             $pendingBooking = Booking::where('user_id', Auth::id())
                 ->where('showtime_id', $showtimeId)
                 ->where('status', 'Pending')
@@ -111,6 +110,9 @@ class CheckoutController extends Controller
 
             if ($pendingBooking) {
                 $expiresAtMs = ($pendingBooking->booking_time->timestamp + BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES * 60) * 1000;
+                $pendingBookingId = $pendingBooking->id;
+            } else {
+                $pendingBookingId = null;
             }
         }
 
@@ -129,7 +131,8 @@ class CheckoutController extends Controller
             'showtimeId',
             'combos',
             'coupons',
-            'expiresAtMs'
+            'expiresAtMs',
+            'pendingBookingId'
         ));
     }
 
@@ -159,13 +162,7 @@ class CheckoutController extends Controller
         $seatCount = count(array_unique($seatIds));
         $maxSeatsPerBooking = (int) config('booking.seat_hold.max_seats_per_booking', 8);
         if ($seatCount > $maxSeatsPerBooking) {
-            return response()->json(['success' => false, 'message' => "Bạn chỉ được đặt tối đa {$maxSeatsPerBooking} vé cho mỗi đơn."], 422);
-        }
-
-        $userId = Auth::id();
-        if ($userId) {
-            // Lifetime limit per movie removed. 
-            // We only enforce the per-booking transaction limit above.
+            return response()->json(['success' => false, 'message' => "Bạn chỉ được đặt tối đa {$maxSeatsPerBooking} ghế cho mỗi đơn hàng."], 422);
         }
 
         // Chặn ghế hỏng hoặc đã đặt (phòng trường hợp hack request)
@@ -215,7 +212,7 @@ class CheckoutController extends Controller
                     'total_price' => $bookingDetails['total_price'],
                 ],
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Checkout reserve failed: ' . $e->getMessage());
 
             return response()->json([
@@ -313,10 +310,12 @@ class CheckoutController extends Controller
         }
 
         try {
+            $showtimeId = $booking->showtime_id;
             $bookingService = new BookingService();
             $bookingService->cancelBooking($booking->id, 'Người dùng tự hủy đơn');
             
-            return redirect()->route('home')->with('success', 'Đã hủy đơn vé và giải phóng ghế thành công.');
+            return redirect()->route('booking.select-seats', ['showtime' => $showtimeId])
+                ->with('success', 'Đã hủy đơn vé và giải phóng ghế thành công. Vui lòng chọn lại ghế.');
         } catch (\Exception $e) {
             Log::error('Cancel booking failed: ' . $e->getMessage());
             return back()->with('error', 'Có lỗi xảy ra khi hủy đơn vé.');
@@ -373,5 +372,30 @@ class CheckoutController extends Controller
             Log::error('Mock payment failed: ' . $e->getMessage());
             return back()->with('error', 'Có lỗi xảy ra khi xử lý thanh toán: ' . $e->getMessage());
         }
+    }
+
+    public function releaseLock(Request $request)
+    {
+        $request->validate([
+            'booking_id' => 'required|integer|exists:bookings,id',
+        ]);
+
+        $booking = Booking::where('id', $request->booking_id)
+            ->where('user_id', Auth::id())
+            ->where('status', 'Pending')
+            ->first();
+
+        if ($booking) {
+            try {
+                $bookingService = new BookingService();
+                $bookingService->cancelBooking($booking->id, 'User actively released lock (beforeunload/back)');
+                return response()->json(['success' => true]);
+            } catch (\Exception $e) {
+                Log::error('Release lock failed: ' . $e->getMessage());
+                return response()->json(['success' => false], 500);
+            }
+        }
+        
+        return response()->json(['success' => false, 'message' => 'Not found or not pending'], 404);
     }
 }

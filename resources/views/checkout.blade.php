@@ -409,11 +409,11 @@
                                 <span>Thanh toán ngay</span>
                                 <i class="fas fa-arrow-right"></i>
                             </button>
-                            <a href="{{ route('booking.select-seats', $showtime->id) }}" onclick="saveSeatsBeforeBack()" class="w-full rounded-2xl bg-slate-800/50 border border-slate-700 px-6 py-3 text-slate-300 text-base font-bold hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2">
+                            <a href="{{ route('booking.select-seats', ['showtime' => $showtime->id, 'resume_seats' => 1]) }}" onclick="saveSeatsBeforeBack()" class="w-full rounded-2xl bg-slate-800/50 border border-slate-700 px-6 py-3 text-slate-300 text-base font-bold hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2">
                                 <i class="fas fa-arrow-left"></i>
                                 <span>Quay lại chọn thêm ghế</span>
                             </a>
-                            <button type="button" onclick="document.getElementById('cancelModal').style.display='flex'" class="w-full rounded-2xl bg-transparent border border-red-900/50 px-6 py-3 text-red-500 text-base font-bold hover:bg-red-900/20 transition-all flex items-center justify-center gap-2 mt-2">
+                            <button type="button" onclick="openCancelModal()" class="w-full rounded-2xl bg-transparent border border-red-900/50 px-6 py-3 text-red-500 text-base font-bold hover:bg-red-900/20 transition-all flex items-center justify-center gap-2 mt-2">
                                 <i class="fas fa-times"></i>
                                 <span>Hủy đặt vé</span>
                             </button>
@@ -466,7 +466,7 @@
                 Bạn có chắc muốn hủy lượt đặt vé này không?<br> Các ghế bạn đang giữ sẽ được nhả lại cho hệ thống.
             </p>
             <div style="display: flex; gap: 1rem;">
-                <button onclick="document.getElementById('cancelModal').style.display='none'" style="flex: 1; padding: 14px; background: #334155; color: white; border-radius: 16px; font-weight: 700; border: none; cursor: pointer; transition: background 0.2s;">
+                <button onclick="closeCancelModal()" style="flex: 1; padding: 14px; background: #334155; color: white; border-radius: 16px; font-weight: 700; border: none; cursor: pointer; transition: background 0.2s;">
                     Tiếp tục đặt vé
                 </button>
                 <button onclick="confirmCancelBooking()" id="btnConfirmCancel" style="flex: 1; padding: 14px; background: #ef4444; color: white; border-radius: 16px; font-weight: 700; border: none; cursor: pointer; transition: background 0.2s;">
@@ -485,8 +485,22 @@
             const showtimeId = @json($showtimeId ?? '');
             const seatIds = @json($seatIds ?? []);
             if (showtimeId && seatIds && seatIds.length > 0) {
-                const storageKey = 'selectedSeats_showtime_' + showtimeId;
-                sessionStorage.setItem(storageKey, JSON.stringify(seatIds));
+                sessionStorage.setItem('resume_seats_showtime_' + showtimeId, '1');
+                sessionStorage.setItem('selectedSeats_showtime_' + showtimeId, JSON.stringify(seatIds));
+            }
+        }
+
+        function openCancelModal() {
+            const modal = document.getElementById('cancelModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeCancelModal() {
+            const modal = document.getElementById('cancelModal');
+            if (modal) {
+                modal.style.display = 'none';
             }
         }
 
@@ -635,6 +649,22 @@
                 }
             })();
             // ---------------------------------------------
+
+            // ======== RELEASE LOCK ON UNLOAD ========
+            window.addEventListener('beforeunload', function (e) {
+                // If the user clicks confirm reservation, we shouldn't release lock
+                if (window.isConfirmingReservation) return;
+
+                const bookingIdStr = @json($pendingBookingId ?? null) || sessionStorage.getItem('current_booking_id');
+                if (bookingIdStr) {
+                    const releaseUrl = @json(route('checkout.release-lock', [], false));
+                    const data = new FormData();
+                    data.append('booking_id', bookingIdStr);
+                    data.append('_token', csrfToken);
+                    navigator.sendBeacon(releaseUrl, data);
+                }
+            });
+            // ========================================
 
             let combosTotal = 0;
             let currentDiscount = 0;
@@ -906,12 +936,13 @@
                             return data;
                         })
                         .then(session => {
-                            if (!session.url) {
+                            const redirectUrl = session.payment_url || session.url;
+                            if (!redirectUrl) {
                                 throw new Error('Không nhận được đường dẫn thanh toán');
                             }
 
                             // ========== BƯỚC 3: REDIRECT ĐẾN TRANG THANH TOÁN ==========
-                            window.location.href = session.url;
+                            window.location.href = redirectUrl;
                         });
                     })
                     .catch(error => {
@@ -934,6 +965,11 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang hủy...';
             
+            const storageKey = 'selectedSeats_showtime_' + {{ $showtime->id }};
+            sessionStorage.removeItem(storageKey);
+            sessionStorage.removeItem('booking_expires_at');
+            sessionStorage.removeItem('resume_seats_showtime_' + {{ $showtime->id }});
+
             fetch("{{ route('api.booking.cancel-explicit') }}", {
                 method: "POST",
                 headers: {
@@ -947,12 +983,10 @@
             .then(res => res.json())
             .then(data => {
                 if(data.success) {
-                    // Dọn dẹp session timer nếu có
-                    sessionStorage.removeItem('booking_expires_at');
-                    window.location.href = "{{ route('home') }}";
+                    window.location.href = data.redirect_url || "{{ route('movies.show', $showtime->movie_id) }}";
                 } else {
                     alert(data.error || "Có lỗi xảy ra khi hủy vé.");
-                    document.getElementById('cancelModal').style.display='none';
+                    closeCancelModal();
                     btn.disabled = false;
                     btn.innerHTML = 'Hủy đặt vé';
                 }
@@ -960,7 +994,7 @@
             .catch(err => {
                 console.error(err);
                 alert("Lỗi kết nối.");
-                document.getElementById('cancelModal').style.display='none';
+                closeCancelModal();
                 btn.disabled = false;
                 btn.innerHTML = 'Hủy đặt vé';
             });

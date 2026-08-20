@@ -258,29 +258,55 @@ class BookingController extends Controller
      */
     public function getBookedSeatsAPI(Showtime $showtime)
     {
-        // Có thể gọi cleanup để dọn đơn rác trước khi lấy danh sách
-        $bookingService = new \App\Services\BookingService();
-        $bookingService->cleanupExpiredPendingBookings();
-
-        $activeBookings = $showtime->bookings()
-            ->where('status', '!=', 'Cancelled')
-            ->where(function ($q) {
-                $q->where('status', '!=', 'Pending')
-                  ->orWhere('booking_time', '>=', now()->subMinutes(config('booking.seat_hold.duration_minutes', 10)));
-            })
-            ->with('bookedSeats')
-            ->get();
-
         $userId = Auth::id();
         $myPendingSeats = [];
         $bookedSeats = [];
 
-        foreach ($activeBookings as $booking) {
-            $seatIds = $booking->bookedSeats->pluck('seat_id')->toArray();
-            if ($userId && $booking->status === 'Pending' && $booking->user_id == $userId) {
-                $myPendingSeats = array_merge($myPendingSeats, $seatIds);
-            } else {
-                $bookedSeats = array_merge($bookedSeats, $seatIds);
+        // 1. Fetch Paid seats from Database
+        $paidBookings = $showtime->bookings()
+            ->whereIn('status', ['Paid', 'Used'])
+            ->with('bookedSeats')
+            ->get();
+            
+        foreach ($paidBookings as $booking) {
+            $bookedSeats = array_merge($bookedSeats, $booking->bookedSeats->pluck('seat_id')->toArray());
+        }
+
+        // 2. Fetch Pending seats from Redis (with DB fallback if Redis is down)
+        try {
+            $redisPrefix = "seat_lock:showtime_{$showtime->id}:seat_*";
+            $keys = \Illuminate\Support\Facades\Redis::keys($redisPrefix);
+            
+            foreach ($keys as $key) {
+                preg_match('/seat_(\d+)$/', $key, $matches);
+                if (isset($matches[1])) {
+                    $seatId = (int) $matches[1];
+                    $lockData = \Illuminate\Support\Facades\Redis::get("seat_lock:showtime_{$showtime->id}:seat_{$seatId}");
+                    if ($lockData) {
+                        $data = json_decode($lockData, true);
+                        if ($userId && isset($data['user_id']) && $data['user_id'] == $userId) {
+                            $myPendingSeats[] = $seatId;
+                        } else {
+                            $bookedSeats[] = $seatId;
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Redis unavailable in getBookedSeatsAPI, falling back to DB: " . $e->getMessage());
+            $pendingBookings = $showtime->bookings()
+                ->where('status', 'Pending')
+                ->where('booking_time', '>=', now()->subMinutes(\App\Services\BookingService::getHoldDuration()))
+                ->with('bookedSeats')
+                ->get();
+
+            foreach ($pendingBookings as $booking) {
+                $seatIds = $booking->bookedSeats->pluck('seat_id')->toArray();
+                if ($userId && $booking->user_id == $userId) {
+                    $myPendingSeats = array_merge($myPendingSeats, $seatIds);
+                } else {
+                    $bookedSeats = array_merge($bookedSeats, $seatIds);
+                }
             }
         }
 
@@ -288,7 +314,6 @@ class BookingController extends Controller
         $bookedSeats = array_values(array_unique($bookedSeats));
 
         return response()->json([
-            'success' => true,
             'bookedSeats' => $bookedSeats,
             'myPendingSeats' => $myPendingSeats
         ]);
@@ -308,39 +333,37 @@ class BookingController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
+        $showtime = \App\Models\Showtime::find($request->showtime_id);
+        $redirectUrl = $showtime && $showtime->movie_id 
+            ? route('movies.show', $showtime->movie_id) 
+            : route('home');
+
         // Tìm đúng Booking Pending của user cho suất chiếu này
         $booking = \App\Models\Booking::where('user_id', $userId)
             ->where('showtime_id', $request->showtime_id)
             ->where('status', 'Pending')
             ->first();
 
+        session()->flash('info', 'Đã hủy quá trình đặt vé.');
+
         // Nếu không có, coi như đã hủy hoặc hết hạn -> Trả về success (Idempotent)
         if (!$booking) {
-            return response()->json(['success' => true, 'message' => 'No active pending booking found.']);
+            return response()->json([
+                'success' => true,
+                'redirect_url' => $redirectUrl,
+                'message' => 'Đã hủy quá trình đặt vé.'
+            ]);
         }
 
         try {
-            DB::transaction(function () use ($booking) {
-                // 1. Cập nhật trạng thái Booking
-                $booking->status = 'Cancelled';
-                $booking->cancellation_reason = 'User cancelled explicitly';
-                $booking->cancelled_at = now();
-                $booking->save();
+            $bookingService = new \App\Services\BookingService();
+            $bookingService->cancelBooking($booking->id, 'User cancelled explicitly');
 
-                // 2. Cập nhật trạng thái Ghế
-                DB::table('booked_seats')
-                    ->where('booking_id', $booking->id)
-                    ->update([
-                        'status' => 'CANCELLED',
-                        'updated_at' => now()
-                    ]);
-
-                // 3. Nhả SeatHold an toàn (Không tính Spam)
-                $abuseService = new \App\Services\SeatHoldAbuseService();
-                $abuseService->markReleased($booking->id);
-            });
-
-            return response()->json(['success' => true]);
+            return response()->json([
+                'success' => true,
+                'redirect_url' => $redirectUrl,
+                'message' => 'Đã hủy quá trình đặt vé thành công.'
+            ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Explicit cancel failed: ' . $e->getMessage());
             return response()->json(['error' => 'Cancellation failed'], 500);

@@ -10,17 +10,19 @@ class VnPayController extends Controller
 {
     public function createPayment(Request $request)
     {
-        $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
-        ]);
+        try {
+            $request->validate([
+                'booking_id' => 'required|exists:bookings,id',
+            ]);
 
-        $booking = Booking::findOrFail($request->booking_id);
+            $booking = Booking::findOrFail($request->booking_id);
 
-        if ($booking->status == 'Paid') {
-            return response()->json([
-                'message' => 'Booking này đã được thanh toán.'
-            ], 400);
-        }
+            if ($booking->status == 'Paid') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Booking này đã được thanh toán.'
+                ], 400);
+            }
 
         $vnp_TmnCode = config('vnpay.tmn_code');
         $vnp_HashSecret = config('vnpay.hash_secret');
@@ -82,8 +84,16 @@ class VnPayController extends Controller
         }
 
         return response()->json([
-            'url' => $vnp_Url,
+            'status' => 'success',
+            'payment_url' => $vnp_Url,
         ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('VNPay createPayment error: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi tạo phiên thanh toán VNPAY: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function return(Request $request)
@@ -149,11 +159,15 @@ class VnPayController extends Controller
 
     private function cancelRedirect($booking, $message)
     {
-        $seatIds = $booking->bookedSeats->pluck('seat_id')->implode(',');
+        if ($booking) {
+            $seatIds = $booking->bookedSeats ? $booking->bookedSeats->pluck('seat_id')->implode(',') : '';
+            
+            return redirect()->route('checkout', [
+                'showtime_id' => $booking->showtime_id,
+                'seat_ids' => $seatIds,
+            ])->with('info', 'Giao dịch thanh toán qua VNPay chưa hoàn tất. Bạn có thể chọn lại phương thức thanh toán để tiếp tục.');
+        }
 
-        return redirect()->route('checkout', [
-            'showtime_id' => $booking->showtime_id,
-            'seat_ids' => $seatIds,
-        ])->with('info', $message . ' Ghế vẫn sẽ được giữ trong 10 phút. Bạn có thể quay lại để tiếp tục.');
+        return redirect()->route('home')->with('error', $message);
     }
 }
