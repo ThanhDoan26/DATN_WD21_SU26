@@ -55,16 +55,27 @@
                                 <i class="fas fa-user-shield text-xs"></i> Nhân viên
                             </a>
                         @endif
-                        <div class="flex items-center gap-3">
-                            <a id="nav-profile-btn" href="{{ route('profile.edit') }}" class="inline-flex items-center gap-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-white text-red-600 font-semibold">{{ strtoupper(substr(auth()->user()->name ?? 'U',0,1)) }}</span>
-                            </a>
-                            <form method="POST" action="{{ route('logout') }}" class="m-0">
-                                @csrf
-                                <button type="submit" class="ms-2 inline-flex items-center justify-center h-8 px-3 rounded-full bg-red-600 hover:bg-red-500 text-white text-sm font-semibold" title="Đăng xuất">
-                                    Đăng xuất
-                                </button>
-                            </form>
+                        <div class="relative z-50" id="desktop-avatar-wrapper">
+                            <button id="desktop-avatar-btn" class="inline-flex items-center gap-2 rounded-full focus:outline-none transition-all">
+                                <span class="inline-flex items-center justify-center h-9 w-9 rounded-full bg-white text-red-600 font-bold shadow-md shadow-black/20 hover:ring-2 hover:ring-red-500 hover:ring-offset-2 hover:ring-offset-black/50 transition-all">{{ strtoupper(substr(auth()->user()->name ?? 'U',0,1)) }}</span>
+                            </button>
+                            
+                            <!-- Dropdown menu -->
+                            <div id="desktop-avatar-dropdown" class="absolute right-0 mt-3 w-56 bg-white rounded-xl shadow-xl py-2 opacity-0 invisible transition-all duration-300 transform origin-top-right translate-y-3 border border-gray-100">
+                                <div class="px-4 py-3 border-b border-gray-100 mb-1 bg-gray-50/50">
+                                    <p class="text-sm font-semibold text-gray-900 truncate">{{ auth()->user()->name }}</p>
+                                    <p class="text-xs text-gray-500 truncate mt-0.5">{{ auth()->user()->email }}</p>
+                                </div>
+                                <a href="{{ route('profile.edit') }}" class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors flex items-center gap-2.5">
+                                    <i class="fas fa-user-circle text-gray-400 group-hover/link:text-red-500"></i> Thông tin tài khoản
+                                </a>
+                                <form method="POST" action="{{ route('logout') }}" class="m-0 block">
+                                    @csrf
+                                    <button type="submit" class="w-full text-left block px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors flex items-center gap-2.5">
+                                        <i class="fas fa-sign-out-alt text-gray-400"></i> Đăng xuất
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     @else
                         <a href="{{ route('login') }}" class="text-white/70 hover:text-white transition-colors text-sm font-medium">
@@ -170,6 +181,13 @@
         transform: translateX(0) !important;
         transition: opacity 0.4s ease, transform 0.4s ease;
     }
+
+    /* Avatar Dropdown Open State */
+    #desktop-avatar-dropdown.open {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) !important;
+    }
 </style>
 
 <script>
@@ -220,7 +238,22 @@
         link.addEventListener('click', closeMenu);
     });
 
-    // (no-op)
+    // Avatar dropdown toggle
+    const avatarBtn = document.getElementById('desktop-avatar-btn');
+    const avatarDropdown = document.getElementById('desktop-avatar-dropdown');
+    
+    if (avatarBtn && avatarDropdown) {
+        avatarBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            avatarDropdown.classList.toggle('open');
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!avatarDropdown.contains(e.target) && !avatarBtn.contains(e.target)) {
+                avatarDropdown.classList.remove('open');
+            }
+        });
+    }
 </script>
 
 @auth

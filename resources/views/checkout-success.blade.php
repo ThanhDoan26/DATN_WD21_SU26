@@ -107,7 +107,12 @@
 
 @push('scripts')
 <script>
-    // Thanh toán thành công — xóa timer để không hiện overlay hết hạn
+    // Thanh toán thành công — xóa toàn bộ timer và dữ liệu chọn ghế tạm trong sessionStorage
     sessionStorage.removeItem('booking_expires_at');
+    Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('selectedSeats_showtime_')) {
+            sessionStorage.removeItem(key);
+        }
+    });
 </script>
 @endpush

@@ -141,12 +141,12 @@ class Showtime extends Model
 
     public function movie(): BelongsTo
     {
-        return $this->belongsTo(Movie::class);
+        return $this->belongsTo(Movie::class)->withTrashed();
     }
 
     public function room(): BelongsTo
     {
-        return $this->belongsTo(Room::class);
+        return $this->belongsTo(Room::class)->withTrashed();
     }
 
     public function ticketPrices(): HasMany

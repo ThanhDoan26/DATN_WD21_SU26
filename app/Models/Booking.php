@@ -57,7 +57,7 @@ class Booking extends Model
 
     public function showtime(): BelongsTo
     {
-        return $this->belongsTo(Showtime::class);
+        return $this->belongsTo(Showtime::class)->withTrashed();
     }
 
     public function bookedSeats(): HasMany

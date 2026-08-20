@@ -90,6 +90,7 @@ Route::post('/api/apply-coupon', [\App\Http\Controllers\CheckoutController::clas
 Route::middleware('auth')->group(function () {
     Route::get('/checkout', [\App\Http\Controllers\CheckoutController::class, 'index'])->name('checkout');
     Route::get('/checkout/success', [\App\Http\Controllers\CheckoutController::class, 'success'])->name('checkout.success');
+    Route::post('/checkout/release-lock', [\App\Http\Controllers\CheckoutController::class, 'releaseLock'])->name('checkout.release-lock');
 
     // Lịch sử đặt vé
     Route::get('/booking-history', [BookingHistoryController::class, 'index'])->name('booking.history');
