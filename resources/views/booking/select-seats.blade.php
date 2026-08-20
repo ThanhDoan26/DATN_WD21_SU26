@@ -971,7 +971,10 @@
                 sessionStorage.setItem('booking_expires_at', expiresAtMs.toString());
             } else {
                 const stored = sessionStorage.getItem('booking_expires_at');
-                if (stored) {
+                const resumeKey = 'resume_seats_showtime_' + showtimeId;
+                const isResuming = sessionStorage.getItem(resumeKey) === '1' || new URLSearchParams(window.location.search).has('resume_seats');
+                
+                if (stored && (isResuming || selectedSeats.size > 0)) {
                     expiresAtMs = parseInt(stored, 10);
                 }
             }

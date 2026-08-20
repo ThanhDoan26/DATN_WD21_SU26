@@ -325,7 +325,8 @@ class BookingController extends Controller
     public function cancelExplicit(Request $request)
     {
         $request->validate([
-            'showtime_id' => 'required|integer'
+            'showtime_id' => 'nullable|integer',
+            'booking_id' => 'nullable|integer',
         ]);
 
         $userId = Auth::id();
@@ -333,21 +334,34 @@ class BookingController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        $showtime = \App\Models\Showtime::find($request->showtime_id);
+        $query = \App\Models\Booking::where('user_id', $userId)
+            ->where('status', 'Pending');
+
+        if ($request->booking_id) {
+            $query->where('id', $request->booking_id);
+        } elseif ($request->showtime_id) {
+            $query->where('showtime_id', $request->showtime_id);
+        } else {
+            return response()->json(['error' => 'Vui lòng cung cấp showtime_id hoặc booking_id'], 422);
+        }
+
+        $bookings = $query->get();
+
+        $showtime = null;
+        if ($request->showtime_id) {
+            $showtime = \App\Models\Showtime::find($request->showtime_id);
+        } elseif ($bookings->isNotEmpty()) {
+            $showtime = \App\Models\Showtime::find($bookings->first()->showtime_id);
+        }
+
         $redirectUrl = $showtime && $showtime->movie_id 
             ? route('movies.show', $showtime->movie_id) 
             : route('home');
 
-        // Tìm đúng Booking Pending của user cho suất chiếu này
-        $booking = \App\Models\Booking::where('user_id', $userId)
-            ->where('showtime_id', $request->showtime_id)
-            ->where('status', 'Pending')
-            ->first();
-
         session()->flash('info', 'Đã hủy quá trình đặt vé.');
 
         // Nếu không có, coi như đã hủy hoặc hết hạn -> Trả về success (Idempotent)
-        if (!$booking) {
+        if ($bookings->isEmpty()) {
             return response()->json([
                 'success' => true,
                 'redirect_url' => $redirectUrl,
@@ -357,7 +371,9 @@ class BookingController extends Controller
 
         try {
             $bookingService = new \App\Services\BookingService();
-            $bookingService->cancelBooking($booking->id, 'User cancelled explicitly');
+            foreach ($bookings as $booking) {
+                $bookingService->cancelBooking($booking->id, 'User cancelled explicitly');
+            }
 
             return response()->json([
                 'success' => true,

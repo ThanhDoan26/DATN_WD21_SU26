@@ -267,8 +267,11 @@ class BookingService
                     ->where('bookings.status', 'Cancelled')
                     ->whereNotIn('bookings.cancellation_reason', [
                         'User initiated a new booking request',
+                        'Replaced by a new booking request',
                         'Payment timeout expired',
                         'User cancelled explicitly',
+                        'Người dùng tự hủy đơn',
+                        'User actively released lock (beforeunload/back)',
                     ])
                     ->where('bookings.created_at', '>=', now()->subMinutes($cooldownMinutes))
                     ->whereIn('booked_seats.seat_id', $selectedSeatIds)

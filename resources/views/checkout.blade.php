@@ -608,9 +608,8 @@
             }
 
             // ---- Khởi động timer ngay khi vào trang ----
-            // 1. Nếu server trả về thời gian kết thúc của Booking có sẵn trong DB → Ưu tiên dùng
-            // 2. Nếu có timer lưu trong sessionStorage (resume từ Stripe) → dùng tiếp
-            // 3. Nếu chưa có → đếm 10 phút từ hiện tại
+            // 1. Nếu server trả về thời gian kết thúc của Booking có sẵn trong DB → Dùng thời gian server
+            // 2. Nếu không có (đơn mới hoặc đã hủy) → Bắt đầu đếm 10 phút mới từ hiện tại
             (function initTimer() {
                 console.log("initTimer called.");
                 if (expiredBackBtn) expiredBackBtn.href = seatSelectionUrl;
@@ -632,21 +631,17 @@
                 const stored = sessionStorage.getItem('booking_expires_at');
                 if (stored) {
                     const expiresAtMs = parseInt(stored, 10);
-                    console.log("initTimer: found stored expiry:", expiresAtMs);
                     if (expiresAtMs > Date.now()) {
                         startCountdown(expiresAtMs);
-                    } else {
-                        console.log("initTimer: stored expiry is in the past, showing overlay.");
-                        sessionStorage.removeItem('booking_expires_at');
-                        if (expiredOverlay) expiredOverlay.classList.add('active');
+                        return;
                     }
-                } else {
-                    // Mới vào trang → bắt đầu đếm 10 phút ngay
-                    const freshExpiry = Date.now() + TIMEOUT_SECONDS * 1000;
-                    console.log("initTimer: starting fresh expiry:", freshExpiry);
-                    sessionStorage.setItem('booking_expires_at', freshExpiry.toString());
-                    startCountdown(freshExpiry);
                 }
+
+                // Không có đơn Pending trên server hoặc chưa có timer → Bắt đầu đếm 10 phút mới
+                const freshExpiry = Date.now() + TIMEOUT_SECONDS * 1000;
+                console.log("initTimer: starting fresh expiry:", freshExpiry);
+                sessionStorage.setItem('booking_expires_at', freshExpiry.toString());
+                startCountdown(freshExpiry);
             })();
             // ---------------------------------------------
 
