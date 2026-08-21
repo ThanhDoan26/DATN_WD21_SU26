@@ -45,10 +45,21 @@ class BookedSeat extends Model
      */
     public function checkin(): bool
     {
-        return $this->update([
-            'status' => 'USED',
-            'checked_in_at' => now(),
-        ]);
+        $updated = \Illuminate\Support\Facades\DB::table('booked_seats')
+            ->where('id', $this->id)
+            ->where('status', 'PAID')
+            ->update([
+                'status' => 'USED',
+                'checked_in_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        if ($updated > 0) {
+            $this->status = 'USED';
+            return true;
+        }
+        
+        return false;
     }
 
     /**

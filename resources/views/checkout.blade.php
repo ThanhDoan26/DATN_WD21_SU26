@@ -895,13 +895,8 @@
 
                         const bookingId = data.data.booking_id;
 
-                        // ===== KHỞI ĐỘNG ĐỒNG HỒ ĐẾM NGƯỢC =====
-                        const timeoutMs = (data.data?.timeout_minutes ?? {{ \App\Services\BookingService::getHoldDuration() }}) * 60 * 1000;
-                        const expiresAtMs = data.data?.expires_at_ms ? parseInt(data.data.expires_at_ms, 10) : (Date.now() + timeoutMs);
-                        // Lưu vào sessionStorage để timer vẫn chạy nếu Stripe/VNPay redirect về
-                        sessionStorage.setItem('booking_expires_at', expiresAtMs.toString());
-                        startCountdown(expiresAtMs);
-                        // ==========================================
+                        // Đồng hồ đếm ngược đã được khởi tạo lúc load trang.
+                        // Không cần set lại để tránh làm reset sai lệch thời gian của server.
 
                         // ========== BƯỚC 2: TẠO PHIÊN THANH TOÁN (STRIPE HOẶC VNPAY) ==========
                         let paymentUrl = stripeSessionUrl;
@@ -936,12 +931,13 @@
                             return data;
                         })
                         .then(session => {
-                            if (!session.url) {
+                            const redirectUrl = session.payment_url || session.url;
+                            if (!redirectUrl) {
                                 throw new Error('Không nhận được đường dẫn thanh toán');
                             }
 
                             // ========== BƯỚC 3: REDIRECT ĐẾN TRANG THANH TOÁN ==========
-                            window.location.href = session.url;
+                            window.location.href = redirectUrl;
                         });
                     })
                     .catch(error => {

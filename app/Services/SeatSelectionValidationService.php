@@ -39,6 +39,7 @@ class SeatSelectionValidationService
             $blocks = $this->splitByUnavailableSeat($sortedSeats);
 
             $this->validateContinuousSeats($blocks);
+            $this->validateOrphanSeats($sortedSeats);
         }
 
         // 3. Multi-row connectivity validation
@@ -268,6 +269,45 @@ class SeatSelectionValidationService
                 }
             }
 
+        }
+    }
+
+    /**
+     * Cấm tạo ra 1 ghế trống đơn độc (orphan seat) giữa các ghế đã chọn hoặc không khả dụng.
+     */
+    private function validateOrphanSeats(Collection $sortedSeats): void
+    {
+        $seatsCount = $sortedSeats->count();
+        $seats = $sortedSeats->values()->all();
+
+        for ($i = 0; $i < $seatsCount; $i++) {
+            $seat = $seats[$i];
+
+            // Nếu ghế này đang trống và không được chọn
+            if (!$seat->is_unavailable && empty($seat->is_selected)) {
+                $leftOccupied = false;
+                if ($i > 0) {
+                    $leftSeat = $seats[$i - 1];
+                    // Kiểm tra ghế kề bên trái thực sự có số thứ tự liền kề
+                    if ((int)$leftSeat->seat_number === (int)$seat->seat_number - 1) {
+                        $leftOccupied = $leftSeat->is_unavailable || !empty($leftSeat->is_selected);
+                    }
+                }
+
+                $rightOccupied = false;
+                if ($i < $seatsCount - 1) {
+                    $rightSeat = $seats[$i + 1];
+                    // Kiểm tra ghế kề bên phải thực sự có số thứ tự liền kề
+                    if ((int)$rightSeat->seat_number === (int)$seat->seat_number + 1) {
+                        $rightOccupied = $rightSeat->is_unavailable || !empty($rightSeat->is_selected);
+                    }
+                }
+
+                // Nếu cả 2 bên đều occupied -> Orphan seat -> Báo lỗi
+                if ($leftOccupied && $rightOccupied) {
+                    throw new Exception("Bạn không được để trống 1 ghế đơn độc (orphan seat) giữa các ghế đã chọn hoặc đã bán.");
+                }
+            }
         }
     }
 
