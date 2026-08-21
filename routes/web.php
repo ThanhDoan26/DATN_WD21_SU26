@@ -10,6 +10,7 @@ Route::get('/', [MovieController::class, 'welcome'])->name('home');
 Route::get('/phim-dang-chieu', [MovieController::class, 'currentMovies'])->name('movies.current');
 Route::get('/phim-sap-chieu', [MovieController::class, 'upcomingMovies'])->name('movies.upcoming');
 Route::get('/phim/{id}', [MovieController::class, 'show'])->name('movies.show');
+Route::get('/rap/{cinema}', [\App\Http\Controllers\CinemaController::class, 'show'])->name('cinemas.show');
 
 // Posts routes
 Route::get('/tin-tuc', [\App\Http\Controllers\PostController::class, 'index'])->name('posts.index');
@@ -20,6 +21,7 @@ Route::post('/chat/web', [\App\Http\Controllers\ChatController::class, 'chatWeb'
 
 Route::middleware('auth')->group(function () {
     Route::post('/movies/{movie}/reviews', [\App\Http\Controllers\ReviewController::class, 'store'])->name('movies.reviews.store');
+    Route::post('/cinemas/{cinema}/reviews', [\App\Http\Controllers\CinemaReviewController::class, 'store'])->name('cinemas.reviews.store');
 });
 
 Route::get('/dashboard', function () {
@@ -88,6 +90,7 @@ Route::post('/api/apply-coupon', [\App\Http\Controllers\CheckoutController::clas
 Route::middleware('auth')->group(function () {
     Route::get('/checkout', [\App\Http\Controllers\CheckoutController::class, 'index'])->name('checkout');
     Route::get('/checkout/success', [\App\Http\Controllers\CheckoutController::class, 'success'])->name('checkout.success');
+    Route::post('/checkout/release-lock', [\App\Http\Controllers\CheckoutController::class, 'releaseLock'])->name('checkout.release-lock');
 
     // Lịch sử đặt vé
     Route::get('/booking-history', [BookingHistoryController::class, 'index'])->name('booking.history');

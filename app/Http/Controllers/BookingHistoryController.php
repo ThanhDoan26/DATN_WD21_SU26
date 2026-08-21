@@ -17,14 +17,21 @@ class BookingHistoryController extends Controller
     }
 
     /**
-     * Display a listing of the user's bookings.
+     * Display a listing of the user's bookings with status tabs.
      */
     public function index(Request $request): View
     {
         $userId = Auth::id();
-        $bookings = $this->bookingService->getUserBookings($userId);
+        $status = $request->query('status', 'paid');
+        
+        if (!in_array($status, ['paid', 'cancelled', 'all'])) {
+            $status = 'paid';
+        }
 
-        return view('user.booking-history.index', compact('bookings'));
+        $bookings = $this->bookingService->getUserBookings($userId, $status);
+        $counts = $this->bookingService->getBookingCounts($userId);
+
+        return view('user.booking-history.index', compact('bookings', 'status', 'counts'));
     }
 
     /**

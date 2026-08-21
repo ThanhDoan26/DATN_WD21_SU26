@@ -75,6 +75,7 @@ class BookingService
         array $combos = [],
         array $extraData = []
     ): int {
+        // Apply user lock to prevent concurrent booking attempts
         $userLock = $userId ? Cache::lock("user_booking_lock_{$userId}", 10) : null;
         if ($userLock && !$userLock->get()) {
             throw new Exception("Hệ thống đang xử lý giao dịch của bạn. Vui lòng thử lại sau.");
@@ -85,20 +86,19 @@ class BookingService
                 throw new Exception('Vui lòng chọn ít nhất 1 ghế');
             }
 
-            // ── Anti-Abuse: Validate max seats per booking ──────────────
+            // Anti-abuse: Validate max seats per booking (config-driven)
+            $selectedSeatCount = count(array_unique(array_values($selectedSeatIds)));
             $maxSeatsPerBooking = (int) config('booking.seat_hold.max_seats_per_booking', 8);
-            if (count($selectedSeatIds) > $maxSeatsPerBooking) {
-                throw new Exception(
-                    "Bạn chỉ có thể chọn tối đa {$maxSeatsPerBooking} ghế mỗi lần đặt."
-                );
+            if ($selectedSeatCount > $maxSeatsPerBooking) {
+                throw new Exception("Bạn chỉ có thể chọn tối đa {$maxSeatsPerBooking} ghế cho mỗi đơn hàng.");
             }
+
+            $this->cleanupExpiredPendingBookings();
 
             $inheritedBookingTime = null;
 
             try {
                 // 1. Tự động dọn dẹp các booking quá hạn trước khi kiểm tra
-                $this->cleanupExpiredPendingBookings();
-
                 // 2. ACTIVE PENDING BOOKING GUARD (SSOT)
                 if ($userId) {
                     $activePendingBooking = $this->getActivePendingBooking($userId);
@@ -148,12 +148,30 @@ class BookingService
                             'updated_at' => now(),
                         ]);
 
+                    $oldSeatIds = DB::table('booked_seats')
+                        ->whereIn('booking_id', $userPendingBookingIds)
+                        ->pluck('seat_id')
+                        ->toArray();
+
                     DB::table('booked_seats')
                         ->whereIn('booking_id', $userPendingBookingIds)
                         ->update([
                             'status' => 'CANCELLED',
                             'updated_at' => now(),
                         ]);
+
+                    // Release Redis locks & broadcast AVAILABLE for seats no longer selected
+                    $releasedSeatIds = array_diff($oldSeatIds, $selectedSeatIds);
+                    foreach ($releasedSeatIds as $oldSeatId) {
+                        try {
+                            \Illuminate\Support\Facades\Redis::del("seat_lock:showtime_{$showtimeId}:seat_{$oldSeatId}");
+                        } catch (\Throwable $t) {}
+                    }
+                    if (!empty($releasedSeatIds)) {
+                        try {
+                            event(new \App\Events\SeatStatusUpdated($showtimeId, array_values($releasedSeatIds), 'AVAILABLE'));
+                        } catch (\Throwable $t) {}
+                    }
 
                     // ── Anti-Abuse: Mark released cho tracking ──
                     try {
@@ -162,12 +180,12 @@ class BookingService
                             // User chủ động sửa giỏ hàng -> nhả ghế tự nguyện -> RELEASED
                             $abuseServiceCleanup->markReleased($pendingId);
                         }
-                    } catch (\Exception $trackingEx) {
-                        \Illuminate\Support\Facades\Log::warning('Tracking markReleased failed: ' . $trackingEx->getMessage());
+                    } catch (\Throwable $trackingEx) {
+                        \Illuminate\Support\Facades\Log::warning("Failed to record seat release for abuse tracking: " . $trackingEx->getMessage());
                     }
                 }
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('Pre-booking cleanup failed: ' . $e->getMessage());
         }
 
@@ -188,15 +206,33 @@ class BookingService
         sort($sortedSeatIds); // Đảm bảo thứ tự xin khóa đồng nhất, tránh Deadlock
 
         try {
-            // Cố gắng lấy khóa từng ghế
+            // Cố gắng lấy khóa từng ghế (10 phút) trên Redis (nếu Redis khả dụng)
             foreach ($sortedSeatIds as $seatId) {
-                $lockKey = "seat_hold_showtime_{$showtimeId}_seat_{$seatId}";
-                $lock = Cache::lock($lockKey, 10); // Khóa trong 10 giây
-                
-                if (!$lock->get()) {
-                    throw new Exception("Ghế bạn chọn đang có người khác thao tác. Vui lòng thử lại!");
+                $lockKey = "seat_lock:showtime_{$showtimeId}:seat_{$seatId}";
+                try {
+                    $locked = \Illuminate\Support\Facades\Redis::set(
+                        $lockKey, 
+                        json_encode(['user_id' => $userId, 'status' => 'Pending']), 
+                        'EX', 
+                        600, 
+                        'NX'
+                    );
+                    
+                    if (!$locked) {
+                        // Release previously acquired locks in this batch
+                        foreach ($locks as $acquiredKey) {
+                            try { \Illuminate\Support\Facades\Redis::del($acquiredKey); } catch (\Throwable $t) {}
+                        }
+                        throw new Exception("Ghế bạn chọn đang có người khác thao tác. Vui lòng thử lại!");
+                    }
+                    $locks[] = $lockKey;
+                } catch (\Throwable $ex) {
+                    if ($ex->getMessage() === "Ghế bạn chọn đang có người khác thao tác. Vui lòng thử lại!") {
+                        throw new \Exception($ex->getMessage());
+                    }
+                    \Illuminate\Support\Facades\Log::warning("Redis connection failed during seat lock, falling back to DB: " . $ex->getMessage());
+                    break;
                 }
-                $locks[] = $lock;
             }
 
             // ── Bước 2: Kiểm tra Chống Spam (Anti-abuse) ──────────────
@@ -316,6 +352,33 @@ class BookingService
 
                 if (!$showtime) {
                     throw new Exception("Suất chiếu $showtimeId không tồn tại");
+                }
+
+                $startTime = \Carbon\Carbon::parse($showtime->start_time);
+                $endTime = $showtime->end_time ? \Carbon\Carbon::parse($showtime->end_time) : null;
+                $isWalkIn = ($extraData['booking_source'] ?? 'online') !== 'online';
+
+                // Kiểm tra trạng thái và thời gian đặt vé theo quy định
+                if ($showtime->status === 'CANCELLED') {
+                    throw new Exception("Suất chiếu này đã bị hủy, không thể đặt vé.");
+                }
+
+                if ($isWalkIn) {
+                    // Tại quầy: Cho phép trong 30 phút đầu kể từ khi bắt đầu chiếu (và chưa kết thúc)
+                    if ($endTime && now()->gte($endTime)) {
+                        throw new Exception("Suất chiếu này đã kết thúc, không thể xuất vé.");
+                    }
+                    if (now()->gt($startTime->copy()->addMinutes(30))) {
+                        throw new Exception("Suất chiếu đã bắt đầu quá 30 phút, hệ thống đã khóa bán vé.");
+                    }
+                } else {
+                    // Trực tuyến (Online): Khóa trước giờ chiếu 15 phút
+                    if ($showtime->status !== 'SCHEDULED') {
+                        throw new Exception("Suất chiếu này không còn mở bán trực tuyến.");
+                    }
+                    if (now()->addMinutes(15)->gte($startTime)) {
+                        throw new Exception("Suất chiếu này đã đóng cổng đặt vé trực tuyến (cần đặt trước giờ chiếu tối thiểu 15 phút). Vui lòng mua vé trực tiếp tại quầy hoặc chọn suất chiếu khác.");
+                    }
                 }
 
                 $ticketPrices = DB::table('ticket_prices')
@@ -475,30 +538,36 @@ class BookingService
                         request()?->ip(),
                         $customExpiresAt
                     );
-                } catch (\Exception $trackingEx) {
+                } catch (\Throwable $trackingEx) {
                     // Tracking failure KHÔNG được block booking flow
                     \Illuminate\Support\Facades\Log::warning('SeatHold tracking failed: ' . $trackingEx->getMessage());
                 }
             }
 
+            try {
+                event(new \App\Events\SeatStatusUpdated($showtimeId, $selectedSeatIds, 'Pending'));
+            } catch (\Throwable $broadcastEx) {
+                \Illuminate\Support\Facades\Log::warning('Broadcasting SeatStatusUpdated failed: ' . $broadcastEx->getMessage());
+            }
+
             return $bookingId;
 
-        } catch (\Illuminate\Database\QueryException $e) {
+        } catch (\Throwable $e) {
+            // Giải phóng toàn bộ Redis Lock nếu giao dịch thất bại
+            if (isset($locks) && is_array($locks)) {
+                foreach ($locks as $lockKey) {
+                    \Illuminate\Support\Facades\Redis::del($lockKey);
+                }
+            }
+            
             // Xử lý Deadlock Exception (error code 40001 - Serialization failure)
-            if ($e->getCode() === '40001' || $e->getCode() === '1213') {
+            if ($e instanceof \Illuminate\Database\QueryException && ($e->getCode() === '40001' || $e->getCode() === '1213')) {
                 throw new Exception(
                     'Có quá nhiều khách đặt vé cùng lúc. Vui lòng thử lại sau vài giây!',
                     1
                 );
             }
             throw $e;
-        } finally {
-            // Giải phóng toàn bộ Redis Lock
-            if (isset($locks) && is_array($locks)) {
-                foreach ($locks as $lock) {
-                    $lock->release();
-                }
-            }
         }
     } finally {
         if (isset($userLock) && $userLock) {
@@ -512,6 +581,95 @@ class BookingService
      *
      * @return int
      */
+    public function getUserBookedSeatCount(?int $userId, ?int $movieId = null): int
+    {
+        if (!$userId) {
+            return 0;
+        }
+
+        $bookingQuery = DB::table('bookings')
+            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+            ->where('bookings.user_id', $userId)
+            ->whereIn('bookings.status', ['Paid', 'Used']);
+
+        if ($movieId) {
+            $bookingQuery->where('showtimes.movie_id', $movieId);
+        }
+
+        $bookingIds = $bookingQuery->pluck('bookings.id')->toArray();
+
+        if (empty($bookingIds)) {
+            return 0;
+        }
+
+        return DB::table('booked_seats')
+            ->whereIn('booking_id', $bookingIds)
+            ->count();
+    }
+
+    private function getMovieIdFromShowtime(int $showtimeId): ?int
+    {
+        $showtime = DB::table('showtimes')->where('id', $showtimeId)->first();
+
+        return $showtime ? (int) $showtime->movie_id : null;
+    }
+
+    private function cancelUserPendingBookingsForMovie(?int $userId, ?int $movieId): void
+    {
+        if (!$userId || !$movieId) {
+            return;
+        }
+
+        $pendingBookingIds = DB::table('bookings')
+            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+            ->where('bookings.user_id', $userId)
+            ->where('showtimes.movie_id', $movieId)
+            ->where('bookings.status', 'Pending')
+            ->pluck('bookings.id')
+            ->toArray();
+
+        if (empty($pendingBookingIds)) {
+            return;
+        }
+
+        $bookingsWithCoupons = DB::table('bookings')
+            ->whereIn('id', $pendingBookingIds)
+            ->whereNotNull('coupon_id')
+            ->get();
+
+        foreach ($bookingsWithCoupons as $b) {
+            DB::table('coupons')
+                ->where('id', $b->coupon_id)
+                ->where('used_count', '>', 0)
+                ->decrement('used_count');
+        }
+
+        DB::table('bookings')
+            ->whereIn('id', $pendingBookingIds)
+            ->update([
+                'status' => 'Cancelled',
+                'cancellation_reason' => 'Replaced by a new booking request',
+                'cancelled_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        DB::table('booked_seats')
+            ->whereIn('booking_id', $pendingBookingIds)
+            ->update([
+                'status' => 'CANCELLED',
+                'updated_at' => now(),
+            ]);
+
+        DB::table('seat_holds')
+            ->whereIn('booking_id', $pendingBookingIds)
+            ->where('status', 'active')
+            ->update([
+                'status' => 'released',
+                'released_at' => now(),
+                'updated_at' => now(),
+            ]);
+    }
+
     public function cleanupExpiredPendingBookings(): int
     {
         $expiredBookings = []; // Capture for tracking after transaction
@@ -577,7 +735,7 @@ class BookingService
                 foreach ($userIds as $userId) {
                     $abuseService->checkAndApplyAbuse($userId);
                 }
-            } catch (\Exception $trackingEx) {
+            } catch (\Throwable $trackingEx) {
                 \Illuminate\Support\Facades\Log::warning('Tracking markExpired in cleanup failed: ' . $trackingEx->getMessage());
             }
         }
@@ -621,6 +779,21 @@ class BookingService
                 );
             }
 
+            // Kiểm tra Redis key để đảm bảo ghế chưa bị nhả do quá hạn (nếu Redis khả dụng)
+            try {
+                $seatIds = DB::table('booked_seats')->where('booking_id', $bookingId)->pluck('seat_id')->toArray();
+                foreach ($seatIds as $seatId) {
+                    if (!\Illuminate\Support\Facades\Redis::exists("seat_lock:showtime_{$booking->showtime_id}:seat_{$seatId}")) {
+                        throw new Exception("Đơn hàng đã hết hạn giữ chỗ (hoặc ghế đã bị nhả). Vui lòng liên hệ CSKH để được hỗ trợ hoàn tiền.");
+                    }
+                }
+            } catch (\Throwable $ex) {
+                if (str_contains($ex->getMessage(), 'Đơn hàng đã hết hạn giữ chỗ')) {
+                    throw $ex;
+                }
+                \Illuminate\Support\Facades\Log::warning("Redis check in completePayment skipped: " . $ex->getMessage());
+            }
+
             // Cập nhật booking status
             DB::table('bookings')
                 ->where('id', $bookingId)
@@ -649,8 +822,24 @@ class BookingService
         try {
             $abuseService = new SeatHoldAbuseService();
             $abuseService->markCompleted($bookingId);
-        } catch (\Exception $trackingEx) {
+        } catch (\Throwable $trackingEx) {
             \Illuminate\Support\Facades\Log::warning('Tracking markCompleted in completePayment failed: ' . $trackingEx->getMessage());
+        }
+
+        // ── Redis & Broadcast ──
+        try {
+            $bookingInfo = DB::table('bookings')->where('id', $bookingId)->first();
+            if ($bookingInfo) {
+                $showtimeId = $bookingInfo->showtime_id;
+                $seatIds = DB::table('booked_seats')->where('booking_id', $bookingId)->pluck('seat_id')->toArray();
+                
+                foreach ($seatIds as $seatId) {
+                    \Illuminate\Support\Facades\Redis::del("seat_lock:showtime_{$showtimeId}:seat_{$seatId}");
+                }
+                event(new \App\Events\SeatStatusUpdated($showtimeId, $seatIds, 'PAID'));
+            }
+        } catch (\Throwable $ex) {
+            \Illuminate\Support\Facades\Log::warning('Redis/Broadcast in completePayment failed: ' . $ex->getMessage());
         }
 
         return $result;
@@ -714,8 +903,24 @@ class BookingService
         try {
             $abuseService = new SeatHoldAbuseService();
             $abuseService->markReleased($bookingId);
-        } catch (\Exception $trackingEx) {
+        } catch (\Throwable $trackingEx) {
             \Illuminate\Support\Facades\Log::warning('Tracking markReleased in cancelBooking failed: ' . $trackingEx->getMessage());
+        }
+
+        // ── Redis & Broadcast ──
+        try {
+            $bookingInfo = DB::table('bookings')->where('id', $bookingId)->first();
+            if ($bookingInfo) {
+                $showtimeId = $bookingInfo->showtime_id;
+                $seatIds = DB::table('booked_seats')->where('booking_id', $bookingId)->pluck('seat_id')->toArray();
+                
+                foreach ($seatIds as $seatId) {
+                    \Illuminate\Support\Facades\Redis::del("seat_lock:showtime_{$showtimeId}:seat_{$seatId}");
+                }
+                event(new \App\Events\SeatStatusUpdated($showtimeId, $seatIds, 'AVAILABLE'));
+            }
+        } catch (\Throwable $ex) {
+            \Illuminate\Support\Facades\Log::warning('Redis/Broadcast in cancelBooking failed: ' . $ex->getMessage());
         }
 
         return $result;
