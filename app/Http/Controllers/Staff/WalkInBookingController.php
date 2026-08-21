@@ -279,11 +279,16 @@ class WalkInBookingController extends Controller
                 
                 // If email provided, send confirmation
                 $bookingDetails = $bookingService->getBookingDetails($bookingId);
+                $mailSent = false;
+                $hasEmail = false;
+
                 if ($request->input('customer_email')) {
+                    $hasEmail = true;
                     \Illuminate\Support\Facades\Log::info("WalkInBookingController: Đang gọi Mail::to()->send() gửi cho " . $request->input('customer_email'));
                     $showtime = Showtime::with(['movie', 'room.cinema'])->find($request->input('showtime_id'));
                     try {
                         Mail::to($request->input('customer_email'))->send(new TicketConfirmationMail($bookingDetails, $showtime));
+                        $mailSent = true;
                     } catch (\Exception $e) {
                         Log::error('Walk-in payment email failed: ' . $e->getMessage(), [
                             'file' => $e->getFile(),
@@ -295,11 +300,16 @@ class WalkInBookingController extends Controller
                     \Illuminate\Support\Facades\Log::warning("WalkInBookingController: TicketConfirmationMail KHÔNG được gọi do khách hàng không cung cấp email.");
                 }
 
+                $message = 'Đặt vé và thanh toán thành công.';
+                if ($hasEmail && !$mailSent) {
+                    $message = 'Đặt vé và thanh toán thành công nhưng gửi email xác nhận thất bại. Vui lòng kiểm tra lại email hoặc liên hệ hỗ trợ.';
+                }
+
                 return response()->json([
                     'success' => true,
                     'isWalkIn' => true,
                     'redirect_url' => route('staff.walkin.success', ['booking_id' => $bookingId]),
-                    'message' => 'Đặt vé và thanh toán thành công.',
+                    'message' => $message,
                 ]);
             }
 
