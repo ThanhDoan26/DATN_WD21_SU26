@@ -25,4 +25,9 @@ class Cinema extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    public function cinemaReviews(): HasMany
+    {
+        return $this->hasMany(\App\Models\CinemaReview::class);
+    }
 }

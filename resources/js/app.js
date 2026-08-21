@@ -1,3 +1,4 @@
+import './bootstrap';
 import { createApp } from 'vue';
 import Alpine from 'alpinejs';
 import CinemaManager from './components/admin/CinemaManager.vue';

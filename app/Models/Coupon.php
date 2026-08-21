@@ -32,6 +32,36 @@ class Coupon extends Model
     ];
 
     /**
+     * Scope lọc danh sách Coupon hợp lệ cho khách hàng tại màn hình Checkout ngay tại Query CSDL
+     */
+    public function scopeValidForCheckout($query)
+    {
+        $now = now();
+        return $query->where('status', 'ACTIVE')
+            ->where(function ($q) use ($now) {
+                $q->whereNull('start_date')
+                  ->orWhere('start_date', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->whereNull('end_date')
+                  ->orWhere('end_date', '>=', $now);
+            })
+            ->where(function ($q) {
+                $q->where('quantity', 0)
+                  ->orWhereNull('quantity')
+                  ->orWhereColumn('used_count', '<', 'quantity');
+            });
+    }
+
+    /**
+     * Tự động chuyển type về chữ thường khi lấy dữ liệu để tránh lỗi case-sensitive
+     */
+    public function getTypeAttribute($value)
+    {
+        return $value ? strtolower($value) : $value;
+    }
+
+    /**
      * Kiểm tra xem mã giảm giá có hợp lệ cho đơn hàng hiện tại không.
      *
      * @param float $orderTotal Giá trị đơn hàng tạm tính
@@ -94,5 +124,29 @@ class Coupon extends Model
         }
 
         return min($this->value, $orderTotal); // Giảm tối đa bằng giá trị đơn hàng
+    }
+
+    /**
+     * Scope a query to only include active and valid coupons.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeActiveAndValid($query)
+    {
+        $now = now();
+        return $query->where('status', 'ACTIVE')
+            ->where(function ($q) use ($now) {
+                $q->whereNull('start_date')
+                  ->orWhere('start_date', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->whereNull('end_date')
+                  ->orWhere('end_date', '>=', $now);
+            })
+            ->where(function ($q) {
+                $q->where('quantity', '<=', 0)
+                  ->orWhereColumn('used_count', '<', 'quantity');
+            });
     }
 }

@@ -106,11 +106,11 @@
                 <a href="{{ url('/') }}">
                     <i class="fas fa-home"></i> <span>Trang Chủ</span>
                 </a>
-            </li>
-            <li>
-                <a href="{{ route('staff.dashboard') }}" class="@if(request()->routeIs('staff.dashboard')) active @endif">
-                    <i class="fas fa-tachometer-alt"></i> <span>Bảng điều khiển</span>
-                </a>
+                        <li>
+                            <button type="button" class="dropdown-item py-2" onclick="event.preventDefault(); event.stopPropagation(); openProfileModal('profile-info')">
+                                <i class="fas fa-user-circle me-2 text-primary"></i> Hồ sơ cá nhân
+                            </button>
+                        </li>
             </li>
             <li>
                 <a href="{{ route('staff.ticket.search') }}" class="@if(request()->routeIs('staff.ticket.search')) active @endif">

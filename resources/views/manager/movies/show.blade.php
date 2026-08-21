@@ -1,0 +1,192 @@
+@extends('layouts.manager')
+
+@section('title', 'Chi tiết Phim')
+@section('page_title', 'Chi tiết Phim: ' . $movie->title)
+
+@section('content')
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Poster</h5>
+            </div>
+            <div class="card-body text-center">
+                @if($movie->poster_url)
+                    <img src="{{ Str::startsWith($movie->poster_url, ['http://', 'https://']) ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="img-fluid rounded shadow" style="max-height: 400px; object-fit: cover;">
+                @else
+                    <div class="bg-light p-5 text-muted rounded d-flex align-items-center justify-content-center" style="height: 300px;">
+                        <span>Chưa có ảnh Poster</span>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Hành động</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                <a href="{{ route('movies.show', $movie->id) }}" target="_blank" class="btn btn-success w-100">
+                    <i class="fas fa-eye"></i> Xem trang khách
+                </a>
+                @if($movie->status === 'NOW_SHOWING')
+                <a href="{{ route('movies.current') }}" target="_blank" class="btn btn-outline-info w-100 btn-sm">
+                    <i class="fas fa-film"></i> Xem trong Phim Đang Chiếu
+                </a>
+                @elseif($movie->status === 'COMING_SOON')
+                <a href="{{ route('movies.upcoming') }}" target="_blank" class="btn btn-outline-info w-100 btn-sm">
+                    <i class="fas fa-calendar-alt"></i> Xem trong Phim Sắp Chiếu
+                </a>
+                @endif
+            </div>
+        </div>
+
+        {{-- Trailer Preview Card --}}
+        @if($movie->trailer_url)
+        @php
+            preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/', $movie->trailer_url, $ytMatch);
+            $ytId = $ytMatch[1] ?? null;
+        @endphp
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fab fa-youtube text-danger"></i> Trailer</h5>
+                <a href="{{ $movie->trailer_url }}" target="_blank" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-external-link-alt"></i> Mở
+                </a>
+            </div>
+            <div class="card-body p-0">
+                @if($ytId)
+                <div style="position:relative;padding-top:56.25%;">
+                    <iframe src="https://www.youtube.com/embed/{{ $ytId }}" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+                @else
+                <div class="p-3">
+                    <a href="{{ $movie->trailer_url }}" target="_blank" class="text-break">{{ $movie->trailer_url }}</a>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
+    </div>
+
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Thông tin chi tiết</h5>
+                @if($movie->status == 'COMING_SOON')
+                    <span class="badge bg-warning text-dark fs-6">Sắp chiếu</span>
+                @elseif($movie->status == 'NOW_SHOWING')
+                    <span class="badge bg-success fs-6">Đang chiếu</span>
+                @else
+                    <span class="badge bg-danger fs-6">Ngưng chiếu</span>
+                @endif
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <th width="200" class="bg-light">Tên phim</th>
+                            <td><strong class="fs-5">{{ $movie->title }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Danh mục</th>
+                            <td>
+                                @forelse($movie->categories as $category)
+                                    <span class="badge bg-secondary">{{ $category->name }}</span>
+                                @empty
+                                    <span class="text-muted">Chưa cập nhật</span>
+                                @endforelse
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Mô tả</th>
+                            <td>{{ $movie->description ?: 'Chưa cập nhật' }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Định dạng phim</th>
+                            <td>
+                                @if(is_array($movie->format) && count($movie->format) > 0)
+                                    @foreach($movie->format as $fmt)
+                                        <span class="badge bg-info text-dark fs-6 me-1 mb-1 d-inline-block">{{ $fmt }}</span>
+                                    @endforeach
+                                @elseif(is_string($movie->format) && $movie->format !== '')
+                                    <span class="badge bg-info text-dark fs-6 mb-1 d-inline-block">{{ $movie->format }}</span>
+                                @else
+                                    <span class="text-muted">Chưa cập nhật</span>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Thời lượng</th>
+                            <td>{{ $movie->duration }} phút ({{ $movie->getDurationFormatted() }})</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Độ tuổi</th>
+                            <td>
+                                @php
+                                    $badgeColor = match(true) {
+                                        in_array($movie->age_rating, ['P', 'K', 'G'])      => 'success',
+                                        in_array($movie->age_rating, ['T13', '13+', 'PG']) => 'warning',
+                                        in_array($movie->age_rating, ['T16', '16+'])        => 'warning',
+                                        in_array($movie->age_rating, ['T18', '18+', 'R'])  => 'danger',
+                                        default                                             => 'secondary',
+                                    };
+                                    $badgeStyle = match(true) {
+                                        in_array($movie->age_rating, ['T16', '16+'])        => 'background:#f97316;',
+                                        default => '',
+                                    };
+                                @endphp
+                                @if($movie->age_rating)
+                                <span class="badge bg-{{ $badgeColor }} fs-6" style="{{ $badgeStyle }}">
+                                    {{ $movie->age_rating }}
+                                </span>
+                                <small class="text-muted ms-2">
+                                    @if(in_array($movie->age_rating, ['P', 'K'])) Phổ biến (mọi độ tuổi)
+                                    @elseif($movie->age_rating === 'T13') Từ 13 tuổi trở lên
+                                    @elseif($movie->age_rating === 'T16') Từ 16 tuổi trở lên
+                                    @elseif($movie->age_rating === 'T18') Từ 18 tuổi trở lên
+                                    @endif
+                                </small>
+                                @else
+                                <span class="text-muted">Chưa cập nhật</span>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Đạo diễn</th>
+                            <td>{{ $movie->director ?: 'Chưa cập nhật' }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Diễn viên</th>
+                            <td>{{ $movie->cast ?: 'Chưa cập nhật' }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Quốc gia</th>
+                            <td>{{ $movie->country ?: 'Chưa cập nhật' }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Ngôn ngữ</th>
+                            <td>{{ $movie->language ?: 'Chưa cập nhật' }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Trailer URL</th>
+                            <td>
+                                @if($movie->trailer_url)
+                                    <a href="{{ $movie->trailer_url }}" target="_blank">{{ $movie->trailer_url }}</a>
+                                @else
+                                    Chưa cập nhật
+                                @endif
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    </div>
+</div>
+
+<div class="d-flex gap-2">
+    <a href="{{ route('manager.movies.index') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Quay lại</a>
+</div>
+@endsection

@@ -265,7 +265,25 @@
         <div class="qr-section">
             <div class="qr-code">
                 <!-- Mã QR của ghế lẻ dùng để checkin -->
-                {!! \SimpleSoftwareIO\QrCode\Facades\QrCode::size(130)->margin(0)->generate($seat->qr_code) !!}
+                @php
+                    $qrSvg = '';
+                    try {
+                        $qrCode = new \Endroid\QrCode\QrCode($seat->qr_code);
+                        $qrCode->setSize(130);
+                        $qrCode->setMargin(0);
+                        $qrCode->setErrorCorrectionLevel(\Endroid\QrCode\ErrorCorrectionLevel::High);
+                        $writer = new \Endroid\QrCode\Writer\PngWriter();
+                        $result = $writer->write($qrCode);
+                        $qrSvg = $result->getDataUri();
+                    } catch (\Exception $e) {
+                        $qrSvg = '';
+                    }
+                @endphp
+                @if($qrSvg)
+                    <img src="{{ $qrSvg }}" alt="QR Code" style="width: 130px; height: 130px; object-fit: contain;" />
+                @else
+                    <div style="width: 130px; height: 130px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #666;">QR không khả dụng</div>
+                @endif
             </div>
             <div style="font-size: 11px; margin-bottom: 10px;">Quét QR để kiểm tra vé</div>
             
