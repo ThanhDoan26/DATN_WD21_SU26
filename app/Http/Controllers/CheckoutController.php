@@ -170,7 +170,7 @@ class CheckoutController extends Controller
         }
 
         $combos = Combo::where('status', 'ACTIVE')->get();
-        $coupons = Coupon::where('status', 'ACTIVE')->get();
+        $coupons = Coupon::validForCheckout()->get();
 
         return view('checkout', compact(
             'showtime',
@@ -399,28 +399,8 @@ class CheckoutController extends Controller
         try {
             $bookingService = new BookingService();
             
-            // Đánh dấu thanh toán thành công
+            // Đánh dấu thanh toán thành công (BookingObserver sẽ tự động kích hoạt gửi TicketConfirmationMail bất đồng bộ qua Queue)
             $bookingService->completePayment($booking->id, $booking->payment_method ?? 'MOCK_PAYMENT');
-            
-            // Lấy thông tin chi tiết để gửi email
-            $bookingDetails = $bookingService->getBookingDetails($booking->id);
-            $showtime = Showtime::with(['movie', 'room.cinema'])->find($booking->showtime_id);
-            
-            // Gửi email xác nhận
-            if (Auth::user() && Auth::user()->email) {
-                try {
-                    \Illuminate\Support\Facades\Log::info("CheckoutController: Đang gọi Mail::to()->send() gửi cho " . Auth::user()->email);
-                    Mail::to(Auth::user()->email)->send(new TicketConfirmationMail($bookingDetails, $showtime));
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error("CheckoutController: Lỗi khi gọi Mail::to()->send() cho " . Auth::user()->email . ". Lỗi: " . $e->getMessage(), [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'trace' => $e->getTraceAsString(),
-                    ]);
-                }
-            } else {
-                \Illuminate\Support\Facades\Log::warning("CheckoutController: TicketConfirmationMail KHÔNG được gọi do user chưa đăng nhập hoặc không có email.");
-            }
             
             return redirect()->route('checkout.success', ['booking_id' => $booking->id])
                              ->with('success', 'Thanh toán thành công. Email xác nhận đã được gửi đến bạn.');

@@ -24,23 +24,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/cinemas/{cinema}/reviews', [\App\Http\Controllers\CinemaReviewController::class, 'store'])->name('cinemas.reviews.store');
 });
 
-Route::get('/dashboard', function () {
-    $user = auth()->user();
-
-    // Chuyển hướng về dashboard đúng role — không cho phép staff/manager/admin ở lại trang này
-    if ($user && $user->isAdmin()) {
-        return redirect()->route('admin.dashboard');
-    }
-    if ($user && $user->isManager()) {
-        return redirect()->route('manager.dashboard');
-    }
-    if ($user && $user->isStaff()) {
-        return redirect()->route('staff.dashboard');
-    }
-
-    // Chỉ USER (khách hàng) mới được xem trang dashboard này
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
