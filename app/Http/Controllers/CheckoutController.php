@@ -17,6 +17,71 @@ use App\Mail\TicketConfirmationMail;
 
 class CheckoutController extends Controller
 {
+    public function init(Request $request)
+    {
+        $request->validate([
+            'showtime_id' => 'required|exists:showtimes,id',
+            'seat_ids' => 'required',
+        ]);
+
+        $showtimeId = $request->showtime_id;
+        $seatIdsInput = $request->seat_ids;
+        $userId = \Illuminate\Support\Facades\Auth::id();
+
+        if (is_string($seatIdsInput)) {
+            $seatIds = array_filter(array_map('intval', explode(',', $seatIdsInput)));
+        } elseif (is_array($seatIdsInput)) {
+            $seatIds = array_filter(array_map('intval', $seatIdsInput));
+        } else {
+            $seatIds = [];
+        }
+
+        if (empty($seatIds)) {
+            return back()->with('error', 'Vui lòng chọn ghế.');
+        }
+
+        // 1. Rate Limit: 3 lần thay đổi / 5 phút
+        if ($userId) {
+            $rateLimitKey = "rate_limit_user_{$userId}_showtime_{$showtimeId}";
+            $blockKey = "block_user_{$userId}_showtime_{$showtimeId}";
+
+            if (\Illuminate\Support\Facades\Cache::has($blockKey)) {
+                return back()->with('error', 'Bạn đã thao tác chọn/hủy ghế quá nhiều lần. Vui lòng chờ 5 phút trước khi thử lại.');
+            }
+
+            // 2. Seat Cooldown
+            foreach ($seatIds as $seatId) {
+                if (\Illuminate\Support\Facades\Cache::has("cooldown_user_{$userId}_showtime_{$showtimeId}_seat_{$seatId}")) {
+                    return back()->with('error', 'Bạn vừa hủy ghế này gần đây. Vui lòng chọn ghế khác hoặc chờ 3 phút.');
+                }
+            }
+        }
+
+        try {
+            $bookingService = new BookingService();
+            // This will lock seats and create a new Pending booking
+            $bookingId = $bookingService->createBooking(
+                $userId,
+                $showtimeId,
+                $seatIds
+            );
+
+            // Tăng Rate Limit
+            if ($userId) {
+                $attempts = \Illuminate\Support\Facades\Cache::get($rateLimitKey, 0) + 1;
+                \Illuminate\Support\Facades\Cache::put($rateLimitKey, $attempts, now()->addMinutes(5));
+                if ($attempts >= 3) {
+                    \Illuminate\Support\Facades\Cache::put($blockKey, true, now()->addMinutes(5));
+                    \Illuminate\Support\Facades\Cache::forget($rateLimitKey); // clear count
+                }
+            }
+
+            return redirect()->route('checkout', ['showtime_id' => $showtimeId]);
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
     public function index(Request $request)
     {
         $bookingService = new BookingService();
@@ -41,25 +106,29 @@ class CheckoutController extends Controller
             $showtimeId = (int) $showtimeId;
         }
 
-        // Normalize seatIds - handle array or string
-        if (is_array($seatIds)) {
-            $seatIds = implode(',', array_filter($seatIds, fn($item) => $item !== null && $item !== ''));
+        if (!$showtimeId) {
+            abort(404, 'Suất chiếu không hợp lệ.');
         }
 
-        // Convert string to array of integers
-        if ($seatIds && is_string($seatIds)) {
-            $seatIds = array_filter(array_map('intval', explode(',', $seatIds)));
-        } else {
-            $seatIds = [];
+        $pendingBooking = Booking::where('user_id', \Illuminate\Support\Facades\Auth::id())
+            ->where('showtime_id', $showtimeId)
+            ->whereIn('status', ['Pending', 'PROCESSING'])
+            ->orderBy('booking_time', 'desc')
+            ->first();
+
+        if (!$pendingBooking) {
+            return redirect()->route('booking.select-seats', ['showtime' => $showtimeId])
+                ->with('error', 'Đã hết thời gian giữ ghế hoặc bạn chưa chọn ghế. Vui lòng chọn lại.');
         }
+
+        $pendingBookingId = $pendingBooking->id;
+        $expiresAtMs = ($pendingBooking->booking_time->timestamp + BookingService::getHoldDuration() * 60) * 1000;
+        
+        $seatIds = $pendingBooking->bookedSeats()->pluck('seat_id')->toArray();
 
         // Only proceed if we have both showtime and seat IDs
         if ($showtimeId && !empty($seatIds)) {
             $showtime = Showtime::with('room.cinema')->find($showtimeId);
-
-            if (!$showtime) {
-                abort(404, 'Suất chiếu không tồn tại.');
-            }
 
             // Check if showtime is still valid for online booking (cut off 15 mins before showtime)
             if (!$showtime->isOnlineBookable()) {
@@ -97,22 +166,6 @@ class CheckoutController extends Controller
 
                 $subtotal += $seatPrice;
                 $total += $seatFinalPrice;
-            }
-
-            $pendingBooking = Booking::where('user_id', Auth::id())
-                ->where('showtime_id', $showtimeId)
-                ->where('status', 'Pending')
-                ->whereHas('bookedSeats', function ($q) use ($seatIds) {
-                    $q->whereIn('seat_id', $seatIds);
-                })
-                ->orderBy('booking_time', 'desc')
-                ->first();
-
-            if ($pendingBooking) {
-                $expiresAtMs = ($pendingBooking->booking_time->timestamp + BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES * 60) * 1000;
-                $pendingBookingId = $pendingBooking->id;
-            } else {
-                $pendingBookingId = null;
             }
         }
 
@@ -198,6 +251,9 @@ class CheckoutController extends Controller
                 $request->input('coupon_code'),
                 $request->input('combos', [])
             );
+
+            // Chuyển sang trạng thái PROCESSING để ngăn cronjob dọn dẹp
+            Booking::where('id', $bookingId)->update(['status' => 'PROCESSING']);
 
             $bookingDetails = $bookingService->getBookingDetails($bookingId);
 

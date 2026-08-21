@@ -508,7 +508,8 @@
     </section>
 
     <!-- Sticky Bottom Bar: Summary & Checkout -->
-    <form id="seat-selection-form" action="{{ route('checkout') }}" method="GET" class="fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-700 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-50">
+    <form id="seat-selection-form" action="{{ route('checkout.init') }}" method="POST" class="fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-700 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-50">
+        @csrf
         <input type="hidden" name="showtime_id" id="form_showtime_id" value="{{ $showtime->id }}" />
         <input type="hidden" name="seat_ids" id="form_seat_ids" value="" />
         
