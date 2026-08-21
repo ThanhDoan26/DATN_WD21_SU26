@@ -15,7 +15,9 @@ class StripeController extends Controller
             'booking_id' => 'required|exists:bookings,id',
         ]);
 
-        $booking = Booking::findOrFail($request->booking_id);
+        $booking = Booking::where('id', $request->booking_id)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
 
         // Không tạo lại nếu đã thanh toán
         if ($booking->status == 'Paid') {
@@ -81,22 +83,13 @@ class StripeController extends Controller
         $booking = Booking::findOrFail($request->booking_id);
 
         if ($booking->status != 'Paid') {
-
-            $booking->status = 'Paid';
-
-            $booking->payment_method = 'Stripe';
-
-            $booking->payment_time = now();
-
-            $booking->save();
-
-            // Sync booked_seats status to PAID
-            \Illuminate\Support\Facades\DB::table('booked_seats')
-                ->where('booking_id', $booking->id)
-                ->update([
-                    'status' => 'PAID',
-                    'updated_at' => now(),
-                ]);
+            try {
+                $bookingService = app(\App\Services\BookingService::class);
+                $bookingService->completePayment($booking->id, 'Stripe');
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Stripe completePayment error: ' . $e->getMessage());
+                return redirect()->route('home')->with('error', 'Có lỗi xảy ra khi hoàn tất thanh toán: ' . $e->getMessage());
+            }
         }
 
 

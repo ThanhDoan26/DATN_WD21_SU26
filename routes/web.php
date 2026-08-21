@@ -127,6 +127,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/vnpay/return',
         [\App\Http\Controllers\VnPayController::class, 'return'])
         ->name('vnpay.return');
+    
+    Route::get('/vnpay/ipn',
+        [\App\Http\Controllers\VnPayController::class, 'ipn'])
+        ->name('vnpay.ipn');
 
 });
 
@@ -150,16 +154,4 @@ Route::get('/tickets/{token}', function ($token) {
 })->name('tickets.scan');
 
 require __DIR__.'/auth.php';
-
-Route::get('/quick-login-staff', function () {
-    $user = \App\Models\User::whereHas('role', function($q) {
-        $q->where('role_name', 'STAFF');
-    })->first();
-    if ($user) {
-        auth()->login($user);
-        return redirect()->route('staff.dashboard');
-    }
-    return redirect()->route('login')->with('error', 'Không tìm thấy tài khoản Staff.');
-
-})->name('staff.quick-login');
 

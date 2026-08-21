@@ -393,13 +393,35 @@ class BookingService
                     }
 
                     $priceRow = $ticketPrices[$seat->seat_type] ?? null;
+                    
                     if (!$priceRow) {
-                        throw new Exception(
-                            "Không có giá vé cho loại ghế {$seat->seat_type} trong suất chiếu này"
-                        );
+                        // BIZ-002: Tự động bù giá gốc nếu suất chiếu cũ chưa có giá cho loại ghế mới
+                        $defaultPrices = [
+                            'Regular' => 75000,
+                            'VIP' => 90000,
+                            'Sweetbox' => 120000,
+                        ];
+                        
+                        if (isset($defaultPrices[$seat->seat_type])) {
+                            $price = $defaultPrices[$seat->seat_type];
+                            // Tự động insert để cache lại cho các lần booking sau
+                            DB::table('ticket_prices')->insert([
+                                'showtime_id' => $showtimeId,
+                                'seat_type' => $seat->seat_type,
+                                'price' => $price,
+                                'status' => 'ACTIVE',
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        } else {
+                            throw new Exception(
+                                "Không có giá vé cho loại ghế {$seat->seat_type} trong suất chiếu này. Vui lòng báo quản trị viên cập nhật giá."
+                            );
+                        }
+                    } else {
+                        $price = (float) $priceRow->price;
                     }
 
-                    $price = (float) $priceRow->price;
                     $finalPrice = $price + $surcharge;
                     $totalPrice += $finalPrice;
 
@@ -1197,11 +1219,18 @@ class BookingService
      * @return string
      */
     private function generateQRCode(string $bookingCode, string $row, int $seatNumber): string {
-        // Simplified QR code - thực tế nên dùng endroid/qr-code hoặc simplesoftware/simple-qr-code
-        return base64_encode(json_encode([
+        $payload = [
             'booking_code' => $bookingCode,
             'seat' => $row . $seatNumber,
             'timestamp' => now()->timestamp,
-        ]));
+        ];
+
+        // Add HMAC checksum
+        ksort($payload);
+        $dataToSign = json_encode($payload);
+        $secretKey = config('ticket.secret_key', env('APP_KEY'));
+        $payload['checksum'] = hash_hmac('sha256', $dataToSign, $secretKey);
+
+        return base64_encode(json_encode($payload));
     }
 }
