@@ -269,6 +269,30 @@ class BookingService
                     );
                 }
 
+                // Kiểm tra Cooldown 15 phút (chống giam ghế)
+                // Chỉ chặn các hành vi THỰC SỰ lạm dụng (admin hủy, hệ thống phát hiện abuse).
+                // Các lý do hủy bình thường PHẢI được loại trừ:
+                // - 'User initiated a new booking request': User chọn lại ghế (update giỏ hàng)
+                // - 'Payment timeout expired': Booking hết hạn tự nhiên, user quay lại chọn lại
+                // - 'User cancelled explicitly': User chủ động hủy rồi muốn đặt lại
+                $cooldownMinutes = 15;
+                $recentAbusedSeats = DB::table('bookings')
+                    ->join('booked_seats', 'bookings.id', '=', 'booked_seats.booking_id')
+                    ->where('bookings.user_id', $userId)
+                    ->where('bookings.showtime_id', $showtimeId)
+                    ->where('bookings.status', 'Cancelled')
+                    ->whereNotIn('bookings.cancellation_reason', [
+                        'User initiated a new booking request',
+                        'Replaced by a new booking request',
+                        'Payment timeout expired',
+                        'User cancelled explicitly',
+                        'Người dùng tự hủy đơn',
+                        'User actively released lock (beforeunload/back)',
+                    ])
+                    ->where('bookings.created_at', '>=', now()->subMinutes($cooldownMinutes))
+                    ->whereIn('booked_seats.seat_id', $selectedSeatIds)
+                    ->select('booked_seats.seat_id')
+                    ->get();
 
             }
 
