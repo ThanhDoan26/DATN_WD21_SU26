@@ -25,7 +25,8 @@ class ShowtimeController extends Controller
             ->whereHas('room', function ($q) use ($cinemaId) {
                 $q->where('cinema_id', $cinemaId);
             })
-            ->orderBy('start_time');
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc');
 
         if ($request->filled('movie_id')) {
             $query->where('movie_id', $request->movie_id);

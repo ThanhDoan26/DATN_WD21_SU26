@@ -17,7 +17,7 @@ class ShowtimeController extends AdminController
         // Tự động cập nhật trạng thái các suất chiếu đã chiếu / đang chiếu
         Showtime::syncAllStatuses();
 
-        $query = Showtime::with(['movie', 'room.cinema'])->orderBy('start_time');
+        $query = Showtime::with(['movie', 'room.cinema'])->orderBy('created_at', 'desc')->orderBy('id', 'desc');
 
         if ($request->filled('movie_id')) {
             $query->where('movie_id', $request->movie_id);
