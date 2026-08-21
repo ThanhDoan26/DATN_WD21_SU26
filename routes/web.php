@@ -88,6 +88,7 @@ Route::prefix('api/booking')->controller(\App\Http\Controllers\BookingController
 Route::post('/api/apply-coupon', [\App\Http\Controllers\CheckoutController::class, 'applyCoupon'])->name('api.apply-coupon');
 
 Route::middleware('auth')->group(function () {
+    Route::post('/checkout/init', [\App\Http\Controllers\CheckoutController::class, 'init'])->name('checkout.init');
     Route::get('/checkout', [\App\Http\Controllers\CheckoutController::class, 'index'])->name('checkout');
     Route::get('/checkout/success', [\App\Http\Controllers\CheckoutController::class, 'success'])->name('checkout.success');
     Route::post('/checkout/release-lock', [\App\Http\Controllers\CheckoutController::class, 'releaseLock'])->name('checkout.release-lock');

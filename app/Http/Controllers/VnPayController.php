@@ -44,6 +44,8 @@ class VnPayController extends Controller
         $vnp_BankCode = '';
         $vnp_IpAddr = $request->ip();
 
+        $expiresAt = \Carbon\Carbon::parse($booking->booking_time)->addMinutes(\App\Services\BookingService::getHoldDuration());
+
         $inputData = array(
             "vnp_Version" => "2.1.0",
             "vnp_TmnCode" => $vnp_TmnCode,
@@ -57,6 +59,7 @@ class VnPayController extends Controller
             "vnp_OrderType" => $vnp_OrderType,
             "vnp_ReturnUrl" => $vnp_Returnurl,
             "vnp_TxnRef" => $vnp_TxnRef,
+            "vnp_ExpireDate" => $expiresAt->format('YmdHis'),
         );
 
         if (isset($vnp_BankCode) && $vnp_BankCode != "") {

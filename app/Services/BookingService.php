@@ -51,7 +51,7 @@ class BookingService
         
         return \App\Models\Booking::with(['showtime.movie', 'bookedSeats.seat'])
             ->where('user_id', $userId)
-            ->where('status', 'Pending')
+            ->whereIn('status', ['Pending', 'PROCESSING'])
             ->where('booking_time', '>=', now()->subMinutes(self::getHoldDuration()))
             ->first();
     }
@@ -96,6 +96,7 @@ class BookingService
             $this->cleanupExpiredPendingBookings();
 
             $inheritedBookingTime = null;
+            $isExtended = false;
 
             try {
                 // 1. Tự động dọn dẹp các booking quá hạn trước khi kiểm tra
@@ -113,16 +114,17 @@ class BookingService
                 $userPendingBookings = DB::table('bookings')
                     ->where('user_id', $userId)
                     ->where('showtime_id', $showtimeId)
-                    ->where('status', 'Pending')
-                    ->select('id', 'booking_time')
+                    ->whereIn('status', ['Pending', 'PROCESSING'])
+                    ->select('id', 'booking_time', 'is_extended')
                     ->get();
                 
                 $userPendingBookingIds = $userPendingBookings->pluck('id')->toArray();
 
                 if (!empty($userPendingBookingIds)) {
-                    $oldestBookingTime = $userPendingBookings->min('booking_time');
-                    if ($oldestBookingTime) {
-                        $inheritedBookingTime = \Carbon\Carbon::parse($oldestBookingTime);
+                    $oldestBooking = $userPendingBookings->sortBy('booking_time')->first();
+                    if ($oldestBooking) {
+                        $inheritedBookingTime = \Carbon\Carbon::parse($oldestBooking->booking_time);
+                        $isExtended = (bool) $oldestBooking->is_extended;
                     }
 
                     // Hoàn lại lượt dùng mã giảm giá nếu có
@@ -166,6 +168,13 @@ class BookingService
                         try {
                             \Illuminate\Support\Facades\Redis::del("seat_lock:showtime_{$showtimeId}:seat_{$oldSeatId}");
                         } catch (\Throwable $t) {}
+                        if ($userId) {
+                            \Illuminate\Support\Facades\Cache::put(
+                                "cooldown_user_{$userId}_showtime_{$showtimeId}_seat_{$oldSeatId}",
+                                true,
+                                now()->addMinutes(3)
+                            );
+                        }
                     }
                     if (!empty($releasedSeatIds)) {
                         try {
@@ -191,7 +200,14 @@ class BookingService
 
         if ($inheritedBookingTime) {
             $holdDuration = self::getHoldDuration();
-            if ($inheritedBookingTime->copy()->addMinutes($holdDuration)->isPast()) {
+            $expiresAt = $inheritedBookingTime->copy()->addMinutes($holdDuration);
+            
+            // Silent Buffer: Nếu thời gian còn lại < 2 phút và chưa từng gia hạn
+            if (now()->addMinutes(2)->gte($expiresAt) && !$isExtended) {
+                $inheritedBookingTime->addMinutes(3);
+                $isExtended = true;
+                $expiresAt->addMinutes(3); // Update local var just in case
+            } elseif (now()->gte($expiresAt)) {
                 throw new Exception("Thời gian giữ ghế của bạn đã hết. Vui lòng tải lại trang và chọn lại ghế mới.");
             }
         }
@@ -253,37 +269,11 @@ class BookingService
                     );
                 }
 
-                // Kiểm tra Cooldown 15 phút (chống giam ghế)
-                // Chỉ chặn các hành vi THỰC SỰ lạm dụng (admin hủy, hệ thống phát hiện abuse).
-                // Các lý do hủy bình thường PHẢI được loại trừ:
-                // - 'User initiated a new booking request': User chọn lại ghế (update giỏ hàng)
-                // - 'Payment timeout expired': Booking hết hạn tự nhiên, user quay lại chọn lại
-                // - 'User cancelled explicitly': User chủ động hủy rồi muốn đặt lại
-                $cooldownMinutes = 15;
-                $recentAbusedSeats = DB::table('bookings')
-                    ->join('booked_seats', 'bookings.id', '=', 'booked_seats.booking_id')
-                    ->where('bookings.user_id', $userId)
-                    ->where('bookings.showtime_id', $showtimeId)
-                    ->where('bookings.status', 'Cancelled')
-                    ->whereNotIn('bookings.cancellation_reason', [
-                        'User initiated a new booking request',
-                        'Payment timeout expired',
-                        'User cancelled explicitly',
-                    ])
-                    ->where('bookings.created_at', '>=', now()->subMinutes($cooldownMinutes))
-                    ->whereIn('booked_seats.seat_id', $selectedSeatIds)
-                    ->select('booked_seats.seat_id')
-                    ->get();
 
-                if ($recentAbusedSeats->count() > 0) {
-                    throw new Exception(
-                        "Bạn vừa thao tác (giữ/hủy) trên một trong những ghế này trong {$cooldownMinutes} phút qua. Vui lòng chọn ghế khác hoặc thử lại sau!"
-                    );
-                }
             }
 
             // ── Bước 3: Cập nhật giữ ghế (Thực thi an toàn) ──────────────
-            $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData, $inheritedBookingTime) {
+            $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData, $inheritedBookingTime, $isExtended) {
 
                 // ================================================================
                 // Step 1: Lock các hàng ghế (chỉ 1 request được giữ lock)
@@ -482,6 +472,7 @@ class BookingService
                     'status' => 'Pending',
                     'payment_method' => $paymentMethod,
                     'booking_time' => $inheritedBookingTime ?? now(),
+                    'is_extended' => $isExtended,
                     'booking_code' => $bookingCode,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -678,8 +669,15 @@ class BookingService
             $expiredAt = now()->subMinutes(self::getHoldDuration());
 
             $expiredBookings = DB::table('bookings')
-                ->where('status', 'Pending')
-                ->where('booking_time', '<', $expiredAt)
+                ->where(function($query) use ($expiredAt) {
+                    $query->where('status', 'Pending')
+                          ->where('booking_time', '<', $expiredAt);
+                })
+                ->orWhere(function($query) use ($expiredAt) {
+                    // Dọn dẹp cả PROCESSING nhưng cho thêm 15 phút ân hạn (tránh treo ghế vĩnh viễn)
+                    $query->where('status', 'PROCESSING')
+                          ->where('booking_time', '<', $expiredAt->copy()->subMinutes(15));
+                })
                 ->select('id', 'user_id')
                 ->get();
 
@@ -916,6 +914,13 @@ class BookingService
                 
                 foreach ($seatIds as $seatId) {
                     \Illuminate\Support\Facades\Redis::del("seat_lock:showtime_{$showtimeId}:seat_{$seatId}");
+                    if ($bookingInfo->user_id) {
+                        \Illuminate\Support\Facades\Cache::put(
+                            "cooldown_user_{$bookingInfo->user_id}_showtime_{$showtimeId}_seat_{$seatId}",
+                            true,
+                            now()->addMinutes(3)
+                        );
+                    }
                 }
                 event(new \App\Events\SeatStatusUpdated($showtimeId, $seatIds, 'AVAILABLE'));
             }
