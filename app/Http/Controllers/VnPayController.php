@@ -15,7 +15,9 @@ class VnPayController extends Controller
                 'booking_id' => 'required|exists:bookings,id',
             ]);
 
-            $booking = Booking::findOrFail($request->booking_id);
+            $booking = Booking::where('id', $request->booking_id)
+                ->where('user_id', auth()->id())
+                ->firstOrFail();
 
             if ($booking->status == 'Paid') {
                 return response()->json([
@@ -136,17 +138,13 @@ class VnPayController extends Controller
         if ($secureHash == $vnp_SecureHash) {
             if ($request->vnp_ResponseCode == '00') {
                 if ($booking->status != 'Paid') {
-                    $booking->status = 'Paid';
-                    $booking->payment_method = 'VNPAY';
-                    $booking->payment_time = now();
-                    $booking->save();
-
-                    DB::table('booked_seats')
-                        ->where('booking_id', $booking->id)
-                        ->update([
-                            'status' => 'PAID',
-                            'updated_at' => now(),
-                        ]);
+                    try {
+                        $bookingService = app(\App\Services\BookingService::class);
+                        $bookingService->completePayment($booking->id, 'VNPAY', $inputData);
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error('VNPAY return completePayment error: ' . $e->getMessage());
+                        return $this->cancelRedirect($booking, 'Có lỗi xảy ra khi hoàn tất thanh toán: ' . $e->getMessage());
+                    }
                 }
 
                 return redirect()->route('checkout.success', [
@@ -157,6 +155,86 @@ class VnPayController extends Controller
             }
         } else {
             return $this->cancelRedirect($booking, 'Chữ ký không hợp lệ.');
+        }
+    }
+
+    public function ipn(Request $request)
+    {
+        $inputData = array();
+        
+        foreach ($request->all() as $key => $value) {
+            if (substr($key, 0, 4) == "vnp_") {
+                $inputData[$key] = $value;
+            }
+        }
+
+        if (!isset($inputData['vnp_SecureHash'])) {
+            return response()->json(['RspCode' => '99', 'Message' => 'Missing signature']);
+        }
+        
+        $vnp_SecureHash = $inputData['vnp_SecureHash'];
+        unset($inputData['vnp_SecureHash']);
+        if (isset($inputData['vnp_SecureHashType'])) {
+            unset($inputData['vnp_SecureHashType']);
+        }
+        
+        ksort($inputData);
+        $i = 0;
+        $hashData = "";
+        foreach ($inputData as $key => $value) {
+            if ($i == 1) {
+                $hashData = $hashData . '&' . urlencode($key) . "=" . urlencode($value);
+            } else {
+                $hashData = $hashData . urlencode($key) . "=" . urlencode($value);
+                $i = 1;
+            }
+        }
+
+        $vnp_HashSecret = env('VNP_HASH_SECRET');
+        $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
+
+        if ($secureHash !== $vnp_SecureHash) {
+            return response()->json(['RspCode' => '97', 'Message' => 'Invalid signature']);
+        }
+
+        try {
+            $bookingId = $request->vnp_TxnRef;
+            
+            DB::beginTransaction();
+            
+            $booking = Booking::where('id', $bookingId)->lockForUpdate()->first();
+            
+            if (!$booking) {
+                DB::rollBack();
+                return response()->json(['RspCode' => '01', 'Message' => 'Order not found']);
+            }
+
+            // Verify amount
+            $vnp_Amount = $request->vnp_Amount / 100;
+            if (abs((float)$booking->total_price - (float)$vnp_Amount) > 1) {
+                DB::rollBack();
+                return response()->json(['RspCode' => '04', 'Message' => 'Invalid amount']);
+            }
+
+            if ($booking->status === 'Paid') {
+                DB::rollBack();
+                return response()->json(['RspCode' => '02', 'Message' => 'Order already confirmed']);
+            }
+
+            if ($request->vnp_ResponseCode == '00') {
+                $bookingService = app(\App\Services\BookingService::class);
+                $bookingService->completePayment($booking->id, 'VNPAY', $inputData);
+            } else {
+                // Payment failed, you could mark it as failed or let timeout handle it
+                // We'll leave it pending for timeout handling to clean it up
+            }
+            
+            DB::commit();
+            return response()->json(['RspCode' => '00', 'Message' => 'Confirm Success']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('VNPAY IPN error: ' . $e->getMessage());
+            return response()->json(['RspCode' => '99', 'Message' => 'Unknown error']);
         }
     }
 
