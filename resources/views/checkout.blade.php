@@ -267,6 +267,19 @@
                                 </div>
                             </label>
 
+                            <label class="relative cursor-pointer group">
+                                <input type="radio" name="payment" value="MOCK" class="peer payment-radio hidden">
+                                <div class="border-2 border-slate-700 rounded-2xl p-6 transition-all duration-300 hover:border-slate-500 flex flex-col items-center gap-3 bg-slate-950/30">
+                                    <div class="absolute top-4 right-4 text-primary opacity-0 scale-50 transition-all duration-300 check-icon">
+                                        <i class="fas fa-check-circle text-xl"></i>
+                                    </div>
+                                    <div class="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 text-3xl mb-2">
+                                        <i class="fas fa-bolt"></i>
+                                    </div>
+                                    <span class="text-white font-semibold text-lg">Thử nghiệm (Nhanh)</span>
+                                </div>
+                            </label>
+
                             @if(isset($isWalkIn) && $isWalkIn)
                             <label class="relative cursor-pointer group">
                                 <input type="radio" name="payment" value="CASH" class="peer payment-radio hidden">
@@ -518,6 +531,7 @@
             const reserveUrl = @json(route('checkout.reserve', [], false));
             const stripeSessionUrl = @json(route('stripe.session', [], false));
             const vnpayPaymentUrl = @json(route('vnpay.payment', [], false));
+            const mockPaymentUrl = @json(route('checkout.mock-payment', [], false));
             const successUrl = @json(route('checkout.success', [], false));
             
             const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
@@ -671,6 +685,21 @@
             };
 
             const selectedCombos = {};
+            const savedCombosData = @json($savedCombos ?? []);
+            Object.keys(savedCombosData).forEach(id => {
+                const qty = parseInt(savedCombosData[id]);
+                if (qty > 0) {
+                    const span = document.querySelector(`.combo-quantity[data-id="${id}"]`);
+                    if (span) {
+                        span.textContent = qty;
+                        selectedCombos[id] = {
+                            name: span.getAttribute('data-name'),
+                            price: parseFloat(span.getAttribute('data-price')),
+                            qty: qty
+                        };
+                    }
+                }
+            });
 
             const couponLabels = document.querySelectorAll('.coupon-label');
             const selectedCouponDisplay = document.getElementById('selected_coupon_display');
@@ -841,6 +870,7 @@
                         }
                     });
 
+                    window.isConfirmingReservation = true;
                     confirmReservationButton.disabled = true;
                     confirmReservationButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Đang xử lý...';
 
@@ -890,18 +920,15 @@
 
                         const bookingId = data.data.booking_id;
 
-                        // ===== KHỞI ĐỘNG ĐỒNG HỒ ĐẾM NGƯỢC =====
-                        const timeoutMs = (data.data?.timeout_minutes ?? {{ \App\Services\BookingService::getHoldDuration() }}) * 60 * 1000;
-                        const expiresAtMs = data.data?.expires_at_ms ? parseInt(data.data.expires_at_ms, 10) : (Date.now() + timeoutMs);
-                        // Lưu vào sessionStorage để timer vẫn chạy nếu Stripe/VNPay redirect về
-                        sessionStorage.setItem('booking_expires_at', expiresAtMs.toString());
-                        startCountdown(expiresAtMs);
-                        // ==========================================
+                        // Đồng hồ đếm ngược đã được khởi tạo lúc load trang.
+                        // Không cần set lại để tránh làm reset sai lệch thời gian của server.
 
                         // ========== BƯỚC 2: TẠO PHIÊN THANH TOÁN (STRIPE HOẶC VNPAY) ==========
                         let paymentUrl = stripeSessionUrl;
                         if (selectedPayment === 'VNPAY') {
                             paymentUrl = vnpayPaymentUrl;
+                        } else if (selectedPayment === 'MOCK') {
+                            paymentUrl = mockPaymentUrl;
                         }
 
                         return fetch(paymentUrl, {
@@ -931,15 +958,17 @@
                             return data;
                         })
                         .then(session => {
-                            if (!session.url) {
+                            const redirectUrl = session.payment_url || session.url;
+                            if (!redirectUrl) {
                                 throw new Error('Không nhận được đường dẫn thanh toán');
                             }
 
                             // ========== BƯỚC 3: REDIRECT ĐẾN TRANG THANH TOÁN ==========
-                            window.location.href = session.url;
+                            window.location.href = redirectUrl;
                         });
                     })
                     .catch(error => {
+                        window.isConfirmingReservation = false;
                         confirmReservationButton.disabled = false;
                         confirmReservationButton.innerHTML = '<span>Thanh toán ngay</span><i class="fas fa-arrow-right ml-2"></i>';
 

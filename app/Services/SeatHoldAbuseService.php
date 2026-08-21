@@ -218,18 +218,28 @@ class SeatHoldAbuseService
         $warningThreshold = (int) config('booking.abuse.warning_threshold', 3);
         $blockThreshold   = (int) config('booking.abuse.block_threshold', 5);
 
+        $windowStart = now()->subMinutes($windowMinutes);
+
         // Đếm expired holds trong sliding window
         $expiredCount = SeatHold::forUser($userId)
             ->expired()
-            ->where('created_at', '>=', now()->subMinutes($windowMinutes))
+            ->where('created_at', '>=', $windowStart)
             ->count();
+            
+        // ABUSE-001: Đếm completed holds để bù trừ
+        $completedCount = SeatHold::forUser($userId)
+            ->where('status', SeatHold::STATUS_COMPLETED)
+            ->where('created_at', '>=', $windowStart)
+            ->count();
+            
+        $netExpiredCount = max(0, $expiredCount - $completedCount);
 
-        if ($expiredCount >= $blockThreshold) {
-            return $this->applyRestriction($userId, $expiredCount, $windowMinutes);
+        if ($netExpiredCount >= $blockThreshold) {
+            return $this->applyRestriction($userId, $netExpiredCount, $windowMinutes);
         }
 
-        if ($expiredCount >= $warningThreshold) {
-            return $this->applyWarning($userId, $expiredCount, $windowMinutes);
+        if ($netExpiredCount >= $warningThreshold) {
+            return $this->applyWarning($userId, $netExpiredCount, $windowMinutes);
         }
 
         return null;

@@ -91,7 +91,7 @@
             <tbody>
                 @forelse($showtimes as $showtime)
                     <tr>
-                        <td>{{ $showtime->id }}</td>
+                        <td>{{ $showtimes->firstItem() + $loop->index }}</td>
                         <td>{{ $showtime->movie->title }}</td>
                         <td>{{ $showtime->room?->cinema?->name ?? 'N/A' }} / {{ $showtime->room?->name ?? 'N/A' }}</td>
                         <td>{{ $showtime->start_time->format('d/m/Y H:i') }} - {{ $showtime->end_time->format('H:i') }}</td>

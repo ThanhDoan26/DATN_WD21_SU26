@@ -51,7 +51,7 @@ class BookingService
         
         return \App\Models\Booking::with(['showtime.movie', 'bookedSeats.seat'])
             ->where('user_id', $userId)
-            ->where('status', 'Pending')
+            ->whereIn('status', ['Pending', 'PROCESSING'])
             ->where('booking_time', '>=', now()->subMinutes(self::getHoldDuration()))
             ->first();
     }
@@ -96,6 +96,7 @@ class BookingService
             $this->cleanupExpiredPendingBookings();
 
             $inheritedBookingTime = null;
+            $isExtended = false;
 
             try {
                 // 1. Tự động dọn dẹp các booking quá hạn trước khi kiểm tra
@@ -113,16 +114,17 @@ class BookingService
                 $userPendingBookings = DB::table('bookings')
                     ->where('user_id', $userId)
                     ->where('showtime_id', $showtimeId)
-                    ->where('status', 'Pending')
-                    ->select('id', 'booking_time')
+                    ->whereIn('status', ['Pending', 'PROCESSING'])
+                    ->select('id', 'booking_time', 'is_extended')
                     ->get();
                 
                 $userPendingBookingIds = $userPendingBookings->pluck('id')->toArray();
 
                 if (!empty($userPendingBookingIds)) {
-                    $oldestBookingTime = $userPendingBookings->min('booking_time');
-                    if ($oldestBookingTime) {
-                        $inheritedBookingTime = \Carbon\Carbon::parse($oldestBookingTime);
+                    $oldestBooking = $userPendingBookings->sortBy('booking_time')->first();
+                    if ($oldestBooking) {
+                        $inheritedBookingTime = \Carbon\Carbon::parse($oldestBooking->booking_time);
+                        $isExtended = (bool) $oldestBooking->is_extended;
                     }
 
                     // Hoàn lại lượt dùng mã giảm giá nếu có
@@ -166,6 +168,13 @@ class BookingService
                         try {
                             \Illuminate\Support\Facades\Redis::del("seat_lock:showtime_{$showtimeId}:seat_{$oldSeatId}");
                         } catch (\Throwable $t) {}
+                        if ($userId) {
+                            \Illuminate\Support\Facades\Cache::put(
+                                "cooldown_user_{$userId}_showtime_{$showtimeId}_seat_{$oldSeatId}",
+                                true,
+                                now()->addMinutes(3)
+                            );
+                        }
                     }
                     if (!empty($releasedSeatIds)) {
                         try {
@@ -180,18 +189,25 @@ class BookingService
                             // User chủ động sửa giỏ hàng -> nhả ghế tự nguyện -> RELEASED
                             $abuseServiceCleanup->markReleased($pendingId);
                         }
-                    } catch (\Exception $trackingEx) {
-                        \Illuminate\Support\Facades\Log::warning('Tracking markReleased failed: ' . $trackingEx->getMessage());
+                    } catch (\Throwable $trackingEx) {
+                        \Illuminate\Support\Facades\Log::warning("Failed to record seat release for abuse tracking: " . $trackingEx->getMessage());
                     }
                 }
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('Pre-booking cleanup failed: ' . $e->getMessage());
         }
 
         if ($inheritedBookingTime) {
             $holdDuration = self::getHoldDuration();
-            if ($inheritedBookingTime->copy()->addMinutes($holdDuration)->isPast()) {
+            $expiresAt = $inheritedBookingTime->copy()->addMinutes($holdDuration);
+            
+            // Silent Buffer: Nếu thời gian còn lại < 2 phút và chưa từng gia hạn
+            if (now()->addMinutes(2)->gte($expiresAt) && !$isExtended) {
+                $inheritedBookingTime->addMinutes(3);
+                $isExtended = true;
+                $expiresAt->addMinutes(3); // Update local var just in case
+            } elseif (now()->gte($expiresAt)) {
                 throw new Exception("Thời gian giữ ghế của bạn đã hết. Vui lòng tải lại trang và chọn lại ghế mới.");
             }
         }
@@ -226,9 +242,9 @@ class BookingService
                         throw new Exception("Ghế bạn chọn đang có người khác thao tác. Vui lòng thử lại!");
                     }
                     $locks[] = $lockKey;
-                } catch (\Exception $ex) {
+                } catch (\Throwable $ex) {
                     if ($ex->getMessage() === "Ghế bạn chọn đang có người khác thao tác. Vui lòng thử lại!") {
-                        throw $ex;
+                        throw new \Exception($ex->getMessage());
                     }
                     \Illuminate\Support\Facades\Log::warning("Redis connection failed during seat lock, falling back to DB: " . $ex->getMessage());
                     break;
@@ -278,15 +294,10 @@ class BookingService
                     ->select('booked_seats.seat_id')
                     ->get();
 
-                if ($recentAbusedSeats->count() > 0) {
-                    throw new Exception(
-                        "Bạn vừa thao tác (giữ/hủy) trên một trong những ghế này trong {$cooldownMinutes} phút qua. Vui lòng chọn ghế khác hoặc thử lại sau!"
-                    );
-                }
             }
 
             // ── Bước 3: Cập nhật giữ ghế (Thực thi an toàn) ──────────────
-            $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData, $inheritedBookingTime) {
+            $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData, $inheritedBookingTime, $isExtended) {
 
                 // ================================================================
                 // Step 1: Lock các hàng ghế (chỉ 1 request được giữ lock)
@@ -406,13 +417,35 @@ class BookingService
                     }
 
                     $priceRow = $ticketPrices[$seat->seat_type] ?? null;
+                    
                     if (!$priceRow) {
-                        throw new Exception(
-                            "Không có giá vé cho loại ghế {$seat->seat_type} trong suất chiếu này"
-                        );
+                        // BIZ-002: Tự động bù giá gốc nếu suất chiếu cũ chưa có giá cho loại ghế mới
+                        $defaultPrices = [
+                            'Regular' => 75000,
+                            'VIP' => 90000,
+                            'Sweetbox' => 120000,
+                        ];
+                        
+                        if (isset($defaultPrices[$seat->seat_type])) {
+                            $price = $defaultPrices[$seat->seat_type];
+                            // Tự động insert để cache lại cho các lần booking sau
+                            DB::table('ticket_prices')->insert([
+                                'showtime_id' => $showtimeId,
+                                'seat_type' => $seat->seat_type,
+                                'price' => $price,
+                                'status' => 'ACTIVE',
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        } else {
+                            throw new Exception(
+                                "Không có giá vé cho loại ghế {$seat->seat_type} trong suất chiếu này. Vui lòng báo quản trị viên cập nhật giá."
+                            );
+                        }
+                    } else {
+                        $price = (float) $priceRow->price;
                     }
 
-                    $price = (float) $priceRow->price;
                     $finalPrice = $price + $surcharge;
                     $totalPrice += $finalPrice;
 
@@ -485,6 +518,7 @@ class BookingService
                     'status' => 'Pending',
                     'payment_method' => $paymentMethod,
                     'booking_time' => $inheritedBookingTime ?? now(),
+                    'is_extended' => $isExtended,
                     'booking_code' => $bookingCode,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -541,7 +575,7 @@ class BookingService
                         request()?->ip(),
                         $customExpiresAt
                     );
-                } catch (\Exception $trackingEx) {
+                } catch (\Throwable $trackingEx) {
                     // Tracking failure KHÔNG được block booking flow
                     \Illuminate\Support\Facades\Log::warning('SeatHold tracking failed: ' . $trackingEx->getMessage());
                 }
@@ -555,7 +589,7 @@ class BookingService
 
             return $bookingId;
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Giải phóng toàn bộ Redis Lock nếu giao dịch thất bại
             if (isset($locks) && is_array($locks)) {
                 foreach ($locks as $lockKey) {
@@ -662,6 +696,15 @@ class BookingService
                 'status' => 'CANCELLED',
                 'updated_at' => now(),
             ]);
+
+        DB::table('seat_holds')
+            ->whereIn('booking_id', $pendingBookingIds)
+            ->where('status', 'active')
+            ->update([
+                'status' => 'released',
+                'released_at' => now(),
+                'updated_at' => now(),
+            ]);
     }
 
     public function cleanupExpiredPendingBookings(): int
@@ -672,8 +715,15 @@ class BookingService
             $expiredAt = now()->subMinutes(self::getHoldDuration());
 
             $expiredBookings = DB::table('bookings')
-                ->where('status', 'Pending')
-                ->where('booking_time', '<', $expiredAt)
+                ->where(function($query) use ($expiredAt) {
+                    $query->where('status', 'Pending')
+                          ->where('booking_time', '<', $expiredAt);
+                })
+                ->orWhere(function($query) use ($expiredAt) {
+                    // Dọn dẹp cả PROCESSING nhưng cho thêm 15 phút ân hạn (tránh treo ghế vĩnh viễn)
+                    $query->where('status', 'PROCESSING')
+                          ->where('booking_time', '<', $expiredAt->copy()->subMinutes(15));
+                })
                 ->select('id', 'user_id')
                 ->get();
 
@@ -729,7 +779,7 @@ class BookingService
                 foreach ($userIds as $userId) {
                     $abuseService->checkAndApplyAbuse($userId);
                 }
-            } catch (\Exception $trackingEx) {
+            } catch (\Throwable $trackingEx) {
                 \Illuminate\Support\Facades\Log::warning('Tracking markExpired in cleanup failed: ' . $trackingEx->getMessage());
             }
         }
@@ -754,22 +804,21 @@ class BookingService
         \Illuminate\Support\Facades\Log::info("BookingService::completePayment [Step: Complete Payment] - Starting for Booking ID: {$bookingId}, Method: {$paymentMethod}");
         $result = DB::transaction(function () use ($bookingId, $paymentMethod, $additionalData) {
 
-            // Kiểm tra booking tồn tại + status = Pending
-            $booking = DB::table('bookings')
-                ->where('id', $bookingId)
+            // Kiểm tra booking tồn tại + status = Pending hoặc PROCESSING (Sử dụng Eloquent Model để có thể save/kích hoạt Observer)
+            $bookingModel = \App\Models\Booking::where('id', $bookingId)
                 ->lockForUpdate()
                 ->first();
 
-            if (!$booking) {
+            if (!$bookingModel) {
                 \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không tồn tại");
                 throw new Exception("Booking $bookingId không tồn tại");
             }
 
-            if ($booking->status !== 'Pending') {
-                \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$booking->status}");
+            if (!in_array($bookingModel->status, ['Pending', 'PROCESSING'])) {
+                \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$bookingModel->status}");
                 throw new Exception(
-                    "Không thể thanh toán booking này. Status: {$booking->status}. " .
-                    "Chỉ có thể thanh toán booking ở trạng thái Pending."
+                    "Không thể thanh toán booking này. Status: {$bookingModel->status}. " .
+                    "Chỉ có thể thanh toán booking ở trạng thái Pending hoặc PROCESSING."
                 );
             }
 
@@ -777,26 +826,22 @@ class BookingService
             try {
                 $seatIds = DB::table('booked_seats')->where('booking_id', $bookingId)->pluck('seat_id')->toArray();
                 foreach ($seatIds as $seatId) {
-                    if (!\Illuminate\Support\Facades\Redis::exists("seat_lock:showtime_{$booking->showtime_id}:seat_{$seatId}")) {
+                    if (!\Illuminate\Support\Facades\Redis::exists("seat_lock:showtime_{$bookingModel->showtime_id}:seat_{$seatId}")) {
                         throw new Exception("Đơn hàng đã hết hạn giữ chỗ (hoặc ghế đã bị nhả). Vui lòng liên hệ CSKH để được hỗ trợ hoàn tiền.");
                     }
                 }
-            } catch (\Exception $ex) {
+            } catch (\Throwable $ex) {
                 if (str_contains($ex->getMessage(), 'Đơn hàng đã hết hạn giữ chỗ')) {
                     throw $ex;
                 }
                 \Illuminate\Support\Facades\Log::warning("Redis check in completePayment skipped: " . $ex->getMessage());
             }
 
-            // Cập nhật booking status
-            DB::table('bookings')
-                ->where('id', $bookingId)
-                ->update([
-                    'status' => 'Paid',
-                    'payment_method' => $paymentMethod,
-                    'payment_time' => now(),
-                    'updated_at' => now(),
-                ]);
+            // Cập nhật booking status sử dụng Eloquent để kích hoạt BookingObserver
+            $bookingModel->status = 'Paid';
+            $bookingModel->payment_method = $paymentMethod;
+            $bookingModel->payment_time = now();
+            $bookingModel->save();
 
             // Cập nhật status các vé
             DB::table('booked_seats')
@@ -816,7 +861,7 @@ class BookingService
         try {
             $abuseService = new SeatHoldAbuseService();
             $abuseService->markCompleted($bookingId);
-        } catch (\Exception $trackingEx) {
+        } catch (\Throwable $trackingEx) {
             \Illuminate\Support\Facades\Log::warning('Tracking markCompleted in completePayment failed: ' . $trackingEx->getMessage());
         }
 
@@ -897,7 +942,7 @@ class BookingService
         try {
             $abuseService = new SeatHoldAbuseService();
             $abuseService->markReleased($bookingId);
-        } catch (\Exception $trackingEx) {
+        } catch (\Throwable $trackingEx) {
             \Illuminate\Support\Facades\Log::warning('Tracking markReleased in cancelBooking failed: ' . $trackingEx->getMessage());
         }
 
@@ -910,6 +955,13 @@ class BookingService
                 
                 foreach ($seatIds as $seatId) {
                     \Illuminate\Support\Facades\Redis::del("seat_lock:showtime_{$showtimeId}:seat_{$seatId}");
+                    if ($bookingInfo->user_id) {
+                        \Illuminate\Support\Facades\Cache::put(
+                            "cooldown_user_{$bookingInfo->user_id}_showtime_{$showtimeId}_seat_{$seatId}",
+                            true,
+                            now()->addMinutes(3)
+                        );
+                    }
                 }
                 event(new \App\Events\SeatStatusUpdated($showtimeId, $seatIds, 'AVAILABLE'));
             }
@@ -1186,11 +1238,18 @@ class BookingService
      * @return string
      */
     private function generateQRCode(string $bookingCode, string $row, int $seatNumber): string {
-        // Simplified QR code - thực tế nên dùng endroid/qr-code hoặc simplesoftware/simple-qr-code
-        return base64_encode(json_encode([
+        $payload = [
             'booking_code' => $bookingCode,
             'seat' => $row . $seatNumber,
             'timestamp' => now()->timestamp,
-        ]));
+        ];
+
+        // Add HMAC checksum
+        ksort($payload);
+        $dataToSign = json_encode($payload);
+        $secretKey = config('ticket.secret_key', env('APP_KEY'));
+        $payload['checksum'] = hash_hmac('sha256', $dataToSign, $secretKey);
+
+        return base64_encode(json_encode($payload));
     }
 }
