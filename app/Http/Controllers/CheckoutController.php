@@ -472,7 +472,6 @@ class CheckoutController extends Controller
                 return redirect()->route('checkout.success', ['booking_id' => $booking->id])
                                  ->with('success', 'Thanh toán thành công. Email xác nhận đã được gửi đến bạn.');
             }
-
             return redirect()->route('checkout.success', ['booking_id' => $booking->id])
                              ->with('warning', 'Thanh toán thành công nhưng gửi email xác nhận thất bại. Vui lòng kiểm tra lại email hoặc liên hệ hỗ trợ.');
         } catch (\Exception $e) {
