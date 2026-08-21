@@ -274,11 +274,16 @@ class WalkInBookingController extends Controller
             if ($paymentMethod === 'CASH') {
                 $bookingService->completePayment($bookingId, 'CASH');
 
+                $message = 'Đặt vé và thanh toán thành công.';
+                if ($hasEmail && !$mailSent) {
+                    $message = 'Đặt vé và thanh toán thành công nhưng gửi email xác nhận thất bại. Vui lòng kiểm tra lại email hoặc liên hệ hỗ trợ.';
+                }
+
                 return response()->json([
                     'success' => true,
                     'isWalkIn' => true,
                     'redirect_url' => route('staff.walkin.success', ['booking_id' => $bookingId]),
-                    'message' => 'Đặt vé và thanh toán thành công.',
+                    'message' => $message,
                 ]);
             }
 
