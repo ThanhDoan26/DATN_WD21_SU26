@@ -791,11 +791,11 @@ class BookingService
                 throw new Exception("Booking $bookingId không tồn tại");
             }
 
-            if ($booking->status !== 'Pending') {
+            if (!in_array($booking->status, ['Pending', 'PROCESSING'])) {
                 \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$booking->status}");
                 throw new Exception(
                     "Không thể thanh toán booking này. Status: {$booking->status}. " .
-                    "Chỉ có thể thanh toán booking ở trạng thái Pending."
+                    "Chỉ có thể thanh toán booking ở trạng thái Pending hoặc PROCESSING."
                 );
             }
 

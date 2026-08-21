@@ -302,6 +302,11 @@ class WalkInBookingController extends Controller
                     $message = 'Đặt vé và thanh toán thành công nhưng gửi email xác nhận thất bại. Vui lòng kiểm tra lại email hoặc liên hệ hỗ trợ.';
                 }
 
+                $message = 'Đặt vé và thanh toán thành công.';
+                if ($hasEmail && !$mailSent) {
+                    $message = 'Đặt vé và thanh toán thành công nhưng gửi email xác nhận thất bại. Vui lòng kiểm tra lại email hoặc liên hệ hỗ trợ.';
+                }
+
                 return response()->json([
                     'success' => true,
                     'isWalkIn' => true,

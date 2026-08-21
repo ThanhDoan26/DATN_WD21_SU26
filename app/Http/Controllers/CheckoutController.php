@@ -58,12 +58,33 @@ class CheckoutController extends Controller
         }
 
         try {
+            // Lấy lại danh sách Combo đã chọn từ đơn giữ ghế cũ của suất chiếu này (nếu có)
+            $existingCombos = [];
+            if ($userId) {
+                $existingPending = Booking::where('user_id', $userId)
+                    ->where('showtime_id', $showtimeId)
+                    ->whereIn('status', ['Pending', 'PROCESSING'])
+                    ->first();
+
+                if ($existingPending) {
+                    $existingCombosRaw = \Illuminate\Support\Facades\DB::table('booking_combos')
+                        ->where('booking_id', $existingPending->id)
+                        ->get();
+                    foreach ($existingCombosRaw as $ec) {
+                        $existingCombos[$ec->combo_id] = ['qty' => $ec->quantity];
+                    }
+                }
+            }
+
             $bookingService = new BookingService();
-            // This will lock seats and create a new Pending booking
+            // This will lock seats and create a new Pending booking with preserved combos
             $bookingId = $bookingService->createBooking(
                 $userId,
                 $showtimeId,
-                $seatIds
+                $seatIds,
+                'ONLINE',
+                null,
+                $existingCombos
             );
 
             // Tăng Rate Limit
@@ -169,6 +190,11 @@ class CheckoutController extends Controller
             }
         }
 
+        $savedCombos = \Illuminate\Support\Facades\DB::table('booking_combos')
+            ->where('booking_id', $pendingBookingId)
+            ->pluck('quantity', 'combo_id')
+            ->toArray();
+
         $combos = Combo::where('status', 'ACTIVE')->get();
         $coupons = Coupon::validForCheckout()->get();
 
@@ -183,6 +209,7 @@ class CheckoutController extends Controller
             'seatIds',
             'showtimeId',
             'combos',
+            'savedCombos',
             'coupons',
             'expiresAtMs',
             'pendingBookingId'
@@ -389,11 +416,26 @@ class CheckoutController extends Controller
             ->first();
 
         if (!$booking) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Đơn vé không tồn tại hoặc không thuộc về bạn.'], 404);
+            }
             return back()->with('error', 'Đơn vé không tồn tại hoặc không thuộc về bạn.');
         }
 
-        if ($booking->status !== 'Pending') {
+        if (!in_array($booking->status, ['Pending', 'PROCESSING'])) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Đơn vé này không ở trạng thái chờ thanh toán.'], 400);
+            }
             return back()->with('error', 'Đơn vé này không ở trạng thái chờ thanh toán.');
+        }
+
+        // Kiểm tra thời gian giữ ghế 10 phút
+        $expiresAt = \Carbon\Carbon::parse($booking->booking_time)->addMinutes(BookingService::getHoldDuration());
+        if (now()->gt($expiresAt)) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Thời gian giữ ghế của bạn đã hết.'], 400);
+            }
+            return back()->with('error', 'Thời gian giữ ghế của bạn đã hết.');
         }
 
         try {
@@ -430,11 +472,14 @@ class CheckoutController extends Controller
                 return redirect()->route('checkout.success', ['booking_id' => $booking->id])
                                  ->with('success', 'Thanh toán thành công. Email xác nhận đã được gửi đến bạn.');
             }
-            
+
             return redirect()->route('checkout.success', ['booking_id' => $booking->id])
                              ->with('warning', 'Thanh toán thành công nhưng gửi email xác nhận thất bại. Vui lòng kiểm tra lại email hoặc liên hệ hỗ trợ.');
         } catch (\Exception $e) {
             Log::error('Mock payment failed: ' . $e->getMessage());
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Có lỗi xảy ra khi xử lý thanh toán: ' . $e->getMessage()], 500);
+            }
             return back()->with('error', 'Có lỗi xảy ra khi xử lý thanh toán: ' . $e->getMessage());
         }
     }
