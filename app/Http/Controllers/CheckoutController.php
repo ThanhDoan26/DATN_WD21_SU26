@@ -441,6 +441,9 @@ class CheckoutController extends Controller
         try {
             $bookingService = new BookingService();
             
+            // Đánh dấu đã gửi (hoặc sẽ gửi) trong request này để BookingObserver không gửi trùng
+            \App\Observers\BookingObserver::$sentBookings[] = $booking->id;
+            
             // Đánh dấu thanh toán thành công (BookingObserver sẽ tự động kích hoạt gửi TicketConfirmationMail bất đồng bộ qua Queue)
             $bookingService->completePayment($booking->id, $booking->payment_method ?? 'MOCK_PAYMENT');
             

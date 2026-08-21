@@ -780,21 +780,20 @@ class BookingService
         \Illuminate\Support\Facades\Log::info("BookingService::completePayment [Step: Complete Payment] - Starting for Booking ID: {$bookingId}, Method: {$paymentMethod}");
         $result = DB::transaction(function () use ($bookingId, $paymentMethod, $additionalData) {
 
-            // Kiểm tra booking tồn tại + status = Pending
-            $booking = DB::table('bookings')
-                ->where('id', $bookingId)
+            // Kiểm tra booking tồn tại + status = Pending hoặc PROCESSING (Sử dụng Eloquent Model để có thể save/kích hoạt Observer)
+            $bookingModel = \App\Models\Booking::where('id', $bookingId)
                 ->lockForUpdate()
                 ->first();
 
-            if (!$booking) {
+            if (!$bookingModel) {
                 \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không tồn tại");
                 throw new Exception("Booking $bookingId không tồn tại");
             }
 
-            if (!in_array($booking->status, ['Pending', 'PROCESSING'])) {
-                \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$booking->status}");
+            if (!in_array($bookingModel->status, ['Pending', 'PROCESSING'])) {
+                \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$bookingModel->status}");
                 throw new Exception(
-                    "Không thể thanh toán booking này. Status: {$booking->status}. " .
+                    "Không thể thanh toán booking này. Status: {$bookingModel->status}. " .
                     "Chỉ có thể thanh toán booking ở trạng thái Pending hoặc PROCESSING."
                 );
             }
@@ -803,7 +802,7 @@ class BookingService
             try {
                 $seatIds = DB::table('booked_seats')->where('booking_id', $bookingId)->pluck('seat_id')->toArray();
                 foreach ($seatIds as $seatId) {
-                    if (!\Illuminate\Support\Facades\Redis::exists("seat_lock:showtime_{$booking->showtime_id}:seat_{$seatId}")) {
+                    if (!\Illuminate\Support\Facades\Redis::exists("seat_lock:showtime_{$bookingModel->showtime_id}:seat_{$seatId}")) {
                         throw new Exception("Đơn hàng đã hết hạn giữ chỗ (hoặc ghế đã bị nhả). Vui lòng liên hệ CSKH để được hỗ trợ hoàn tiền.");
                     }
                 }
@@ -814,15 +813,11 @@ class BookingService
                 \Illuminate\Support\Facades\Log::warning("Redis check in completePayment skipped: " . $ex->getMessage());
             }
 
-            // Cập nhật booking status
-            DB::table('bookings')
-                ->where('id', $bookingId)
-                ->update([
-                    'status' => 'Paid',
-                    'payment_method' => $paymentMethod,
-                    'payment_time' => now(),
-                    'updated_at' => now(),
-                ]);
+            // Cập nhật booking status sử dụng Eloquent để kích hoạt BookingObserver
+            $bookingModel->status = 'Paid';
+            $bookingModel->payment_method = $paymentMethod;
+            $bookingModel->payment_time = now();
+            $bookingModel->save();
 
             // Cập nhật status các vé
             DB::table('booked_seats')
