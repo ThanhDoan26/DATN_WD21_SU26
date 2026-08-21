@@ -190,7 +190,7 @@ class VnPayController extends Controller
             }
         }
 
-        $vnp_HashSecret = env('VNP_HASH_SECRET');
+        $vnp_HashSecret = config('vnpay.hash_secret');
         $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
 
         if ($secureHash !== $vnp_SecureHash) {
@@ -202,7 +202,7 @@ class VnPayController extends Controller
             
             DB::beginTransaction();
             
-            $booking = Booking::where('id', $bookingId)->lockForUpdate()->first();
+            $booking = Booking::where('booking_code', $bookingId)->lockForUpdate()->first();
             
             if (!$booking) {
                 DB::rollBack();
