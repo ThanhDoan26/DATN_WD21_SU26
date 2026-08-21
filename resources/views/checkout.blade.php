@@ -267,18 +267,7 @@
                                 </div>
                             </label>
 
-                            <label class="relative cursor-pointer group">
-                                <input type="radio" name="payment" value="MOCK" class="peer payment-radio hidden">
-                                <div class="border-2 border-slate-700 rounded-2xl p-6 transition-all duration-300 hover:border-slate-500 flex flex-col items-center gap-3 bg-slate-950/30">
-                                    <div class="absolute top-4 right-4 text-primary opacity-0 scale-50 transition-all duration-300 check-icon">
-                                        <i class="fas fa-check-circle text-xl"></i>
-                                    </div>
-                                    <div class="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 text-3xl mb-2">
-                                        <i class="fas fa-bolt"></i>
-                                    </div>
-                                    <span class="text-white font-semibold text-lg">Thử nghiệm (Nhanh)</span>
-                                </div>
-                            </label>
+
 
                             @if(isset($isWalkIn) && $isWalkIn)
                             <label class="relative cursor-pointer group">
@@ -531,7 +520,6 @@
             const reserveUrl = @json(route('checkout.reserve', [], false));
             const stripeSessionUrl = @json(route('stripe.session', [], false));
             const vnpayPaymentUrl = @json(route('vnpay.payment', [], false));
-            const mockPaymentUrl = @json(route('checkout.mock-payment', [], false));
             const successUrl = @json(route('checkout.success', [], false));
             
             const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
@@ -927,8 +915,6 @@
                         let paymentUrl = stripeSessionUrl;
                         if (selectedPayment === 'VNPAY') {
                             paymentUrl = vnpayPaymentUrl;
-                        } else if (selectedPayment === 'MOCK') {
-                            paymentUrl = mockPaymentUrl;
                         }
 
                         return fetch(paymentUrl, {

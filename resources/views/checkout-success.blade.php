@@ -71,20 +71,12 @@
                 @endif
 
                 @if($booking['status'] === 'Pending')
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="flex justify-center">
                         <form action="{{ route('checkout.cancel') }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đơn vé này không? Ghế sẽ được giải phóng cho người khác.');">
                             @csrf
                             <input type="hidden" name="booking_id" value="{{ $booking['booking_id'] }}">
-                            <button type="submit" class="w-full inline-flex items-center justify-center rounded-3xl bg-slate-800 border border-slate-600 px-6 py-4 text-center text-rose-400 font-semibold hover:bg-slate-700 transition">
+                            <button type="submit" class="inline-flex items-center justify-center rounded-3xl bg-slate-800 border border-slate-600 px-8 py-4 text-center text-rose-400 font-semibold hover:bg-slate-700 transition">
                                 <i class="fas fa-times-circle mr-2"></i> Hủy đơn vé
-                            </button>
-                        </form>
-
-                        <form action="{{ route('checkout.mock-payment') }}" method="POST">
-                            @csrf
-                            <input type="hidden" name="booking_id" value="{{ $booking['booking_id'] }}">
-                            <button type="submit" class="w-full inline-flex items-center justify-center rounded-3xl bg-emerald-600 px-6 py-4 text-center text-white font-semibold hover:bg-emerald-500 transition shadow-lg shadow-emerald-500/30">
-                                <i class="fas fa-check-circle mr-2"></i> Xác nhận thanh toán
                             </button>
                         </form>
                     </div>
