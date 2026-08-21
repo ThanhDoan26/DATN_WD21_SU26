@@ -39,13 +39,15 @@ class CouponController extends Controller
         $request->validate([
             'code' => 'required|string|unique:coupons,code|max:255',
             'type' => 'required|in:percent,fixed',
-            'value' => 'required|numeric|min:0',
+            'value' => 'required|numeric|min:0' . ($request->type === 'percent' ? '|max:100' : ''),
             'min_order_value' => 'nullable|numeric|min:0',
             'max_discount_amount' => 'nullable|numeric|min:0',
             'quantity' => 'required|integer|min:0',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
             'status' => 'required|in:ACTIVE,INACTIVE',
+        ], [
+            'end_date.after' => 'Thời gian kết thúc phải diễn ra sau thời gian bắt đầu.',
         ]);
 
         \App\Models\Coupon::create($request->all());
@@ -66,13 +68,15 @@ class CouponController extends Controller
         $request->validate([
             'code' => 'required|string|max:255|unique:coupons,code,' . $coupon->id,
             'type' => 'required|in:percent,fixed',
-            'value' => 'required|numeric|min:0',
+            'value' => 'required|numeric|min:0' . ($request->type === 'percent' ? '|max:100' : ''),
             'min_order_value' => 'nullable|numeric|min:0',
             'max_discount_amount' => 'nullable|numeric|min:0',
             'quantity' => 'required|integer|min:0',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
             'status' => 'required|in:ACTIVE,INACTIVE',
+        ], [
+            'end_date.after' => 'Thời gian kết thúc phải diễn ra sau thời gian bắt đầu.',
         ]);
 
         $coupon->update($request->all());

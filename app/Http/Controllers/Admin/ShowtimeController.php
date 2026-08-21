@@ -14,7 +14,10 @@ class ShowtimeController extends AdminController
 {
     public function index(Request $request)
     {
-        $query = Showtime::with(['movie', 'room.cinema'])->orderBy('start_time');
+        // Tự động cập nhật trạng thái các suất chiếu đã chiếu / đang chiếu
+        Showtime::syncAllStatuses();
+
+        $query = Showtime::with(['movie', 'room.cinema'])->orderBy('created_at', 'desc')->orderBy('id', 'desc');
 
         if ($request->filled('movie_id')) {
             $query->where('movie_id', $request->movie_id);
@@ -55,6 +58,11 @@ class ShowtimeController extends AdminController
             'start_time' => [
                 'required',
                 'date',
+                function ($attribute, $value, $fail) {
+                    if ($value && Carbon::parse($value)->lt(now())) {
+                        $fail('Không thể tạo lịch chiếu cho thời gian đã qua. Thời gian bắt đầu phải từ thời điểm hiện tại trở đi.');
+                    }
+                },
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id'))),
                 function ($attribute, $value, $fail) use ($request) {
@@ -132,15 +140,40 @@ class ShowtimeController extends AdminController
 
     public function edit(Showtime $showtime)
     {
-        $showtime->load(['movie', 'room.cinema', 'ticketPrices']);
+        // Chặn sửa suất chiếu đã qua thời gian hoặc đã kết thúc
+        if (($showtime->end_time && $showtime->end_time <= now()) || $showtime->status === Showtime::STATUS_COMPLETED) {
+            return redirect()->route('admin.showtimes.index')
+                ->with('error', 'Không thể chỉnh sửa suất chiếu đã kết thúc trong quá khứ.');
+        }
+
+        $showtime->load(['movie', 'room.cinema', 'ticketPrices', 'bookings']);
         $movies = Movie::orderBy('title')->get();
         $rooms = Room::with('cinema')->orderBy('name')->get();
+        $hasBookings = $showtime->bookings()->where('status', '!=', 'Cancelled')->exists();
 
-        return view('admin.showtimes.edit', compact('showtime', 'movies', 'rooms'));
+        return view('admin.showtimes.edit', compact('showtime', 'movies', 'rooms', 'hasBookings'));
     }
 
     public function update(Request $request, Showtime $showtime)
     {
+        // 1. Kiểm tra suất chiếu đã kết thúc chưa
+        if (($showtime->end_time && $showtime->end_time <= now()) || $showtime->status === Showtime::STATUS_COMPLETED) {
+            return redirect()->route('admin.showtimes.index')
+                ->with('error', 'Không thể chỉnh sửa suất chiếu đã kết thúc trong quá khứ.');
+        }
+
+        // 2. Kiểm tra nếu suất chiếu đã có vé đặt thì khóa thay đổi phim, phòng chiếu, giờ chiếu
+        $hasBookings = $showtime->bookings()->where('status', '!=', 'Cancelled')->exists();
+        if ($hasBookings) {
+            $originalStart = $showtime->start_time ? $showtime->start_time->format('Y-m-d H:i') : '';
+            $newStart = $request->filled('start_time') ? Carbon::parse($request->start_time)->format('Y-m-d H:i') : '';
+            if ($originalStart !== $newStart || (int)$showtime->room_id !== (int)$request->input('room_id') || (int)$showtime->movie_id !== (int)$request->input('movie_id')) {
+                return back()->withInput()->withErrors([
+                    'start_time' => 'Suất chiếu này đã phát sinh vé đặt của khách hàng. Không thể thay đổi thời gian, phòng chiếu hoặc phim để tránh sai lệch dữ liệu tài chính/vé.'
+                ]);
+            }
+        }
+
         $validated = $request->validate([
             'movie_id' => 'required|exists:movies,id',
             'room_id' => [
@@ -151,6 +184,11 @@ class ShowtimeController extends AdminController
             'start_time' => [
                 'required',
                 'date',
+                function ($attribute, $value, $fail) {
+                    if ($value && Carbon::parse($value)->lt(now())) {
+                        $fail('Không thể tạo hoặc chỉnh sửa lịch chiếu cho thời gian đã qua. Thời gian bắt đầu phải từ thời điểm hiện tại trở đi.');
+                    }
+                },
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id')))
                     ->ignore($showtime->id),

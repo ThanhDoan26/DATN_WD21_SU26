@@ -75,6 +75,11 @@ class User extends Authenticatable
         return $this->hasMany(ComboReview::class);
     }
 
+    public function cinemaReviews(): HasMany
+    {
+        return $this->hasMany(\App\Models\CinemaReview::class);
+    }
+
     // ========================================
     // HELPER METHODS
     // ========================================

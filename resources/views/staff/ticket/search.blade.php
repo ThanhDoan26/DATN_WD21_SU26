@@ -285,6 +285,32 @@
                     </div>
                 </div>
 
+                @php
+                    $targetBooking = $searchType === 'booking' ? $result : ($result->booking ?? null);
+                    $bookingCombos = $targetBooking ? $targetBooking->combos : collect();
+                @endphp
+
+                @if($bookingCombos && $bookingCombos->count() > 0)
+                    <hr class="my-4">
+                    <h5 class="fw-bold mb-3"><i class="fas fa-popcorn me-2 text-warning"></i> Combo Bắp Nước đã đặt ({{ $bookingCombos->count() }})</h5>
+                    <div class="row g-3 mb-2">
+                        @foreach($bookingCombos as $combo)
+                            <div class="col-md-6 col-sm-12">
+                                <div class="p-3 bg-light rounded-3 border d-flex justify-content-between align-items-center shadow-sm">
+                                    <div>
+                                        <div class="fw-bold text-dark fs-6">{{ $combo->name }}</div>
+                                        <small class="text-muted">Số lượng: <span class="badge bg-warning text-dark fw-bold">x{{ $combo->pivot->quantity }}</span></small>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="fw-bold text-dark fs-6">{{ number_format($combo->pivot->price * $combo->pivot->quantity) }}đ</div>
+                                        <small class="text-muted">{{ number_format($combo->pivot->price) }}đ / item</small>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
                 <hr class="my-4">
 
                 <!-- Ghế & Checkin Actions -->

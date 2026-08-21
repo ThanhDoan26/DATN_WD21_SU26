@@ -20,7 +20,7 @@ class Room extends Model
 
     public function cinema(): BelongsTo
     {
-        return $this->belongsTo(Cinema::class);
+        return $this->belongsTo(Cinema::class)->withTrashed();
     }
 
     public function seats(): HasMany
@@ -34,12 +34,18 @@ class Room extends Model
     }
 
     /**
-     * Kiểm tra phòng có suất chiếu hợp lệ (SCHEDULED, ONGOING)
+     * Kiểm tra phòng có suất chiếu hợp lệ (SCHEDULED, ONGOING và chưa kết thúc)
      */
     public function hasActiveShowtimes(): bool
     {
         return $this->showtimes()
             ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+            ->where(function ($q) {
+                $q->where('end_time', '>', now())
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('end_time')->where('start_time', '>', now()->subHours(3));
+                  });
+            })
             ->exists();
     }
 
@@ -50,6 +56,12 @@ class Room extends Model
     {
         return $this->showtimes()
             ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+            ->where(function ($q) {
+                $q->where('end_time', '>', now())
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('end_time')->where('start_time', '>', now()->subHours(3));
+                  });
+            })
             ->count();
     }
 
@@ -60,6 +72,12 @@ class Room extends Model
     {
         return $this->showtimes()
             ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+            ->where(function ($q) {
+                $q->where('end_time', '>', now())
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('end_time')->where('start_time', '>', now()->subHours(3));
+                  });
+            })
             ->with('movie')
             ->orderBy('start_time')
             ->get();

@@ -29,7 +29,7 @@
             </div>
             <div class="col-md-4">
                 <strong>Trạng thái</strong>
-                <p>{{ ucfirst(strtolower($showtime->status)) }}</p>
+                <p>{{ $showtime->status_label }}</p>
             </div>
             <div class="col-md-4">
                 <strong>Thời lượng</strong>

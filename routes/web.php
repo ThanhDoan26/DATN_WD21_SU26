@@ -10,6 +10,7 @@ Route::get('/', [MovieController::class, 'welcome'])->name('home');
 Route::get('/phim-dang-chieu', [MovieController::class, 'currentMovies'])->name('movies.current');
 Route::get('/phim-sap-chieu', [MovieController::class, 'upcomingMovies'])->name('movies.upcoming');
 Route::get('/phim/{id}', [MovieController::class, 'show'])->name('movies.show');
+Route::get('/rap/{cinema}', [\App\Http\Controllers\CinemaController::class, 'show'])->name('cinemas.show');
 
 // Posts routes
 Route::get('/tin-tuc', [\App\Http\Controllers\PostController::class, 'index'])->name('posts.index');
@@ -20,25 +21,12 @@ Route::post('/chat/web', [\App\Http\Controllers\ChatController::class, 'chatWeb'
 
 Route::middleware('auth')->group(function () {
     Route::post('/movies/{movie}/reviews', [\App\Http\Controllers\ReviewController::class, 'store'])->name('movies.reviews.store');
+    Route::post('/cinemas/{cinema}/reviews', [\App\Http\Controllers\CinemaReviewController::class, 'store'])->name('cinemas.reviews.store');
 });
 
-Route::get('/dashboard', function () {
-    $user = auth()->user();
-
-    // Chuyển hướng về dashboard đúng role — không cho phép staff/manager/admin ở lại trang này
-    if ($user && $user->isAdmin()) {
-        return redirect()->route('admin.dashboard');
-    }
-    if ($user && $user->isManager()) {
-        return redirect()->route('manager.dashboard');
-    }
-    if ($user && $user->isStaff()) {
-        return redirect()->route('staff.dashboard');
-    }
-
-    // Chỉ USER (khách hàng) mới được xem trang dashboard này
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -77,14 +65,19 @@ Route::prefix('api/booking')->controller(\App\Http\Controllers\BookingController
 
     // Cập nhật Real-time (Polling): Lấy danh sách ghế đã được đặt/giữ
     Route::get('/showtime/{showtime}/booked-seats', 'getBookedSeatsAPI')->name('api.booking.booked-seats');
+
+    // Hủy chủ động (Explicit Cancel)
+    Route::post('/cancel-explicit', 'cancelExplicit')->middleware('auth')->name('api.booking.cancel-explicit');
 });
 
 // Frontend API/AJAX routes
 Route::post('/api/apply-coupon', [\App\Http\Controllers\CheckoutController::class, 'applyCoupon'])->name('api.apply-coupon');
 
 Route::middleware('auth')->group(function () {
+    Route::post('/checkout/init', [\App\Http\Controllers\CheckoutController::class, 'init'])->name('checkout.init');
     Route::get('/checkout', [\App\Http\Controllers\CheckoutController::class, 'index'])->name('checkout');
     Route::get('/checkout/success', [\App\Http\Controllers\CheckoutController::class, 'success'])->name('checkout.success');
+    Route::post('/checkout/release-lock', [\App\Http\Controllers\CheckoutController::class, 'releaseLock'])->name('checkout.release-lock');
 
     // Lịch sử đặt vé
     Route::get('/booking-history', [BookingHistoryController::class, 'index'])->name('booking.history');
@@ -120,6 +113,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/vnpay/return',
         [\App\Http\Controllers\VnPayController::class, 'return'])
         ->name('vnpay.return');
+    
+    Route::get('/vnpay/ipn',
+        [\App\Http\Controllers\VnPayController::class, 'ipn'])
+        ->name('vnpay.ipn');
 
 });
 
@@ -143,16 +140,4 @@ Route::get('/tickets/{token}', function ($token) {
 })->name('tickets.scan');
 
 require __DIR__.'/auth.php';
-
-Route::get('/quick-login-staff', function () {
-    $user = \App\Models\User::whereHas('role', function($q) {
-        $q->where('role_name', 'STAFF');
-    })->first();
-    if ($user) {
-        auth()->login($user);
-        return redirect()->route('staff.dashboard');
-    }
-    return redirect()->route('login')->with('error', 'Không tìm thấy tài khoản Staff.');
-
-})->name('staff.quick-login');
 

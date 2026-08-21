@@ -32,6 +32,7 @@ class SeatHoldAbuseService
      * @param int $bookingId
      * @param int $seatCount
      * @param string|null $ipAddress
+     * @param \Carbon\Carbon|null $customExpiresAt
      * @return SeatHold
      */
     public function recordHold(
@@ -39,7 +40,8 @@ class SeatHoldAbuseService
         int $showtimeId,
         int $bookingId,
         int $seatCount,
-        ?string $ipAddress = null
+        ?string $ipAddress = null,
+        ?\Carbon\Carbon $customExpiresAt = null
     ): SeatHold {
         $durationMinutes = (int) config('booking.seat_hold.duration_minutes', 10);
 
@@ -51,7 +53,7 @@ class SeatHoldAbuseService
             'status'      => SeatHold::STATUS_ACTIVE,
             'ip_address'  => $ipAddress,
             'held_at'     => now(),
-            'expires_at'  => now()->addMinutes($durationMinutes),
+            'expires_at'  => $customExpiresAt ?? now()->addMinutes($durationMinutes),
         ]);
 
         Log::info('seat_hold_created', [
@@ -216,18 +218,28 @@ class SeatHoldAbuseService
         $warningThreshold = (int) config('booking.abuse.warning_threshold', 3);
         $blockThreshold   = (int) config('booking.abuse.block_threshold', 5);
 
+        $windowStart = now()->subMinutes($windowMinutes);
+
         // Đếm expired holds trong sliding window
         $expiredCount = SeatHold::forUser($userId)
             ->expired()
-            ->where('created_at', '>=', now()->subMinutes($windowMinutes))
+            ->where('created_at', '>=', $windowStart)
             ->count();
+            
+        // ABUSE-001: Đếm completed holds để bù trừ
+        $completedCount = SeatHold::forUser($userId)
+            ->where('status', SeatHold::STATUS_COMPLETED)
+            ->where('created_at', '>=', $windowStart)
+            ->count();
+            
+        $netExpiredCount = max(0, $expiredCount - $completedCount);
 
-        if ($expiredCount >= $blockThreshold) {
-            return $this->applyRestriction($userId, $expiredCount, $windowMinutes);
+        if ($netExpiredCount >= $blockThreshold) {
+            return $this->applyRestriction($userId, $netExpiredCount, $windowMinutes);
         }
 
-        if ($expiredCount >= $warningThreshold) {
-            return $this->applyWarning($userId, $expiredCount, $windowMinutes);
+        if ($netExpiredCount >= $warningThreshold) {
+            return $this->applyWarning($userId, $netExpiredCount, $windowMinutes);
         }
 
         return null;

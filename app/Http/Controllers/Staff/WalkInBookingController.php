@@ -28,19 +28,24 @@ class WalkInBookingController extends Controller
     {
         $cinemaId = Auth::user()->cinema_id;
 
-        // Nghiệp vụ chuyên nghiệp: Chỉ hiển thị các phim thực sự đang có hoặc sắp có suất chiếu
-        // tại RẠP CỦA NHÂN VIÊN.
+        // Hiển thị các phim có suất chiếu hợp lệ tại rạp của nhân viên (bao gồm suất sắp chiếu và đang chiếu chưa quá 30 phút)
         $movies = Movie::whereIn('status', ['NOW_SHOWING', 'COMING_SOON'])
             ->whereHas('showtimes', function ($query) use ($cinemaId) {
                 $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
-                      ->where('start_time', '>', now())
+                      ->where('start_time', '>=', now()->subMinutes(30))
+                      ->where(function ($q) {
+                          $q->whereNull('end_time')->orWhere('end_time', '>', now());
+                      })
                       ->whereHas('room', function($r) use ($cinemaId) {
                           $r->where('cinema_id', $cinemaId);
                       });
             })
             ->withCount(['showtimes' => function ($query) use ($cinemaId) {
                 $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
-                      ->where('start_time', '>', now())
+                      ->where('start_time', '>=', now()->subMinutes(30))
+                      ->where(function ($q) {
+                          $q->whereNull('end_time')->orWhere('end_time', '>', now());
+                      })
                       ->whereHas('room', function($r) use ($cinemaId) {
                           $r->where('cinema_id', $cinemaId);
                       });
@@ -79,12 +84,8 @@ class WalkInBookingController extends Controller
      */
     public function selectSeats(Showtime $showtime): View
     {
-        if ($showtime->status !== Showtime::STATUS_SCHEDULED && $showtime->status !== Showtime::STATUS_ONGOING) {
-            return abort(404);
-        }
-
-        if ($showtime->start_time <= now()) {
-            return abort(404);
+        if (!$showtime->isWalkInBookable()) {
+            abort(403, 'Suất chiếu đã bắt đầu quá 30 phút hoặc đã kết thúc, không thể đặt vé tại quầy.');
         }
 
         // Kiểm tra suất chiếu có thuộc rạp của staff không
@@ -161,12 +162,8 @@ class WalkInBookingController extends Controller
                 abort(404, 'Suất chiếu không tồn tại.');
             }
 
-            if (!in_array($showtime->status, [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])) {
-                abort(404, 'Suất chiếu này không còn khả dụng.');
-            }
-
-            if ($showtime->start_time <= now()) {
-                abort(404, 'Suất chiếu này đã bắt đầu hoặc kết thúc.');
+            if (!$showtime->isWalkInBookable()) {
+                abort(403, 'Suất chiếu đã bắt đầu quá 30 phút hoặc đã kết thúc, không thể đặt vé tại quầy.');
             }
 
             $ticketPrices = TicketPrice::where('showtime_id', $showtimeId)
@@ -202,7 +199,7 @@ class WalkInBookingController extends Controller
         }
 
         $combos = Combo::where('status', 'ACTIVE')->get();
-        $coupons = Coupon::where('status', 'ACTIVE')->get();
+        $coupons = Coupon::activeAndValid()->get();
 
         return view('staff.walkin.checkout', compact(
             'showtime',
@@ -273,7 +270,7 @@ class WalkInBookingController extends Controller
                 $extraData
             );
 
-            // If it's CASH payment (Walk-in), complete it immediately
+            // If it's CASH payment (Walk-in), complete it immediately (BookingObserver handles TicketConfirmationMail queued sending)
             if ($paymentMethod === 'CASH') {
                 $bookingService->completePayment($bookingId, 'CASH');
                 

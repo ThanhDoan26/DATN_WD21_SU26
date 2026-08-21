@@ -143,11 +143,6 @@
         color: #ffffff !important;
         outline: none !important;
         box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.4);
-<<<<<<< HEAD
-        outline: 3px solid var(--primary-color);
-        outline-offset: 2px;
-=======
->>>>>>> 9730541d563131ed93072a9122ca8bda6ec5f09b
         animation: pulseSelection 1.5s infinite;
     }
 

@@ -51,7 +51,7 @@ class MovieCinemaSeeder extends Seeder
             'cinema_id' => $cinema,
             'name' => 'Cinema 1',
             'format' => '2D',
-            'total_seats' => 60,
+            'total_seats' => 90,
             'status' => 'ACTIVE',
             'created_at' => now(),
             'updated_at' => now(),
@@ -61,7 +61,7 @@ class MovieCinemaSeeder extends Seeder
             'cinema_id' => $cinema,
             'name' => 'IMAX 2',
             'format' => 'IMAX',
-            'total_seats' => 80,
+            'total_seats' => 90,
             'status' => 'ACTIVE',
             'created_at' => now(),
             'updated_at' => now(),
@@ -70,34 +70,36 @@ class MovieCinemaSeeder extends Seeder
         echo "✓ Created rooms: Cinema 1 (ID: $room1), IMAX 2 (ID: $room2)\n";
  
         // ==================================================
-        // Step 3: Tạo Ghế cho Phòng 1 (6 hàng x 10 ghế)
+        // Step 3: Tạo Ghế cho Phòng 1 (8 hàng, 90 ghế)
         // ==================================================
         $this->createSeats($room1, [
-            ['A', 10, 'Regular'],
-            ['B', 10, 'Regular'],
-            ['C', 10, 'Regular'],
-            ['D', 10, 'VIP'],
-            ['E', 10, 'VIP'],
-            ['F', 10, 'Sweetbox'],
+            ['A', 12, 'Regular'],
+            ['B', 12, 'Regular'],
+            ['C', 12, 'Regular'],
+            ['D', 12, 'VIP'],
+            ['E', 12, 'VIP'],
+            ['F', 12, 'VIP'],
+            ['G', 12, 'VIP'],
+            ['H', 6, 'Sweetbox'],
         ]);
  
-        echo "✓ Created seats for Cinema 1 (60 seats)\n";
+        echo "✓ Created seats for Cinema 1 (90 seats)\n";
  
         // ==================================================
-        // Step 4: Tạo Ghế cho Phòng 2 (8 hàng x 10 ghế)
+        // Step 4: Tạo Ghế cho Phòng 2 (8 hàng, 90 ghế)
         // ==================================================
         $this->createSeats($room2, [
-            ['A', 10, 'Regular'],
-            ['B', 10, 'Regular'],
-            ['C', 10, 'Regular'],
-            ['D', 10, 'Regular'],
-            ['E', 10, 'VIP'],
-            ['F', 10, 'VIP'],
-            ['G', 10, 'Sweetbox'],
-            ['H', 10, 'Sweetbox'],
+            ['A', 12, 'Regular'],
+            ['B', 12, 'Regular'],
+            ['C', 12, 'Regular'],
+            ['D', 12, 'VIP'],
+            ['E', 12, 'VIP'],
+            ['F', 12, 'VIP'],
+            ['G', 12, 'VIP'],
+            ['H', 6, 'Sweetbox'],
         ]);
  
-        echo "✓ Created seats for IMAX 2 (80 seats)\n";
+        echo "✓ Created seats for IMAX 2 (90 seats)\n";
  
         // ==================================================
         // Step 5: Tạo Phim
@@ -330,8 +332,8 @@ class MovieCinemaSeeder extends Seeder
         ]);
  
         // Booked seats cho booking 1
-        // (lấy 3 ghế trống làm ví dụ đặt trước: id 1 (A1), id 2 (A2), id 34 (D4))
-        $seatsForBooking1 = [1, 2, 34];
+        // (lấy 3 ghế trống làm ví dụ đặt trước: id 1 (A1), id 2 (A2), id 40 (D4))
+        $seatsForBooking1 = [1, 2, 40];
         foreach ($seatsForBooking1 as $index => $seatId) {
             $priceAtBooking = $index < 2 ? 75000 : 120000;
             DB::table('booked_seats')->insert([
@@ -358,8 +360,8 @@ class MovieCinemaSeeder extends Seeder
             'updated_at' => now(),
         ]);
  
-        // Booked seats cho booking 2 (lấy ghế B1, B2, B3 - id 11, 12, 13)
-        $seatsForBooking2 = [11, 12, 13];
+        // Booked seats cho booking 2 (lấy ghế B1, B2, B3 - id 13, 14, 15)
+        $seatsForBooking2 = [13, 14, 15];
         foreach ($seatsForBooking2 as $seatId) {
             DB::table('booked_seats')->insert([
                 'booking_id' => $booking2,

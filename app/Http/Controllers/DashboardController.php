@@ -22,19 +22,19 @@ class DashboardController extends Controller
             return redirect()->route('login');
         }
 
+        // Chuyển hướng về dashboard tương ứng vai trò
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+        if ($user->isManager()) {
+            return redirect()->route('manager.dashboard');
+        }
+        if ($user->isStaff()) {
+            return redirect()->route('staff.dashboard');
+        }
+
         $showtimes = collect();
         $date = $request->input('date', Carbon::today()->toDateString()); // Mặc định hôm nay
-
-        // Nếu là Manager, lấy danh sách thống kê suất chiếu của rạp do manager này quản lý
-        if ($user->isManager() && $user->cinema_id) {
-            $showtimes = Showtime::with(['movie', 'room'])
-                ->whereHas('room', function ($query) use ($user) {
-                    $query->where('cinema_id', $user->cinema_id);
-                })
-                ->whereDate('start_time', $date)
-                ->orderBy('start_time', 'asc')
-                ->paginate(15);
-        }
 
         return view('dashboard', compact('showtimes', 'date'));
     }
