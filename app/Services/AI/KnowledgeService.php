@@ -224,7 +224,7 @@ class KnowledgeService
                 return "Hướng dẫn đặt vé: Bước 1: Chọn phim và suất chiếu. Bước 2: Chọn ghế ngồi. Bước 3: Chọn combo (nếu có). Bước 4: Nhập mã giảm giá và thanh toán. Vé của bạn sẽ có trong mục Vé Của Tôi.";
 
             case 'ask_payment':
-                return "Các cổng thanh toán hiện tại hệ thống hỗ trợ: Stripe và MOCK_PAYMENT.";
+                return "Các cổng thanh toán hiện tại hệ thống hỗ trợ: VNPay và Thẻ ATM / Visa (Stripe).";
 
             case 'ask_payment_error':
                 return "Quy định thanh toán lỗi: Nếu bị trừ tiền mà chưa có vé, hệ thống sẽ tự động hoàn tiền hoặc bạn có thể liên hệ tổng đài để được hỗ trợ.";

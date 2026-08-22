@@ -269,6 +269,30 @@ class BookingService
                     );
                 }
 
+                // Kiểm tra Cooldown 15 phút (chống giam ghế)
+                // Chỉ chặn các hành vi THỰC SỰ lạm dụng (admin hủy, hệ thống phát hiện abuse).
+                // Các lý do hủy bình thường PHẢI được loại trừ:
+                // - 'User initiated a new booking request': User chọn lại ghế (update giỏ hàng)
+                // - 'Payment timeout expired': Booking hết hạn tự nhiên, user quay lại chọn lại
+                // - 'User cancelled explicitly': User chủ động hủy rồi muốn đặt lại
+                $cooldownMinutes = 15;
+                $recentAbusedSeats = DB::table('bookings')
+                    ->join('booked_seats', 'bookings.id', '=', 'booked_seats.booking_id')
+                    ->where('bookings.user_id', $userId)
+                    ->where('bookings.showtime_id', $showtimeId)
+                    ->where('bookings.status', 'Cancelled')
+                    ->whereNotIn('bookings.cancellation_reason', [
+                        'User initiated a new booking request',
+                        'Replaced by a new booking request',
+                        'Payment timeout expired',
+                        'User cancelled explicitly',
+                        'Người dùng tự hủy đơn',
+                        'User actively released lock (beforeunload/back)',
+                    ])
+                    ->where('bookings.created_at', '>=', now()->subMinutes($cooldownMinutes))
+                    ->whereIn('booked_seats.seat_id', $selectedSeatIds)
+                    ->select('booked_seats.seat_id')
+                    ->get();
 
             }
 
@@ -780,13 +804,12 @@ class BookingService
         \Illuminate\Support\Facades\Log::info("BookingService::completePayment [Step: Complete Payment] - Starting for Booking ID: {$bookingId}, Method: {$paymentMethod}");
         $result = DB::transaction(function () use ($bookingId, $paymentMethod, $additionalData) {
 
-            // Kiểm tra booking tồn tại + status = Pending
-            $booking = DB::table('bookings')
-                ->where('id', $bookingId)
+            // Kiểm tra booking tồn tại + status = Pending hoặc PROCESSING (Sử dụng Eloquent Model để có thể save/kích hoạt Observer)
+            $bookingModel = \App\Models\Booking::where('id', $bookingId)
                 ->lockForUpdate()
                 ->first();
 
-            if (!$booking) {
+            if (!$bookingModel) {
                 \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không tồn tại");
                 throw new Exception("Booking $bookingId không tồn tại");
             }
@@ -803,7 +826,7 @@ class BookingService
             try {
                 $seatIds = DB::table('booked_seats')->where('booking_id', $bookingId)->pluck('seat_id')->toArray();
                 foreach ($seatIds as $seatId) {
-                    if (!\Illuminate\Support\Facades\Redis::exists("seat_lock:showtime_{$booking->showtime_id}:seat_{$seatId}")) {
+                    if (!\Illuminate\Support\Facades\Redis::exists("seat_lock:showtime_{$bookingModel->showtime_id}:seat_{$seatId}")) {
                         throw new Exception("Đơn hàng đã hết hạn giữ chỗ (hoặc ghế đã bị nhả). Vui lòng liên hệ CSKH để được hỗ trợ hoàn tiền.");
                     }
                 }
@@ -814,15 +837,11 @@ class BookingService
                 \Illuminate\Support\Facades\Log::warning("Redis check in completePayment skipped: " . $ex->getMessage());
             }
 
-            // Cập nhật booking status
-            DB::table('bookings')
-                ->where('id', $bookingId)
-                ->update([
-                    'status' => 'Paid',
-                    'payment_method' => $paymentMethod,
-                    'payment_time' => now(),
-                    'updated_at' => now(),
-                ]);
+            // Cập nhật booking status sử dụng Eloquent để kích hoạt BookingObserver
+            $bookingModel->status = 'Paid';
+            $bookingModel->payment_method = $paymentMethod;
+            $bookingModel->payment_time = now();
+            $bookingModel->save();
 
             // Cập nhật status các vé
             DB::table('booked_seats')

@@ -58,12 +58,33 @@ class CheckoutController extends Controller
         }
 
         try {
+            // Lấy lại danh sách Combo đã chọn từ đơn giữ ghế cũ của suất chiếu này (nếu có)
+            $existingCombos = [];
+            if ($userId) {
+                $existingPending = Booking::where('user_id', $userId)
+                    ->where('showtime_id', $showtimeId)
+                    ->whereIn('status', ['Pending', 'PROCESSING'])
+                    ->first();
+
+                if ($existingPending) {
+                    $existingCombosRaw = \Illuminate\Support\Facades\DB::table('booking_combos')
+                        ->where('booking_id', $existingPending->id)
+                        ->get();
+                    foreach ($existingCombosRaw as $ec) {
+                        $existingCombos[$ec->combo_id] = ['qty' => $ec->quantity];
+                    }
+                }
+            }
+
             $bookingService = new BookingService();
-            // This will lock seats and create a new Pending booking
+            // This will lock seats and create a new Pending booking with preserved combos
             $bookingId = $bookingService->createBooking(
                 $userId,
                 $showtimeId,
-                $seatIds
+                $seatIds,
+                'ONLINE',
+                null,
+                $existingCombos
             );
 
             // Tăng Rate Limit
@@ -169,8 +190,13 @@ class CheckoutController extends Controller
             }
         }
 
+        $savedCombos = \Illuminate\Support\Facades\DB::table('booking_combos')
+            ->where('booking_id', $pendingBookingId)
+            ->pluck('quantity', 'combo_id')
+            ->toArray();
+
         $combos = Combo::where('status', 'ACTIVE')->get();
-        $coupons = Coupon::where('status', 'ACTIVE')->get();
+        $coupons = Coupon::validForCheckout()->get();
 
         return view('checkout', compact(
             'showtime',
@@ -183,6 +209,7 @@ class CheckoutController extends Controller
             'seatIds',
             'showtimeId',
             'combos',
+            'savedCombos',
             'coupons',
             'expiresAtMs',
             'pendingBookingId'
@@ -256,6 +283,10 @@ class CheckoutController extends Controller
             Booking::where('id', $bookingId)->update(['status' => 'PROCESSING']);
 
             $bookingDetails = $bookingService->getBookingDetails($bookingId);
+            $holdDurationMs = BookingService::getHoldDuration() * 60 * 1000;
+            $expiresAtMs = $bookingDetails['booking_time'] 
+                ? (\Carbon\Carbon::parse($bookingDetails['booking_time'])->timestamp * 1000 + $holdDurationMs)
+                : (now()->timestamp * 1000 + $holdDurationMs);
 
             return response()->json([
                 'success' => true,
@@ -263,7 +294,8 @@ class CheckoutController extends Controller
                 'data' => [
                     'booking_id' => $bookingId,
                     'booking_time' => $bookingDetails['booking_time'],
-                    'timeout_minutes' => BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES,
+                    'timeout_minutes' => BookingService::getHoldDuration(),
+                    'expires_at_ms' => $expiresAtMs,
                     'booking_code' => $bookingDetails['booking_code'],
                     'total_price' => $bookingDetails['total_price'],
                 ],
@@ -375,58 +407,6 @@ class CheckoutController extends Controller
         } catch (\Exception $e) {
             Log::error('Cancel booking failed: ' . $e->getMessage());
             return back()->with('error', 'Có lỗi xảy ra khi hủy đơn vé.');
-        }
-    }
-
-    public function mockPayment(Request $request)
-    {
-        $request->validate([
-            'booking_id' => 'required|integer|exists:bookings,id',
-        ]);
-
-        $booking = Booking::where('id', $request->booking_id)
-            ->where('user_id', Auth::id())
-            ->first();
-
-        if (!$booking) {
-            return back()->with('error', 'Đơn vé không tồn tại hoặc không thuộc về bạn.');
-        }
-
-        if ($booking->status !== 'Pending') {
-            return back()->with('error', 'Đơn vé này không ở trạng thái chờ thanh toán.');
-        }
-
-        try {
-            $bookingService = new BookingService();
-            
-            // Đánh dấu thanh toán thành công
-            $bookingService->completePayment($booking->id, $booking->payment_method ?? 'MOCK_PAYMENT');
-            
-            // Lấy thông tin chi tiết để gửi email
-            $bookingDetails = $bookingService->getBookingDetails($booking->id);
-            $showtime = Showtime::with(['movie', 'room.cinema'])->find($booking->showtime_id);
-            
-            // Gửi email xác nhận
-            if (Auth::user() && Auth::user()->email) {
-                try {
-                    \Illuminate\Support\Facades\Log::info("CheckoutController: Đang gọi Mail::to()->send() gửi cho " . Auth::user()->email);
-                    Mail::to(Auth::user()->email)->send(new TicketConfirmationMail($bookingDetails, $showtime));
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error("CheckoutController: Lỗi khi gọi Mail::to()->send() cho " . Auth::user()->email . ". Lỗi: " . $e->getMessage(), [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'trace' => $e->getTraceAsString(),
-                    ]);
-                }
-            } else {
-                \Illuminate\Support\Facades\Log::warning("CheckoutController: TicketConfirmationMail KHÔNG được gọi do user chưa đăng nhập hoặc không có email.");
-            }
-            
-            return redirect()->route('checkout.success', ['booking_id' => $booking->id])
-                             ->with('success', 'Thanh toán thành công. Email xác nhận đã được gửi đến bạn.');
-        } catch (\Exception $e) {
-            Log::error('Mock payment failed: ' . $e->getMessage());
-            return back()->with('error', 'Có lỗi xảy ra khi xử lý thanh toán: ' . $e->getMessage());
         }
     }
 
