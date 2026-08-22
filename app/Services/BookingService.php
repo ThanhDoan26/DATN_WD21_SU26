@@ -288,7 +288,7 @@ class BookingService
                     // Chỉ lock ghế chưa hủy và chưa hết hạn
                     ->where('bookings.status', '!=', 'Cancelled')
                     ->where(function ($q) {
-                        $q->where('bookings.status', '!=', 'Pending')
+                        $q->whereNotIn('bookings.status', ['Pending', 'PROCESSING'])
                           ->orWhere('bookings.booking_time', '>=', now()->subMinutes(self::getHoldDuration()));
                     })
                     ->lockForUpdate() // 🔒 CRITICAL: SELECT ... FOR UPDATE
@@ -791,11 +791,11 @@ class BookingService
                 throw new Exception("Booking $bookingId không tồn tại");
             }
 
-            if ($booking->status !== 'Pending') {
+            if (!in_array($booking->status, ['Pending', 'PROCESSING'])) {
                 \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$booking->status}");
                 throw new Exception(
                     "Không thể thanh toán booking này. Status: {$booking->status}. " .
-                    "Chỉ có thể thanh toán booking ở trạng thái Pending."
+                    "Chỉ có thể thanh toán booking ở trạng thái Pending hoặc PROCESSING."
                 );
             }
 
@@ -885,7 +885,7 @@ class BookingService
                 throw new Exception("Booking $bookingId không tồn tại");
             }
 
-            if (!in_array($booking->status, ['Pending', 'Paid'])) {
+            if (!in_array($booking->status, ['Pending', 'PROCESSING', 'Paid'])) {
                 throw new Exception(
                     "Không thể hủy booking này. Status: {$booking->status}"
                 );

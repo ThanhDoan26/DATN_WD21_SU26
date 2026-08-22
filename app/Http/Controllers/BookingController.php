@@ -166,7 +166,7 @@ class BookingController extends Controller
         $activeBookings = $showtime->bookings()
             ->where('status', '!=', 'Cancelled')
             ->where(function ($q) {
-                $q->where('status', '!=', 'Pending')
+                $q->whereNotIn('status', ['Pending', 'PROCESSING'])
                   ->orWhere('booking_time', '>=', now()->subMinutes(config('booking.seat_hold.duration_minutes', 10)));
             })
             ->with('bookedSeats')
@@ -178,7 +178,7 @@ class BookingController extends Controller
 
         foreach ($activeBookings as $booking) {
             $seatIds = $booking->bookedSeats->pluck('seat_id')->toArray();
-            if ($userId && $booking->status === 'Pending' && $booking->user_id == $userId) {
+            if ($userId && in_array($booking->status, ['Pending', 'PROCESSING']) && $booking->user_id == $userId) {
                 $myPendingSeats = array_merge($myPendingSeats, $seatIds);
             } else {
                 $bookedSeats = array_merge($bookedSeats, $seatIds);
@@ -192,7 +192,7 @@ class BookingController extends Controller
         if ($userId && !empty($myPendingSeats)) {
             $myPendingBooking = \App\Models\Booking::where('user_id', $userId)
                 ->where('showtime_id', $showtime->id)
-                ->where('status', 'Pending')
+                ->whereIn('status', ['Pending', 'PROCESSING'])
                 ->orderBy('booking_time', 'desc')
                 ->first();
 

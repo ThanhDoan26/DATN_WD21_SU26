@@ -136,6 +136,19 @@
         filter: none;
     }
 
+    .seat.held {
+        background-color: #f59e0b !important;
+        border-color: #d97706 !important;
+        color: #1e293b !important;
+    }
+
+    .seat.booked {
+        background-color: #64748b !important;
+        border-color: #475569 !important;
+        color: #ffffff !important;
+        cursor: not-allowed;
+    }
+
     /* Active Selection */
     .seat.selected-active {
         background-color: #22c55e !important;
@@ -315,6 +328,14 @@
             <div class="legend-item">
                 <div class="legend-box" style="background: #10b981;"><i class="fas fa-check"></i></div>
                 <span>Available (Trống)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #f59e0b; color: #1e293b;"><i class="fas fa-user-clock"></i></div>
+                <span>Held (Đang giữ chỗ)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #64748b;"><i class="fas fa-lock"></i></div>
+                <span>Booked (Đã đặt)</span>
             </div>
             <div class="legend-item">
                 <div class="legend-box" style="background: #94a3b8;"><i class="fas fa-wrench"></i></div>
@@ -575,17 +596,33 @@
             
             sortedSeats.forEach(seat => {
                 const seatDiv = document.createElement('div');
-                seatDiv.className = `seat ${seat.seat_type.toLowerCase()} ${seat.status.toLowerCase()}`;
+                let statusModifier = seat.status.toLowerCase();
+                if (seat.is_booked) {
+                    statusModifier = 'booked';
+                } else if (seat.is_held) {
+                    statusModifier = 'held';
+                }
+                seatDiv.className = `seat ${seat.seat_type.toLowerCase()} ${statusModifier}`;
                 
                 // Hiển thị nội dung dựa trên trạng thái
-                if (seat.status === 'UNAVAILABLE') {
+                if (seat.status === 'UNAVAILABLE' || seat.status === 'BROKEN') {
                     seatDiv.innerHTML = `<i class="fas fa-wrench" title="Ghế Hỏng"></i>`;
+                } else if (seat.is_booked) {
+                    seatDiv.innerHTML = `<i class="fas fa-lock" title="Đã đặt"></i>`;
+                } else if (seat.is_held) {
+                    seatDiv.innerHTML = `<i class="fas fa-user-clock" title="Đang giữ chỗ"></i>`;
                 } else {
                     seatDiv.textContent = `${seat.row_name}${seat.seat_number}`;
                 }
                 
                 // Thêm tooltip thông tin cơ bản
-                seatDiv.title = `Ghế ${seat.row_name}${seat.seat_number} - Loại: ${seat.seat_type} - Trạng thái: ${seat.status}`;
+                let displayStatus = seat.status;
+                if (seat.is_booked) displayStatus = 'BOOKED (Đã đặt)';
+                else if (seat.is_held) displayStatus = 'HELD (Đang giữ chỗ)';
+                else if (seat.status === 'AVAILABLE') displayStatus = 'AVAILABLE (Trống)';
+                else displayStatus = 'UNAVAILABLE (Hỏng)';
+
+                seatDiv.title = `Ghế ${seat.row_name}${seat.seat_number} - Loại: ${seat.seat_type} - Trạng thái: ${displayStatus}`;
                 
                 // Event click chọn ghế
                 seatDiv.addEventListener('click', function() {
@@ -674,7 +711,11 @@
             
             // Status Badge
             const tdStatus = document.createElement('td');
-            if (seat.status === 'AVAILABLE') {
+            if (seat.is_booked) {
+                tdStatus.innerHTML = '<span class="badge bg-secondary"><i class="fas fa-lock me-1"></i>Booked</span>';
+            } else if (seat.is_held) {
+                tdStatus.innerHTML = '<span class="badge bg-warning text-dark"><i class="fas fa-user-clock me-1"></i>Held</span>';
+            } else if (seat.status === 'AVAILABLE') {
                 tdStatus.innerHTML = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Available</span>';
             } else {
                 tdStatus.innerHTML = '<span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Unavailable</span>';
@@ -785,22 +826,35 @@
         else typeBadge.classList.add('bg-secondary');
         
         const statusBadge = document.getElementById('detailSeatStatus');
-        statusBadge.textContent = seat.status;
-        statusBadge.className = 'badge';
-        if (seat.status === 'AVAILABLE') {
-            statusBadge.classList.add('bg-success');
+        if (seat.is_booked) {
+            statusBadge.textContent = 'Booked';
+            statusBadge.className = 'badge bg-secondary';
+        } else if (seat.is_held) {
+            statusBadge.textContent = 'Held (10 mins)';
+            statusBadge.className = 'badge bg-warning text-dark';
+        } else if (seat.status === 'AVAILABLE') {
+            statusBadge.textContent = 'Available';
+            statusBadge.className = 'badge bg-success';
         } else {
-            statusBadge.classList.add('bg-danger');
+            statusBadge.textContent = seat.status;
+            statusBadge.className = 'badge bg-danger';
         }
         
         // Icon xem trước ở card chi tiết
         const detailIcon = document.getElementById('detailSeatIcon');
         detailIcon.textContent = `${seat.row_name}${seat.seat_number}`;
-        detailIcon.className = `seat ${seat.seat_type.toLowerCase()}`;
-        if (seat.status === 'UNAVAILABLE') {
-            detailIcon.classList.add('unavailable');
+        let detailClass = `seat ${seat.seat_type.toLowerCase()}`;
+        if (seat.is_booked) {
+            detailIcon.className = detailClass + ' booked';
+            detailIcon.innerHTML = `<i class="fas fa-lock"></i>`;
+        } else if (seat.is_held) {
+            detailIcon.className = detailClass + ' held';
+            detailIcon.innerHTML = `<i class="fas fa-user-clock"></i>`;
+        } else if (seat.status === 'UNAVAILABLE' || seat.status === 'BROKEN') {
+            detailIcon.className = detailClass + ' unavailable';
             detailIcon.innerHTML = `<i class="fas fa-wrench"></i>`;
         } else {
+            detailIcon.className = detailClass;
             detailIcon.innerHTML = `${seat.row_name}${seat.seat_number}`;
         }
     }

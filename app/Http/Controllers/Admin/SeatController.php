@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Models\Seat;
 use App\Models\Room;
 use App\Models\Cinema;
+use App\Services\SeatBookingStateService;
 
 /**
  * SeatController
@@ -41,6 +42,9 @@ class SeatController extends AdminController
             ->orderBy('row_name')
             ->orderBy('seat_number')
             ->get();
+
+        $seatBookingStateService = app(SeatBookingStateService::class);
+        $seats = $seatBookingStateService->enrichSeatsWithBookingState($seats, (int)$roomId);
 
         return response()->json($seats);
     }
