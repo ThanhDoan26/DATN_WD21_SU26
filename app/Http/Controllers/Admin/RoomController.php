@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\Room;
 use App\Models\Cinema;
+use App\Services\SeatBookingStateService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -161,11 +162,14 @@ class RoomController extends AdminController
         $cinemas = Cinema::where('status', 'ACTIVE')->get();
         
         // Lấy danh sách ghế, sắp xếp và nhóm theo hàng (Ví dụ: A, B, C...)
-        $seatsByRow = $room->seats()
+        $seats = $room->seats()
             ->orderBy('row_name')
             ->orderBy('seat_number')
-            ->get()
-            ->groupBy('row_name');
+            ->get();
+
+        $seatBookingStateService = app(SeatBookingStateService::class);
+        $seats = $seatBookingStateService->enrichSeatsWithBookingState($seats, $room->id);
+        $seatsByRow = $seats->groupBy('row_name');
 
         $currentRows = $seatsByRow->count();
         if ($currentRows === 0) {
@@ -373,12 +377,17 @@ class RoomController extends AdminController
     {
         $seat = $room->seats()->findOrFail($seatId);
 
-        // Chặn không cho tác động tới ghế đang có người đặt
-        if ($seat->status === \App\Models\Seat::STATUS_BOOKED) {
+        // Kiểm tra trạng thái Booking/Hold thông qua SeatBookingStateService
+        $seatBookingStateService = app(SeatBookingStateService::class);
+        $check = $seatBookingStateService->checkSeatLockable($seat);
+
+        if (!$check['allowed']) {
             return response()->json([
-                'success' => false, 
-                'message' => 'Không thể đổi trạng thái ghế đã có người đặt.'
-            ], 403);
+                'success' => false,
+                'code' => $check['code'],
+                'business_status' => $check['status'],
+                'message' => $check['message']
+            ], 422);
         }
 
         // Đảo trạng thái: Nếu đang Trống -> Hỏng, nếu đang Hỏng -> Trống
@@ -390,6 +399,7 @@ class RoomController extends AdminController
         return response()->json([
             'success' => true,
             'new_status' => $seat->status,
+            'business_status' => $seat->status,
             'message' => 'Cập nhật trạng thái ghế thành công!'
         ]);
     }
