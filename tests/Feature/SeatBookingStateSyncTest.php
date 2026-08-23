@@ -332,8 +332,43 @@ it('enriches seat collection with correct is_held, is_booked, can_toggle, busine
 });
 
 // ─────────────────────────────────────────────────────────────
-// CASE 8: COMPLETE PAYMENT FOR BOOKING IN PROCESSING STATUS
+// CASE 8: COMPLETE PAYMENT TESTS
 // ─────────────────────────────────────────────────────────────
+it('allows completePayment to succeed when booking status is Pending', function () {
+    $data = createTestCinemaRoomAndSeat();
+
+    $booking = Booking::create([
+        'user_id' => $data['user']->id,
+        'showtime_id' => $data['showtime']->id,
+        'total_price' => 100000,
+        'status' => 'Pending',
+        'booking_code' => 'BK-PEND-' . uniqid(),
+        'booking_time' => now()->subMinutes(1),
+    ]);
+
+    DB::table('booked_seats')->insert([
+        'booking_id' => $booking->id,
+        'seat_id' => $data['seat']->id,
+        'price_at_booking' => 100000,
+        'status' => 'RESERVED',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $bookingService = new \App\Services\BookingService();
+    $result = $bookingService->completePayment($booking->id, 'MOCK_PAYMENT', []);
+
+    expect($result)->toBeTrue();
+
+    $updatedBooking = Booking::find($booking->id);
+    expect($updatedBooking->status)->toBe('Paid')
+        ->and($updatedBooking->payment_method)->toBe('MOCK_PAYMENT')
+        ->and($updatedBooking->payment_time)->not->toBeNull();
+
+    $bookedSeat = DB::table('booked_seats')->where('booking_id', $booking->id)->first();
+    expect($bookedSeat->status)->toBe('PAID');
+});
+
 it('allows completePayment to succeed when booking status is PROCESSING', function () {
     $data = createTestCinemaRoomAndSeat();
 
@@ -362,8 +397,36 @@ it('allows completePayment to succeed when booking status is PROCESSING', functi
 
     $updatedBooking = Booking::find($booking->id);
     expect($updatedBooking->status)->toBe('Paid')
-        ->and($updatedBooking->payment_method)->toBe('VNPAY');
+        ->and($updatedBooking->payment_method)->toBe('VNPAY')
+        ->and($updatedBooking->payment_time)->not->toBeNull();
 
     $bookedSeat = DB::table('booked_seats')->where('booking_id', $booking->id)->first();
     expect($bookedSeat->status)->toBe('PAID');
 });
+
+it('throws exception when completePayment is called on an already Paid booking', function () {
+    $data = createTestCinemaRoomAndSeat();
+
+    $booking = Booking::create([
+        'user_id' => $data['user']->id,
+        'showtime_id' => $data['showtime']->id,
+        'total_price' => 100000,
+        'status' => 'Paid',
+        'booking_code' => 'BK-PAID-' . uniqid(),
+        'booking_time' => now()->subMinutes(5),
+    ]);
+
+    $bookingService = new \App\Services\BookingService();
+
+    expect(fn () => $bookingService->completePayment($booking->id, 'VNPAY', []))
+        ->toThrow(\Exception::class, "Không thể thanh toán booking này. Status: Paid.");
+});
+
+it('throws exception when completePayment is called for a non-existent booking', function () {
+    $bookingService = new \App\Services\BookingService();
+    $nonExistentId = 9999999;
+
+    expect(fn () => $bookingService->completePayment($nonExistentId, 'VNPAY', []))
+        ->toThrow(\Exception::class, "Booking $nonExistentId không tồn tại");
+});
+

@@ -814,10 +814,10 @@ class BookingService
                 throw new Exception("Booking $bookingId không tồn tại");
             }
 
-            if (!in_array($booking->status, ['Pending', 'PROCESSING'])) {
-                \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$booking->status}");
+            if (!in_array($bookingModel->status, ['Pending', 'PROCESSING'])) {
+                \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$bookingModel->status}");
                 throw new Exception(
-                    "Không thể thanh toán booking này. Status: {$booking->status}. " .
+                    "Không thể thanh toán booking này. Status: {$bookingModel->status}. " .
                     "Chỉ có thể thanh toán booking ở trạng thái Pending hoặc PROCESSING."
                 );
             }
