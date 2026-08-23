@@ -272,9 +272,6 @@ class WalkInBookingController extends Controller
 
             // If it's CASH payment (Walk-in), complete it immediately (BookingObserver handles TicketConfirmationMail queued sending)
             if ($paymentMethod === 'CASH') {
-                // Đánh dấu đã gửi (hoặc sẽ gửi) trong request này để BookingObserver không gửi trùng
-                \App\Observers\BookingObserver::$sentBookings[] = $bookingId;
-
                 $bookingService->completePayment($bookingId, 'CASH');
                 
                 // If email provided, send confirmation
