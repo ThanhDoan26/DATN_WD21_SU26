@@ -283,6 +283,10 @@ class CheckoutController extends Controller
             Booking::where('id', $bookingId)->update(['status' => 'PROCESSING']);
 
             $bookingDetails = $bookingService->getBookingDetails($bookingId);
+            $holdDurationMs = BookingService::getHoldDuration() * 60 * 1000;
+            $expiresAtMs = $bookingDetails['booking_time'] 
+                ? (\Carbon\Carbon::parse($bookingDetails['booking_time'])->timestamp * 1000 + $holdDurationMs)
+                : (now()->timestamp * 1000 + $holdDurationMs);
 
             return response()->json([
                 'success' => true,
@@ -290,7 +294,8 @@ class CheckoutController extends Controller
                 'data' => [
                     'booking_id' => $bookingId,
                     'booking_time' => $bookingDetails['booking_time'],
-                    'timeout_minutes' => BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES,
+                    'timeout_minutes' => BookingService::getHoldDuration(),
+                    'expires_at_ms' => $expiresAtMs,
                     'booking_code' => $bookingDetails['booking_code'],
                     'total_price' => $bookingDetails['total_price'],
                 ],
