@@ -702,6 +702,13 @@
                 </a>
             </li>
             <li>
+                <a href="{{ route('admin.cinema-reviews.index') }}"
+                   class="@if(request()->routeIs('admin.cinema-reviews.*')) active @endif">
+                    <i class="fas fa-building-circle"></i>
+                    <span>Phản Hồi Rạp</span>
+                </a>
+            </li>
+            <li>
                 <a href="{{ route('admin.coupons.index') }}"
                    class="@if(request()->routeIs('admin.coupons.*')) active @endif">
                     <i class="fas fa-tags"></i>

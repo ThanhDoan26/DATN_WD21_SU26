@@ -89,7 +89,7 @@ class FullDemoDataSeeder extends Seeder
                 'trailer_url' => 'https://www.youtube.com/watch?v=73_1biulkYk',
                 'duration' => 128,
                 'age_rating' => 'T18',
-                'format' => 'IMAX',
+                'format' => ['IMAX', '2D Phụ Đề'],
                 'status' => 'NOW_SHOWING',
                 'language' => 'Tiếng Anh - Phụ đề Tiếng Việt',
                 'country' => 'Mỹ',
@@ -104,7 +104,7 @@ class FullDemoDataSeeder extends Seeder
                 'trailer_url' => 'https://www.youtube.com/watch?v=LEjhY15eCx0',
                 'duration' => 96,
                 'age_rating' => 'P',
-                'format' => '2D Lồng Tiếng',
+                'format' => ['2D Lồng Tiếng', '2D Phụ Đề'],
                 'status' => 'NOW_SHOWING',
                 'language' => 'Lồng tiếng Tiếng Việt',
                 'country' => 'Mỹ',
@@ -119,7 +119,7 @@ class FullDemoDataSeeder extends Seeder
                 'trailer_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
                 'duration' => 138,
                 'age_rating' => 'K',
-                'format' => '2D',
+                'format' => ['2D'],
                 'status' => 'NOW_SHOWING',
                 'language' => 'Tiếng Việt',
                 'country' => 'Việt Nam',
@@ -134,7 +134,7 @@ class FullDemoDataSeeder extends Seeder
                 'trailer_url' => 'https://www.youtube.com/watch?v=Way9Dexny3w',
                 'duration' => 166,
                 'age_rating' => 'T16',
-                'format' => '3D',
+                'format' => ['3D', 'IMAX'],
                 'status' => 'NOW_SHOWING',
                 'language' => 'Tiếng Anh - Phụ đề Tiếng Việt',
                 'country' => 'Mỹ',
@@ -149,7 +149,7 @@ class FullDemoDataSeeder extends Seeder
                 'trailer_url' => 'https://www.youtube.com/watch?v=lV1OOlGwExM',
                 'duration' => 115,
                 'age_rating' => 'T13',
-                'format' => '4DX',
+                'format' => ['4DX', '3D'],
                 'status' => 'NOW_SHOWING',
                 'language' => 'Tiếng Anh - Phụ đề Tiếng Việt',
                 'country' => 'Mỹ',
@@ -164,7 +164,7 @@ class FullDemoDataSeeder extends Seeder
                 'trailer_url' => 'https://www.youtube.com/watch?v=d9MyW72ELq0',
                 'duration' => 192,
                 'age_rating' => 'T13',
-                'format' => 'IMAX',
+                'format' => ['IMAX', '3D', '4DX'],
                 'status' => 'COMING_SOON',
                 'language' => 'Tiếng Anh - Phụ đề Tiếng Việt',
                 'country' => 'Mỹ',
@@ -179,7 +179,7 @@ class FullDemoDataSeeder extends Seeder
                 'trailer_url' => 'https://www.youtube.com/watch?v=_OKAwz2MsJs',
                 'duration' => 138,
                 'age_rating' => 'T18',
-                'format' => '2D Phụ Đề',
+                'format' => ['2D Phụ Đề'],
                 'status' => 'COMING_SOON',
                 'language' => 'Tiếng Anh - Phụ đề Tiếng Việt',
                 'country' => 'Mỹ',
@@ -194,7 +194,7 @@ class FullDemoDataSeeder extends Seeder
                 'trailer_url' => 'https://www.youtube.com/watch?v=_inKs4eeHiI',
                 'duration' => 94,
                 'age_rating' => 'P',
-                'format' => '2D Lồng Tiếng',
+                'format' => ['2D Lồng Tiếng'],
                 'status' => 'ENDED',
                 'language' => 'Lồng tiếng Tiếng Việt',
                 'country' => 'Mỹ',
@@ -268,9 +268,9 @@ class FullDemoDataSeeder extends Seeder
 
             // Tạo phòng chiếu cho rạp nếu chưa có
             $roomTypes = [
-                ['name' => 'Phòng 01 (Standard 2D)', 'format' => '2D', 'total_seats' => 60],
-                ['name' => 'Phòng 02 (3D Digital)',    'format' => '3D', 'total_seats' => 60],
-                ['name' => 'Phòng 03 (IMAX Laser)',   'format' => 'IMAX', 'total_seats' => 80],
+                ['name' => 'Phòng 01 (Standard 2D)', 'format' => '2D', 'total_seats' => 90],
+                ['name' => 'Phòng 02 (3D Digital)',    'format' => '3D', 'total_seats' => 90],
+                ['name' => 'Phòng 03 (IMAX Laser)',   'format' => 'IMAX', 'total_seats' => 90],
             ];
 
             foreach ($roomTypes as $rData) {
@@ -285,11 +285,15 @@ class FullDemoDataSeeder extends Seeder
 
                 // Tạo ghế mẫu cho phòng nếu chưa có
                 if ($room->seats()->count() == 0) {
-                    $rows = ['A', 'B', 'C', 'D', 'E', 'F'];
+                    $rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
                     foreach ($rows as $rIdx => $rowLetter) {
-                        for ($num = 1; $num <= 10; $num++) {
-                            $type = ($rIdx >= 4) ? 'VIP' : 'Regular';
-                            if ($rIdx == 5 && ($num == 5 || $num == 6)) {
+                        $numSeats = ($rIdx == 7) ? 6 : 12; // Row H (Sweetbox) has 6 seats
+                        for ($num = 1; $num <= $numSeats; $num++) {
+                            if ($rIdx < 3) {
+                                $type = 'Regular';
+                            } elseif ($rIdx < 7) {
+                                $type = 'VIP';
+                            } else {
                                 $type = 'Sweetbox';
                             }
                             Seat::create([
@@ -338,7 +342,7 @@ class FullDemoDataSeeder extends Seeder
                             'start_time' => $startCarbon,
                             'end_time' => $endCarbon,
                             'status' => 'SCHEDULED',
-                            'surcharge' => ($movie->format === 'IMAX' || $movie->format === '4DX') ? 20000 : 0,
+                            'surcharge' => (in_array('IMAX', (array)$movie->format) || in_array('4DX', (array)$movie->format)) ? 20000 : 0,
                         ]);
 
                         // Set ticket prices

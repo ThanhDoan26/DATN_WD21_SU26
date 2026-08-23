@@ -74,7 +74,13 @@
             <div class="row mb-3">
                 <div class="col-md-6">
                     <label class="form-label fw-bold">Số lượng giới hạn <span class="text-danger">*</span></label>
-                    <input type="number" name="quantity" class="form-control @error('quantity') is-invalid @enderror" value="{{ old('quantity', 100) }}" required min="1">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="unlimited_quantity" name="unlimited_quantity" value="1" {{ old('quantity') == 0 && old('quantity') !== null ? 'checked' : '' }}>
+                        <label class="form-check-label" for="unlimited_quantity">
+                            Vô hạn (Không giới hạn lượt sử dụng)
+                        </label>
+                    </div>
+                    <input type="number" name="quantity" id="quantity_input" class="form-control @error('quantity') is-invalid @enderror" value="{{ old('quantity', 100) }}" required min="0">
                     @error('quantity')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -86,15 +92,15 @@
 
             <div class="row mb-4">
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Thời gian bắt đầu</label>
-                    <input type="datetime-local" name="start_date" class="form-control @error('start_date') is-invalid @enderror" value="{{ old('start_date') }}">
+                    <label class="form-label fw-bold">Thời gian bắt đầu <span class="text-danger">*</span></label>
+                    <input type="datetime-local" name="start_date" class="form-control @error('start_date') is-invalid @enderror" value="{{ old('start_date') }}" required>
                     @error('start_date')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Thời gian kết thúc</label>
-                    <input type="datetime-local" name="end_date" class="form-control @error('end_date') is-invalid @enderror" value="{{ old('end_date') }}">
+                    <label class="form-label fw-bold">Thời gian kết thúc <span class="text-danger">*</span></label>
+                    <input type="datetime-local" name="end_date" class="form-control @error('end_date') is-invalid @enderror" value="{{ old('end_date') }}" required>
                     @error('end_date')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -146,13 +152,83 @@ document.addEventListener('DOMContentLoaded', function() {
     const forms = document.querySelectorAll('.card-body form');
     forms.forEach(form => {
         form.addEventListener('submit', function() {
-            inputs.forEach(input => {
+            document.querySelectorAll('.format-number').forEach(input => {
                 if (input.value) {
                     input.value = cleanNumber(input.value);
                 }
             });
+            if (document.getElementById('unlimited_quantity').checked) {
+                document.getElementById('quantity_input').value = 0;
+            }
         });
     });
+
+    const typeSelect = document.querySelector('select[name="type"]');
+    const valueInput = document.getElementById('value');
+    const maxDiscountInput = document.getElementById('max_discount_amount');
+    const maxDiscountContainer = maxDiscountInput.closest('.col-md-6');
+
+    function handleTypeChange() {
+        if (typeSelect.value === 'percent') {
+            valueInput.classList.remove('format-number');
+            let val = cleanNumber(valueInput.value);
+            valueInput.value = val;
+            valueInput.setAttribute('max', '100');
+            maxDiscountContainer.style.display = 'block';
+        } else {
+            valueInput.classList.add('format-number');
+            valueInput.removeAttribute('max');
+            maxDiscountContainer.style.display = 'none';
+            if (valueInput.value) {
+                let val = cleanNumber(valueInput.value);
+                valueInput.value = formatNumber(val);
+            }
+        }
+    }
+
+    typeSelect.addEventListener('change', handleTypeChange);
+    handleTypeChange();
+
+    const unlimitedCheckbox = document.getElementById('unlimited_quantity');
+    const quantityInput = document.getElementById('quantity_input');
+    
+    function toggleQuantity() {
+        if (unlimitedCheckbox.checked) {
+            quantityInput.style.display = 'none';
+            if (quantityInput.value != 0) {
+                quantityInput.setAttribute('data-old-value', quantityInput.value);
+            }
+            quantityInput.value = 0;
+        } else {
+            quantityInput.style.display = 'block';
+            if (quantityInput.value == 0) {
+                quantityInput.value = quantityInput.getAttribute('data-old-value') || 100;
+            }
+        }
+    }
+    
+    unlimitedCheckbox.addEventListener('change', toggleQuantity);
+    toggleQuantity();
+
+    const startDateInput = document.querySelector('input[name="start_date"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
+
+    if (startDateInput && endDateInput) {
+        startDateInput.addEventListener('change', function() {
+            if (this.value) {
+                endDateInput.min = this.value;
+            } else {
+                endDateInput.removeAttribute('min');
+            }
+        });
+        
+        endDateInput.addEventListener('change', function() {
+            if (startDateInput.value && this.value && this.value <= startDateInput.value) {
+                alert('Thời gian kết thúc phải lớn hơn thời gian bắt đầu!');
+                this.value = '';
+            }
+        });
+    }
 });
 </script>
 @endsection

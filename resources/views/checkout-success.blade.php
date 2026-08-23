@@ -38,6 +38,25 @@
                                 </div>
                             @endforeach
                         </div>
+                        
+                        @if(!empty($booking['combos']) && count($booking['combos']) > 0)
+                            <h2 class="text-lg font-semibold mt-6 mb-4 text-white">Combo đã chọn</h2>
+                            <div class="space-y-3 text-sm text-slate-300">
+                                @foreach($booking['combos'] as $combo)
+                                    <div class="rounded-2xl bg-slate-800 p-4 border border-slate-700">
+                                        <div class="flex justify-between gap-4">
+                                            <div>
+                                                <div class="font-semibold text-white">{{ $combo->name }}</div>
+                                                <div class="text-slate-400 text-xs">Số lượng: {{ $combo->quantity }}</div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="font-semibold text-white">{{ number_format($combo->price * $combo->quantity, 0, ',', '.') }} đ</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
                 </div>
                 @if(session('success'))
@@ -52,31 +71,25 @@
                 @endif
 
                 @if($booking['status'] === 'Pending')
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="flex justify-center">
                         <form action="{{ route('checkout.cancel') }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đơn vé này không? Ghế sẽ được giải phóng cho người khác.');">
                             @csrf
                             <input type="hidden" name="booking_id" value="{{ $booking['booking_id'] }}">
-                            <button type="submit" class="w-full inline-flex items-center justify-center rounded-3xl bg-slate-800 border border-slate-600 px-6 py-4 text-center text-rose-400 font-semibold hover:bg-slate-700 transition">
+                            <button type="submit" class="inline-flex items-center justify-center rounded-3xl bg-slate-800 border border-slate-600 px-8 py-4 text-center text-rose-400 font-semibold hover:bg-slate-700 transition">
                                 <i class="fas fa-times-circle mr-2"></i> Hủy đơn vé
-                            </button>
-                        </form>
-
-                        <form action="{{ route('checkout.mock-payment') }}" method="POST">
-                            @csrf
-                            <input type="hidden" name="booking_id" value="{{ $booking['booking_id'] }}">
-                            <button type="submit" class="w-full inline-flex items-center justify-center rounded-3xl bg-emerald-600 px-6 py-4 text-center text-white font-semibold hover:bg-emerald-500 transition shadow-lg shadow-emerald-500/30">
-                                <i class="fas fa-check-circle mr-2"></i> Xác nhận thanh toán
                             </button>
                         </form>
                     </div>
                 @else
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <a href="{{ route('home') }}" class="inline-flex items-center justify-center rounded-3xl bg-slate-900 border border-slate-700 px-6 py-4 text-center text-white font-semibold hover:bg-slate-800 transition">
-                            <i class="fas fa-arrow-left mr-2"></i> Quay về trang chính
-                        </a>
-                        <a href="{{ route('booking.history') }}" class="inline-flex items-center justify-center rounded-3xl bg-primary px-6 py-4 text-center text-white font-semibold hover:bg-red-600 transition">
-                            <i class="fas fa-ticket-alt mr-2"></i> Xem danh sách booking
-                        </a>
+                    <div class="mt-10 pt-8 border-t border-slate-700/50">
+                        <div class="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6">
+                            <a href="{{ route('home') }}" class="w-full sm:w-auto min-w-[220px] inline-flex items-center justify-center rounded-full bg-slate-800 border border-slate-600 px-8 py-3.5 text-slate-300 font-semibold hover:text-white hover:bg-slate-700 hover:border-slate-500 transition-all duration-300">
+                                <i class="fas fa-arrow-left mr-2"></i> Quay về trang chính
+                            </a>
+                            <a href="{{ route('booking.history') }}" class="w-full sm:w-auto min-w-[220px] inline-flex items-center justify-center rounded-full bg-gradient-to-r from-primary to-red-600 px-8 py-3.5 text-white font-bold shadow-lg shadow-red-500/30 hover:shadow-red-500/50 hover:-translate-y-0.5 transition-all duration-300">
+                                <i class="fas fa-ticket-alt mr-2"></i> Xem danh sách booking
+                            </a>
+                        </div>
                     </div>
                 @endif
             </div>
@@ -86,7 +99,12 @@
 
 @push('scripts')
 <script>
-    // Thanh toán thành công — xóa timer để không hiện overlay hết hạn
+    // Thanh toán thành công — xóa toàn bộ timer và dữ liệu chọn ghế tạm trong sessionStorage
     sessionStorage.removeItem('booking_expires_at');
+    Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('selectedSeats_showtime_')) {
+            sessionStorage.removeItem(key);
+        }
+    });
 </script>
 @endpush

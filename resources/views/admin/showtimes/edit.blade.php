@@ -53,18 +53,30 @@
                 </div>
             @endif
 
+            @if(isset($hasBookings) && $hasBookings)
+                <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2 fs-5"></i>
+                    <div>
+                        <strong>Lưu ý:</strong> Suất chiếu này đã phát sinh vé đặt của khách hàng. Bạn không thể thay đổi Phim, Phòng chiếu và Thời gian chiếu để tránh làm sai lệch dữ liệu vé.
+                    </div>
+                </div>
+            @endif
+
             <div class="row">
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label for="movie_id" class="form-label">Phim *</label>
-                        <select id="movie_id" name="movie_id" class="form-select @error('movie_id') is-invalid @enderror" required>
+                        <select id="movie_id" name="movie_id" class="form-select @error('movie_id') is-invalid @enderror" {{ isset($hasBookings) && $hasBookings ? 'disabled' : '' }} required>
                             <option value="">-- Chọn phim --</option>
                             @foreach($movies as $movie)
-                                <option value="{{ $movie->id }}" data-duration="{{ $movie->duration }}" {{ old('movie_id', $showtime->movie_id) == $movie->id ? 'selected' : '' }}>
-                                    {{ $movie->title }}
+                                <option value="{{ $movie->id }}" data-duration="{{ $movie->duration }}" data-formats="{{ is_array($movie->format) ? implode(',', $movie->format) : $movie->format }}" {{ old('movie_id', $showtime->movie_id) == $movie->id ? 'selected' : '' }}>
+                                    {{ $movie->title }} ({{ is_array($movie->format) ? implode(', ', $movie->format) : $movie->format }})
                                 </option>
                             @endforeach
                         </select>
+                        @if(isset($hasBookings) && $hasBookings)
+                            <input type="hidden" name="movie_id" value="{{ $showtime->movie_id }}">
+                        @endif
                         @error('movie_id')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -73,14 +85,17 @@
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label for="room_id" class="form-label">Phòng Chiếu *</label>
-                        <select id="room_id" name="room_id" class="form-select @error('room_id') is-invalid @enderror" required>
+                        <select id="room_id" name="room_id" class="form-select @error('room_id') is-invalid @enderror" {{ isset($hasBookings) && $hasBookings ? 'disabled' : '' }} required>
                             <option value="">-- Chọn phòng --</option>
                             @foreach($rooms as $room)
-                                <option value="{{ $room->id }}" {{ old('room_id', $showtime->room_id) == $room->id ? 'selected' : '' }}>
-                                    {{ $room->cinema?->name ?? 'N/A' }} / {{ $room->name }}
+                                <option value="{{ $room->id }}" data-format="{{ $room->format }}" {{ old('room_id', $showtime->room_id) == $room->id ? 'selected' : '' }}>
+                                    {{ $room->cinema?->name ?? 'N/A' }} / {{ $room->name }} - {{ $room->format }}
                                 </option>
                             @endforeach
                         </select>
+                        @if(isset($hasBookings) && $hasBookings)
+                            <input type="hidden" name="room_id" value="{{ $showtime->room_id }}">
+                        @endif
                         @error('room_id')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -94,10 +109,10 @@
                         <label class="form-label">Thời Gian Bắt Đầu *</label>
                         <div class="row g-2 align-items-center">
                             <div class="col-md-5">
-                                <input type="date" id="start_date" class="form-control @error('start_time') is-invalid @enderror" value="{{ old('start_time') ? \Carbon\Carbon::parse(old('start_time'))->format('Y-m-d') : $showtime->start_time->format('Y-m-d') }}" required>
+                                <input type="date" id="start_date" min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" class="form-control @error('start_time') is-invalid @enderror" value="{{ old('start_time') ? \Carbon\Carbon::parse(old('start_time'))->format('Y-m-d') : $showtime->start_time->format('Y-m-d') }}" {{ isset($hasBookings) && $hasBookings ? 'disabled' : '' }} required>
                             </div>
                             <div class="col-md-3">
-                                <select id="start_hour" class="form-select" required>
+                                <select id="start_hour" class="form-select" {{ isset($hasBookings) && $hasBookings ? 'disabled' : '' }} required>
                                     <option value="">Giờ</option>
                                     @for ($hour = 1; $hour <= 24; $hour++)
                                         <option value="{{ str_pad($hour, 2, '0', STR_PAD_LEFT) }}">{{ str_pad($hour, 2, '0', STR_PAD_LEFT) }}</option>
@@ -105,7 +120,7 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <select id="start_minute" class="form-select" required>
+                                <select id="start_minute" class="form-select" {{ isset($hasBookings) && $hasBookings ? 'disabled' : '' }} required>
                                     @for ($minute = 0; $minute < 60; $minute++)
                                         <option value="{{ str_pad($minute, 2, '0', STR_PAD_LEFT) }}">{{ str_pad($minute, 2, '0', STR_PAD_LEFT) }}</option>
                                     @endfor
@@ -116,7 +131,10 @@
                             </div>
                         </div>
                         <input type="hidden" id="start_time" name="start_time" value="{{ old('start_time', $showtime->start_time->format('Y-m-d\TH:i:s')) }}">
-                        <div class="small text-muted">Chọn giờ.</div>
+                        <div class="small text-muted">Chọn giờ chiếu (thời gian mới phải từ hiện tại trở đi).</div>
+                        <div id="start_time_client_error" class="text-danger small mt-1 d-none align-items-center gap-1">
+                            <i class="fas fa-circle-exclamation"></i> Không thể chọn thời gian chiếu trong quá khứ.
+                        </div>
                         @error('start_time')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                             <div class="text-danger small mt-1 d-flex align-items-center gap-1">
@@ -130,10 +148,10 @@
                         <label class="form-label">Thời Gian Kết Thúc *</label>
                         <div class="row g-2 align-items-center">
                             <div class="col-md-5">
-                                <input type="date" id="end_date" class="form-control @error('end_time') is-invalid @enderror" value="{{ old('end_time') ? \Carbon\Carbon::parse(old('end_time'))->format('Y-m-d') : $showtime->end_time->format('Y-m-d') }}" required>
+                                <input type="date" id="end_date" min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" class="form-control @error('end_time') is-invalid @enderror" value="{{ old('end_time') ? \Carbon\Carbon::parse(old('end_time'))->format('Y-m-d') : $showtime->end_time->format('Y-m-d') }}" {{ isset($hasBookings) && $hasBookings ? 'disabled' : '' }} required>
                             </div>
                             <div class="col-md-3">
-                                <select id="end_hour" class="form-select" required>
+                                <select id="end_hour" class="form-select" {{ isset($hasBookings) && $hasBookings ? 'disabled' : '' }} required>
                                     <option value="">Giờ</option>
                                     @for ($hour = 1; $hour <= 24; $hour++)
                                         <option value="{{ str_pad($hour, 2, '0', STR_PAD_LEFT) }}">{{ str_pad($hour, 2, '0', STR_PAD_LEFT) }}</option>
@@ -171,7 +189,7 @@
                             <option value="">-- Chọn trạng thái --</option>
                             @foreach(\App\Models\Showtime::STATUSES as $status)
                                 <option value="{{ $status }}" {{ old('status', $showtime->status) == $status ? 'selected' : '' }}>
-                                    {{ ucfirst(strtolower($status)) }}
+                                    {{ \App\Models\Showtime::STATUS_LABELS[$status] ?? ucfirst(strtolower($status)) }}
                                 </option>
                             @endforeach
                         </select>
@@ -623,21 +641,44 @@
             endAutoComputed = expectedEnd && expectedEnd === hiddenEndInput.value;
         }
 
+        function validateStartTimeNotPast() {
+            @if(isset($hasBookings) && $hasBookings)
+                return true; // Suất chiếu đã có vé bị khóa không sửa giờ
+            @endif
+            const clientErr = document.getElementById('start_time_client_error');
+            if (!hiddenStartInput.value) return true;
+            const parsed = parseDatetimeLocal(hiddenStartInput.value);
+            // So sánh thời gian (cho phép sai số 30s)
+            if (parsed && parsed.getTime() < (Date.now() - 30000)) {
+                if (clientErr) {
+                    clientErr.classList.remove('d-none');
+                    clientErr.classList.add('d-flex');
+                }
+                startDateInput.classList.add('is-invalid');
+                return false;
+            } else {
+                if (clientErr) {
+                    clientErr.classList.add('d-none');
+                    clientErr.classList.remove('d-flex');
+                }
+                startDateInput.classList.remove('is-invalid');
+                return true;
+            }
+        }
+
         [startHourInput, startMinuteInput].forEach(input => {
             input.addEventListener('change', function () {
                 enforce24OnlyZeroMinute(startHourInput, startMinuteInput);
                 updateStartHidden();
-                if (endAutoComputed || !hiddenEndInput.value) {
-                    updateEndFromStart();
-                }
+                updateEndFromStart();
+                validateStartTimeNotPast();
             });
         });
 
         startDateInput.addEventListener('change', function () {
             updateStartHidden();
-            if (endAutoComputed || !hiddenEndInput.value) {
-                updateEndFromStart();
-            }
+            updateEndFromStart();
+            validateStartTimeNotPast();
         });
 
         [endHourInput, endMinuteInput, endDateInput].forEach(input => {
@@ -647,23 +688,108 @@
             });
         });
 
+        // --- FORMAT COMPATIBILITY LOGIC ---
+        const COMPATIBILITY_MATRIX = {
+            '2D': ['2D', '3D', '4DX', '5D', 'IMAX'],
+            '3D': ['3D', '4DX', '5D'],
+            '4DX': ['4DX', '5D'],
+            '5D': ['5D'],
+            'IMAX': ['IMAX']
+        };
+
+        function normalizeFormatStr(formatStr) {
+            if (!formatStr) return '2D';
+            formatStr = formatStr.toUpperCase();
+            if (formatStr.includes('IMAX')) return 'IMAX';
+            if (formatStr.includes('5D')) return '5D';
+            if (formatStr.includes('4D') || formatStr.includes('4DX')) return '4DX';
+            if (formatStr.includes('3D')) return '3D';
+            return '2D';
+        }
+
+        function checkFormatCompatibility(movieFormats, roomFormat) {
+            const normalizedRoom = normalizeFormatStr(roomFormat);
+            const formatArray = movieFormats.split(',').map(f => f.trim());
+            
+            for (let fmt of formatArray) {
+                const normalizedMovie = normalizeFormatStr(fmt);
+                const allowedRooms = COMPATIBILITY_MATRIX[normalizedMovie] || ['2D'];
+                if (allowedRooms.includes(normalizedRoom)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function filterCompatibleRooms() {
+            const selectedMovieOption = movieSelect.options[movieSelect.selectedIndex];
+            if (!selectedMovieOption || !selectedMovieOption.value) {
+                Array.from(roomSelect.options).forEach(opt => {
+                    if (opt.value) {
+                        opt.disabled = false;
+                        opt.text = opt.text.replace(' (Không hỗ trợ)', '');
+                    }
+                });
+                return;
+            }
+
+            const movieFormats = selectedMovieOption.getAttribute('data-formats') || '';
+            let roomSelectionInvalidated = false;
+
+            Array.from(roomSelect.options).forEach(opt => {
+                if (!opt.value) return; 
+                
+                const roomFormat = opt.getAttribute('data-format') || '';
+                const isCompatible = checkFormatCompatibility(movieFormats, roomFormat);
+                
+                let originalText = opt.text.replace(' (Không hỗ trợ)', '');
+                
+                if (!isCompatible) {
+                    opt.disabled = true;
+                    opt.text = originalText + ' (Không hỗ trợ)';
+                    if (opt.selected) {
+                        roomSelectionInvalidated = true;
+                    }
+                } else {
+                    opt.disabled = false;
+                    opt.text = originalText;
+                }
+            });
+
+            if (roomSelectionInvalidated) {
+                roomSelect.value = '';
+                roomSelect.dispatchEvent(new Event('change'));
+            }
+        }
+        
+        filterCompatibleRooms();
+
         movieSelect.addEventListener('change', function () {
             updateStartHidden();
             if (endAutoComputed) {
                 updateEndFromStart();
             }
+            filterCompatibleRooms();
         });
 
         syncAllTimeFields();
 
         const showtimeForm = document.querySelector('form');
         if (showtimeForm) {
-            showtimeForm.addEventListener('submit', function () {
+            showtimeForm.addEventListener('submit', function (e) {
                 updateStartHidden();
                 if (endAutoComputed || !hiddenEndInput.value) {
                     updateEndFromStart();
                 } else {
                     updateEndHidden(true);
+                }
+
+                if (!validateStartTimeNotPast()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    alert('Không thể tạo hoặc chỉnh sửa lịch chiếu cho thời gian đã qua. Vui lòng chọn thời gian bắt đầu từ thời điểm hiện tại trở đi.');
+                    startDateInput.focus();
+                    return false;
                 }
             });
         }

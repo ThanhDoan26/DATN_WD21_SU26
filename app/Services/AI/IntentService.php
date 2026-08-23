@@ -29,7 +29,7 @@ Dựa vào lịch sử (để hiểu các đại từ như 'phim này', 'ai', 'd
 - ask_booking_guide: Hỏi về cách đặt vé, hướng dẫn các bước đặt vé, cách đặt nhiều vé.
 - ask_booking_status: Hỏi về trạng thái đơn vé, vé của tôi đã thành công chưa, booking bị hủy là sao.
 - ask_seat_hold: Hỏi về ghế bị khóa, giỏ hàng, thời gian giữ ghế.
-- ask_payment: Hỏi về các cổng thanh toán hỗ trợ (Stripe, MOCK_PAYMENT).
+- ask_payment: Hỏi về các cổng thanh toán hỗ trợ (VNPay, Stripe).
 - ask_payment_error: Hỗ trợ khi thanh toán lỗi, thanh toán thất bại, trừ tiền chưa có vé.
 - ask_ticket_price: Hỏi về giá vé tiêu chuẩn, phụ thu, giá ghế VIP, ghế đôi.
 - ask_coupon: Hỏi về quy định, cách áp dụng mã giảm giá, coupon.

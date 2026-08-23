@@ -173,7 +173,8 @@ class CinemaStaffDashboardController extends Controller
                 'showtime.room',
                 'showtime.room.cinema',
                 'bookedSeats',
-                'bookedSeats.seat'
+                'bookedSeats.seat',
+                'combos'
             ])->where('booking_code', $code);
 
             if (!empty($extractedToken)) {
@@ -240,7 +241,8 @@ class CinemaStaffDashboardController extends Controller
                     'booking.showtime',
                     'booking.showtime.movie',
                     'booking.showtime.room',
-                    'booking.showtime.room.cinema'
+                    'booking.showtime.room.cinema',
+                    'booking.combos'
                 ])->where('qr_code', $code)->first();
 
                 if ($bookedSeat) {
@@ -511,8 +513,11 @@ class CinemaStaffDashboardController extends Controller
                     if ($bookedSeat->status !== 'PAID') {
                         return back()->with('error', 'Ghế này không ở trạng thái hợp lệ để check-in.');
                     }
-                    $bookedSeat->checkin();
-                    $checkedCount = 1;
+                    if ($bookedSeat->checkin()) {
+                        $checkedCount = 1;
+                    } else {
+                        return back()->with('error', 'Ghế này đã được check-in trước đó.');
+                    }
                 } else {
                     // Check-in toàn bộ các ghế PAID trong booking
                     $paidSeats = $booking->bookedSeats->where('status', 'PAID');
@@ -521,8 +526,13 @@ class CinemaStaffDashboardController extends Controller
                     }
 
                     foreach ($paidSeats as $seat) {
-                        $seat->checkin();
-                        $checkedCount++;
+                        if ($seat->checkin()) {
+                            $checkedCount++;
+                        }
+                    }
+                    
+                    if ($checkedCount == 0) {
+                        return back()->with('error', 'Các ghế này đã được check-in trước đó.');
                     }
                 }
 
@@ -568,7 +578,9 @@ class CinemaStaffDashboardController extends Controller
                     }
                 }
 
-                $bookedSeat->checkin();
+                if (!$bookedSeat->checkin()) {
+                    return back()->with('error', 'Ghế này đã được check-in trước đó.');
+                }
 
                 if ($booking) {
                     $totalSeats = $booking->bookedSeats()->count();
@@ -628,6 +640,10 @@ class CinemaStaffDashboardController extends Controller
             }
 
             $seatsToPrint = $booking->bookedSeats;
+            foreach ($seatsToPrint as $seatItem) {
+                $seatItem->increment('print_count');
+                $seatItem->update(['printed_at' => now()]);
+            }
         } elseif ($type === 'seat') {
             $bookedSeat = BookedSeat::with([
                 'seat',
@@ -643,6 +659,8 @@ class CinemaStaffDashboardController extends Controller
                 return abort(403, 'Không có quyền in vé thuộc rạp khác.');
             }
 
+            $bookedSeat->increment('print_count');
+            $bookedSeat->update(['printed_at' => now()]);
             $seatsToPrint->push($bookedSeat);
         } else {
             return abort(404, 'Loại in vé không hợp lệ.');

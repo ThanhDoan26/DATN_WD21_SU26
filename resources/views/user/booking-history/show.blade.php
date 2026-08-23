@@ -74,12 +74,14 @@
                                 'Paid' => 'fa-check-circle text-emerald-500',
                                 'Pending' => 'fa-hourglass-half text-amber-500',
                                 'Cancelled' => 'fa-times-circle text-rose-500',
+                                'Expired' => 'fa-clock text-slate-400',
                                 'Used' => 'fa-user-check text-blue-500',
                             ];
                             $statusLabel = [
                                 'Pending' => 'Chờ thanh toán',
                                 'Paid' => 'Đã thanh toán',
                                 'Cancelled' => 'Đã hủy',
+                                'Expired' => 'Hết hạn giữ chỗ',
                                 'Used' => 'Đã sử dụng',
                             ];
                         @endphp
@@ -89,7 +91,13 @@
                         <div>
                             <p class="text-slate-400 text-xs uppercase font-bold tracking-wider">Trạng thái</p>
                             <p class="text-white text-xl font-bold">{{ $statusLabel[$booking->status] ?? $booking->status }}</p>
-                            <p class="text-slate-500 text-sm">Cập nhật: {{ $booking->updated_at->format('H:i d/m/Y') }}</p>
+                            <p class="text-slate-500 text-sm">
+                                @if($booking->cancelled_at)
+                                    Hủy lúc: {{ $booking->cancelled_at->format('H:i d/m/Y') }}
+                                @else
+                                    Cập nhật: {{ $booking->updated_at->format('H:i d/m/Y') }}
+                                @endif
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -189,7 +197,7 @@
                         @elseif($booking->status === 'Paid')
                             <p class="text-slate-400 text-[10px] text-center uppercase font-bold tracking-widest leading-relaxed">Xuất trình mã này tại quầy<br/>để nhận vé vào phòng chiếu</p>
                         @elseif($booking->status === 'Pending')
-                             <button class="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold py-3 rounded-2xl transition-all shadow-lg shadow-amber-500/20">THANH TOÁN NGAY</button>
+                             <a href="{{ route('checkout', ['showtime_id' => $booking->showtime_id, 'seat_ids' => $booking->bookedSeats->pluck('seat_id')->implode(',')]) }}" class="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold py-3 px-6 rounded-2xl transition-all shadow-lg shadow-amber-500/20 block text-center">THANH TOÁN NGAY</a>
                         @endif
                     </div>
                 </div>

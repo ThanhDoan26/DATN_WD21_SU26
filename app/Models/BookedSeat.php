@@ -20,10 +20,14 @@ class BookedSeat extends Model
         'status',
         'qr_code',
         'checked_in_at',
+        'printed_at',
+        'print_count',
     ];
 
     protected $casts = [
         'checked_in_at' => 'datetime',
+        'printed_at' => 'datetime',
+        'print_count' => 'integer',
     ];
 
     public function booking(): BelongsTo
@@ -41,10 +45,21 @@ class BookedSeat extends Model
      */
     public function checkin(): bool
     {
-        return $this->update([
-            'status' => 'USED',
-            'checked_in_at' => now(),
-        ]);
+        $updated = \Illuminate\Support\Facades\DB::table('booked_seats')
+            ->where('id', $this->id)
+            ->where('status', 'PAID')
+            ->update([
+                'status' => 'USED',
+                'checked_in_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        if ($updated > 0) {
+            $this->status = 'USED';
+            return true;
+        }
+        
+        return false;
     }
 
     /**

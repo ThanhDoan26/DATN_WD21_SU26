@@ -93,6 +93,14 @@
 @section('content')
 
     <div class="max-w-6xl mx-auto px-4 pt-32 pb-20">
+        <!-- Navigation -->
+        <div class="flex items-center gap-4 mb-6">
+            <a href="{{ route('home') }}" 
+               class="text-slate-300 hover:text-white flex items-center gap-2 transition-colors px-4 py-2 bg-slate-800/50 rounded-lg backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50">
+                <i class="fas fa-home"></i> Trang chủ
+            </a>
+        </div>
+
         <div class="mb-10 text-center">
             <h1 class="text-4xl font-bold text-white mb-2"><i class="fas fa-ticket-alt text-primary mr-3"></i>Thanh Toán Vé</h1>
             <p class="text-slate-400">Hoàn tất các bước cuối cùng để thưởng thức bộ phim của bạn.</p>
@@ -259,6 +267,8 @@
                                 </div>
                             </label>
 
+
+
                             @if(isset($isWalkIn) && $isWalkIn)
                             <label class="relative cursor-pointer group">
                                 <input type="radio" name="payment" value="CASH" class="peer payment-radio hidden">
@@ -401,10 +411,14 @@
                                 <span>Thanh toán ngay</span>
                                 <i class="fas fa-arrow-right"></i>
                             </button>
-                            <a href="{{ route('booking.select-seats', $showtime->id) }}" onclick="saveSeatsBeforeBack()" class="w-full rounded-2xl bg-slate-800/50 border border-slate-700 px-6 py-3 text-slate-300 text-base font-bold hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2">
+                            <a href="{{ route('booking.select-seats', ['showtime' => $showtime->id, 'resume_seats' => 1]) }}" onclick="saveSeatsBeforeBack()" class="w-full rounded-2xl bg-slate-800/50 border border-slate-700 px-6 py-3 text-slate-300 text-base font-bold hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2">
                                 <i class="fas fa-arrow-left"></i>
                                 <span>Quay lại chọn thêm ghế</span>
                             </a>
+                            <button type="button" onclick="openCancelModal()" class="w-full rounded-2xl bg-transparent border border-red-900/50 px-6 py-3 text-red-500 text-base font-bold hover:bg-red-900/20 transition-all flex items-center justify-center gap-2 mt-2">
+                                <i class="fas fa-times"></i>
+                                <span>Hủy đặt vé</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -443,6 +457,27 @@
         </div>
     </div>
 
+    {{-- ======== CANCEL CONFIRMATION MODAL ======== --}}
+    <div id="cancelModal" style="display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; backdrop-filter: blur(6px);">
+        <div class="expired-card" style="animation: none;">
+            <div class="expired-icon" style="color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.15);">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h2 style="font-size:1.5rem;font-weight:800;color:#fff;margin-bottom:12px">Xác nhận hủy đặt vé</h2>
+            <p style="color:#94a3b8;font-size:0.9rem;line-height:1.6;margin-bottom:28px">
+                Bạn có chắc muốn hủy lượt đặt vé này không?<br> Các ghế bạn đang giữ sẽ được nhả lại cho hệ thống.
+            </p>
+            <div style="display: flex; gap: 1rem;">
+                <button onclick="closeCancelModal()" style="flex: 1; padding: 14px; background: #334155; color: white; border-radius: 16px; font-weight: 700; border: none; cursor: pointer; transition: background 0.2s;">
+                    Tiếp tục đặt vé
+                </button>
+                <button onclick="confirmCancelBooking()" id="btnConfirmCancel" style="flex: 1; padding: 14px; background: #ef4444; color: white; border-radius: 16px; font-weight: 700; border: none; cursor: pointer; transition: background 0.2s;">
+                    Hủy đặt vé
+                </button>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @push('scripts')
@@ -452,8 +487,22 @@
             const showtimeId = @json($showtimeId ?? '');
             const seatIds = @json($seatIds ?? []);
             if (showtimeId && seatIds && seatIds.length > 0) {
-                const storageKey = 'selectedSeats_showtime_' + showtimeId;
-                sessionStorage.setItem(storageKey, JSON.stringify(seatIds));
+                sessionStorage.setItem('resume_seats_showtime_' + showtimeId, '1');
+                sessionStorage.setItem('selectedSeats_showtime_' + showtimeId, JSON.stringify(seatIds));
+            }
+        }
+
+        function openCancelModal() {
+            const modal = document.getElementById('cancelModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeCancelModal() {
+            const modal = document.getElementById('cancelModal');
+            if (modal) {
+                modal.style.display = 'none';
             }
         }
 
@@ -475,7 +524,7 @@
             
             const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
             const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
-            const TIMEOUT_SECONDS = {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES * 60 }};
+            const TIMEOUT_SECONDS = {{ \App\Services\BookingService::getHoldDuration() * 60 }};
             const seatSelectionUrl = '{{ route('booking.select-seats', $showtime->id ?? 0) }}';
 
             // ===================== COUNTDOWN TIMER =====================
@@ -561,9 +610,8 @@
             }
 
             // ---- Khởi động timer ngay khi vào trang ----
-            // 1. Nếu server trả về thời gian kết thúc của Booking có sẵn trong DB → Ưu tiên dùng
-            // 2. Nếu có timer lưu trong sessionStorage (resume từ Stripe) → dùng tiếp
-            // 3. Nếu chưa có → đếm 10 phút từ hiện tại
+            // 1. Nếu server trả về thời gian kết thúc của Booking có sẵn trong DB → Dùng thời gian server
+            // 2. Nếu không có (đơn mới hoặc đã hủy) → Bắt đầu đếm 10 phút mới từ hiện tại
             (function initTimer() {
                 console.log("initTimer called.");
                 if (expiredBackBtn) expiredBackBtn.href = seatSelectionUrl;
@@ -585,23 +633,35 @@
                 const stored = sessionStorage.getItem('booking_expires_at');
                 if (stored) {
                     const expiresAtMs = parseInt(stored, 10);
-                    console.log("initTimer: found stored expiry:", expiresAtMs);
                     if (expiresAtMs > Date.now()) {
                         startCountdown(expiresAtMs);
-                    } else {
-                        console.log("initTimer: stored expiry is in the past, showing overlay.");
-                        sessionStorage.removeItem('booking_expires_at');
-                        if (expiredOverlay) expiredOverlay.classList.add('active');
+                        return;
                     }
-                } else {
-                    // Mới vào trang → bắt đầu đếm 10 phút ngay
-                    const freshExpiry = Date.now() + TIMEOUT_SECONDS * 1000;
-                    console.log("initTimer: starting fresh expiry:", freshExpiry);
-                    sessionStorage.setItem('booking_expires_at', freshExpiry.toString());
-                    startCountdown(freshExpiry);
                 }
+
+                // Không có đơn Pending trên server hoặc chưa có timer → Bắt đầu đếm 10 phút mới
+                const freshExpiry = Date.now() + TIMEOUT_SECONDS * 1000;
+                console.log("initTimer: starting fresh expiry:", freshExpiry);
+                sessionStorage.setItem('booking_expires_at', freshExpiry.toString());
+                startCountdown(freshExpiry);
             })();
             // ---------------------------------------------
+
+            // ======== RELEASE LOCK ON UNLOAD ========
+            window.addEventListener('beforeunload', function (e) {
+                // If the user clicks confirm reservation, we shouldn't release lock
+                if (window.isConfirmingReservation) return;
+
+                const bookingIdStr = @json($pendingBookingId ?? null) || sessionStorage.getItem('current_booking_id');
+                if (bookingIdStr) {
+                    const releaseUrl = @json(route('checkout.release-lock', [], false));
+                    const data = new FormData();
+                    data.append('booking_id', bookingIdStr);
+                    data.append('_token', csrfToken);
+                    navigator.sendBeacon(releaseUrl, data);
+                }
+            });
+            // ========================================
 
             let combosTotal = 0;
             let currentDiscount = 0;
@@ -613,6 +673,21 @@
             };
 
             const selectedCombos = {};
+            const savedCombosData = @json($savedCombos ?? []);
+            Object.keys(savedCombosData).forEach(id => {
+                const qty = parseInt(savedCombosData[id]);
+                if (qty > 0) {
+                    const span = document.querySelector(`.combo-quantity[data-id="${id}"]`);
+                    if (span) {
+                        span.textContent = qty;
+                        selectedCombos[id] = {
+                            name: span.getAttribute('data-name'),
+                            price: parseFloat(span.getAttribute('data-price')),
+                            qty: qty
+                        };
+                    }
+                }
+            });
 
             const couponLabels = document.querySelectorAll('.coupon-label');
             const selectedCouponDisplay = document.getElementById('selected_coupon_display');
@@ -774,6 +849,16 @@
                     const selectedPayment = document.querySelector('input[name="payment"]:checked').value;
                     const couponCode = document.querySelector('input[name="coupon"]:checked').value || '';
 
+                    const formattedCombos = {};
+                    Object.keys(selectedCombos).forEach(id => {
+                        if (selectedCombos[id].qty > 0) {
+                            formattedCombos[id] = {
+                                qty: selectedCombos[id].qty
+                            };
+                        }
+                    });
+
+                    window.isConfirmingReservation = true;
                     confirmReservationButton.disabled = true;
                     confirmReservationButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Đang xử lý...';
 
@@ -789,7 +874,7 @@
                         body: JSON.stringify({
                             showtime_id: showtimeId,
                             seat_ids: Array.isArray(seatIds) ? seatIds.join(',') : seatIds,
-                            combos: selectedCombos,
+                            combos: formattedCombos,
                             payment_method: selectedPayment,
                             coupon_code: couponCode,
                             customer_name: document.getElementById('customer_name') ? document.getElementById('customer_name').value : null,
@@ -823,13 +908,8 @@
 
                         const bookingId = data.data.booking_id;
 
-                        // ===== KHỞI ĐỘNG ĐỒNG HỒ ĐẾM NGƯỢC =====
-                        const timeoutMs = (data.data?.timeout_minutes ?? {{ \App\Services\BookingService::PENDING_PAYMENT_TIMEOUT_MINUTES }}) * 60 * 1000;
-                        const expiresAtMs = Date.now() + timeoutMs;
-                        // Lưu vào sessionStorage để timer vẫn chạy nếu Stripe redirect về
-                        sessionStorage.setItem('booking_expires_at', expiresAtMs.toString());
-                        startCountdown(expiresAtMs);
-                        // ==========================================
+                        // Đồng hồ đếm ngược đã được khởi tạo lúc load trang.
+                        // Không cần set lại để tránh làm reset sai lệch thời gian của server.
 
                         // ========== BƯỚC 2: TẠO PHIÊN THANH TOÁN (STRIPE HOẶC VNPAY) ==========
                         let paymentUrl = stripeSessionUrl;
@@ -864,15 +944,17 @@
                             return data;
                         })
                         .then(session => {
-                            if (!session.url) {
+                            const redirectUrl = session.payment_url || session.url;
+                            if (!redirectUrl) {
                                 throw new Error('Không nhận được đường dẫn thanh toán');
                             }
 
                             // ========== BƯỚC 3: REDIRECT ĐẾN TRANG THANH TOÁN ==========
-                            window.location.href = session.url;
+                            window.location.href = redirectUrl;
                         });
                     })
                     .catch(error => {
+                        window.isConfirmingReservation = false;
                         confirmReservationButton.disabled = false;
                         confirmReservationButton.innerHTML = '<span>Thanh toán ngay</span><i class="fas fa-arrow-right ml-2"></i>';
 
@@ -885,5 +967,46 @@
             // Khởi tạo tính toán ban đầu
             updateOrderSummary();
         });
+
+        // --- Xử lý Explicit Cancel ---
+        function confirmCancelBooking() {
+            const btn = document.getElementById('btnConfirmCancel');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang hủy...';
+            
+            const storageKey = 'selectedSeats_showtime_' + {{ $showtime->id }};
+            sessionStorage.removeItem(storageKey);
+            sessionStorage.removeItem('booking_expires_at');
+            sessionStorage.removeItem('resume_seats_showtime_' + {{ $showtime->id }});
+
+            fetch("{{ route('api.booking.cancel-explicit') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                },
+                body: JSON.stringify({
+                    showtime_id: {{ $showtime->id }}
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    window.location.href = data.redirect_url || "{{ route('movies.show', $showtime->movie_id) }}";
+                } else {
+                    alert(data.error || "Có lỗi xảy ra khi hủy vé.");
+                    closeCancelModal();
+                    btn.disabled = false;
+                    btn.innerHTML = 'Hủy đặt vé';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Lỗi kết nối.");
+                closeCancelModal();
+                btn.disabled = false;
+                btn.innerHTML = 'Hủy đặt vé';
+            });
+        }
     </script>
 @endpush

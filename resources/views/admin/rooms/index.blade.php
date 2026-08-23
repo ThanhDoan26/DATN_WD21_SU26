@@ -166,5 +166,10 @@
             </tbody>
         </table>
     </div>
+    @if($rooms->hasPages())
+    <div class="card-footer d-flex justify-content-center py-3">
+        {{ $rooms->links() }}
+    </div>
+    @endif
 </div>
 @endsection
