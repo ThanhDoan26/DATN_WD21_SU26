@@ -548,6 +548,29 @@ class CinemaStaffDashboardController extends Controller
 
                 DB::commit();
 
+                // ── Broadcast LiveTicketScanned to Staff Channel ──
+                try {
+                    $cinemaIdTarget = $booking->showtime?->room?->cinema_id ?? ($cinemaId ?? 1);
+                    $movieTitle = $booking->showtime?->movie?->title ?? 'N/A';
+                    $roomName = $booking->showtime?->room?->name ?? 'N/A';
+                    $showtimeFormatted = $booking->showtime?->start_time ? $booking->showtime->start_time->format('H:i d/m/Y') : 'N/A';
+                    $seatCodes = $booking->bookedSeats->map(fn($s) => $s->seat ? ($s->seat->row_name . $s->seat->seat_number) : '')->filter()->implode(', ');
+
+                    event(new \App\Events\LiveTicketScanned(
+                        $cinemaIdTarget,
+                        $booking->booking_code ?? 'N/A',
+                        $seatCodes,
+                        $movieTitle,
+                        $roomName,
+                        $showtimeFormatted,
+                        'SUCCESS',
+                        auth()->user()?->name ?? 'Nhân viên',
+                        "Đã check-in thành công {$checkedCount} ghế."
+                    ));
+                } catch (\Throwable $evEx) {
+                    \Illuminate\Support\Facades\Log::warning('Broadcasting LiveTicketScanned failed: ' . $evEx->getMessage());
+                }
+
                 // Trả về JSON nếu là request AJAX, hoặc redirect back
                 if ($request->ajax()) {
                     return response()->json([
@@ -560,7 +583,7 @@ class CinemaStaffDashboardController extends Controller
                     ->with('success', "Đã check-in thành công {$checkedCount} ghế của đơn hàng.");
 
             } elseif ($type === 'seat') {
-                $bookedSeat = BookedSeat::with(['booking', 'booking.showtime.room'])->findOrFail($id);
+                $bookedSeat = BookedSeat::with(['booking', 'booking.showtime.room', 'booking.showtime.movie', 'seat'])->findOrFail($id);
                 $booking = $bookedSeat->booking;
 
                 if ($cinemaId && $booking && $booking->showtime->room->cinema_id != $cinemaId) {
@@ -593,6 +616,29 @@ class CinemaStaffDashboardController extends Controller
                 }
 
                 DB::commit();
+
+                // ── Broadcast LiveTicketScanned for single seat ──
+                try {
+                    $cinemaIdTarget = $booking?->showtime?->room?->cinema_id ?? ($cinemaId ?? 1);
+                    $movieTitle = $booking?->showtime?->movie?->title ?? 'N/A';
+                    $roomName = $booking?->showtime?->room?->name ?? 'N/A';
+                    $showtimeFormatted = $booking?->showtime?->start_time ? $booking->showtime->start_time->format('H:i d/m/Y') : 'N/A';
+                    $seatCode = $bookedSeat->seat ? ($bookedSeat->seat->row_name . $bookedSeat->seat->seat_number) : 'Ghế';
+
+                    event(new \App\Events\LiveTicketScanned(
+                        $cinemaIdTarget,
+                        $booking?->booking_code ?? 'N/A',
+                        $seatCode,
+                        $movieTitle,
+                        $roomName,
+                        $showtimeFormatted,
+                        'SUCCESS',
+                        auth()->user()?->name ?? 'Nhân viên',
+                        "Đã check-in thành công cho ghế {$seatCode}."
+                    ));
+                } catch (\Throwable $evEx) {
+                    \Illuminate\Support\Facades\Log::warning('Broadcasting LiveTicketScanned failed: ' . $evEx->getMessage());
+                }
 
                 if ($request->ajax()) {
                     return response()->json([

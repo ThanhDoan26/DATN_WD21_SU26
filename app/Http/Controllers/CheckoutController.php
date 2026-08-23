@@ -198,6 +198,8 @@ class CheckoutController extends Controller
         $combos = Combo::where('status', 'ACTIVE')->get();
         $coupons = Coupon::validForCheckout()->get();
 
+        $pendingBookingCode = $pendingBooking->booking_code;
+
         return view('checkout', compact(
             'showtime',
             'selectedSeats',
@@ -212,7 +214,9 @@ class CheckoutController extends Controller
             'savedCombos',
             'coupons',
             'expiresAtMs',
-            'pendingBookingId'
+            'pendingBookingId',
+            'pendingBooking',
+            'pendingBookingCode'
         ));
     }
 

@@ -814,10 +814,10 @@ class BookingService
                 throw new Exception("Booking $bookingId không tồn tại");
             }
 
-            if (!in_array($booking->status, ['Pending', 'PROCESSING'])) {
-                \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$booking->status}");
+            if (!in_array($bookingModel->status, ['Pending', 'PROCESSING'])) {
+                \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$bookingModel->status}");
                 throw new Exception(
-                    "Không thể thanh toán booking này. Status: {$booking->status}. " .
+                    "Không thể thanh toán booking này. Status: {$bookingModel->status}. " .
                     "Chỉ có thể thanh toán booking ở trạng thái Pending hoặc PROCESSING."
                 );
             }
@@ -865,17 +865,62 @@ class BookingService
             \Illuminate\Support\Facades\Log::warning('Tracking markCompleted in completePayment failed: ' . $trackingEx->getMessage());
         }
 
-        // ── Redis & Broadcast ──
+        // ── Redis & Broadcast (Reverb Events) ──
         try {
-            $bookingInfo = DB::table('bookings')->where('id', $bookingId)->first();
-            if ($bookingInfo) {
-                $showtimeId = $bookingInfo->showtime_id;
-                $seatIds = DB::table('booked_seats')->where('booking_id', $bookingId)->pluck('seat_id')->toArray();
+            $booking = \App\Models\Booking::with(['showtime.movie', 'showtime.room.cinema', 'bookedSeats'])->find($bookingId);
+            if ($booking) {
+                $showtimeId = $booking->showtime_id;
+                $seatIds = $booking->bookedSeats->pluck('seat_id')->toArray();
                 
+                // 1. Release Redis lock keys
                 foreach ($seatIds as $seatId) {
                     \Illuminate\Support\Facades\Redis::del("seat_lock:showtime_{$showtimeId}:seat_{$seatId}");
                 }
-                event(new \App\Events\SeatStatusUpdated($showtimeId, $seatIds, 'PAID'));
+
+                // 2. Broadcast SeatStatusUpdated (PAID) to Showtime Presence Channel
+                event(new \App\Events\SeatStatusUpdated($showtimeId, $seatIds, 'PAID', $booking->user_id));
+
+                // 3. Broadcast PaymentConfirmed to Order Private Channel for instant browser redirect
+                $redirectUrl = route('checkout.success', ['booking_id' => $booking->id]);
+                event(new \App\Events\PaymentConfirmed(
+                    $booking->booking_code,
+                    $booking->id,
+                    $redirectUrl,
+                    'PAID',
+                    'Thanh toán thành công! Đang chuyển hướng...',
+                    $paymentMethod
+                ));
+
+                // 4. Calculate Live Analytics & Broadcast LiveRevenueUpdated to Admin/Manager
+                $cinemaId = $booking->showtime?->room?->cinema_id ?? 1;
+                $totalToday = (float) \App\Models\Booking::whereDate('payment_time', today())
+                    ->whereIn('status', ['Paid', 'Used'])
+                    ->whereHas('showtime.room', function($q) use ($cinemaId) {
+                        $q->where('cinema_id', $cinemaId);
+                    })->sum('total_price');
+
+                $bookingsTodayCount = \App\Models\Booking::whereDate('payment_time', today())
+                    ->whereIn('status', ['Paid', 'Used'])
+                    ->whereHas('showtime.room', function($q) use ($cinemaId) {
+                        $q->where('cinema_id', $cinemaId);
+                    })->count();
+
+                $totalRoomSeats = (int) ($booking->showtime?->room?->seats()?->count() ?? 100);
+                $occupiedSeatsCount = (int) \App\Models\BookedSeat::whereHas('booking', function($q) use ($showtimeId) {
+                    $q->where('showtime_id', $showtimeId)->whereIn('status', ['PAID', 'USED']);
+                })->count();
+
+                $occupancyRate = $totalRoomSeats > 0 ? ($occupiedSeatsCount / $totalRoomSeats) * 100 : 0.0;
+
+                event(new \App\Events\LiveRevenueUpdated(
+                    $cinemaId,
+                    (float) $booking->total_price,
+                    $totalToday,
+                    $bookingsTodayCount,
+                    $showtimeId,
+                    $booking->showtime?->movie?->title,
+                    $occupancyRate
+                ));
             }
         } catch (\Throwable $ex) {
             \Illuminate\Support\Facades\Log::warning('Redis/Broadcast in completePayment failed: ' . $ex->getMessage());

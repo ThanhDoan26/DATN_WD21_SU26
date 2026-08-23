@@ -1105,12 +1105,39 @@
             initSelectSeatsTimer();
             pollBookedSeats(); // Initial fetch to ensure up-to-date state
 
+            const currentUserId = {{ auth()->id() ?? 0 }};
+
             if (typeof window.Echo !== 'undefined') {
-                window.Echo.channel(`showtime.${showtimeId}`)
+                console.log('Connecting to Showtime Presence Channel: showtime.' + showtimeId);
+                
+                window.Echo.join(`showtime.${showtimeId}`)
+                    .here((users) => {
+                        console.log('Users currently viewing this showtime:', users);
+                    })
+                    .joining((user) => {
+                        console.log('User joined seat map:', user.name);
+                    })
+                    .leaving((user) => {
+                        console.log('User left seat map:', user.name);
+                    })
+                    .listen('.SeatStatusUpdated', (e) => {
+                        console.log('SeatStatusUpdated received:', e);
+                        handleRealtimeSeatUpdate(e);
+                    })
                     .listen('SeatStatusUpdated', (e) => {
                         console.log('SeatStatusUpdated received:', e);
-                        pollBookedSeats(); // Re-fetch or we could just use e.seat_ids and e.status
+                        handleRealtimeSeatUpdate(e);
                     });
+
+                // Auto Re-sync on reconnection
+                if (window.Echo.connector && window.Echo.connector.pusher) {
+                    window.Echo.connector.pusher.connection.bind('state_change', (states) => {
+                        console.log('WebSocket state changed:', states.current);
+                        if (states.current === 'connected') {
+                            pollBookedSeats();
+                        }
+                    });
+                }
             } else {
                 console.warn("Laravel Echo is not initialized. Falling back to polling.");
                 setInterval(pollBookedSeats, 5000); // Fallback polling if WebSockets fail
@@ -1120,6 +1147,35 @@
                 document.getElementById('resumeBookingModal').style.display = 'flex';
             }
         });
+
+        function handleRealtimeSeatUpdate(e) {
+            if (!e || !e.seatIds) return;
+            const currentUserId = {{ auth()->id() ?? 0 }};
+            const isMe = e.userId && parseInt(e.userId) === currentUserId;
+
+            e.seatIds.forEach(seatId => {
+                const button = document.querySelector(`.seat[data-seat-id="${seatId}"]`);
+                if (!button) return;
+
+                if (e.status === 'PAID' || e.status === 'PENDING' || e.status === 'HOLD') {
+                    if (!isMe) {
+                        button.classList.add('booked');
+                        button.classList.remove('selected');
+                        button.disabled = true;
+                        button.title = e.status === 'PAID' ? "Ghế đã bán" : "Ghế đang được người khác giữ";
+                        if (selectedSeats.has(seatId)) {
+                            selectedSeats.delete(seatId);
+                        }
+                    }
+                } else if (e.status === 'AVAILABLE') {
+                    button.classList.remove('booked');
+                    button.disabled = false;
+                    button.title = button.getAttribute('data-seat-code');
+                }
+            });
+
+            updateSummary();
+        }
 
         // Sync fresh seat state if user returns via browser Back button (BFCache)
         window.addEventListener('pageshow', (event) => {

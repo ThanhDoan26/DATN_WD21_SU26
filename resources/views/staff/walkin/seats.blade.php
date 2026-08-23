@@ -166,6 +166,7 @@
     const showtimeId = {{ $showtime->id }};
     const surcharge = {{ $showtime->surcharge ?? 0 }};
     const ticketPrices = @json($ticketPrices->mapWithKeys(fn($price) => [$price->seat_type => (float) $price->price]));
+    const currentStaffId = {{ auth()->id() ?? 0 }};
     
     let selectedSeats = new Set();
     
@@ -204,10 +205,11 @@
         
         selectedSeats.forEach(id => {
             const el = document.querySelector(`[data-id="${id}"]`);
-            codes.push(el.dataset.code);
-            
-            const basePrice = ticketPrices[el.dataset.type] || 0;
-            total += basePrice + surcharge;
+            if (el) {
+                codes.push(el.dataset.code);
+                const basePrice = ticketPrices[el.dataset.type] || 0;
+                total += basePrice + surcharge;
+            }
         });
         
         listDiv.innerHTML = codes.join(', ');
@@ -220,6 +222,81 @@
         if(selectedSeats.size === 0) return;
         const seatIds = Array.from(selectedSeats).join(',');
         window.location.href = `/staff/walk-in/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
+    }
+
+    // --- POS Realtime Sync with Online Bookings ---
+    function fetchFreshSeatState() {
+        fetch(`/api/booking/showtime/${showtimeId}/booked-seats`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.bookedSeats) {
+                    const bookedIds = data.bookedSeats || [];
+                    document.querySelectorAll('.seat-btn').forEach(btn => {
+                        const sid = parseInt(btn.getAttribute('data-id'));
+                        if (isNaN(sid)) return;
+                        if (bookedIds.includes(sid)) {
+                            btn.classList.add('seat-booked');
+                            btn.classList.remove('seat-selected');
+                            if (selectedSeats.has(sid)) {
+                                selectedSeats.delete(sid);
+                            }
+                        } else if (!btn.classList.contains('seat-selected')) {
+                            btn.classList.remove('seat-booked');
+                        }
+                    });
+                    updateCart();
+                }
+            })
+            .catch(err => console.error('Error syncing POS seats:', err));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchFreshSeatState();
+
+        if (typeof window.Echo !== 'undefined') {
+            console.log('POS connecting to Showtime Channel: showtime.' + showtimeId);
+
+            window.Echo.join(`showtime.${showtimeId}`)
+                .listen('.SeatStatusUpdated', handlePosSeatUpdate)
+                .listen('SeatStatusUpdated', handlePosSeatUpdate);
+
+            if (window.Echo.connector && window.Echo.connector.pusher) {
+                window.Echo.connector.pusher.connection.bind('state_change', (states) => {
+                    if (states.current === 'connected') {
+                        fetchFreshSeatState();
+                    }
+                });
+            }
+        } else {
+            console.warn('Laravel Echo not available on POS. Polling every 5s.');
+            setInterval(fetchFreshSeatState, 5000);
+        }
+    });
+
+    function handlePosSeatUpdate(e) {
+        if (!e || !e.seatIds) return;
+        const isMe = e.userId && parseInt(e.userId) === currentStaffId;
+
+        e.seatIds.forEach(seatId => {
+            const btn = document.querySelector(`[data-id="${seatId}"]`);
+            if (!btn) return;
+
+            if (e.status === 'PAID' || e.status === 'PENDING' || e.status === 'HOLD') {
+                if (!isMe) {
+                    btn.classList.add('seat-booked');
+                    btn.classList.remove('seat-selected');
+                    btn.title = "Ghế đang được giữ hoặc đã bán online";
+                    if (selectedSeats.has(seatId)) {
+                        selectedSeats.delete(seatId);
+                    }
+                }
+            } else if (e.status === 'AVAILABLE') {
+                btn.classList.remove('seat-booked');
+                btn.title = btn.dataset.code;
+            }
+        });
+
+        updateCart();
     }
 </script>
 @endsection

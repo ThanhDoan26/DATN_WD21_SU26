@@ -966,7 +966,49 @@
 
             // Khởi tạo tính toán ban đầu
             updateOrderSummary();
+
+            // --- Realtime Payment Webhook Auto-Redirect ---
+            const activeBookingCode = @json($pendingBookingCode ?? null);
+            if (activeBookingCode && typeof window.Echo !== 'undefined') {
+                console.log('Listening for payment completion on channel: private-order.' + activeBookingCode);
+                
+                window.Echo.private(`order.${activeBookingCode}`)
+                    .listen('.PaymentConfirmed', (data) => {
+                        console.log('Payment confirmed via Reverb webhook:', data);
+                        handlePaymentSuccessRedirect(data);
+                    })
+                    .listen('PaymentConfirmed', (data) => {
+                        console.log('Payment confirmed via Reverb webhook (unprefixed):', data);
+                        handlePaymentSuccessRedirect(data);
+                    });
+            }
         });
+
+        function handlePaymentSuccessRedirect(data) {
+            const redirectUrl = data.redirectUrl || `/checkout/success?booking_id=${data.bookingId}`;
+            
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.inset = '0';
+            overlay.style.backgroundColor = 'rgba(15, 23, 42, 0.95)';
+            overlay.style.zIndex = '999999';
+            overlay.style.display = 'flex';
+            overlay.style.flexDirection = 'column';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.innerHTML = `
+                <div style="text-align: center; color: white;">
+                    <div style="font-size: 4rem; color: #22c55e; margin-bottom: 1rem;"><i class="fas fa-check-circle fa-bounce"></i></div>
+                    <h2 style="font-size: 1.8rem; font-weight: bold; margin-bottom: 0.5rem;">Thanh Toán Thành Công!</h2>
+                    <p style="color: #94a3b8; font-size: 1rem;">Hệ thống đã nhận được thanh toán từ Cổng thanh toán. Đang mở vé xem phim của bạn...</p>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            setTimeout(() => {
+                window.location.href = redirectUrl;
+            }, 700);
+        }
 
         // --- Xử lý Explicit Cancel ---
         function confirmCancelBooking() {

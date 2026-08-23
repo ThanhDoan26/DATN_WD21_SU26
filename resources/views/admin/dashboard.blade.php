@@ -1162,5 +1162,49 @@
             if (toggleText) toggleText.textContent = 'Thu gọn chi tiết cảnh báo';
         }
     }
+
+    // ── Live Revenue & Analytics Reverb Sync ────────────────────
+    if (typeof window.Echo !== 'undefined') {
+        console.log('Admin dashboard listening on private channels: admin.dashboard');
+        window.Echo.private('admin.dashboard')
+            .listen('.LiveRevenueUpdated', (data) => {
+                console.log('LiveRevenueUpdated received:', data);
+                handleLiveRevenueUpdated(data);
+            })
+            .listen('LiveRevenueUpdated', (data) => {
+                console.log('LiveRevenueUpdated received (unprefixed):', data);
+                handleLiveRevenueUpdated(data);
+            });
+    }
+
+    function handleLiveRevenueUpdated(data) {
+        const toast = document.createElement('div');
+        toast.className = 'alert shadow-lg d-flex align-items-center gap-3';
+        toast.style.position = 'fixed';
+        toast.style.top = '25px';
+        toast.style.right = '25px';
+        toast.style.zIndex = '999999';
+        toast.style.borderRadius = '14px';
+        toast.style.minWidth = '340px';
+        toast.style.background = data.isHighOccupancy ? 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)' : 'linear-gradient(135deg, #064e3b 0%, #065f46 100%)';
+        toast.style.color = '#fff';
+        toast.style.border = data.isHighOccupancy ? '1px solid #ef4444' : '1px solid #10b981';
+
+        toast.innerHTML = `
+            <i class="fas ${data.isHighOccupancy ? 'fa-fire text-warning' : 'fa-chart-line text-success'} fa-2x"></i>
+            <div>
+                <div class="fw-bold fs-6">${data.isHighOccupancy ? 'CẢNH BÁO: Suất chiếu sắp đầy!' : 'Đơn hàng mới thành công!'}</div>
+                <div class="small">+${new Intl.NumberFormat('vi-VN').format(data.amount)} đ · ${data.movieTitle || 'Suất chiếu'}</div>
+                <div class="small opacity-75">Tỷ lệ lấp đầy phòng: <b>${data.newOccupancyRate}%</b></div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => toast.remove(), 500);
+        }, 5000);
+    }
 </script>
 @endsection
