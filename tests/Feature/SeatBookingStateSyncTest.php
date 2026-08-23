@@ -430,3 +430,64 @@ it('throws exception when completePayment is called for a non-existent booking',
         ->toThrow(\Exception::class, "Booking $nonExistentId không tồn tại");
 });
 
+// ─────────────────────────────────────────────────────────────
+// CASE 9: SEAT ROOM INTEGRITY TESTS
+// ─────────────────────────────────────────────────────────────
+it('throws exception when createBooking is called with seats from different rooms', function () {
+    $dataRoom1 = createTestCinemaRoomAndSeat();
+
+    // Create a second room and seat in the same cinema
+    $room2 = Room::create([
+        'cinema_id' => $dataRoom1['room']->cinema_id,
+        'name' => 'Room 2',
+        'format' => '2D',
+        'total_seats' => 50,
+        'status' => 'ACTIVE',
+    ]);
+
+    $seatRoom2 = Seat::create([
+        'room_id' => $room2->id,
+        'row_name' => 'A',
+        'seat_number' => 1,
+        'seat_type' => 'Regular',
+        'status' => Seat::STATUS_AVAILABLE,
+    ]);
+
+    $bookingService = new \App\Services\BookingService();
+
+    // Showtime belongs to room 1, but we request seats from both room 1 and room 2
+    expect(fn () => $bookingService->createBooking(
+        $dataRoom1['user']->id,
+        $dataRoom1['showtime']->id,
+        [$dataRoom1['seat']->id, $seatRoom2->id]
+    ))->toThrow(\Exception::class, "không thuộc phòng chiếu của suất chiếu này");
+});
+
+it('throws exception in SeatSelectionValidationService when seat does not belong to showtime room', function () {
+    $dataRoom1 = createTestCinemaRoomAndSeat();
+
+    $room2 = Room::create([
+        'cinema_id' => $dataRoom1['room']->cinema_id,
+        'name' => 'Room 2',
+        'format' => '2D',
+        'total_seats' => 50,
+        'status' => 'ACTIVE',
+    ]);
+
+    $seatRoom2 = Seat::create([
+        'room_id' => $room2->id,
+        'row_name' => 'A',
+        'seat_number' => 1,
+        'seat_type' => 'Regular',
+        'status' => Seat::STATUS_AVAILABLE,
+    ]);
+
+    $validator = new \App\Services\SeatSelectionValidationService();
+
+    expect(fn () => $validator->validateSelectedSeats(
+        $dataRoom1['showtime']->id,
+        [$seatRoom2->id]
+    ))->toThrow(\Exception::class, "không thuộc phòng chiếu của suất chiếu này");
+});
+
+
