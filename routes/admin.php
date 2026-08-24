@@ -20,7 +20,7 @@ use App\Http\Controllers\Admin\ReviewController;
  * Yêu cầu authentication và admin role
  */
 
-Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
+Route::middleware(['auth'])->prefix('admin')->group(function () {
 
     // Phân quyền đặc quyền cho ADMIN tuyệt đối, gom toàn bộ vào 1 block duy nhất
     Route::middleware(['role:ADMIN'])->group(function () {

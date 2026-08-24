@@ -207,13 +207,13 @@
                         if ($searchType === 'booking') {
                             $status = $result->status;
                             if ($status === 'Paid') { $statusStr = 'Đã thanh toán (Sẵn sàng)'; $statusClass = 'badge-paid'; }
-                            elseif ($status === 'Used') { $statusStr = 'Đã sử dụng (Đã check-in)'; $statusClass = 'badge-used'; }
+                            elseif ($status === 'Used') { $statusStr = 'Vé đã được in (Đã check-in)'; $statusClass = 'badge-used'; }
                             elseif ($status === 'Pending') { $statusStr = 'Chưa thanh toán (Chờ)'; $statusClass = 'badge-pending'; }
                             elseif ($status === 'Cancelled') { $statusStr = 'Đã hủy bỏ'; $statusClass = 'badge-cancelled'; }
                         } else {
                             $status = $result->status;
                             if ($status === 'PAID') { $statusStr = 'Đã thanh toán (Sẵn sàng)'; $statusClass = 'badge-paid'; }
-                            elseif ($status === 'USED') { $statusStr = 'Đã sử dụng (Đã check-in)'; $statusClass = 'badge-used'; }
+                            elseif ($status === 'USED') { $statusStr = 'Vé đã được in (Đã check-in)'; $statusClass = 'badge-used'; }
                             elseif ($status === 'RESERVED') { $statusStr = 'Chưa thanh toán (Đặt trước)'; $statusClass = 'badge-pending'; }
                             elseif ($status === 'CANCELLED') { $statusStr = 'Đã hủy bỏ'; $statusClass = 'badge-cancelled'; }
                         }
@@ -353,7 +353,7 @@
                                                 <button type="submit" class="btn btn-sm btn-warning fw-bold px-3">Check-in ghế</button>
                                             </form>
                                         @elseif($seat->status === 'USED')
-                                            <span class="badge badge-used"><i class="fas fa-check-double me-1"></i>Đã sử dụng</span>
+                                            <span class="badge badge-used"><i class="fas fa-check-double me-1"></i>Vé đã được in</span>
                                             <small class="text-muted ms-1">{{ $seat->checked_in_at ? $seat->checked_in_at->format('H:i d/m') : '' }}</small>
                                         @elseif($seat->status === 'RESERVED')
                                             <span class="badge badge-pending">Chờ thanh toán</span>
@@ -411,7 +411,7 @@
                             @if($result->status === 'PAID')
                                 <span class="badge badge-paid"><i class="fas fa-check-circle me-1"></i>Sẵn sàng check-in</span>
                             @elseif($result->status === 'USED')
-                                <span class="badge badge-used"><i class="fas fa-check-double me-1"></i>Đã sử dụng</span>
+                                <span class="badge badge-used"><i class="fas fa-check-double me-1"></i>Vé đã được in</span>
                             @elseif($result->status === 'RESERVED')
                                 <span class="badge badge-pending">Chờ thanh toán</span>
                             @elseif($result->status === 'CANCELLED')

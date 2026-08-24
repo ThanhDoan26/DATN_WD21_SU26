@@ -49,8 +49,8 @@
                       <td>{{ cinema.phone || 'N/A' }}</td>
                       <td>
                           <span v-if="cinema.deleted_at" class="badge bg-secondary"><i class="fas fa-trash-alt"></i> Đã xóa</span>
-                          <span v-else-if="cinema.status === 'ACTIVE'" class="badge bg-success"><i class="fas fa-check-circle"></i> Active</span>
-                          <span v-else class="badge bg-danger"><i class="fas fa-times-circle"></i> Inactive</span>
+                          <span v-else-if="cinema.status === 'ACTIVE'" class="badge bg-success"><i class="fas fa-check-circle"></i> Hoạt động</span>
+                          <span v-else class="badge bg-danger"><i class="fas fa-times-circle"></i> Tạm ngưng</span>
                       </td>
                       <td>
                           <div v-if="cinema.deleted_at">

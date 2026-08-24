@@ -187,6 +187,7 @@
             cursor: not-allowed !important;
             box-shadow: none;
             opacity: 0.6;
+            pointer-events: none !important;
         }
 
         .seat.booked:hover {
@@ -465,13 +466,15 @@
                                                 $isVip = $seat->seat_type === 'VIP';
                                                 $isSweetbox = $seat->seat_type === 'Sweetbox' || $seat->seat_type === 'Double';
                                                 
+                                                $typeClass = $isSweetbox ? 'sweetbox' : ($isVip ? 'vip' : 'regular');
+
                                                 if ($isBroken) {
-                                                    $seatClass = 'broken';
+                                                    $seatClass = 'broken ' . $typeClass;
                                                 } elseif ($isBooked) {
-                                                    $seatClass = 'booked';
+                                                    $seatClass = 'booked ' . $typeClass;
                                                 } elseif ($isMyPending) {
                                                     // Nếu là ghế đang giữ của chính user, hiển thị như "Ghế đã chọn" (màu xanh)
-                                                    $seatClass = 'selected ' . ($isSweetbox ? 'sweetbox' : ($isVip ? 'vip' : 'regular'));
+                                                    $seatClass = 'selected ' . $typeClass;
                                                 } elseif ($isSweetbox) {
                                                     $seatClass = 'sweetbox';
                                                 } elseif ($isVip) {
@@ -588,10 +591,10 @@
                 Bạn có chắc muốn hủy lượt đặt vé này không? Các ghế bạn đang giữ sẽ được nhả lại cho hệ thống.
             </p>
             <div style="display: flex; gap: 1rem;">
-                <button onclick="document.getElementById('cancelModal').style.display='none'" style="flex: 1; padding: 0.75rem; background: #334155; color: white; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s;">
+                <button type="button" onclick="document.getElementById('cancelModal').style.display='none'" style="flex: 1; padding: 0.75rem; background: #334155; color: white; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s;">
                     Đóng
                 </button>
-                <button onclick="confirmCancelBooking()" id="btnConfirmCancel" style="flex: 1; padding: 0.75rem; background: #ef4444; color: white; border-radius: 0.5rem; font-weight: bold; transition: background 0.2s;">
+                <button type="button" onclick="confirmCancelBooking()" id="btnConfirmCancel" style="flex: 1; padding: 0.75rem; background: #ef4444; color: white; border-radius: 0.5rem; font-weight: bold; transition: background 0.2s;">
                     Hủy đặt vé
                 </button>
             </div>
@@ -609,10 +612,10 @@
                 Bạn đang có một đơn hàng giữ chỗ cho suất chiếu này chưa hoàn tất thanh toán. Bạn có muốn tiếp tục thanh toán đơn hàng này không?
             </p>
             <div style="display: flex; gap: 1rem;">
-                <button onclick="cancelAndStartOver()" id="btnStartOver" style="flex: 1; padding: 0.75rem; background: #334155; color: white; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s;">
+                <button type="button" onclick="cancelAndStartOver()" id="btnStartOver" style="flex: 1; padding: 0.75rem; background: #334155; color: white; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s;">
                     Đặt lại từ đầu
                 </button>
-                <button onclick="proceedToCheckout()" style="flex: 1; padding: 0.75rem; background: #22c55e; color: white; border-radius: 0.5rem; font-weight: bold; transition: background 0.2s; text-align: center;">
+                <button type="button" onclick="proceedToCheckout()" style="flex: 1; padding: 0.75rem; background: #22c55e; color: white; border-radius: 0.5rem; font-weight: bold; transition: background 0.2s; text-align: center;">
                     Tiếp tục thanh toán
                 </button>
             </div>
@@ -708,7 +711,7 @@
         }
 
         function toggleSeat(seatId, button) {
-            if (button.classList.contains('booked') || button.classList.contains('broken')) {
+            if (button.disabled || button.classList.contains('booked') || button.classList.contains('broken')) {
                 return;
             }
 
@@ -828,7 +831,39 @@
             return result;
         }
 
-        function proceedToCheckout() {
+        let isProceedingToCheckout = false;
+
+        // Step 1: BFCache listener
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                console.log('Restored from BFCache, re-syncing seats...');
+                pollBookedSeats();
+            }
+        });
+
+        // Step 2: Silent CSRF & Session Retry Handler
+        async function fetchWithCsrf(url, options = {}) {
+            options.headers = options.headers || {};
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (csrfToken && !options.headers['X-CSRF-TOKEN']) {
+                options.headers['X-CSRF-TOKEN'] = csrfToken;
+            }
+            let response = await fetch(url, options);
+            if (response.status === 419) {
+                console.warn('419 CSRF Mismatch. Initializing session silently...');
+                const initRes = await fetch('/api/init-session');
+                const initData = await initRes.json();
+                if (initData.csrf_token) {
+                    document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', initData.csrf_token);
+                    options.headers['X-CSRF-TOKEN'] = initData.csrf_token;
+                    response = await fetch(url, options);
+                }
+            }
+            return response;
+        }
+
+        function proceedToCheckout(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
             if (selectedSeats.size === 0) return;
 
             const validation = validateSeatSelection();
@@ -837,11 +872,15 @@
                 return;
             }
 
-            // Save selected seats before navigating to checkout
+            isProceedingToCheckout = true;
             saveSelectedSeats();
 
             const seatIds = Array.from(selectedSeats).join(',');
             document.getElementById('form_seat_ids').value = seatIds;
+
+            const btn = document.getElementById('checkoutButton');
+            if (btn) btn.disabled = true;
+
             document.getElementById('seat-selection-form').submit();
         }
 
@@ -946,6 +985,14 @@
                                     button.classList.remove('booked');
                                     button.disabled = false;
                                     button.title = button.getAttribute('data-seat-code');
+                                    const seatType = button.getAttribute('data-seat-type');
+                                    if (seatType === 'VIP') {
+                                        button.classList.add('vip');
+                                    } else if (seatType === 'Sweetbox' || seatType === 'Double') {
+                                        button.classList.add('sweetbox');
+                                    } else {
+                                        button.classList.add('regular');
+                                    }
                                 }
 
                                 // Tự động xóa tích xanh (.selected) nếu vé đã hủy (Server báo không còn myPendingSeats và User không bấm chọn tay)
@@ -1016,6 +1063,15 @@
                     sessionStorage.removeItem('booking_expires_at');
                     if (timerBar) timerBar.style.display = 'none';
                     if (expiredOverlay) expiredOverlay.classList.add('active');
+
+                    fetch("{{ route('api.booking.cancel-explicit') }}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                        },
+                        body: JSON.stringify({ showtime_id: showtimeId })
+                    }).catch(err => console.error("Auto-cancel expired hold failed:", err));
                 }
             }
 
@@ -1105,21 +1161,96 @@
             initSelectSeatsTimer();
             pollBookedSeats(); // Initial fetch to ensure up-to-date state
 
+            const currentUserId = {{ auth()->id() ?? 0 }};
+
             if (typeof window.Echo !== 'undefined') {
+                console.log('Connecting to Showtime Channel: showtime.' + showtimeId);
+                
+                // Public Channel (Always available for all clients/guests)
                 window.Echo.channel(`showtime.${showtimeId}`)
+                    .listen('.SeatStatusUpdated', (e) => {
+                        console.log('SeatStatusUpdated received (public):', e);
+                        handleRealtimeSeatUpdate(e);
+                    })
                     .listen('SeatStatusUpdated', (e) => {
-                        console.log('SeatStatusUpdated received:', e);
-                        pollBookedSeats(); // Re-fetch or we could just use e.seat_ids and e.status
+                        console.log('SeatStatusUpdated received (public):', e);
+                        handleRealtimeSeatUpdate(e);
                     });
+
+                // Presence Channel (User tracking)
+                window.Echo.join(`showtime.${showtimeId}`)
+                    .here((users) => {
+                        console.log('Users currently viewing this showtime:', users);
+                    })
+                    .joining((user) => {
+                        console.log('User joined seat map:', user.name);
+                    })
+                    .leaving((user) => {
+                        console.log('User left seat map:', user.name);
+                    })
+                    .listen('.SeatStatusUpdated', (e) => {
+                        console.log('SeatStatusUpdated received (presence):', e);
+                        handleRealtimeSeatUpdate(e);
+                    })
+                    .listen('SeatStatusUpdated', (e) => {
+                        console.log('SeatStatusUpdated received (presence):', e);
+                        handleRealtimeSeatUpdate(e);
+                    });
+
+                // Auto Re-sync on reconnection
+                if (window.Echo.connector && window.Echo.connector.pusher) {
+                    window.Echo.connector.pusher.connection.bind('state_change', (states) => {
+                        console.log('WebSocket state changed:', states.current);
+                        if (states.current === 'connected') {
+                            pollBookedSeats();
+                        }
+                    });
+                }
             } else {
                 console.warn("Laravel Echo is not initialized. Falling back to polling.");
-                setInterval(pollBookedSeats, 5000); // Fallback polling if WebSockets fail
             }
 
-            if (serverExpiresAt && parseInt(serverExpiresAt, 10) > Date.now()) {
-                document.getElementById('resumeBookingModal').style.display = 'flex';
-            }
+            // Always run background polling every 5 seconds as a safety net
+            setInterval(pollBookedSeats, 5000);
         });
+
+        function handleRealtimeSeatUpdate(e) {
+            if (!e || !e.seatIds) return;
+            const currentUserId = {{ auth()->id() ?? 0 }};
+            const isOtherUser = e.userId && currentUserId && parseInt(e.userId) !== parseInt(currentUserId);
+
+            e.seatIds.forEach(seatId => {
+                const button = document.querySelector(`.seat[data-seat-id="${seatId}"]`);
+                if (!button) return;
+
+                if (e.status === 'PAID' || e.status === 'PENDING' || e.status === 'HOLD') {
+                    // Lock seat if it belongs to another user or is not part of this session's active draft
+                    if (isOtherUser || !selectedSeats.has(seatId)) {
+                        button.classList.add('booked');
+                        button.classList.remove('selected');
+                        button.disabled = true;
+                        button.title = e.status === 'PAID' ? "Ghế đã bán" : "Ghế đang được người khác giữ";
+                        if (selectedSeats.has(seatId)) {
+                            selectedSeats.delete(seatId);
+                        }
+                    }
+                } else if (e.status === 'AVAILABLE') {
+                    button.classList.remove('booked');
+                    button.disabled = false;
+                    button.title = button.getAttribute('data-seat-code');
+                    const seatType = button.getAttribute('data-seat-type');
+                    if (seatType === 'VIP') {
+                        button.classList.add('vip');
+                    } else if (seatType === 'Sweetbox' || seatType === 'Double') {
+                        button.classList.add('sweetbox');
+                    } else {
+                        button.classList.add('regular');
+                    }
+                }
+            });
+
+            updateSummary();
+        }
 
         // Sync fresh seat state if user returns via browser Back button (BFCache)
         window.addEventListener('pageshow', (event) => {

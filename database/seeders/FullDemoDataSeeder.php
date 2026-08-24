@@ -39,7 +39,6 @@ class FullDemoDataSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role_id' => $adminRole->id,
                 'status' => 'ACTIVE',
-                'email_verified_at' => now(),
             ]
         );
 
@@ -50,7 +49,6 @@ class FullDemoDataSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role_id' => $userRole->id,
                 'status' => 'ACTIVE',
-                'email_verified_at' => now(),
             ]
         );
 

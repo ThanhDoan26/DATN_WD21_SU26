@@ -4,6 +4,16 @@
 
 @section('content')
 <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    @if(session('success'))
+        <div class="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-3 shadow-lg shadow-emerald-500/5">
+            <i class="fas fa-check-circle text-2xl text-emerald-400"></i>
+            <div>
+                <p class="font-bold text-base text-emerald-400">Thanh toán thành công!</p>
+                <p class="text-sm text-emerald-300/90">{{ session('success') }}</p>
+            </div>
+        </div>
+    @endif
+
     <div class="flex justify-between items-center mb-8">
         <h2 class="text-3xl font-bold text-white">
             <i class="fas fa-ticket-alt text-primary mr-3"></i>Chi tiết đặt vé
@@ -221,5 +231,32 @@
     </div>
 </div>
 
+@if(session('success'))
+    {{-- ======== PAYMENT SUCCESS OVERLAY MODAL ======== --}}
+    <div id="paymentSuccessModal" class="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-950/90 backdrop-blur-md transition-opacity duration-300">
+        <div class="bg-slate-800 border border-slate-700 p-8 rounded-3xl max-w-md w-[90%] text-center shadow-2xl animate-fade-in relative">
+            <div class="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 border border-emerald-500/40 shadow-lg shadow-emerald-500/20">
+                <i class="fas fa-check-circle fa-bounce"></i>
+            </div>
+            <h3 class="text-2xl font-extrabold text-white mb-2">Thanh Toán Thành Công!</h3>
+            <p class="text-slate-300 text-sm mb-6 leading-relaxed">
+                {{ session('success') }}<br>
+                Vé xem phim của bạn đã sẵn sàng. Vui lòng xuất trình mã QR Code tại rạp để nhận vé vào phòng chiếu.
+            </p>
+            <button type="button" onclick="document.getElementById('paymentSuccessModal').style.display='none'" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-emerald-500/30 transition-all duration-300">
+                <i class="fas fa-ticket-alt mr-2"></i> Xem Vé Điện Tử Ngay
+            </button>
+        </div>
+    </div>
+    @push('scripts')
+    <script>
+        // Tự động đóng modal sau 5s nếu người dùng không bấm
+        setTimeout(() => {
+            const modal = document.getElementById('paymentSuccessModal');
+            if (modal) modal.style.display = 'none';
+        }, 5000);
+    </script>
+    @endpush
+@endif
 
 @endsection

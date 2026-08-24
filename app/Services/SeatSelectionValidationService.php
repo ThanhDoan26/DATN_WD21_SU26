@@ -27,6 +27,13 @@ class SeatSelectionValidationService
             throw new Exception("Không tìm thấy sơ đồ ghế cho suất chiếu này.");
         }
 
+        // Bắt buộc tất cả ghế gửi lên phải thuộc phòng chiếu của suất chiếu này
+        $roomSeatIds = $allSeats->pluck('id')->toArray();
+        $invalidSeatIds = array_diff($selectedSeatIds, $roomSeatIds);
+        if (!empty($invalidSeatIds)) {
+            throw new Exception("Một hoặc nhiều ghế đã chọn không tồn tại hoặc không thuộc phòng chiếu của suất chiếu này.");
+        }
+
         // Đánh dấu các ghế đã được chọn bởi user hiện tại
         $allSeats->each(function ($seat) use ($selectedSeatIds) {
             $seat->is_selected = in_array($seat->id, $selectedSeatIds);

@@ -152,14 +152,6 @@ class BookingController extends Controller
         $bookingService = new \App\Services\BookingService();
         $bookingService->cleanupExpiredPendingBookings();
 
-        // ── ACTIVE PENDING BOOKING GUARD (Frontend UX) ──
-        if (\Illuminate\Support\Facades\Auth::check()) {
-            $activePendingBooking = $bookingService->getActivePendingBooking(\Illuminate\Support\Facades\Auth::id());
-            if ($activePendingBooking && $activePendingBooking->showtime_id != $showtime->id) {
-                return redirect()->route('home')->with('show_active_booking_modal', true);
-            }
-        }
-
         // Không tự ý hủy booking của user ở đây. BookingService::createBooking() sẽ lo việc đó.
 
         // Lấy thông tin ghế và những ghế đã đặt (chỉ lấy ghế chưa hủy và chưa hết hạn)
@@ -295,7 +287,7 @@ class BookingController extends Controller
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning("Redis unavailable in getBookedSeatsAPI, falling back to DB: " . $e->getMessage());
             $pendingBookings = $showtime->bookings()
-                ->where('status', 'Pending')
+                ->whereIn('status', ['Pending', 'PROCESSING'])
                 ->where('booking_time', '>=', now()->subMinutes(\App\Services\BookingService::getHoldDuration()))
                 ->with('bookedSeats')
                 ->get();
@@ -331,7 +323,7 @@ class BookingController extends Controller
 
         $userId = Auth::id();
         if (!$userId) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+            return response()->json(['error' => 'Bạn chưa đăng nhập.'], 401);
         }
 
         $query = \App\Models\Booking::where('user_id', $userId)
@@ -341,6 +333,13 @@ class BookingController extends Controller
             $query->where('id', $request->booking_id);
         } elseif ($request->showtime_id) {
             $query->where('showtime_id', $request->showtime_id);
+            if ($userId) {
+                $query->where(function($q) use ($userId) {
+                    $q->where('user_id', $userId)->orWhereNull('user_id');
+                });
+            } else {
+                $query->whereNull('user_id');
+            }
         } else {
             return response()->json(['error' => 'Vui lòng cung cấp showtime_id hoặc booking_id'], 422);
         }

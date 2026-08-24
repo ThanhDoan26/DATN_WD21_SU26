@@ -51,7 +51,7 @@
         <div class="stat-card stat-card-danger shadow-sm">
             <div class="stat-card-body p-3 text-center">
                 <i class="fas fa-ticket-alt text-danger fs-3 animate-icon"></i>
-                <div class="stat-card-number fw-bold text-dark fs-4 mt-2 count-number" data-value="{{ $totalTicketsSold ?? 0 }}">0</div>
+                <div id="stat-tickets-sold" class="stat-card-number fw-bold text-dark fs-4 mt-2 count-number" data-value="{{ $totalTicketsSold ?? 0 }}">0</div>
                 <div class="stat-card-label text-muted small fw-semibold">Vé đã bán</div>
             </div>
         </div>
@@ -61,7 +61,7 @@
         <div class="stat-card stat-card-secondary shadow-sm">
             <div class="stat-card-body p-3 text-center">
                 <i class="fas fa-chart-line text-secondary fs-3 animate-icon"></i>
-                <div class="stat-card-number fw-bold text-dark fs-4 mt-2 count-number" data-value="{{ $totalRevenue ?? 0 }}" data-is-money="true">0 đ</div>
+                <div id="stat-total-revenue" class="stat-card-number fw-bold text-dark fs-4 mt-2 count-number" data-value="{{ $totalRevenue ?? 0 }}" data-is-money="true">0 đ</div>
                 <div class="stat-card-label text-muted small fw-semibold">Doanh thu tổng</div>
             </div>
         </div>
@@ -71,7 +71,7 @@
 <!-- Quick Filters Group -->
 <div class="row mb-3">
     <div class="col-12">
-        <div class="d-flex flex-wrap gap-2 align-items-center bg-white p-3 rounded-3 shadow-sm border border-light">
+        <div class="d-flex flex-wrap gap-2 align-items-center p-3 rounded-3 shadow-sm border quick-filter-wrapper" style="background-color: var(--bg-surface); border-color: var(--border-light) !important;">
             <span class="text-muted fw-bold me-2"><i class="fas fa-bolt text-warning"></i> Lọc nhanh:</span>
             <button type="button" class="btn btn-sm btn-outline-secondary quick-filter-btn" data-type="today">Hôm nay</button>
             <button type="button" class="btn btn-sm btn-outline-secondary quick-filter-btn" data-type="yesterday">Hôm qua</button>
@@ -381,26 +381,26 @@
         <p class="card-text text-muted">
             Hệ thống Quản lý Đặt vé Xem phim. Sử dụng menu bên trái để quản lý:
         </p>
-        <ul class="list-group list-group-flush mt-2">
-            <li class="list-group-item text-muted border-light px-0">
+        <ul class="list-group list-group-flush mt-2 welcome-list">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-building text-primary me-2" style="width: 20px;"></i> Cụm rạp</strong> - Quản lý cụm rạp chiếu phim
             </li>
-            <li class="list-group-item text-muted border-light px-0">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-door-open text-primary me-2" style="width: 20px;"></i> Phòng chiếu</strong> - Quản lý phòng chiếu
             </li>
-            <li class="list-group-item text-muted border-light px-0">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-chair text-primary me-2" style="width: 20px;"></i> Ghế</strong> - Quản lý sơ đồ ghế ngồi
             </li>
-            <li class="list-group-item text-muted border-light px-0">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-video text-primary me-2" style="width: 20px;"></i> Phim</strong> - Quản lý danh sách phim
             </li>
-            <li class="list-group-item text-muted border-light px-0">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-calendar-alt text-primary me-2" style="width: 20px;"></i> Lịch chiếu</strong> - Quản lý lịch chiếu
             </li>
-            <li class="list-group-item text-muted border-light px-0">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-ticket-alt text-primary me-2" style="width: 20px;"></i> Đơn hàng</strong> - Quản lý đơn hàng
             </li>
-            <li class="list-group-item text-muted border-light px-0">
+            <li class="list-group-item px-0" style="background: transparent; border-color: var(--border-light); color: var(--text-muted);">
                 <strong><i class="fas fa-users text-primary me-2" style="width: 20px;"></i> Người dùng</strong> - Quản lý người dùng
             </li>
         </ul>
@@ -1161,6 +1161,76 @@
             if (chevron) chevron.classList.add('rotated');
             if (toggleText) toggleText.textContent = 'Thu gọn chi tiết cảnh báo';
         }
+    }
+
+    // ── Live Revenue & Analytics Reverb Sync ────────────────────
+    if (typeof window.Echo !== 'undefined') {
+        console.log('Admin dashboard listening on private channels: admin.dashboard');
+        window.Echo.private('admin.dashboard')
+            .listen('.LiveRevenueUpdated', (data) => {
+                console.log('LiveRevenueUpdated received:', data);
+                handleLiveRevenueUpdated(data);
+            })
+            .listen('LiveRevenueUpdated', (data) => {
+                console.log('LiveRevenueUpdated received (unprefixed):', data);
+                handleLiveRevenueUpdated(data);
+            });
+    }
+
+    function handleLiveRevenueUpdated(data) {
+        if (!data) return;
+
+        // 1. Cập nhật Doanh thu tổng ngay lập tức thời gian thực
+        const revEl = document.getElementById('stat-total-revenue');
+        if (revEl && data.amount) {
+            let currentVal = parseFloat(revEl.getAttribute('data-value')) || 0;
+            let newVal = currentVal + parseFloat(data.amount);
+            revEl.setAttribute('data-value', newVal);
+            revEl.textContent = new Intl.NumberFormat('vi-VN').format(newVal) + ' đ';
+            revEl.classList.add('text-success');
+            setTimeout(() => revEl.classList.remove('text-success'), 3000);
+        }
+
+        // 2. Cập nhật Vé đã bán ngay lập tức thời gian thực
+        const ticketsEl = document.getElementById('stat-tickets-sold');
+        if (ticketsEl) {
+            let currentCount = parseInt(ticketsEl.getAttribute('data-value'), 10) || 0;
+            let addedSeats = data.seatsCount || 1;
+            let newCount = currentCount + addedSeats;
+            ticketsEl.setAttribute('data-value', newCount);
+            ticketsEl.textContent = new Intl.NumberFormat('vi-VN').format(newCount);
+            ticketsEl.classList.add('text-danger');
+            setTimeout(() => ticketsEl.classList.remove('text-danger'), 3000);
+        }
+
+        // 3. Hiển thị Toast thông báo rực rỡ
+        const toast = document.createElement('div');
+        toast.className = 'alert shadow-lg d-flex align-items-center gap-3';
+        toast.style.position = 'fixed';
+        toast.style.top = '25px';
+        toast.style.right = '25px';
+        toast.style.zIndex = '999999';
+        toast.style.borderRadius = '14px';
+        toast.style.minWidth = '340px';
+        toast.style.background = data.isHighOccupancy ? 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)' : 'linear-gradient(135deg, #064e3b 0%, #065f46 100%)';
+        toast.style.color = '#fff';
+        toast.style.border = data.isHighOccupancy ? '1px solid #ef4444' : '1px solid #10b981';
+
+        toast.innerHTML = `
+            <i class="fas ${data.isHighOccupancy ? 'fa-fire text-warning' : 'fa-chart-line text-success'} fa-2x"></i>
+            <div>
+                <div class="fw-bold fs-6">${data.isHighOccupancy ? 'CẢNH BÁO: Suất chiếu sắp đầy!' : '🎉 Doanh thu mới vừa được cộng!'}</div>
+                <div class="small">+${new Intl.NumberFormat('vi-VN').format(data.amount)} đ · ${data.movieTitle || 'Suất chiếu'}</div>
+                <div class="small opacity-75">Tỷ lệ lấp đầy phòng: <b>${data.newOccupancyRate}%</b></div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => toast.remove(), 500);
+        }, 5000);
     }
 </script>
 @endsection

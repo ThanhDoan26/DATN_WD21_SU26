@@ -24,9 +24,15 @@ use App\Mail\TicketConfirmationMail;
 
 class WalkInBookingController extends Controller
 {
+    /**
+     * Step 1: Chọn phim có suất chiếu tại rạp của nhân viên
+     */
     public function movies(): View
     {
-        $cinemaId = Auth::user()->cinema_id;
+        $cinemaId = Auth::user()?->cinema_id;
+        if (!$cinemaId) {
+            abort(403, 'Nhân viên chưa được phân công rạp.');
+        }
 
         // Hiển thị các phim có suất chiếu hợp lệ tại rạp của nhân viên (bao gồm suất sắp chiếu và đang chiếu chưa quá 30 phút)
         $movies = Movie::whereIn('status', ['NOW_SHOWING', 'COMING_SOON'])
@@ -57,11 +63,11 @@ class WalkInBookingController extends Controller
     }
 
     /**
-     * Step 2 & 3: Select Dates and Showtimes
+     * Step 2 & 3: Chọn ngày và giờ chiếu
      */
     public function selectDatesAndShowtimes(Movie $movie): View
     {
-        $cinema = Auth::user()->cinema;
+        $cinema = Auth::user()?->cinema;
         if (!$cinema) {
             abort(403, 'Nhân viên chưa được phân công rạp.');
         }
@@ -74,23 +80,25 @@ class WalkInBookingController extends Controller
         ]);
     }
 
-
-
     /**
-     * Step 2 & 3: Select Dates and Showtimes
-     */
-    /**
-     * Step 4: Select Seats
+     * Step 4: Chọn ghế
      */
     public function selectSeats(Showtime $showtime): View
     {
-        if (!$showtime->isWalkInBookable()) {
-            abort(403, 'Suất chiếu đã bắt đầu quá 30 phút hoặc đã kết thúc, không thể đặt vé tại quầy.');
+        $cinemaId = Auth::user()?->cinema_id;
+        if (!$cinemaId) {
+            abort(403, 'Nhân viên chưa được phân công rạp.');
         }
 
+        $showtime->loadMissing('room.cinema');
+
         // Kiểm tra suất chiếu có thuộc rạp của staff không
-        if (Auth::user()->cinema_id && $showtime->room->cinema_id !== Auth::user()->cinema_id) {
+        if (!$showtime->room || $showtime->room->cinema_id !== $cinemaId) {
             abort(403, 'Bạn không có quyền truy cập suất chiếu của rạp khác.');
+        }
+
+        if (!$showtime->isWalkInBookable()) {
+            abort(403, 'Suất chiếu đã bắt đầu quá 30 phút hoặc đã kết thúc, không thể đặt vé tại quầy.');
         }
 
         $bookedSeats = $showtime->bookings()
@@ -125,6 +133,11 @@ class WalkInBookingController extends Controller
      */
     public function checkout(Request $request)
     {
+        $cinemaId = Auth::user()?->cinema_id;
+        if (!$cinemaId) {
+            abort(403, 'Nhân viên chưa được phân công rạp.');
+        }
+
         $bookingService = new BookingService();
         $bookingService->cleanupExpiredPendingBookings();
 
@@ -162,6 +175,11 @@ class WalkInBookingController extends Controller
                 abort(404, 'Suất chiếu không tồn tại.');
             }
 
+            // Kiểm tra suất chiếu thuộc rạp của staff
+            if (!$showtime->room || $showtime->room->cinema_id !== $cinemaId) {
+                abort(403, 'Bạn không có quyền truy cập suất chiếu của rạp khác.');
+            }
+
             if (!$showtime->isWalkInBookable()) {
                 abort(403, 'Suất chiếu đã bắt đầu quá 30 phút hoặc đã kết thúc, không thể đặt vé tại quầy.');
             }
@@ -171,10 +189,10 @@ class WalkInBookingController extends Controller
                 ->get()
                 ->keyBy('seat_type');
 
-            $selectedSeats = Seat::whereIn('id', $seatIds)->get();
+            $selectedSeats = Seat::where('room_id', $showtime->room_id)->whereIn('id', $seatIds)->get();
 
             if ($selectedSeats->count() !== count($seatIds)) {
-                abort(404, 'Một số ghế không tồn tại.');
+                abort(404, 'Một số ghế không tồn tại hoặc không thuộc phòng chiếu này.');
             }
 
             foreach ($selectedSeats as $seat) {
@@ -224,6 +242,11 @@ class WalkInBookingController extends Controller
      */
     public function reserve(Request $request)
     {
+        $cinemaId = Auth::user()?->cinema_id;
+        if (!$cinemaId) {
+            return response()->json(['success' => false, 'message' => 'Nhân viên chưa được phân công rạp.'], 403);
+        }
+
         $request->validate([
             'showtime_id' => 'required|exists:showtimes,id',
             'seat_ids' => 'required',
@@ -234,6 +257,22 @@ class WalkInBookingController extends Controller
             'customer_phone' => 'nullable|string|max:20',
             'customer_email' => 'nullable|email|max:255',
         ]);
+
+        $showtimeId = (int) $request->input('showtime_id');
+        $showtime = Showtime::with('room.cinema')->find($showtimeId);
+
+        if (!$showtime) {
+            return response()->json(['success' => false, 'message' => 'Suất chiếu không tồn tại.'], 404);
+        }
+
+        // BẮT BUỘC kiểm tra showtime thuộc rạp của staff trước khi tạo booking hay giữ ghế
+        if (!$showtime->room || $showtime->room->cinema_id !== $cinemaId) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền thao tác suất chiếu của rạp khác.'], 403);
+        }
+
+        if (!$showtime->isWalkInBookable()) {
+            return response()->json(['success' => false, 'message' => 'Suất chiếu đã bắt đầu quá 30 phút hoặc đã kết thúc, không thể đặt vé tại quầy.'], 403);
+        }
 
         $seatIdsInput = $request->input('seat_ids');
         if (is_string($seatIdsInput)) {
@@ -246,6 +285,11 @@ class WalkInBookingController extends Controller
 
         if (empty($seatIds)) {
             return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 ghế.'], 422);
+        }
+
+        $validSeatsCount = Seat::where('room_id', $showtime->room_id)->whereIn('id', $seatIds)->count();
+        if ($validSeatsCount !== count($seatIds)) {
+            return response()->json(['success' => false, 'message' => 'Một hoặc nhiều ghế không hợp lệ hoặc không thuộc phòng chiếu này.'], 422);
         }
 
         try {
@@ -262,7 +306,7 @@ class WalkInBookingController extends Controller
 
             $bookingId = $bookingService->createBooking(
                 null, // Walk-in has no user_id
-                (int) $request->input('showtime_id'),
+                $showtimeId,
                 $seatIds,
                 $paymentMethod,
                 $request->input('coupon_code'),
@@ -282,9 +326,9 @@ class WalkInBookingController extends Controller
                 if ($request->input('customer_email')) {
                     $hasEmail = true;
                     \Illuminate\Support\Facades\Log::info("WalkInBookingController: Đang gọi Mail::to()->send() gửi cho " . $request->input('customer_email'));
-                    $showtime = Showtime::with(['movie', 'room.cinema'])->find($request->input('showtime_id'));
+                    $showtimeWithMovie = Showtime::with(['movie', 'room.cinema'])->find($showtimeId);
                     try {
-                        Mail::to($request->input('customer_email'))->send(new TicketConfirmationMail($bookingDetails, $showtime));
+                        Mail::to($request->input('customer_email'))->send(new TicketConfirmationMail($bookingDetails, $showtimeWithMovie));
                         $mailSent = true;
                     } catch (\Exception $e) {
                         Log::error('Walk-in payment email failed: ' . $e->getMessage(), [
@@ -332,19 +376,29 @@ class WalkInBookingController extends Controller
      */
     public function success(Request $request)
     {
+        $cinemaId = Auth::user()?->cinema_id;
+        if (!$cinemaId) {
+            abort(403, 'Nhân viên chưa được phân công rạp.');
+        }
+
         $request->validate([
             'booking_id' => 'required|integer|exists:bookings,id',
         ]);
 
-        $booking = Booking::with('showtime.movie')->where('id', $request->query('booking_id'))->first();
+        $booking = Booking::with(['showtime.movie', 'showtime.room'])->where('id', $request->query('booking_id'))->first();
 
         if (!$booking) {
             abort(404, 'Booking không tồn tại.');
         }
 
+        // Kiểm tra booking thuộc rạp của staff
+        if (!$booking->showtime || !$booking->showtime->room || $booking->showtime->room->cinema_id !== $cinemaId) {
+            abort(403, 'Bạn không có quyền truy cập đơn đặt vé của rạp khác.');
+        }
+
         $bookingService = new BookingService();
         $bookingDetails = $bookingService->getBookingDetails($booking->id);
-        $bookingDetails['movie_title'] = $booking->showtime->movie->title;
+        $bookingDetails['movie_title'] = $booking->showtime->movie->title ?? 'N/A';
         $bookingDetails['final_total'] = $booking->total_price;
 
         return view('staff.walkin.checkout-success', [

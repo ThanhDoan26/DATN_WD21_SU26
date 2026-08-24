@@ -576,6 +576,59 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('mouseleave', () => btn.style.filter = '');
     });
 
+    // ── Realtime Live Check-in Feed via Reverb ──────────────────
+    const staffCinemaId = {{ auth()->user()->cinema_id ?? 1 }};
+    if (typeof window.Echo !== 'undefined') {
+        console.log('Staff dashboard listening on: private-cinema.' + staffCinemaId + '.staff');
+        window.Echo.private(`cinema.${staffCinemaId}.staff`)
+            .listen('.LiveTicketScanned', (data) => {
+                console.log('LiveTicketScanned received:', data);
+                handleLiveTicketScanned(data);
+            })
+            .listen('LiveTicketScanned', (data) => {
+                console.log('LiveTicketScanned received (unprefixed):', data);
+                handleLiveTicketScanned(data);
+            });
+    }
+
+    function handleLiveTicketScanned(data) {
+        // Show live floating toast
+        const toast = document.createElement('div');
+        toast.className = 'alert shadow-lg d-flex align-items-center gap-3';
+        toast.style.position = 'fixed';
+        toast.style.top = '20px';
+        toast.style.right = '20px';
+        toast.style.zIndex = '99999';
+        toast.style.borderRadius = '12px';
+        toast.style.minWidth = '320px';
+        toast.style.animation = 'slideIn 0.3s ease forwards';
+        toast.style.background = data.status === 'SUCCESS' ? '#064e3b' : '#7f1d1d';
+        toast.style.color = '#fff';
+        toast.style.border = data.status === 'SUCCESS' ? '1px solid #10b981' : '1px solid #ef4444';
+
+        toast.innerHTML = `
+            <i class="fas ${data.status === 'SUCCESS' ? 'fa-check-circle text-success' : 'fa-exclamation-triangle text-danger'} fa-2x"></i>
+            <div>
+                <div class="fw-bold">${data.status === 'SUCCESS' ? 'Khách đã vào rạp' : 'Cảnh báo vé'}</div>
+                <div class="small">${data.movieTitle} - Ghế: <b>${data.seatCode}</b> (${data.roomName})</div>
+                <div class="small opacity-75">${data.scannedAt} · Bởi: ${data.staffName}</div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => toast.remove(), 500);
+        }, 5000);
+
+        // Update KPI Counters
+        const kpiCheckin = document.querySelector('.kpi-green .kpi-value');
+        if (kpiCheckin) {
+            let current = parseInt(kpiCheckin.textContent.replace(/,/g, '')) || 0;
+            kpiCheckin.textContent = (current + 1).toLocaleString('vi-VN');
+        }
+    }
 });
 </script>
 @endsection

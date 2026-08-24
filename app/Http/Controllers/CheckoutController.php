@@ -36,24 +36,24 @@ class CheckoutController extends Controller
             $seatIds = [];
         }
 
-        if (empty($seatIds)) {
-            return back()->with('error', 'Vui lòng chọn ghế.');
+        $showtime = \App\Models\Showtime::find($showtimeId);
+        if (!$showtime || !$showtime->isOnlineBookable()) {
+            return redirect()->route('home')->with('error', 'Suất chiếu này đã đóng cổng đặt vé trực tuyến. Vui lòng chọn suất chiếu khác.');
         }
 
-        // 1. Rate Limit: 3 lần thay đổi / 5 phút
-        if ($userId) {
-            $rateLimitKey = "rate_limit_user_{$userId}_showtime_{$showtimeId}";
-            $blockKey = "block_user_{$userId}_showtime_{$showtimeId}";
+        // 1. Rate Limit: 3 lần thay đổi / 5 phút (Áp dụng cả User và Khách vãng lai qua IP)
+        $clientKey = $userId ? "user_{$userId}" : "ip_" . md5($request->ip());
+        $rateLimitKey = "rate_limit_{$clientKey}_showtime_{$showtimeId}";
+        $blockKey = "block_{$clientKey}_showtime_{$showtimeId}";
 
-            if (\Illuminate\Support\Facades\Cache::has($blockKey)) {
-                return back()->with('error', 'Bạn đã thao tác chọn/hủy ghế quá nhiều lần. Vui lòng chờ 5 phút trước khi thử lại.');
-            }
+        if (\Illuminate\Support\Facades\Cache::has($blockKey)) {
+            return back()->with('error', 'Bạn đã thao tác chọn/hủy ghế quá nhiều lần. Vui lòng chờ 5 phút trước khi thử lại.');
+        }
 
-            // 2. Seat Cooldown
-            foreach ($seatIds as $seatId) {
-                if (\Illuminate\Support\Facades\Cache::has("cooldown_user_{$userId}_showtime_{$showtimeId}_seat_{$seatId}")) {
-                    return back()->with('error', 'Bạn vừa hủy ghế này gần đây. Vui lòng chọn ghế khác hoặc chờ 3 phút.');
-                }
+        // 2. Seat Cooldown
+        foreach ($seatIds as $seatId) {
+            if (\Illuminate\Support\Facades\Cache::has("cooldown_{$clientKey}_showtime_{$showtimeId}_seat_{$seatId}")) {
+                return back()->with('error', 'Bạn vừa hủy ghế này gần đây. Vui lòng chọn ghế khác hoặc chờ 3 phút.');
             }
         }
 
@@ -88,13 +88,11 @@ class CheckoutController extends Controller
             );
 
             // Tăng Rate Limit
-            if ($userId) {
-                $attempts = \Illuminate\Support\Facades\Cache::get($rateLimitKey, 0) + 1;
-                \Illuminate\Support\Facades\Cache::put($rateLimitKey, $attempts, now()->addMinutes(5));
-                if ($attempts >= 3) {
-                    \Illuminate\Support\Facades\Cache::put($blockKey, true, now()->addMinutes(5));
-                    \Illuminate\Support\Facades\Cache::forget($rateLimitKey); // clear count
-                }
+            $attempts = \Illuminate\Support\Facades\Cache::get($rateLimitKey, 0) + 1;
+            \Illuminate\Support\Facades\Cache::put($rateLimitKey, $attempts, now()->addMinutes(5));
+            if ($attempts >= 3) {
+                \Illuminate\Support\Facades\Cache::put($blockKey, true, now()->addMinutes(5));
+                \Illuminate\Support\Facades\Cache::forget($rateLimitKey); // clear count
             }
 
             return redirect()->route('checkout', ['showtime_id' => $showtimeId]);
@@ -198,6 +196,8 @@ class CheckoutController extends Controller
         $combos = Combo::where('status', 'ACTIVE')->get();
         $coupons = Coupon::validForCheckout()->get();
 
+        $pendingBookingCode = $pendingBooking->booking_code;
+
         return view('checkout', compact(
             'showtime',
             'selectedSeats',
@@ -212,7 +212,9 @@ class CheckoutController extends Controller
             'savedCombos',
             'coupons',
             'expiresAtMs',
-            'pendingBookingId'
+            'pendingBookingId',
+            'pendingBooking',
+            'pendingBookingCode'
         ));
     }
 
@@ -474,10 +476,10 @@ class CheckoutController extends Controller
             }
             
             if ($mailSent) {
-                return redirect()->route('checkout.success', ['booking_id' => $booking->id])
+                return redirect()->route('booking.history.show', ['bookingCode' => $booking->booking_code])
                                  ->with('success', 'Thanh toán thành công. Email xác nhận đã được gửi đến bạn.');
             }
-            return redirect()->route('checkout.success', ['booking_id' => $booking->id])
+            return redirect()->route('booking.history.show', ['bookingCode' => $booking->booking_code])
                              ->with('warning', 'Thanh toán thành công nhưng gửi email xác nhận thất bại. Vui lòng kiểm tra lại email hoặc liên hệ hỗ trợ.');
         } catch (\Exception $e) {
             Log::error('Mock payment failed: ' . $e->getMessage());
@@ -510,6 +512,6 @@ class CheckoutController extends Controller
             }
         }
         
-        return response()->json(['success' => false, 'message' => 'Not found or not pending'], 404);
+        return response()->json(['success' => false, 'message' => 'Đơn đặt vé không tồn tại hoặc không ở trạng thái chờ thanh toán.'], 404);
     }
 }

@@ -129,18 +129,6 @@
                     <span class="text-muted small"><i class="fas fa-clock me-2"></i>Cập nhật lần cuối</span>
                     <span class="small text-muted">{{ $user->updated_at->diffForHumans() }}</span>
                 </li>
-                <li class="list-group-item px-4 py-3 d-flex justify-content-between align-items-center">
-                    <span class="text-muted small"><i class="fas fa-envelope-open me-2"></i>Email xác thực</span>
-                    @if($user->email_verified_at)
-                        <span class="badge bg-success-subtle text-success border border-success-subtle">
-                            <i class="fas fa-check me-1"></i>Đã xác thực
-                        </span>
-                    @else
-                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
-                            <i class="fas fa-exclamation-triangle me-1"></i>Chưa xác thực
-                        </span>
-                    @endif
-                </li>
             </ul>
         </div>
 

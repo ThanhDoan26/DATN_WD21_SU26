@@ -25,6 +25,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
     <style>
         :root {
             --primary-color: #9333ea;
@@ -151,6 +153,24 @@
 
         html.dark-theme .text-dark {
             color: #f3f4f6 !important;
+        }
+
+        html.dark-theme .list-group-item {
+            background-color: transparent !important;
+            border-color: #1f2937 !important;
+            color: #9ca3af !important;
+        }
+
+        html.dark-theme .list-group-item strong {
+            color: #e5e7eb !important;
+        }
+
+        html.dark-theme .text-muted {
+            color: #9ca3af !important;
+        }
+
+        html.dark-theme .card-text.text-muted {
+            color: #9ca3af !important;
         }
 
         /* Utility overrides to sync Bootstrap colors with Brand Design System */

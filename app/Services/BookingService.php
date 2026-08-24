@@ -300,64 +300,7 @@ class BookingService
             $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData, $inheritedBookingTime, $isExtended) {
 
                 // ================================================================
-                // Step 1: Lock các hàng ghế (chỉ 1 request được giữ lock)
-                // ================================================================
-                // 🔒 SELECT FOR UPDATE - lock các hàng trong booked_seats
-                // Các request khác phải đợi cho đến khi transaction này commit/rollback
-
-                $lockedBookedSeats = DB::table('booked_seats')
-                    ->join('bookings', 'booked_seats.booking_id', '=', 'bookings.id')
-                    ->where('bookings.showtime_id', $showtimeId)
-                    ->whereIn('booked_seats.seat_id', $selectedSeatIds)
-                    // Chỉ lock ghế chưa hủy và chưa hết hạn
-                    ->where('bookings.status', '!=', 'Cancelled')
-                    ->where(function ($q) {
-                        $q->whereNotIn('bookings.status', ['Pending', 'PROCESSING'])
-                          ->orWhere('bookings.booking_time', '>=', now()->subMinutes(self::getHoldDuration()));
-                    })
-                    ->lockForUpdate() // 🔒 CRITICAL: SELECT ... FOR UPDATE
-                    ->select('booked_seats.seat_id', 'booked_seats.status')
-                    ->get();
-
-                // ================================================================
-                // Step 2: Kiểm tra xem ghế đã bị đặt hay chưa
-                // ================================================================
-                if ($lockedBookedSeats->count() > 0) {
-                    // Lấy danh sách ghế đã đặt dưới dạng Seat Code (ví dụ: A5, B6)
-                    $bookedSeatIds = $lockedBookedSeats->pluck('seat_id')->toArray();
-                    $bookedSeatsInfo = DB::table('seats')
-                        ->whereIn('id', $bookedSeatIds)
-                        ->select('row_name', 'seat_number')
-                        ->get();
-
-                    $bookedSeatCodes = [];
-                    foreach ($bookedSeatsInfo as $seat) {
-                        $bookedSeatCodes[] = $seat->row_name . $seat->seat_number;
-                    }
-
-                    throw new Exception(
-                        'Một hoặc nhiều ghế đã được đặt bởi khách khác: ' .
-                        implode(', ', $bookedSeatCodes) .
-                        '. Vui lòng chọn ghế khác!'
-                    );
-                }
-
-
-                // ================================================================
-                // Step 3: Lấy thông tin ghế + tính giá vé
-                // ================================================================
-                $selectedSeats = DB::table('seats')
-                    ->whereIn('id', $selectedSeatIds)
-                    ->lockForUpdate()
-                    ->get()
-                    ->keyBy('id');
-
-                if ($selectedSeats->count() !== count($selectedSeatIds)) {
-                    throw new Exception('Một hoặc nhiều ghế không tồn tại');
-                }
-
-                // ================================================================
-                // Step 4: Lấy thông tin suất chiếu và giá vé từ ticket_prices
+                // Step 1: Lấy thông tin suất chiếu trước (🔒 lockForUpdate)
                 // ================================================================
                 $showtime = DB::table('showtimes')
                     ->where('id', $showtimeId)
@@ -395,6 +338,64 @@ class BookingService
                     }
                 }
 
+                // ================================================================
+                // Step 2: Lấy thông tin ghế thuộc đúng room_id của showtime (🔒 lockForUpdate)
+                // ================================================================
+                $selectedSeats = DB::table('seats')
+                    ->whereIn('id', $selectedSeatIds)
+                    ->where('room_id', $showtime->room_id)
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+
+                if ($selectedSeats->count() !== count($selectedSeatIds)) {
+                    throw new Exception('Một hoặc nhiều ghế không tồn tại hoặc không thuộc phòng chiếu của suất chiếu này');
+                }
+
+                // ================================================================
+                // Step 3: Lock các hàng ghế (chỉ 1 request được giữ lock)
+                // ================================================================
+                // 🔒 SELECT FOR UPDATE - lock các hàng trong booked_seats
+                // Các request khác phải đợi cho đến khi transaction này commit/rollback
+
+                $lockedBookedSeats = DB::table('booked_seats')
+                    ->join('bookings', 'booked_seats.booking_id', '=', 'bookings.id')
+                    ->where('bookings.showtime_id', $showtimeId)
+                    ->whereIn('booked_seats.seat_id', $selectedSeatIds)
+                    // Chỉ lock ghế chưa hủy và chưa hết hạn
+                    ->where('bookings.status', '!=', 'Cancelled')
+                    ->where(function ($q) {
+                        $q->whereNotIn('bookings.status', ['Pending', 'PROCESSING'])
+                          ->orWhere('bookings.booking_time', '>=', now()->subMinutes(self::getHoldDuration()));
+                    })
+                    ->lockForUpdate() // 🔒 CRITICAL: SELECT ... FOR UPDATE
+                    ->select('booked_seats.seat_id', 'booked_seats.status')
+                    ->get();
+
+                // Kiểm tra xem ghế đã bị đặt hay chưa
+                if ($lockedBookedSeats->count() > 0) {
+                    // Lấy danh sách ghế đã đặt dưới dạng Seat Code (ví dụ: A5, B6)
+                    $bookedSeatIds = $lockedBookedSeats->pluck('seat_id')->toArray();
+                    $bookedSeatsInfo = DB::table('seats')
+                        ->whereIn('id', $bookedSeatIds)
+                        ->select('row_name', 'seat_number')
+                        ->get();
+
+                    $bookedSeatCodes = [];
+                    foreach ($bookedSeatsInfo as $seat) {
+                        $bookedSeatCodes[] = $seat->row_name . $seat->seat_number;
+                    }
+
+                    throw new Exception(
+                        'Một hoặc nhiều ghế đã được đặt bởi khách khác: ' .
+                        implode(', ', $bookedSeatCodes) .
+                        '. Vui lòng chọn ghế khác!'
+                    );
+                }
+
+                // ================================================================
+                // Step 4: Lấy giá vé từ ticket_prices
+                // ================================================================
                 $ticketPrices = DB::table('ticket_prices')
                     ->where('showtime_id', $showtimeId)
                     ->where('status', 'ACTIVE')
@@ -762,7 +763,7 @@ class BookingService
             return count($expiredBookingIds);
         });
 
-        // ── Anti-Abuse: Mark expired holds cho abuse detection ──
+        // ── Anti-Abuse & Realtime Broadcast: Mark expired holds and broadcast AVAILABLE ──
         if (!empty($expiredBookings) && count($expiredBookings) > 0) {
             try {
                 $abuseService = new SeatHoldAbuseService();
@@ -771,6 +772,19 @@ class BookingService
                     $abuseService->markExpired($booking->id);
                     if ($booking->user_id) {
                         $userIds[] = $booking->user_id;
+                    }
+
+                    // Delete Redis locks & broadcast AVAILABLE for expired seats
+                    $expiredSeats = DB::table('booked_seats')->where('booking_id', $booking->id)->pluck('seat_id')->toArray();
+                    if (!empty($expiredSeats)) {
+                        foreach ($expiredSeats as $seatId) {
+                            try {
+                                \Illuminate\Support\Facades\Redis::del("seat_lock:showtime_{$booking->showtime_id}:seat_{$seatId}");
+                            } catch (\Throwable $t) {}
+                        }
+                        try {
+                            event(new \App\Events\SeatStatusUpdated($booking->showtime_id, $expiredSeats, 'AVAILABLE', $booking->user_id ?? null));
+                        } catch (\Throwable $t) {}
                     }
                 }
                 
@@ -814,10 +828,10 @@ class BookingService
                 throw new Exception("Booking $bookingId không tồn tại");
             }
 
-            if (!in_array($booking->status, ['Pending', 'PROCESSING'])) {
-                \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$booking->status}");
+            if (!in_array($bookingModel->status, ['Pending', 'PROCESSING'])) {
+                \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$bookingModel->status}");
                 throw new Exception(
-                    "Không thể thanh toán booking này. Status: {$booking->status}. " .
+                    "Không thể thanh toán booking này. Status: {$bookingModel->status}. " .
                     "Chỉ có thể thanh toán booking ở trạng thái Pending hoặc PROCESSING."
                 );
             }
@@ -865,17 +879,63 @@ class BookingService
             \Illuminate\Support\Facades\Log::warning('Tracking markCompleted in completePayment failed: ' . $trackingEx->getMessage());
         }
 
-        // ── Redis & Broadcast ──
+        // ── Redis & Broadcast (Reverb Events) ──
         try {
-            $bookingInfo = DB::table('bookings')->where('id', $bookingId)->first();
-            if ($bookingInfo) {
-                $showtimeId = $bookingInfo->showtime_id;
-                $seatIds = DB::table('booked_seats')->where('booking_id', $bookingId)->pluck('seat_id')->toArray();
+            $booking = \App\Models\Booking::with(['showtime.movie', 'showtime.room.cinema', 'bookedSeats'])->find($bookingId);
+            if ($booking) {
+                $showtimeId = $booking->showtime_id;
+                $seatIds = $booking->bookedSeats->pluck('seat_id')->toArray();
                 
+                // 1. Release Redis lock keys
                 foreach ($seatIds as $seatId) {
                     \Illuminate\Support\Facades\Redis::del("seat_lock:showtime_{$showtimeId}:seat_{$seatId}");
                 }
-                event(new \App\Events\SeatStatusUpdated($showtimeId, $seatIds, 'PAID'));
+
+                // 2. Broadcast SeatStatusUpdated (PAID) to Showtime Presence Channel
+                event(new \App\Events\SeatStatusUpdated($showtimeId, $seatIds, 'PAID', $booking->user_id));
+
+                // 3. Broadcast PaymentConfirmed to Order Private Channel for instant browser redirect
+                $redirectUrl = route('booking.history.show', ['bookingCode' => $booking->booking_code]);
+                event(new \App\Events\PaymentConfirmed(
+                    $booking->booking_code,
+                    $booking->id,
+                    $redirectUrl,
+                    'PAID',
+                    'Thanh toán thành công! Đang chuyển hướng...',
+                    $paymentMethod
+                ));
+
+                // 4. Calculate Live Analytics & Broadcast LiveRevenueUpdated to Admin/Manager
+                $cinemaId = $booking->showtime?->room?->cinema_id ?? 1;
+                $totalToday = (float) \App\Models\Booking::whereDate('payment_time', today())
+                    ->whereIn('status', ['Paid', 'Used'])
+                    ->whereHas('showtime.room', function($q) use ($cinemaId) {
+                        $q->where('cinema_id', $cinemaId);
+                    })->sum('total_price');
+
+                $bookingsTodayCount = \App\Models\Booking::whereDate('payment_time', today())
+                    ->whereIn('status', ['Paid', 'Used'])
+                    ->whereHas('showtime.room', function($q) use ($cinemaId) {
+                        $q->where('cinema_id', $cinemaId);
+                    })->count();
+
+                $totalRoomSeats = (int) ($booking->showtime?->room?->seats()?->count() ?? 100);
+                $occupiedSeatsCount = (int) \App\Models\BookedSeat::whereHas('booking', function($q) use ($showtimeId) {
+                    $q->where('showtime_id', $showtimeId)->whereIn('status', ['PAID', 'USED']);
+                })->count();
+
+                $occupancyRate = $totalRoomSeats > 0 ? ($occupiedSeatsCount / $totalRoomSeats) * 100 : 0.0;
+
+                event(new \App\Events\LiveRevenueUpdated(
+                    $cinemaId,
+                    (float) $booking->total_price,
+                    $totalToday,
+                    $bookingsTodayCount,
+                    $showtimeId,
+                    $booking->showtime?->movie?->title,
+                    $occupancyRate,
+                    count($seatIds)
+                ));
             }
         } catch (\Throwable $ex) {
             \Illuminate\Support\Facades\Log::warning('Redis/Broadcast in completePayment failed: ' . $ex->getMessage());
@@ -893,6 +953,11 @@ class BookingService
      * @throws Exception
      */
     public function cancelBooking(int $bookingId, string $reason = ''): bool {
+        // Fetch booking info & seat IDs BEFORE transaction to guarantee availability broadcast
+        $bookingInfo = DB::table('bookings')->where('id', $bookingId)->first();
+        $showtimeId = $bookingInfo ? $bookingInfo->showtime_id : null;
+        $seatIds = $bookingInfo ? DB::table('booked_seats')->where('booking_id', $bookingId)->pluck('seat_id')->toArray() : [];
+
         $result = DB::transaction(function () use ($bookingId, $reason) {
 
             $booking = DB::table('bookings')
@@ -948,14 +1013,10 @@ class BookingService
 
         // ── Redis & Broadcast ──
         try {
-            $bookingInfo = DB::table('bookings')->where('id', $bookingId)->first();
-            if ($bookingInfo) {
-                $showtimeId = $bookingInfo->showtime_id;
-                $seatIds = DB::table('booked_seats')->where('booking_id', $bookingId)->pluck('seat_id')->toArray();
-                
+            if ($showtimeId && !empty($seatIds)) {
                 foreach ($seatIds as $seatId) {
                     \Illuminate\Support\Facades\Redis::del("seat_lock:showtime_{$showtimeId}:seat_{$seatId}");
-                    if ($bookingInfo->user_id) {
+                    if ($bookingInfo && $bookingInfo->user_id) {
                         \Illuminate\Support\Facades\Cache::put(
                             "cooldown_user_{$bookingInfo->user_id}_showtime_{$showtimeId}_seat_{$seatId}",
                             true,
@@ -963,7 +1024,7 @@ class BookingService
                         );
                     }
                 }
-                event(new \App\Events\SeatStatusUpdated($showtimeId, $seatIds, 'AVAILABLE'));
+                event(new \App\Events\SeatStatusUpdated($showtimeId, $seatIds, 'AVAILABLE', $bookingInfo->user_id ?? null));
             }
         } catch (\Throwable $ex) {
             \Illuminate\Support\Facades\Log::warning('Redis/Broadcast in cancelBooking failed: ' . $ex->getMessage());

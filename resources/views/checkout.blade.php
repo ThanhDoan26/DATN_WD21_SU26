@@ -506,6 +506,35 @@
             }
         }
 
+        // Step 1: BFCache listener
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                console.log('Restored from BFCache, re-syncing checkout...');
+                location.reload();
+            }
+        });
+
+        // Step 2: Silent CSRF & Session Retry Handler
+        async function fetchWithCsrf(url, options = {}) {
+            options.headers = options.headers || {};
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (csrfToken && !options.headers['X-CSRF-TOKEN']) {
+                options.headers['X-CSRF-TOKEN'] = csrfToken;
+            }
+            let response = await fetch(url, options);
+            if (response.status === 419) {
+                console.warn('419 CSRF Mismatch. Initializing session silently...');
+                const initRes = await fetch('/api/init-session');
+                const initData = await initRes.json();
+                if (initData.csrf_token) {
+                    document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', initData.csrf_token);
+                    options.headers['X-CSRF-TOKEN'] = initData.csrf_token;
+                    response = await fetch(url, options);
+                }
+            }
+            return response;
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             @if(!$showtime || empty($seatSummary))
                 return;
@@ -601,6 +630,15 @@
                         sessionStorage.removeItem('booking_expires_at');
                         if (timerBar) timerBar.style.display = 'none';
                         if (expiredOverlay) expiredOverlay.classList.add('active');
+
+                        fetch("{{ route('api.booking.cancel-explicit') }}", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRF-TOKEN": csrfToken
+                            },
+                            body: JSON.stringify({ showtime_id: {{ $showtime->id }} })
+                        }).catch(err => console.error("Auto-cancel expired hold failed:", err));
                     }
                 }
 
@@ -646,22 +684,6 @@
                 startCountdown(freshExpiry);
             })();
             // ---------------------------------------------
-
-            // ======== RELEASE LOCK ON UNLOAD ========
-            window.addEventListener('beforeunload', function (e) {
-                // If the user clicks confirm reservation, we shouldn't release lock
-                if (window.isConfirmingReservation) return;
-
-                const bookingIdStr = @json($pendingBookingId ?? null) || sessionStorage.getItem('current_booking_id');
-                if (bookingIdStr) {
-                    const releaseUrl = @json(route('checkout.release-lock', [], false));
-                    const data = new FormData();
-                    data.append('booking_id', bookingIdStr);
-                    data.append('_token', csrfToken);
-                    navigator.sendBeacon(releaseUrl, data);
-                }
-            });
-            // ========================================
 
             let combosTotal = 0;
             let currentDiscount = 0;
@@ -863,7 +885,7 @@
                     confirmReservationButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Đang xử lý...';
 
                     // ========== BƯỚC 1: TẠO BOOKING (STATUS = PENDING) ==========
-                    fetch(reserveUrl, {
+                    fetchWithCsrf(reserveUrl, {
                         method: 'POST',
                         credentials: 'same-origin',
                         headers: {
@@ -917,7 +939,7 @@
                             paymentUrl = vnpayPaymentUrl;
                         }
 
-                        return fetch(paymentUrl, {
+                        return fetchWithCsrf(paymentUrl, {
                             method: 'POST',
                             credentials: 'same-origin',
                             headers: {
@@ -966,7 +988,53 @@
 
             // Khởi tạo tính toán ban đầu
             updateOrderSummary();
+
+            // --- Realtime Payment Webhook Auto-Redirect ---
+            const activeBookingCode = @json($pendingBookingCode ?? null);
+            if (activeBookingCode && typeof window.Echo !== 'undefined') {
+                console.log('Listening for payment completion on channel: private-order.' + activeBookingCode);
+                
+                window.Echo.private(`order.${activeBookingCode}`)
+                    .listen('.PaymentConfirmed', (data) => {
+                        console.log('Payment confirmed via Reverb webhook:', data);
+                        handlePaymentSuccessRedirect(data);
+                    })
+                    .listen('PaymentConfirmed', (data) => {
+                        console.log('Payment confirmed via Reverb webhook (unprefixed):', data);
+                        handlePaymentSuccessRedirect(data);
+                    });
+            }
         });
+
+        function handlePaymentSuccessRedirect(data) {
+            const redirectUrl = data.redirectUrl || `/booking-history/${data.bookingCode}`;
+            
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.inset = '0';
+            overlay.style.backgroundColor = 'rgba(15, 23, 42, 0.95)';
+            overlay.style.backdropFilter = 'blur(10px)';
+            overlay.style.zIndex = '999999';
+            overlay.style.display = 'flex';
+            overlay.style.flexDirection = 'column';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.innerHTML = `
+                <div style="text-align: center; color: white; padding: 2rem; border-radius: 2rem; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); max-width: 480px; width: 90%;">
+                    <div style="font-size: 4.5rem; color: #22c55e; margin-bottom: 1.2rem;"><i class="fas fa-check-circle fa-bounce"></i></div>
+                    <h2 style="font-size: 2.2rem; font-weight: 800; margin-bottom: 0.8rem; color: #ffffff;">Thanh Toán Thành Công!</h2>
+                    <p style="color: #94a3b8; font-size: 1.05rem; line-height: 1.6; margin-bottom: 1.5rem;">Hệ thống đã nhận được thanh toán. Đang tự động mở vé xem phim của bạn...</p>
+                    <div style="display: inline-flex; align-items: center; gap: 8px; color: #22c55e; font-weight: 700; font-size: 0.95rem; background: rgba(34, 197, 94, 0.1); padding: 8px 18px; border-radius: 9999px; border: 1px solid rgba(34, 197, 94, 0.3);">
+                        <i class="fas fa-spinner fa-spin"></i> Đang tải vé điện tử...
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            setTimeout(() => {
+                window.location.href = redirectUrl;
+            }, 1800);
+        }
 
         // --- Xử lý Explicit Cancel ---
         function confirmCancelBooking() {
