@@ -21,6 +21,7 @@ class LiveRevenueUpdated implements ShouldBroadcastNow
     public $movieTitle;
     public $newOccupancyRate;
     public $isHighOccupancy;
+    public $seatsCount;
 
     /**
      * Create a new event instance.
@@ -32,7 +33,8 @@ class LiveRevenueUpdated implements ShouldBroadcastNow
         int $bookingsTodayCount,
         ?int $showtimeId = null,
         ?string $movieTitle = null,
-        float $newOccupancyRate = 0.0
+        float $newOccupancyRate = 0.0,
+        int $seatsCount = 1
     ) {
         $this->cinemaId = $cinemaId;
         $this->amount = $amount;
@@ -42,6 +44,7 @@ class LiveRevenueUpdated implements ShouldBroadcastNow
         $this->movieTitle = $movieTitle;
         $this->newOccupancyRate = round($newOccupancyRate, 1);
         $this->isHighOccupancy = $this->newOccupancyRate >= 90.0;
+        $this->seatsCount = $seatsCount;
     }
 
     /**

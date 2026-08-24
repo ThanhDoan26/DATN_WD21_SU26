@@ -932,7 +932,8 @@ class BookingService
                     $bookingsTodayCount,
                     $showtimeId,
                     $booking->showtime?->movie?->title,
-                    $occupancyRate
+                    $occupancyRate,
+                    count($seatIds)
                 ));
             }
         } catch (\Throwable $ex) {
