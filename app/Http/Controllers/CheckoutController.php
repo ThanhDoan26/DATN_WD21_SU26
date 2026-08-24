@@ -247,19 +247,6 @@ class CheckoutController extends Controller
             return response()->json(['success' => false, 'message' => "Bạn chỉ được đặt tối đa {$maxSeatsPerBooking} ghế cho mỗi đơn hàng."], 422);
         }
 
-        // Chặn ghế hỏng hoặc đã đặt (phòng trường hợp hack request)
-        $invalidSeats = Seat::whereIn('id', $seatIds)
-            ->whereIn('status', [Seat::STATUS_BROKEN, Seat::STATUS_BOOKED])
-            ->get();
-
-        if ($invalidSeats->isNotEmpty()) {
-            $codes = $invalidSeats->map(fn($s) => $s->getSeatCode())->implode(', ');
-            return response()->json([
-                'success' => false,
-                'message' => 'Các ghế sau không khả dụng: ' . $codes
-            ], 422);
-        }
-
         try {
             $bookingService = new BookingService();
             $showtimeId = (int) $request->input('showtime_id');
@@ -269,6 +256,22 @@ class CheckoutController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Suất chiếu này đã đóng cổng đặt vé trực tuyến (cần đặt trước giờ chiếu tối thiểu 15 phút). Vui lòng mua vé trực tiếp tại quầy hoặc chọn suất chiếu khác.'
+                ], 422);
+            }
+
+            // Chặn ghế hỏng, ghế đã đặt hoặc ghế không thuộc phòng chiếu này
+            $invalidSeats = Seat::whereIn('id', $seatIds)
+                ->where(function ($q) use ($showtime) {
+                    $q->where('room_id', '!=', $showtime->room_id)
+                      ->orWhereIn('status', [Seat::STATUS_BROKEN, Seat::STATUS_BOOKED]);
+                })
+                ->get();
+
+            if ($invalidSeats->isNotEmpty()) {
+                $codes = $invalidSeats->map(fn($s) => $s->getSeatCode())->implode(', ');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Một hoặc nhiều ghế được chọn không thuộc phòng chiếu của suất chiếu này hoặc không khả dụng: ' . $codes
                 ], 422);
             }
 
