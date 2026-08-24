@@ -93,7 +93,8 @@
                     <i class="fas fa-arrow-left mr-2"></i>Quay lại chọn rạp
                 </a>
                 <button id="nextButton"
-                        onclick="proceedToSeats()"
+                        type="button"
+                        onclick="proceedToSeats(event)"
                         disabled
                         class="bg-primary hover:bg-red-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg transition font-bold">
                     <i class="fas fa-arrow-right mr-2"></i>Tiếp tục chọn ghế
@@ -114,7 +115,31 @@
         let selectedDate = null;
         let selectedShowtime = null;
 
+        // --- Step 2: Silent CSRF & Session Retry Handler ---
+        async function fetchWithCsrf(url, options = {}) {
+            options.headers = options.headers || {};
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (csrfToken && !options.headers['X-CSRF-TOKEN']) {
+                options.headers['X-CSRF-TOKEN'] = csrfToken;
+            }
+            let response = await fetch(url, options);
+            if (response.status === 419) {
+                console.warn('419 CSRF Mismatch. Initializing session silently...');
+                const initRes = await fetch('/api/init-session');
+                const initData = await initRes.json();
+                if (initData.csrf_token) {
+                    document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', initData.csrf_token);
+                    options.headers['X-CSRF-TOKEN'] = initData.csrf_token;
+                    response = await fetch(url, options);
+                }
+            }
+            return response;
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
+            // Step 2: Pre-init session handshake on load
+            fetch('/api/init-session').catch(() => {});
+
             document.getElementById('movieTitle').textContent = movieTitle;
             document.getElementById('cinemaName').textContent = cinemaName;
 
@@ -123,9 +148,19 @@
             }
         });
 
+        // Step 1: BFCache Restoration
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                console.log('Restored from BFCache, re-syncing dates...');
+                if (movieId && cinemaId) {
+                    loadDates();
+                }
+            }
+        });
+
         async function loadDates() {
             try {
-                const response = await fetch(`/api/booking/dates?movie_id=${movieId}&cinema_id=${cinemaId}`);
+                const response = await fetchWithCsrf(`/api/booking/dates?movie_id=${movieId}&cinema_id=${cinemaId}`);
                 const result = await response.json();
 
                 if (result.data && result.data.length > 0) {
@@ -158,7 +193,7 @@
                 const month = dateObj.getMonth() + 1;
 
                 return `
-                    <button onclick="selectDate('${date}', this)" class="date-item w-full flex flex-col items-center justify-center p-4 rounded-xl border border-slate-700 bg-slate-800/50 cursor-pointer transition-all duration-300 hover:border-primary hover:bg-slate-800 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/20">
+                    <button type="button" onclick="selectDate('${date}', this, event)" class="date-item w-full flex flex-col items-center justify-center p-4 rounded-xl border border-slate-700 bg-slate-800/50 cursor-pointer transition-all duration-300 hover:border-primary hover:bg-slate-800 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/20">
                         <div class="text-2xl font-bold text-white mb-1">${dayNum}</div>
                         <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Th ${month}</div>
                         <div class="text-xs text-slate-500">${dayName}</div>
@@ -167,7 +202,8 @@
             }).join('');
         }
 
-        function selectDate(date, button) {
+        function selectDate(date, button, e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
             selectedDate = date;
 
             // Update UI
@@ -184,7 +220,7 @@
 
         async function loadShowtimes(date) {
             try {
-                const response = await fetch(`/api/booking/showtimes?movie_id=${movieId}&cinema_id=${cinemaId}&date=${date}`);
+                const response = await fetchWithCsrf(`/api/booking/showtimes?movie_id=${movieId}&cinema_id=${cinemaId}&date=${date}`);
                 const result = await response.json();
 
                 document.getElementById('selectedDateDisplay').textContent = new Date(date).toLocaleDateString('vi-VN', {
@@ -217,7 +253,7 @@
                 const hoverClasses = isDisabled ? "opacity-50 cursor-not-allowed" : "hover:border-primary hover:bg-slate-800 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/20";
                 
                 return `
-                    <button onclick="selectShowtime(${showtime.id}, this)"
+                    <button type="button" onclick="selectShowtime(${showtime.id}, this, event)"
                             class="${baseClasses} ${hoverClasses}"
                             ${isDisabled ? 'disabled' : ''}>
                         <div class="flex justify-between items-start w-full mb-4">
@@ -248,7 +284,8 @@
             }).join('');
         }
 
-        function selectShowtime(showtimeId, button) {
+        function selectShowtime(showtimeId, button, e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
             selectedShowtime = showtimeId;
 
             document.querySelectorAll('.showtime-item').forEach(el => {
@@ -262,8 +299,12 @@
             document.getElementById('nextButton').disabled = false;
         }
 
-        function proceedToSeats() {
+        function proceedToSeats(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
             if (selectedShowtime) {
+                const btn = document.getElementById('nextButton');
+                if (btn) btn.disabled = true;
+
                 @if(isset($isWalkIn) && $isWalkIn)
                     window.location.href = `/staff/walk-in/showtime/${selectedShowtime}/seats`;
                 @else

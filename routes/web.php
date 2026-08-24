@@ -52,8 +52,17 @@ Route::controller(\App\Http\Controllers\BookingController::class)->group(functio
     Route::get('/booking/movie/{movie}/cinema/{cinema}/dates', 'selectDatesAndShowtimes')->name('booking.select-dates-showtimes');
 
     // Bước 4: Chọn ghế
-    Route::get('/booking/showtime/{showtime}/seats', 'selectSeats')->middleware('auth')->name('booking.select-seats');
+    Route::get('/booking/showtime/{showtime}/seats', 'selectSeats')->name('booking.select-seats');
 });
+
+// Session Handshake & Init
+Route::get('/api/init-session', function () {
+    return response()->json([
+        'success' => true,
+        'csrf_token' => csrf_token(),
+        'session_id' => session()->getId(),
+    ]);
+})->name('api.init-session');
 
 // Booking API routes
 Route::prefix('api/booking')->controller(\App\Http\Controllers\BookingController::class)->group(function () {
