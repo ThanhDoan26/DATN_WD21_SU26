@@ -512,6 +512,6 @@ class CheckoutController extends Controller
             }
         }
         
-        return response()->json(['success' => false, 'message' => 'Not found or not pending'], 404);
+        return response()->json(['success' => false, 'message' => 'Đơn đặt vé không tồn tại hoặc không ở trạng thái chờ thanh toán.'], 404);
     }
 }

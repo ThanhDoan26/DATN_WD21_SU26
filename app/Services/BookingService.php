@@ -300,64 +300,7 @@ class BookingService
             $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData, $inheritedBookingTime, $isExtended) {
 
                 // ================================================================
-                // Step 1: Lock các hàng ghế (chỉ 1 request được giữ lock)
-                // ================================================================
-                // 🔒 SELECT FOR UPDATE - lock các hàng trong booked_seats
-                // Các request khác phải đợi cho đến khi transaction này commit/rollback
-
-                $lockedBookedSeats = DB::table('booked_seats')
-                    ->join('bookings', 'booked_seats.booking_id', '=', 'bookings.id')
-                    ->where('bookings.showtime_id', $showtimeId)
-                    ->whereIn('booked_seats.seat_id', $selectedSeatIds)
-                    // Chỉ lock ghế chưa hủy và chưa hết hạn
-                    ->where('bookings.status', '!=', 'Cancelled')
-                    ->where(function ($q) {
-                        $q->whereNotIn('bookings.status', ['Pending', 'PROCESSING'])
-                          ->orWhere('bookings.booking_time', '>=', now()->subMinutes(self::getHoldDuration()));
-                    })
-                    ->lockForUpdate() // 🔒 CRITICAL: SELECT ... FOR UPDATE
-                    ->select('booked_seats.seat_id', 'booked_seats.status')
-                    ->get();
-
-                // ================================================================
-                // Step 2: Kiểm tra xem ghế đã bị đặt hay chưa
-                // ================================================================
-                if ($lockedBookedSeats->count() > 0) {
-                    // Lấy danh sách ghế đã đặt dưới dạng Seat Code (ví dụ: A5, B6)
-                    $bookedSeatIds = $lockedBookedSeats->pluck('seat_id')->toArray();
-                    $bookedSeatsInfo = DB::table('seats')
-                        ->whereIn('id', $bookedSeatIds)
-                        ->select('row_name', 'seat_number')
-                        ->get();
-
-                    $bookedSeatCodes = [];
-                    foreach ($bookedSeatsInfo as $seat) {
-                        $bookedSeatCodes[] = $seat->row_name . $seat->seat_number;
-                    }
-
-                    throw new Exception(
-                        'Một hoặc nhiều ghế đã được đặt bởi khách khác: ' .
-                        implode(', ', $bookedSeatCodes) .
-                        '. Vui lòng chọn ghế khác!'
-                    );
-                }
-
-
-                // ================================================================
-                // Step 3: Lấy thông tin ghế + tính giá vé
-                // ================================================================
-                $selectedSeats = DB::table('seats')
-                    ->whereIn('id', $selectedSeatIds)
-                    ->lockForUpdate()
-                    ->get()
-                    ->keyBy('id');
-
-                if ($selectedSeats->count() !== count($selectedSeatIds)) {
-                    throw new Exception('Một hoặc nhiều ghế không tồn tại');
-                }
-
-                // ================================================================
-                // Step 4: Lấy thông tin suất chiếu và giá vé từ ticket_prices
+                // Step 1: Lấy thông tin suất chiếu trước (🔒 lockForUpdate)
                 // ================================================================
                 $showtime = DB::table('showtimes')
                     ->where('id', $showtimeId)
@@ -395,6 +338,64 @@ class BookingService
                     }
                 }
 
+                // ================================================================
+                // Step 2: Lấy thông tin ghế thuộc đúng room_id của showtime (🔒 lockForUpdate)
+                // ================================================================
+                $selectedSeats = DB::table('seats')
+                    ->whereIn('id', $selectedSeatIds)
+                    ->where('room_id', $showtime->room_id)
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+
+                if ($selectedSeats->count() !== count($selectedSeatIds)) {
+                    throw new Exception('Một hoặc nhiều ghế không tồn tại hoặc không thuộc phòng chiếu của suất chiếu này');
+                }
+
+                // ================================================================
+                // Step 3: Lock các hàng ghế (chỉ 1 request được giữ lock)
+                // ================================================================
+                // 🔒 SELECT FOR UPDATE - lock các hàng trong booked_seats
+                // Các request khác phải đợi cho đến khi transaction này commit/rollback
+
+                $lockedBookedSeats = DB::table('booked_seats')
+                    ->join('bookings', 'booked_seats.booking_id', '=', 'bookings.id')
+                    ->where('bookings.showtime_id', $showtimeId)
+                    ->whereIn('booked_seats.seat_id', $selectedSeatIds)
+                    // Chỉ lock ghế chưa hủy và chưa hết hạn
+                    ->where('bookings.status', '!=', 'Cancelled')
+                    ->where(function ($q) {
+                        $q->whereNotIn('bookings.status', ['Pending', 'PROCESSING'])
+                          ->orWhere('bookings.booking_time', '>=', now()->subMinutes(self::getHoldDuration()));
+                    })
+                    ->lockForUpdate() // 🔒 CRITICAL: SELECT ... FOR UPDATE
+                    ->select('booked_seats.seat_id', 'booked_seats.status')
+                    ->get();
+
+                // Kiểm tra xem ghế đã bị đặt hay chưa
+                if ($lockedBookedSeats->count() > 0) {
+                    // Lấy danh sách ghế đã đặt dưới dạng Seat Code (ví dụ: A5, B6)
+                    $bookedSeatIds = $lockedBookedSeats->pluck('seat_id')->toArray();
+                    $bookedSeatsInfo = DB::table('seats')
+                        ->whereIn('id', $bookedSeatIds)
+                        ->select('row_name', 'seat_number')
+                        ->get();
+
+                    $bookedSeatCodes = [];
+                    foreach ($bookedSeatsInfo as $seat) {
+                        $bookedSeatCodes[] = $seat->row_name . $seat->seat_number;
+                    }
+
+                    throw new Exception(
+                        'Một hoặc nhiều ghế đã được đặt bởi khách khác: ' .
+                        implode(', ', $bookedSeatCodes) .
+                        '. Vui lòng chọn ghế khác!'
+                    );
+                }
+
+                // ================================================================
+                // Step 4: Lấy giá vé từ ticket_prices
+                // ================================================================
                 $ticketPrices = DB::table('ticket_prices')
                     ->where('showtime_id', $showtimeId)
                     ->where('status', 'ACTIVE')

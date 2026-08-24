@@ -322,7 +322,12 @@ class BookingController extends Controller
         ]);
 
         $userId = Auth::id();
-        $query = \App\Models\Booking::whereIn('status', ['Pending', 'PROCESSING']);
+        if (!$userId) {
+            return response()->json(['error' => 'Bạn chưa đăng nhập.'], 401);
+        }
+
+        $query = \App\Models\Booking::where('user_id', $userId)
+            ->where('status', 'Pending');
 
         if ($request->booking_id) {
             $query->where('id', $request->booking_id);
