@@ -344,20 +344,7 @@ class BookingService
 
 
                 // ================================================================
-                // Step 3: Lấy thông tin ghế + tính giá vé
-                // ================================================================
-                $selectedSeats = DB::table('seats')
-                    ->whereIn('id', $selectedSeatIds)
-                    ->lockForUpdate()
-                    ->get()
-                    ->keyBy('id');
-
-                if ($selectedSeats->count() !== count($selectedSeatIds)) {
-                    throw new Exception('Một hoặc nhiều ghế không tồn tại');
-                }
-
-                // ================================================================
-                // Step 4: Lấy thông tin suất chiếu và giá vé từ ticket_prices
+                // Step 3 & 4: Lấy thông tin suất chiếu + validate ghế thuộc đúng phòng chiếu
                 // ================================================================
                 $showtime = DB::table('showtimes')
                     ->where('id', $showtimeId)
@@ -366,6 +353,17 @@ class BookingService
 
                 if (!$showtime) {
                     throw new Exception("Suất chiếu $showtimeId không tồn tại");
+                }
+
+                $selectedSeats = DB::table('seats')
+                    ->whereIn('id', $selectedSeatIds)
+                    ->where('room_id', $showtime->room_id) // 🔒 Enforce seats belong to showtime's room
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+
+                if ($selectedSeats->count() !== count($selectedSeatIds)) {
+                    throw new Exception('Một hoặc nhiều ghế được chọn không thuộc về phòng chiếu của suất chiếu này.');
                 }
 
                 $startTime = \Carbon\Carbon::parse($showtime->start_time);
