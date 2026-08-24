@@ -536,8 +536,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Step 2: Pre-init session handshake on load
-            fetch('/api/init-session').catch(() => {});
             @if(!$showtime || empty($seatSummary))
                 return;
             @endif

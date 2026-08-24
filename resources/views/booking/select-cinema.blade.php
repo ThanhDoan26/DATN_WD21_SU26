@@ -90,8 +90,7 @@
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Step 2: Pre-init session handshake on load
-            fetch('/api/init-session').catch(() => {});
+            // Document ready
         });
 
         // Step 1: BFCache listener

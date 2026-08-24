@@ -137,9 +137,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Step 2: Pre-init session handshake on load
-            fetch('/api/init-session').catch(() => {});
-
             document.getElementById('movieTitle').textContent = movieTitle;
             document.getElementById('cinemaName').textContent = cinemaName;
 
