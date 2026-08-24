@@ -414,6 +414,84 @@ class CheckoutController extends Controller
         }
     }
 
+    public function mockPayment(Request $request)
+    {
+        $request->validate([
+            'booking_id' => 'required|integer|exists:bookings,id',
+        ]);
+
+        $booking = Booking::where('id', $request->booking_id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$booking) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Đơn vé không tồn tại hoặc không thuộc về bạn.'], 404);
+            }
+            return back()->with('error', 'Đơn vé không tồn tại hoặc không thuộc về bạn.');
+        }
+
+        if (!in_array($booking->status, ['Pending', 'PROCESSING'])) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Đơn vé này không ở trạng thái chờ thanh toán.'], 400);
+            }
+            return back()->with('error', 'Đơn vé này không ở trạng thái chờ thanh toán.');
+        }
+
+        // Kiểm tra thời gian giữ ghế 10 phút
+        $expiresAt = \Carbon\Carbon::parse($booking->booking_time)->addMinutes(BookingService::getHoldDuration());
+        if (now()->gt($expiresAt)) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Thời gian giữ ghế của bạn đã hết.'], 400);
+            }
+            return back()->with('error', 'Thời gian giữ ghế của bạn đã hết.');
+        }
+
+        try {
+            $bookingService = new BookingService();
+            
+            // Đánh dấu thanh toán thành công (BookingObserver sẽ tự động kích hoạt gửi TicketConfirmationMail bất đồng bộ qua Queue)
+            $bookingService->completePayment($booking->id, $booking->payment_method ?? 'MOCK_PAYMENT');
+            
+            // Lấy thông tin chi tiết để gửi email
+            $bookingDetails = $bookingService->getBookingDetails($booking->id);
+            $showtime = Showtime::with(['movie', 'room.cinema'])->find($booking->showtime_id);
+            
+            // Gửi email xác nhận
+            $email = $booking->customer_email ?? $booking->user?->email;
+            $mailSent = false;
+
+            if ($email) {
+                try {
+                    \Illuminate\Support\Facades\Log::info("CheckoutController: Đang gọi Mail::to()->send() gửi cho " . $email);
+                    Mail::to($email)->send(new TicketConfirmationMail($bookingDetails, $showtime));
+                    $mailSent = true;
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("CheckoutController: Lỗi khi gọi Mail::to()->send() cho " . $email . ". Lỗi: " . $e->getMessage(), [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                }
+            } else {
+                \Illuminate\Support\Facades\Log::warning("CheckoutController: TicketConfirmationMail KHÔNG được gọi do không tìm thấy email.");
+            }
+            
+            if ($mailSent) {
+                return redirect()->route('checkout.success', ['booking_id' => $booking->id])
+                                 ->with('success', 'Thanh toán thành công. Email xác nhận đã được gửi đến bạn.');
+            }
+            return redirect()->route('checkout.success', ['booking_id' => $booking->id])
+                             ->with('warning', 'Thanh toán thành công nhưng gửi email xác nhận thất bại. Vui lòng kiểm tra lại email hoặc liên hệ hỗ trợ.');
+        } catch (\Exception $e) {
+            Log::error('Mock payment failed: ' . $e->getMessage());
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Có lỗi xảy ra khi xử lý thanh toán: ' . $e->getMessage()], 500);
+            }
+            return back()->with('error', 'Có lỗi xảy ra khi xử lý thanh toán: ' . $e->getMessage());
+        }
+    }
+
     public function releaseLock(Request $request)
     {
         $request->validate([

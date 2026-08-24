@@ -272,9 +272,6 @@ class WalkInBookingController extends Controller
 
             // If it's CASH payment (Walk-in), complete it immediately (BookingObserver handles TicketConfirmationMail queued sending)
             if ($paymentMethod === 'CASH') {
-                // Đánh dấu đã gửi (hoặc sẽ gửi) trong request này để BookingObserver không gửi trùng
-                \App\Observers\BookingObserver::$sentBookings[] = $bookingId;
-
                 $bookingService->completePayment($bookingId, 'CASH');
                 
                 // If email provided, send confirmation
@@ -298,11 +295,6 @@ class WalkInBookingController extends Controller
                     }
                 } else {
                     \Illuminate\Support\Facades\Log::warning("WalkInBookingController: TicketConfirmationMail KHÔNG được gọi do khách hàng không cung cấp email.");
-                }
-
-                $message = 'Đặt vé và thanh toán thành công.';
-                if ($hasEmail && !$mailSent) {
-                    $message = 'Đặt vé và thanh toán thành công nhưng gửi email xác nhận thất bại. Vui lòng kiểm tra lại email hoặc liên hệ hỗ trợ.';
                 }
 
                 $message = 'Đặt vé và thanh toán thành công.';
