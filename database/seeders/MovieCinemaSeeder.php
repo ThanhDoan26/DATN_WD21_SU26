@@ -29,6 +29,26 @@ class MovieCinemaSeeder extends Seeder
     public function run(): void
     {
         // ==================================================
+        // Cleanup previous MovieCinemaSeeder data if exists
+        // ==================================================
+        $oldCinemas = DB::table('cinemas')->where('name', 'CGV Sư Vạn Hạnh')->get();
+        foreach ($oldCinemas as $oldC) {
+            $oldRoomIds = DB::table('rooms')->where('cinema_id', $oldC->id)->pluck('id')->toArray();
+            $oldShowtimeIds = DB::table('showtimes')->whereIn('room_id', $oldRoomIds)->pluck('id')->toArray();
+            $oldBookingIds = DB::table('bookings')->whereIn('showtime_id', $oldShowtimeIds)->pluck('id')->toArray();
+ 
+            DB::table('booked_seats')->whereIn('booking_id', $oldBookingIds)->delete();
+            DB::table('bookings')->whereIn('id', $oldBookingIds)->delete();
+            DB::table('ticket_prices')->whereIn('showtime_id', $oldShowtimeIds)->delete();
+            DB::table('showtimes')->whereIn('id', $oldShowtimeIds)->delete();
+            DB::table('seats')->whereIn('room_id', $oldRoomIds)->delete();
+            DB::table('rooms')->where('cinema_id', $oldC->id)->delete();
+            DB::table('users')->where('cinema_id', $oldC->id)->delete();
+            DB::table('cinemas')->where('id', $oldC->id)->delete();
+        }
+        DB::table('users')->whereIn('email', ['admin@cinema.local', 'manager@cgv.local', 'staff@cgv.local'])->delete();
+ 
+        // ==================================================
         // Step 1: Tạo Rạp
         // ==================================================
         $cinema = DB::table('cinemas')->insertGetId([
@@ -294,14 +314,17 @@ class MovieCinemaSeeder extends Seeder
             'updated_at' => now(),
         ]);
  
+        // Role resolution
+        $userRoleId = isset($roles['USER']) ? $roles['USER']->id : (isset($roles['CUSTOMER']) ? $roles['CUSTOMER']->id : 1);
+ 
         // Khách hàng
         $customers = [];
         for ($i = 1; $i <= 5; $i++) {
             $customerId = DB::table('users')->insertGetId([
-                'role_id' => $roles['USER']->id,
+                'role_id' => $userRoleId,
                 'cinema_id' => null,
                 'name' => "Khách Hàng $i",
-                'email' => "customer$i@example.com",
+                'email' => "customer{$i}_" . uniqid() . "@example.com",
                 'phone' => "090" . str_pad($i, 7, '0', STR_PAD_LEFT),
                 'password' => Hash::make('user123'),
                 'loyalty_points' => $i * 100,
@@ -317,6 +340,8 @@ class MovieCinemaSeeder extends Seeder
         // ==================================================
         // Step 9: Tạo Booking Mẫu
         // ==================================================
+        $room1Seats = DB::table('seats')->where('room_id', $room1)->pluck('id')->toArray();
+ 
         // Booking 1: Avatar - Cinema 1 - 2 ghế Regular + 1 ghế VIP
         $booking1 = DB::table('bookings')->insertGetId([
             'user_id' => $customers[0],
@@ -332,8 +357,7 @@ class MovieCinemaSeeder extends Seeder
         ]);
  
         // Booked seats cho booking 1
-        // (lấy 3 ghế trống làm ví dụ đặt trước: id 1 (A1), id 2 (A2), id 40 (D4))
-        $seatsForBooking1 = [1, 2, 40];
+        $seatsForBooking1 = array_slice($room1Seats, 0, 3);
         foreach ($seatsForBooking1 as $index => $seatId) {
             $priceAtBooking = $index < 2 ? 75000 : 120000;
             DB::table('booked_seats')->insert([
@@ -360,8 +384,8 @@ class MovieCinemaSeeder extends Seeder
             'updated_at' => now(),
         ]);
  
-        // Booked seats cho booking 2 (lấy ghế B1, B2, B3 - id 13, 14, 15)
-        $seatsForBooking2 = [13, 14, 15];
+        // Booked seats cho booking 2
+        $seatsForBooking2 = array_slice($room1Seats, 12, 3);
         foreach ($seatsForBooking2 as $seatId) {
             DB::table('booked_seats')->insert([
                 'booking_id' => $booking2,

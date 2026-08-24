@@ -92,9 +92,6 @@ class UserController extends AdminController
     {
         $validated = $request->validated();
         $validated['password'] = Hash::make($validated['password']);
-        if (!isset($validated['email_verified_at'])) {
-            $validated['email_verified_at'] = now();
-        }
         User::create($validated);
 
         return redirect()->route('admin.users.index')
