@@ -132,9 +132,10 @@
     </div>
     <div class="card-body bg-light">
         <!-- Chú thích -->
-        <div class="d-flex justify-content-center gap-4 mb-4">
+        <div class="d-flex justify-content-center gap-4 mb-4 flex-wrap">
             <div class="d-flex align-items-center gap-2"><div class="border border-success bg-white" style="width:24px;height:24px; border-radius:4px;"></div> Trống</div>
             <div class="d-flex align-items-center gap-2"><div class="border border-danger bg-danger text-white d-flex align-items-center justify-content-center" style="width:24px;height:24px; border-radius:4px;"><i class="fas fa-times" style="font-size: 12px;"></i></div> Hỏng</div>
+            <div class="d-flex align-items-center gap-2"><div class="border border-warning bg-warning text-dark d-flex align-items-center justify-content-center" style="width:24px;height:24px; border-radius:4px;"><i class="fas fa-user-clock" style="font-size: 12px;"></i></div> Đang giữ chỗ</div>
             <div class="d-flex align-items-center gap-2"><div class="border border-secondary bg-secondary text-white d-flex align-items-center justify-content-center" style="width:24px;height:24px; border-radius:4px;"><i class="fas fa-lock" style="font-size: 12px;"></i></div> Đã đặt</div>
         </div>
 
@@ -153,26 +154,36 @@
                             <div class="d-flex gap-2">
                                 @foreach($rowSeats as $seat)
                                     @php
-                                        $bgColor = 'bg-white border-success text-dark';
-                                        $cursor  = 'cursor-pointer';
-                                        $icon    = '';
-                                        // Sweetbox chiếm 2 ghế, nên CSS rộng hơn
-                                        $width   = (strtolower($seat->seat_type) === 'sweetbox') ? '70px' : '35px';
+                                        $bgColor   = 'bg-white border-success text-dark';
+                                        $cursor    = 'cursor-pointer';
+                                        $icon      = '';
+                                        $width     = (strtolower($seat->seat_type) === 'sweetbox') ? '70px' : '35px';
+                                        $isHeld    = !empty($seat->is_held);
+                                        $isBooked  = !empty($seat->is_booked);
+                                        $canToggle = isset($seat->can_toggle) ? (bool)$seat->can_toggle : (!$isHeld && !$isBooked);
+                                        $busStatus = $seat->business_status ?? ($isBooked ? 'BOOKED' : ($isHeld ? 'HELD' : $seat->status));
 
                                         if ($seat->status === 'BROKEN') {
                                             $bgColor = 'bg-danger text-white border-danger';
                                             $icon = '<i class="fas fa-times"></i>';
-                                        } elseif ($seat->status === 'BOOKED') {
+                                        } elseif ($isBooked || $seat->status === 'BOOKED') {
                                             $bgColor = 'bg-secondary text-white border-secondary';
-                                            $cursor = 'not-allowed';
-                                            $icon = '<i class="fas fa-lock"></i>';
+                                            $cursor  = 'not-allowed';
+                                            $icon    = '<i class="fas fa-lock"></i>';
+                                        } elseif ($isHeld) {
+                                            $bgColor = 'bg-warning text-dark border-warning';
+                                            $cursor  = 'not-allowed';
+                                            $icon    = '<i class="fas fa-user-clock"></i>';
                                         }
                                     @endphp
                                     <div class="seat-item border rounded d-flex align-items-center justify-content-center shadow-sm {{ $bgColor }}"
-                                         style="width: {{ $width }}; height: 35px; font-size: 0.85rem; cursor: {{ $cursor === 'not-allowed' ? 'not-allowed' : 'pointer' }}; {{ $seat->status === 'BOOKED' ? 'opacity: 0.7; pointer-events: none;' : 'transition: all 0.2s;' }}"
+                                         style="width: {{ $width }}; height: 35px; font-size: 0.85rem; cursor: {{ $cursor === 'not-allowed' ? 'not-allowed' : 'pointer' }}; {{ !$canToggle ? 'opacity: 0.85;' : 'transition: all 0.2s;' }}"
                                          data-seat-id="{{ $seat->id }}"
                                          data-seat-number="{{ $seat->seat_number }}"
                                          data-status="{{ $seat->status }}"
+                                         data-business-status="{{ $busStatus }}"
+                                         data-can-toggle="{{ $canToggle ? 'true' : 'false' }}"
+                                         title="{{ $isBooked ? 'Ghế đã có người đặt' : ($isHeld ? 'Ghế đang được khách giữ chỗ (10 phút)' : ($seat->status === 'BROKEN' ? 'Ghế hỏng' : 'Ghế trống')) }}"
                                          onclick="toggleSeatStatus(this)">
                                         {!! $icon ?: $seat->seat_number !!}
                                     </div>
@@ -251,10 +262,18 @@
     // Hàm xử lý Ajax khóa/mở ghế
     function toggleSeatStatus(element) {
         const seatId = element.getAttribute('data-seat-id');
-        const currentStatus = element.getAttribute('data-status');
+        const businessStatus = element.getAttribute('data-business-status');
+        const canToggle = element.getAttribute('data-can-toggle');
         
-        // Bỏ qua nếu ghế đã được mua
-        if (currentStatus === 'BOOKED') return;
+        // Chặn client-side nếu ghế đang bị giữ hoặc đã đặt
+        if (canToggle === 'false' || businessStatus === 'BOOKED' || businessStatus === 'HELD') {
+            if (businessStatus === 'HELD') {
+                alert('Không thể khóa ghế đang được khách hàng giữ chỗ (đang trong thời gian thanh toán).');
+            } else {
+                alert('Không thể khóa ghế đã có người đặt trong suất chiếu hợp lệ.');
+            }
+            return;
+        }
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]');
         if (!csrfToken) {
@@ -266,7 +285,7 @@
         element.style.pointerEvents = 'none';
         element.style.opacity = '0.5';
 
-        fetch(`/admin/rooms/{{ $room->id }}/seats/${seatId}/toggle-status`, {
+        fetch(`/manager/rooms/{{ $room->id }}/seats/${seatId}/toggle-status`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -274,20 +293,36 @@
                 'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
+        .then(response => response.json().then(data => ({ status: response.status, body: data })))
+        .then(({ status, body }) => {
+            if (body.success) {
                 // Cập nhật lại UI dựa trên trạng thái mới
-                if (data.new_status === 'BROKEN') {
+                if (body.new_status === 'BROKEN') {
                     element.className = 'seat-item border rounded d-flex align-items-center justify-content-center shadow-sm bg-danger text-white border-danger';
                     element.innerHTML = '<i class="fas fa-times"></i>';
                 } else {
                     element.className = 'seat-item border rounded d-flex align-items-center justify-content-center shadow-sm bg-white text-dark border-success';
                     element.innerHTML = element.getAttribute('data-seat-number');
                 }
-                element.setAttribute('data-status', data.new_status);
+                element.setAttribute('data-status', body.new_status);
+                element.setAttribute('data-business-status', body.new_status);
+                element.setAttribute('data-can-toggle', 'true');
             } else {
-                alert(data.message || 'Có lỗi xảy ra!');
+                alert(body.message || 'Có lỗi xảy ra!');
+                // Nếu backend trả về trạng thái HELD hoặc BOOKED, cập nhật ngay UI
+                if (body.business_status === 'HELD') {
+                    element.className = 'seat-item border rounded d-flex align-items-center justify-content-center shadow-sm bg-warning text-dark border-warning';
+                    element.innerHTML = '<i class="fas fa-user-clock"></i>';
+                    element.setAttribute('data-business-status', 'HELD');
+                    element.setAttribute('data-can-toggle', 'false');
+                    element.style.cursor = 'not-allowed';
+                } else if (body.business_status === 'BOOKED') {
+                    element.className = 'seat-item border rounded d-flex align-items-center justify-content-center shadow-sm bg-secondary text-white border-secondary';
+                    element.innerHTML = '<i class="fas fa-lock"></i>';
+                    element.setAttribute('data-business-status', 'BOOKED');
+                    element.setAttribute('data-can-toggle', 'false');
+                    element.style.cursor = 'not-allowed';
+                }
             }
         })
         .catch(error => {

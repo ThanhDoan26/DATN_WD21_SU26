@@ -147,8 +147,8 @@ class VnPayController extends Controller
                     }
                 }
 
-                return redirect()->route('checkout.success', [
-                    'booking_id' => $booking->id,
+                return redirect()->route('booking.history.show', [
+                    'bookingCode' => $booking->booking_code,
                 ]);
             } else {
                 return $this->cancelRedirect($booking, 'Giao dịch bị hủy hoặc không thành công.');

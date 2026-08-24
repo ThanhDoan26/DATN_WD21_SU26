@@ -4,6 +4,16 @@
 
 @section('content')
 <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    @if(session('success'))
+        <div class="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-3 shadow-lg shadow-emerald-500/5">
+            <i class="fas fa-check-circle text-2xl text-emerald-400"></i>
+            <div>
+                <p class="font-bold text-base text-emerald-400">Thanh toán thành công!</p>
+                <p class="text-sm text-emerald-300/90">{{ session('success') }}</p>
+            </div>
+        </div>
+    @endif
+
     <div class="flex justify-between items-center mb-8">
         <h2 class="text-3xl font-bold text-white">
             <i class="fas fa-ticket-alt text-primary mr-3"></i>Chi tiết đặt vé

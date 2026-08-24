@@ -2,6 +2,11 @@ import axios from 'axios';
 window.axios = axios;
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
+const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+if (token) {
+    window.axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
+}
+
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
@@ -15,4 +20,11 @@ window.Echo = new Echo({
     wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
+    authEndpoint: '/broadcasting/auth',
+    auth: {
+        headers: {
+            'X-CSRF-TOKEN': token || '',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    }
 });

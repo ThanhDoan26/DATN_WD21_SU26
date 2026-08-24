@@ -187,6 +187,7 @@
             cursor: not-allowed !important;
             box-shadow: none;
             opacity: 0.6;
+            pointer-events: none !important;
         }
 
         .seat.booked:hover {
@@ -465,13 +466,15 @@
                                                 $isVip = $seat->seat_type === 'VIP';
                                                 $isSweetbox = $seat->seat_type === 'Sweetbox' || $seat->seat_type === 'Double';
                                                 
+                                                $typeClass = $isSweetbox ? 'sweetbox' : ($isVip ? 'vip' : 'regular');
+
                                                 if ($isBroken) {
-                                                    $seatClass = 'broken';
+                                                    $seatClass = 'broken ' . $typeClass;
                                                 } elseif ($isBooked) {
-                                                    $seatClass = 'booked';
+                                                    $seatClass = 'booked ' . $typeClass;
                                                 } elseif ($isMyPending) {
                                                     // Nếu là ghế đang giữ của chính user, hiển thị như "Ghế đã chọn" (màu xanh)
-                                                    $seatClass = 'selected ' . ($isSweetbox ? 'sweetbox' : ($isVip ? 'vip' : 'regular'));
+                                                    $seatClass = 'selected ' . $typeClass;
                                                 } elseif ($isSweetbox) {
                                                     $seatClass = 'sweetbox';
                                                 } elseif ($isVip) {
@@ -708,7 +711,7 @@
         }
 
         function toggleSeat(seatId, button) {
-            if (button.classList.contains('booked') || button.classList.contains('broken')) {
+            if (button.disabled || button.classList.contains('booked') || button.classList.contains('broken')) {
                 return;
             }
 
@@ -946,6 +949,14 @@
                                     button.classList.remove('booked');
                                     button.disabled = false;
                                     button.title = button.getAttribute('data-seat-code');
+                                    const seatType = button.getAttribute('data-seat-type');
+                                    if (seatType === 'VIP') {
+                                        button.classList.add('vip');
+                                    } else if (seatType === 'Sweetbox' || seatType === 'Double') {
+                                        button.classList.add('sweetbox');
+                                    } else {
+                                        button.classList.add('regular');
+                                    }
                                 }
 
                                 // Tự động xóa tích xanh (.selected) nếu vé đã hủy (Server báo không còn myPendingSeats và User không bấm chọn tay)
@@ -972,7 +983,10 @@
                 sessionStorage.setItem('booking_expires_at', expiresAtMs.toString());
             } else {
                 const stored = sessionStorage.getItem('booking_expires_at');
-                if (stored) {
+                const resumeKey = 'resume_seats_showtime_' + showtimeId;
+                const isResuming = sessionStorage.getItem(resumeKey) === '1' || new URLSearchParams(window.location.search).has('resume_seats');
+                
+                if (stored && (isResuming || selectedSeats.size > 0)) {
                     expiresAtMs = parseInt(stored, 10);
                 }
             }
@@ -1013,6 +1027,15 @@
                     sessionStorage.removeItem('booking_expires_at');
                     if (timerBar) timerBar.style.display = 'none';
                     if (expiredOverlay) expiredOverlay.classList.add('active');
+
+                    fetch("{{ route('api.booking.cancel-explicit') }}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                        },
+                        body: JSON.stringify({ showtime_id: showtimeId })
+                    }).catch(err => console.error("Auto-cancel expired hold failed:", err));
                 }
             }
 
@@ -1102,21 +1125,96 @@
             initSelectSeatsTimer();
             pollBookedSeats(); // Initial fetch to ensure up-to-date state
 
+            const currentUserId = {{ auth()->id() ?? 0 }};
+
             if (typeof window.Echo !== 'undefined') {
+                console.log('Connecting to Showtime Channel: showtime.' + showtimeId);
+                
+                // Public Channel (Always available for all clients/guests)
                 window.Echo.channel(`showtime.${showtimeId}`)
+                    .listen('.SeatStatusUpdated', (e) => {
+                        console.log('SeatStatusUpdated received (public):', e);
+                        handleRealtimeSeatUpdate(e);
+                    })
                     .listen('SeatStatusUpdated', (e) => {
-                        console.log('SeatStatusUpdated received:', e);
-                        pollBookedSeats(); // Re-fetch or we could just use e.seat_ids and e.status
+                        console.log('SeatStatusUpdated received (public):', e);
+                        handleRealtimeSeatUpdate(e);
                     });
+
+                // Presence Channel (User tracking)
+                window.Echo.join(`showtime.${showtimeId}`)
+                    .here((users) => {
+                        console.log('Users currently viewing this showtime:', users);
+                    })
+                    .joining((user) => {
+                        console.log('User joined seat map:', user.name);
+                    })
+                    .leaving((user) => {
+                        console.log('User left seat map:', user.name);
+                    })
+                    .listen('.SeatStatusUpdated', (e) => {
+                        console.log('SeatStatusUpdated received (presence):', e);
+                        handleRealtimeSeatUpdate(e);
+                    })
+                    .listen('SeatStatusUpdated', (e) => {
+                        console.log('SeatStatusUpdated received (presence):', e);
+                        handleRealtimeSeatUpdate(e);
+                    });
+
+                // Auto Re-sync on reconnection
+                if (window.Echo.connector && window.Echo.connector.pusher) {
+                    window.Echo.connector.pusher.connection.bind('state_change', (states) => {
+                        console.log('WebSocket state changed:', states.current);
+                        if (states.current === 'connected') {
+                            pollBookedSeats();
+                        }
+                    });
+                }
             } else {
                 console.warn("Laravel Echo is not initialized. Falling back to polling.");
-                setInterval(pollBookedSeats, 5000); // Fallback polling if WebSockets fail
             }
 
-            if (serverExpiresAt && parseInt(serverExpiresAt, 10) > Date.now()) {
-                document.getElementById('resumeBookingModal').style.display = 'flex';
-            }
+            // Always run background polling every 5 seconds as a safety net
+            setInterval(pollBookedSeats, 5000);
         });
+
+        function handleRealtimeSeatUpdate(e) {
+            if (!e || !e.seatIds) return;
+            const currentUserId = {{ auth()->id() ?? 0 }};
+            const isOtherUser = e.userId && currentUserId && parseInt(e.userId) !== parseInt(currentUserId);
+
+            e.seatIds.forEach(seatId => {
+                const button = document.querySelector(`.seat[data-seat-id="${seatId}"]`);
+                if (!button) return;
+
+                if (e.status === 'PAID' || e.status === 'PENDING' || e.status === 'HOLD') {
+                    // Lock seat if it belongs to another user or is not part of this session's active draft
+                    if (isOtherUser || !selectedSeats.has(seatId)) {
+                        button.classList.add('booked');
+                        button.classList.remove('selected');
+                        button.disabled = true;
+                        button.title = e.status === 'PAID' ? "Ghế đã bán" : "Ghế đang được người khác giữ";
+                        if (selectedSeats.has(seatId)) {
+                            selectedSeats.delete(seatId);
+                        }
+                    }
+                } else if (e.status === 'AVAILABLE') {
+                    button.classList.remove('booked');
+                    button.disabled = false;
+                    button.title = button.getAttribute('data-seat-code');
+                    const seatType = button.getAttribute('data-seat-type');
+                    if (seatType === 'VIP') {
+                        button.classList.add('vip');
+                    } else if (seatType === 'Sweetbox' || seatType === 'Double') {
+                        button.classList.add('sweetbox');
+                    } else {
+                        button.classList.add('regular');
+                    }
+                }
+            });
+
+            updateSummary();
+        }
 
         // Sync fresh seat state if user returns via browser Back button (BFCache)
         window.addEventListener('pageshow', (event) => {

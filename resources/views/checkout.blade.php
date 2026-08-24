@@ -267,18 +267,7 @@
                                 </div>
                             </label>
 
-                            <label class="relative cursor-pointer group">
-                                <input type="radio" name="payment" value="MOCK" class="peer payment-radio hidden">
-                                <div class="border-2 border-slate-700 rounded-2xl p-6 transition-all duration-300 hover:border-slate-500 flex flex-col items-center gap-3 bg-slate-950/30">
-                                    <div class="absolute top-4 right-4 text-primary opacity-0 scale-50 transition-all duration-300 check-icon">
-                                        <i class="fas fa-check-circle text-xl"></i>
-                                    </div>
-                                    <div class="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 text-3xl mb-2">
-                                        <i class="fas fa-bolt"></i>
-                                    </div>
-                                    <span class="text-white font-semibold text-lg">Thử nghiệm (Nhanh)</span>
-                                </div>
-                            </label>
+
 
                             @if(isset($isWalkIn) && $isWalkIn)
                             <label class="relative cursor-pointer group">
@@ -531,7 +520,6 @@
             const reserveUrl = @json(route('checkout.reserve', [], false));
             const stripeSessionUrl = @json(route('stripe.session', [], false));
             const vnpayPaymentUrl = @json(route('vnpay.payment', [], false));
-            const mockPaymentUrl = @json(route('checkout.mock-payment', [], false));
             const successUrl = @json(route('checkout.success', [], false));
             
             const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
@@ -613,6 +601,15 @@
                         sessionStorage.removeItem('booking_expires_at');
                         if (timerBar) timerBar.style.display = 'none';
                         if (expiredOverlay) expiredOverlay.classList.add('active');
+
+                        fetch("{{ route('api.booking.cancel-explicit') }}", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRF-TOKEN": csrfToken
+                            },
+                            body: JSON.stringify({ showtime_id: {{ $showtime->id }} })
+                        }).catch(err => console.error("Auto-cancel expired hold failed:", err));
                     }
                 }
 
@@ -622,9 +619,8 @@
             }
 
             // ---- Khởi động timer ngay khi vào trang ----
-            // 1. Nếu server trả về thời gian kết thúc của Booking có sẵn trong DB → Ưu tiên dùng
-            // 2. Nếu có timer lưu trong sessionStorage (resume từ Stripe) → dùng tiếp
-            // 3. Nếu chưa có → đếm 10 phút từ hiện tại
+            // 1. Nếu server trả về thời gian kết thúc của Booking có sẵn trong DB → Dùng thời gian server
+            // 2. Nếu không có (đơn mới hoặc đã hủy) → Bắt đầu đếm 10 phút mới từ hiện tại
             (function initTimer() {
                 console.log("initTimer called.");
                 if (expiredBackBtn) expiredBackBtn.href = seatSelectionUrl;
@@ -646,39 +642,19 @@
                 const stored = sessionStorage.getItem('booking_expires_at');
                 if (stored) {
                     const expiresAtMs = parseInt(stored, 10);
-                    console.log("initTimer: found stored expiry:", expiresAtMs);
                     if (expiresAtMs > Date.now()) {
                         startCountdown(expiresAtMs);
-                    } else {
-                        console.log("initTimer: stored expiry is in the past, showing overlay.");
-                        sessionStorage.removeItem('booking_expires_at');
-                        if (expiredOverlay) expiredOverlay.classList.add('active');
+                        return;
                     }
-                } else {
-                    // Mới vào trang → bắt đầu đếm 10 phút ngay
-                    const freshExpiry = Date.now() + TIMEOUT_SECONDS * 1000;
-                    console.log("initTimer: starting fresh expiry:", freshExpiry);
-                    sessionStorage.setItem('booking_expires_at', freshExpiry.toString());
-                    startCountdown(freshExpiry);
                 }
+
+                // Không có đơn Pending trên server hoặc chưa có timer → Bắt đầu đếm 10 phút mới
+                const freshExpiry = Date.now() + TIMEOUT_SECONDS * 1000;
+                console.log("initTimer: starting fresh expiry:", freshExpiry);
+                sessionStorage.setItem('booking_expires_at', freshExpiry.toString());
+                startCountdown(freshExpiry);
             })();
             // ---------------------------------------------
-
-            // ======== RELEASE LOCK ON UNLOAD ========
-            window.addEventListener('beforeunload', function (e) {
-                // If the user clicks confirm reservation, we shouldn't release lock
-                if (window.isConfirmingReservation) return;
-
-                const bookingIdStr = @json($pendingBookingId ?? null) || sessionStorage.getItem('current_booking_id');
-                if (bookingIdStr) {
-                    const releaseUrl = @json(route('checkout.release-lock', [], false));
-                    const data = new FormData();
-                    data.append('booking_id', bookingIdStr);
-                    data.append('_token', csrfToken);
-                    navigator.sendBeacon(releaseUrl, data);
-                }
-            });
-            // ========================================
 
             let combosTotal = 0;
             let currentDiscount = 0;
@@ -932,8 +908,6 @@
                         let paymentUrl = stripeSessionUrl;
                         if (selectedPayment === 'VNPAY') {
                             paymentUrl = vnpayPaymentUrl;
-                        } else if (selectedPayment === 'MOCK') {
-                            paymentUrl = mockPaymentUrl;
                         }
 
                         return fetch(paymentUrl, {
@@ -985,7 +959,53 @@
 
             // Khởi tạo tính toán ban đầu
             updateOrderSummary();
+
+            // --- Realtime Payment Webhook Auto-Redirect ---
+            const activeBookingCode = @json($pendingBookingCode ?? null);
+            if (activeBookingCode && typeof window.Echo !== 'undefined') {
+                console.log('Listening for payment completion on channel: private-order.' + activeBookingCode);
+                
+                window.Echo.private(`order.${activeBookingCode}`)
+                    .listen('.PaymentConfirmed', (data) => {
+                        console.log('Payment confirmed via Reverb webhook:', data);
+                        handlePaymentSuccessRedirect(data);
+                    })
+                    .listen('PaymentConfirmed', (data) => {
+                        console.log('Payment confirmed via Reverb webhook (unprefixed):', data);
+                        handlePaymentSuccessRedirect(data);
+                    });
+            }
         });
+
+        function handlePaymentSuccessRedirect(data) {
+            const redirectUrl = data.redirectUrl || `/booking-history/${data.bookingCode}`;
+            
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.inset = '0';
+            overlay.style.backgroundColor = 'rgba(15, 23, 42, 0.95)';
+            overlay.style.backdropFilter = 'blur(10px)';
+            overlay.style.zIndex = '999999';
+            overlay.style.display = 'flex';
+            overlay.style.flexDirection = 'column';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.innerHTML = `
+                <div style="text-align: center; color: white; padding: 2rem; border-radius: 2rem; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); max-width: 480px; width: 90%;">
+                    <div style="font-size: 4.5rem; color: #22c55e; margin-bottom: 1.2rem;"><i class="fas fa-check-circle fa-bounce"></i></div>
+                    <h2 style="font-size: 2.2rem; font-weight: 800; margin-bottom: 0.8rem; color: #ffffff;">Thanh Toán Thành Công!</h2>
+                    <p style="color: #94a3b8; font-size: 1.05rem; line-height: 1.6; margin-bottom: 1.5rem;">Hệ thống đã nhận được thanh toán. Đang tự động mở vé xem phim của bạn...</p>
+                    <div style="display: inline-flex; align-items: center; gap: 8px; color: #22c55e; font-weight: 700; font-size: 0.95rem; background: rgba(34, 197, 94, 0.1); padding: 8px 18px; border-radius: 9999px; border: 1px solid rgba(34, 197, 94, 0.3);">
+                        <i class="fas fa-spinner fa-spin"></i> Đang tải vé điện tử...
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            setTimeout(() => {
+                window.location.href = redirectUrl;
+            }, 1800);
+        }
 
         // --- Xử lý Explicit Cancel ---
         function confirmCancelBooking() {

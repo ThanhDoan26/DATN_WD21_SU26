@@ -178,7 +178,7 @@ class SeatSelectionValidationService
             ->where('bookings.showtime_id', $showtimeId)
             ->where('bookings.status', '!=', 'Cancelled')
             ->where(function ($q) {
-                $q->where('bookings.status', '!=', 'Pending')
+                $q->whereNotIn('bookings.status', ['Pending', 'PROCESSING'])
                   ->orWhere('bookings.booking_time', '>=', now()->subMinutes(config('booking.seat_hold.duration_minutes', 10)));
             })
             ->pluck('booked_seats.seat_id')

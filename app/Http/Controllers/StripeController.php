@@ -93,8 +93,8 @@ class StripeController extends Controller
         }
 
 
-        return redirect()->route('checkout.success', [
-            'booking_id' => $booking->id,
+        return redirect()->route('booking.history.show', [
+            'bookingCode' => $booking->booking_code,
         ]);
     }
 

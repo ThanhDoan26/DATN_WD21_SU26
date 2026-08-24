@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Manager;
 use App\Http\Controllers\Controller;
 use App\Models\Room;
 use App\Models\Seat;
+use App\Services\SeatBookingStateService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
@@ -149,11 +150,14 @@ class RoomController extends Controller
     {
         $room = Room::where('cinema_id', Auth::user()->cinema_id)->findOrFail($id);
         
-        $seatsByRow = $room->seats()
+        $seats = $room->seats()
             ->orderBy('row_name')
             ->orderBy('seat_number')
-            ->get()
-            ->groupBy('row_name');
+            ->get();
+
+        $seatBookingStateService = app(SeatBookingStateService::class);
+        $seats = $seatBookingStateService->enrichSeatsWithBookingState($seats, $room->id);
+        $seatsByRow = $seats->groupBy('row_name');
 
         $currentRows = $seatsByRow->count();
         if ($currentRows === 0) {
@@ -315,11 +319,17 @@ class RoomController extends Controller
         $room = Room::where('cinema_id', Auth::user()->cinema_id)->findOrFail($roomId);
         $seat = $room->seats()->findOrFail($seatId);
 
-        if ($seat->status === Seat::STATUS_BOOKED) {
+        // Kiểm tra trạng thái Booking/Hold thông qua SeatBookingStateService
+        $seatBookingStateService = app(SeatBookingStateService::class);
+        $check = $seatBookingStateService->checkSeatLockable($seat);
+
+        if (!$check['allowed']) {
             return response()->json([
-                'success' => false, 
-                'message' => 'Không thể đổi trạng thái ghế đã có người đặt.'
-            ], 403);
+                'success' => false,
+                'code' => $check['code'],
+                'business_status' => $check['status'],
+                'message' => $check['message']
+            ], 422);
         }
 
         $seat->status = ($seat->status === Seat::STATUS_AVAILABLE) 
@@ -330,6 +340,7 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'new_status' => $seat->status,
+            'business_status' => $seat->status,
             'message' => 'Cập nhật trạng thái ghế thành công!'
         ]);
     }
@@ -343,6 +354,9 @@ class RoomController extends Controller
             ->orderBy('row_name')
             ->orderBy('seat_number')
             ->get();
+
+        $seatBookingStateService = app(SeatBookingStateService::class);
+        $seats = $seatBookingStateService->enrichSeatsWithBookingState($seats, $room->id);
 
         return response()->json($seats);
     }

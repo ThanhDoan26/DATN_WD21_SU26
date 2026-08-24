@@ -67,7 +67,7 @@ Route::prefix('api/booking')->controller(\App\Http\Controllers\BookingController
     Route::get('/showtime/{showtime}/booked-seats', 'getBookedSeatsAPI')->name('api.booking.booked-seats');
 
     // Hủy chủ động (Explicit Cancel)
-    Route::post('/cancel-explicit', 'cancelExplicit')->middleware('auth')->name('api.booking.cancel-explicit');
+    Route::post('/cancel-explicit', 'cancelExplicit')->name('api.booking.cancel-explicit');
 });
 
 // Frontend API/AJAX routes
@@ -92,8 +92,6 @@ Route::middleware(['auth', 'throttle:booking', 'check.booking.restriction'])->gr
     Route::post('/checkout/reserve', [\App\Http\Controllers\CheckoutController::class, 'reserve'])->name('checkout.reserve');
 });
 Route::middleware('auth')->group(function () {
-    Route::post('/checkout/mock-payment', [\App\Http\Controllers\CheckoutController::class, 'mockPayment'])->name('checkout.mock-payment');
-
     Route::post('/stripe/create-session',
         [StripeController::class,'createSession'])
         ->name('stripe.session');

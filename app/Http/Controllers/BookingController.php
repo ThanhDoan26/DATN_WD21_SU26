@@ -152,21 +152,13 @@ class BookingController extends Controller
         $bookingService = new \App\Services\BookingService();
         $bookingService->cleanupExpiredPendingBookings();
 
-        // ── ACTIVE PENDING BOOKING GUARD (Frontend UX) ──
-        if (\Illuminate\Support\Facades\Auth::check()) {
-            $activePendingBooking = $bookingService->getActivePendingBooking(\Illuminate\Support\Facades\Auth::id());
-            if ($activePendingBooking && $activePendingBooking->showtime_id != $showtime->id) {
-                return redirect()->route('home')->with('show_active_booking_modal', true);
-            }
-        }
-
         // Không tự ý hủy booking của user ở đây. BookingService::createBooking() sẽ lo việc đó.
 
         // Lấy thông tin ghế và những ghế đã đặt (chỉ lấy ghế chưa hủy và chưa hết hạn)
         $activeBookings = $showtime->bookings()
             ->where('status', '!=', 'Cancelled')
             ->where(function ($q) {
-                $q->where('status', '!=', 'Pending')
+                $q->whereNotIn('status', ['Pending', 'PROCESSING'])
                   ->orWhere('booking_time', '>=', now()->subMinutes(config('booking.seat_hold.duration_minutes', 10)));
             })
             ->with('bookedSeats')
@@ -178,7 +170,7 @@ class BookingController extends Controller
 
         foreach ($activeBookings as $booking) {
             $seatIds = $booking->bookedSeats->pluck('seat_id')->toArray();
-            if ($userId && $booking->status === 'Pending' && $booking->user_id == $userId) {
+            if ($userId && in_array($booking->status, ['Pending', 'PROCESSING']) && $booking->user_id == $userId) {
                 $myPendingSeats = array_merge($myPendingSeats, $seatIds);
             } else {
                 $bookedSeats = array_merge($bookedSeats, $seatIds);
@@ -192,7 +184,7 @@ class BookingController extends Controller
         if ($userId && !empty($myPendingSeats)) {
             $myPendingBooking = \App\Models\Booking::where('user_id', $userId)
                 ->where('showtime_id', $showtime->id)
-                ->where('status', 'Pending')
+                ->whereIn('status', ['Pending', 'PROCESSING'])
                 ->orderBy('booking_time', 'desc')
                 ->first();
 
@@ -295,7 +287,7 @@ class BookingController extends Controller
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning("Redis unavailable in getBookedSeatsAPI, falling back to DB: " . $e->getMessage());
             $pendingBookings = $showtime->bookings()
-                ->where('status', 'Pending')
+                ->whereIn('status', ['Pending', 'PROCESSING'])
                 ->where('booking_time', '>=', now()->subMinutes(\App\Services\BookingService::getHoldDuration()))
                 ->with('bookedSeats')
                 ->get();
@@ -325,29 +317,45 @@ class BookingController extends Controller
     public function cancelExplicit(Request $request)
     {
         $request->validate([
-            'showtime_id' => 'required|integer'
+            'showtime_id' => 'nullable|integer',
+            'booking_id' => 'nullable|integer',
         ]);
 
         $userId = Auth::id();
-        if (!$userId) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+        $query = \App\Models\Booking::whereIn('status', ['Pending', 'PROCESSING']);
+
+        if ($request->booking_id) {
+            $query->where('id', $request->booking_id);
+        } elseif ($request->showtime_id) {
+            $query->where('showtime_id', $request->showtime_id);
+            if ($userId) {
+                $query->where(function($q) use ($userId) {
+                    $q->where('user_id', $userId)->orWhereNull('user_id');
+                });
+            } else {
+                $query->whereNull('user_id');
+            }
+        } else {
+            return response()->json(['error' => 'Vui lòng cung cấp showtime_id hoặc booking_id'], 422);
         }
 
-        $showtime = \App\Models\Showtime::find($request->showtime_id);
+        $bookings = $query->get();
+
+        $showtime = null;
+        if ($request->showtime_id) {
+            $showtime = \App\Models\Showtime::find($request->showtime_id);
+        } elseif ($bookings->isNotEmpty()) {
+            $showtime = \App\Models\Showtime::find($bookings->first()->showtime_id);
+        }
+
         $redirectUrl = $showtime && $showtime->movie_id 
             ? route('movies.show', $showtime->movie_id) 
             : route('home');
 
-        // Tìm đúng Booking Pending của user cho suất chiếu này
-        $booking = \App\Models\Booking::where('user_id', $userId)
-            ->where('showtime_id', $request->showtime_id)
-            ->where('status', 'Pending')
-            ->first();
-
         session()->flash('info', 'Đã hủy quá trình đặt vé.');
 
         // Nếu không có, coi như đã hủy hoặc hết hạn -> Trả về success (Idempotent)
-        if (!$booking) {
+        if ($bookings->isEmpty()) {
             return response()->json([
                 'success' => true,
                 'redirect_url' => $redirectUrl,
@@ -357,7 +365,9 @@ class BookingController extends Controller
 
         try {
             $bookingService = new \App\Services\BookingService();
-            $bookingService->cancelBooking($booking->id, 'User cancelled explicitly');
+            foreach ($bookings as $booking) {
+                $bookingService->cancelBooking($booking->id, 'User cancelled explicitly');
+            }
 
             return response()->json([
                 'success' => true,
