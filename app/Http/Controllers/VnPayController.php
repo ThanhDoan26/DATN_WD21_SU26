@@ -149,7 +149,7 @@ class VnPayController extends Controller
 
                 return redirect()->route('booking.history.show', [
                     'bookingCode' => $booking->booking_code,
-                ]);
+                ])->with('success', 'Thanh toán VNPAY thành công! Vé của bạn đã được xuất.');
             } else {
                 return $this->cancelRedirect($booking, 'Giao dịch bị hủy hoặc không thành công.');
             }

@@ -95,7 +95,7 @@ class StripeController extends Controller
 
         return redirect()->route('booking.history.show', [
             'bookingCode' => $booking->booking_code,
-        ]);
+        ])->with('success', 'Thanh toán Stripe thành công! Vé của bạn đã được xuất.');
     }
 
     public function cancel(Request $request)

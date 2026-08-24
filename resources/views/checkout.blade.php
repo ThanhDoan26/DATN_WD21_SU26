@@ -506,7 +506,38 @@
             }
         }
 
+        // Step 1: BFCache listener
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                console.log('Restored from BFCache, re-syncing checkout...');
+                location.reload();
+            }
+        });
+
+        // Step 2: Silent CSRF & Session Retry Handler
+        async function fetchWithCsrf(url, options = {}) {
+            options.headers = options.headers || {};
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (csrfToken && !options.headers['X-CSRF-TOKEN']) {
+                options.headers['X-CSRF-TOKEN'] = csrfToken;
+            }
+            let response = await fetch(url, options);
+            if (response.status === 419) {
+                console.warn('419 CSRF Mismatch. Initializing session silently...');
+                const initRes = await fetch('/api/init-session');
+                const initData = await initRes.json();
+                if (initData.csrf_token) {
+                    document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', initData.csrf_token);
+                    options.headers['X-CSRF-TOKEN'] = initData.csrf_token;
+                    response = await fetch(url, options);
+                }
+            }
+            return response;
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
+            // Step 2: Pre-init session handshake on load
+            fetch('/api/init-session').catch(() => {});
             @if(!$showtime || empty($seatSummary))
                 return;
             @endif
@@ -856,7 +887,7 @@
                     confirmReservationButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Đang xử lý...';
 
                     // ========== BƯỚC 1: TẠO BOOKING (STATUS = PENDING) ==========
-                    fetch(reserveUrl, {
+                    fetchWithCsrf(reserveUrl, {
                         method: 'POST',
                         credentials: 'same-origin',
                         headers: {
@@ -910,7 +941,7 @@
                             paymentUrl = vnpayPaymentUrl;
                         }
 
-                        return fetch(paymentUrl, {
+                        return fetchWithCsrf(paymentUrl, {
                             method: 'POST',
                             credentials: 'same-origin',
                             headers: {

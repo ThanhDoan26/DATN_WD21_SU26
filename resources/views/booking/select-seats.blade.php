@@ -591,10 +591,10 @@
                 Bạn có chắc muốn hủy lượt đặt vé này không? Các ghế bạn đang giữ sẽ được nhả lại cho hệ thống.
             </p>
             <div style="display: flex; gap: 1rem;">
-                <button onclick="document.getElementById('cancelModal').style.display='none'" style="flex: 1; padding: 0.75rem; background: #334155; color: white; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s;">
+                <button type="button" onclick="document.getElementById('cancelModal').style.display='none'" style="flex: 1; padding: 0.75rem; background: #334155; color: white; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s;">
                     Đóng
                 </button>
-                <button onclick="confirmCancelBooking()" id="btnConfirmCancel" style="flex: 1; padding: 0.75rem; background: #ef4444; color: white; border-radius: 0.5rem; font-weight: bold; transition: background 0.2s;">
+                <button type="button" onclick="confirmCancelBooking()" id="btnConfirmCancel" style="flex: 1; padding: 0.75rem; background: #ef4444; color: white; border-radius: 0.5rem; font-weight: bold; transition: background 0.2s;">
                     Hủy đặt vé
                 </button>
             </div>
@@ -612,10 +612,10 @@
                 Bạn đang có một đơn hàng giữ chỗ cho suất chiếu này chưa hoàn tất thanh toán. Bạn có muốn tiếp tục thanh toán đơn hàng này không?
             </p>
             <div style="display: flex; gap: 1rem;">
-                <button onclick="cancelAndStartOver()" id="btnStartOver" style="flex: 1; padding: 0.75rem; background: #334155; color: white; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s;">
+                <button type="button" onclick="cancelAndStartOver()" id="btnStartOver" style="flex: 1; padding: 0.75rem; background: #334155; color: white; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s;">
                     Đặt lại từ đầu
                 </button>
-                <button onclick="proceedToCheckout()" style="flex: 1; padding: 0.75rem; background: #22c55e; color: white; border-radius: 0.5rem; font-weight: bold; transition: background 0.2s; text-align: center;">
+                <button type="button" onclick="proceedToCheckout()" style="flex: 1; padding: 0.75rem; background: #22c55e; color: white; border-radius: 0.5rem; font-weight: bold; transition: background 0.2s; text-align: center;">
                     Tiếp tục thanh toán
                 </button>
             </div>
@@ -831,7 +831,39 @@
             return result;
         }
 
-        function proceedToCheckout() {
+        let isProceedingToCheckout = false;
+
+        // Step 1: BFCache listener
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                console.log('Restored from BFCache, re-syncing seats...');
+                pollBookedSeats();
+            }
+        });
+
+        // Step 2: Silent CSRF & Session Retry Handler
+        async function fetchWithCsrf(url, options = {}) {
+            options.headers = options.headers || {};
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (csrfToken && !options.headers['X-CSRF-TOKEN']) {
+                options.headers['X-CSRF-TOKEN'] = csrfToken;
+            }
+            let response = await fetch(url, options);
+            if (response.status === 419) {
+                console.warn('419 CSRF Mismatch. Initializing session silently...');
+                const initRes = await fetch('/api/init-session');
+                const initData = await initRes.json();
+                if (initData.csrf_token) {
+                    document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', initData.csrf_token);
+                    options.headers['X-CSRF-TOKEN'] = initData.csrf_token;
+                    response = await fetch(url, options);
+                }
+            }
+            return response;
+        }
+
+        function proceedToCheckout(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
             if (selectedSeats.size === 0) return;
 
             const validation = validateSeatSelection();
@@ -840,11 +872,15 @@
                 return;
             }
 
-            // Save selected seats before navigating to checkout
+            isProceedingToCheckout = true;
             saveSelectedSeats();
 
             const seatIds = Array.from(selectedSeats).join(',');
             document.getElementById('form_seat_ids').value = seatIds;
+
+            const btn = document.getElementById('checkoutButton');
+            if (btn) btn.disabled = true;
+
             document.getElementById('seat-selection-form').submit();
         }
 
