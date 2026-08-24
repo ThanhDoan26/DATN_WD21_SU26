@@ -331,7 +331,7 @@ class BookingController extends Controller
 
         $userId = Auth::id();
         if (!$userId) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+            return response()->json(['error' => 'Bạn chưa đăng nhập.'], 401);
         }
 
         $query = \App\Models\Booking::where('user_id', $userId)
