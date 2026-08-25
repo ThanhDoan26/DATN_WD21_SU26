@@ -58,9 +58,22 @@ class CheckoutController extends Controller
         }
 
         try {
-            // Lấy lại danh sách Combo đã chọn từ đơn giữ ghế cũ của suất chiếu này (nếu có)
+            // Lấy lại danh sách Combo đã chọn từ request (sessionStorage) hoặc từ đơn giữ ghế cũ của suất chiếu này (nếu có)
             $existingCombos = [];
-            if ($userId) {
+
+            $combosInput = $request->input('combos');
+            if (!empty($combosInput)) {
+                if (is_string($combosInput)) {
+                    $decoded = json_decode($combosInput, true);
+                    if (is_array($decoded)) {
+                        $existingCombos = $decoded;
+                    }
+                } elseif (is_array($combosInput)) {
+                    $existingCombos = $combosInput;
+                }
+            }
+
+            if (empty($existingCombos) && $userId) {
                 $existingPending = Booking::where('user_id', $userId)
                     ->where('showtime_id', $showtimeId)
                     ->whereIn('status', ['Pending', 'PROCESSING'])
@@ -272,14 +285,59 @@ class CheckoutController extends Controller
                 ], 422);
             }
 
-            $bookingId = $bookingService->createBooking(
-                Auth::id(),
-                $showtimeId,
-                $seatIds,
-                $request->input('payment_method', 'ONLINE'),
-                $request->input('coupon_code'),
-                $request->input('combos', [])
-            );
+            $userId = Auth::id();
+            $existingBooking = null;
+
+            if ($userId) {
+                $existingBooking = Booking::where('user_id', $userId)
+                    ->where('showtime_id', $showtimeId)
+                    ->whereIn('status', ['Pending', 'PROCESSING'])
+                    ->orderBy('booking_time', 'desc')
+                    ->first();
+            }
+
+            $existingSeatIds = $existingBooking ? $existingBooking->bookedSeats()->pluck('seat_id')->map(fn($id) => (int)$id)->toArray() : [];
+            sort($existingSeatIds);
+            $checkSeatIds = array_values($seatIds);
+            sort($checkSeatIds);
+
+            $extraData = [
+                'booking_source' => 'online',
+                'customer_name' => $request->input('customer_name'),
+                'customer_phone' => $request->input('customer_phone'),
+                'customer_email' => $request->input('customer_email'),
+            ];
+
+            if ($existingBooking && $existingSeatIds === $checkSeatIds) {
+                // Kiểm tra thời gian giữ ghế còn hiệu lực không
+                $holdDuration = BookingService::getHoldDuration();
+                $expiresAt = \Carbon\Carbon::parse($existingBooking->booking_time)->addMinutes($holdDuration);
+                if (now()->gt($expiresAt)) {
+                    throw new \Exception("Thời gian giữ ghế của bạn đã hết. Vui lòng chọn lại ghế.");
+                }
+
+                // Cập nhật booking hiện tại (không tạo booking mới để tránh trùng lặp/hủy đơn cũ)
+                $updatedBooking = $bookingService->updatePendingBooking(
+                    $existingBooking->id,
+                    $request->input('payment_method', 'ONLINE'),
+                    $request->input('coupon_code'),
+                    $request->input('combos', []),
+                    $extraData
+                );
+
+                $bookingId = $updatedBooking->id;
+            } else {
+                // Nếu chưa có hoặc ghế đã thay đổi, tạo booking mới
+                $bookingId = $bookingService->createBooking(
+                    $userId,
+                    $showtimeId,
+                    $seatIds,
+                    $request->input('payment_method', 'ONLINE'),
+                    $request->input('coupon_code'),
+                    $request->input('combos', []),
+                    $extraData
+                );
+            }
 
             // Chuyển sang trạng thái PROCESSING để ngăn cronjob dọn dẹp
             Booking::where('id', $bookingId)->update(['status' => 'PROCESSING']);

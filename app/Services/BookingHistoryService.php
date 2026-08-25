@@ -21,15 +21,35 @@ class BookingHistoryService
         $query = Booking::where('user_id', $userId)
             ->with(['showtime.movie', 'showtime.room.cinema', 'bookedSeats.seat']);
 
+        // Loại bỏ các đơn nháp tự động bị thay thế bởi thao tác đặt vé mới
+        $excludedReasons = [
+            'User initiated a new booking request',
+            'Replaced by a new booking request',
+        ];
+
         switch ($statusFilter) {
             case 'paid':
                 $query->whereIn('status', ['Paid', 'Used']);
                 break;
             case 'cancelled':
-                $query->whereIn('status', ['Cancelled', 'Expired']);
+                $query->whereIn('status', ['Cancelled', 'Expired'])
+                    ->where(function ($q) use ($excludedReasons) {
+                        $q->whereNull('cancellation_reason')
+                          ->orWhereNotIn('cancellation_reason', $excludedReasons);
+                    });
                 break;
             case 'all':
             default:
+                $query->where(function ($q) use ($excludedReasons) {
+                    $q->whereIn('status', ['Paid', 'Used', 'Pending', 'PROCESSING'])
+                      ->orWhere(function ($q2) use ($excludedReasons) {
+                          $q2->whereIn('status', ['Cancelled', 'Expired'])
+                             ->where(function ($q3) use ($excludedReasons) {
+                                 $q3->whereNull('cancellation_reason')
+                                    ->orWhereNotIn('cancellation_reason', $excludedReasons);
+                             });
+                      });
+                });
                 break;
         }
 
@@ -46,10 +66,32 @@ class BookingHistoryService
      */
     public function getBookingCounts(int $userId): array
     {
+        $excludedReasons = [
+            'User initiated a new booking request',
+            'Replaced by a new booking request',
+        ];
+
         return [
             'paid' => Booking::where('user_id', $userId)->whereIn('status', ['Paid', 'Used'])->count(),
-            'cancelled' => Booking::where('user_id', $userId)->whereIn('status', ['Cancelled', 'Expired'])->count(),
-            'all' => Booking::where('user_id', $userId)->count(),
+            'cancelled' => Booking::where('user_id', $userId)
+                ->whereIn('status', ['Cancelled', 'Expired'])
+                ->where(function ($q) use ($excludedReasons) {
+                    $q->whereNull('cancellation_reason')
+                      ->orWhereNotIn('cancellation_reason', $excludedReasons);
+                })
+                ->count(),
+            'all' => Booking::where('user_id', $userId)
+                ->where(function ($q) use ($excludedReasons) {
+                    $q->whereIn('status', ['Paid', 'Used', 'Pending', 'PROCESSING'])
+                      ->orWhere(function ($q2) use ($excludedReasons) {
+                          $q2->whereIn('status', ['Cancelled', 'Expired'])
+                             ->where(function ($q3) use ($excludedReasons) {
+                                 $q3->whereNull('cancellation_reason')
+                                    ->orWhereNotIn('cancellation_reason', $excludedReasons);
+                             });
+                      });
+                })
+                ->count(),
         ];
     }
 
