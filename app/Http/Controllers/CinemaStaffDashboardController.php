@@ -33,20 +33,22 @@ class CinemaStaffDashboardController extends Controller
         }
  
         // ── KPI Cards ──────────────────────────────────────────────
-        // Vé check-in hôm nay
-        $checkedInToday = (clone $baseSeatsQuery)
-            ->where('status', 'USED')
-            ->whereDate('checked_in_at', today())
+        // Vé đã in hôm nay
+        $printedToday = (clone $baseSeatsQuery)
+            ->whereDate('printed_at', today())
             ->count(); 
 
-        // Vé chưa sử dụng (sẵn sàng check-in)
-        $unusedTickets = (clone $baseSeatsQuery)
-            ->where('status', 'PAID')
+        // Vé chưa in (Đã thanh toán)
+        $unprintedTickets = (clone $baseSeatsQuery)
+            ->whereIn('status', ['PAID', 'USED'])
+            ->where(function($q) {
+                $q->whereNull('printed_at')->orWhere('print_count', 0);
+            })
             ->count();
 
-        // Tổng vé đã check-in
-        $usedTickets = (clone $baseSeatsQuery)
-            ->where('status', 'USED')
+        // Tổng vé đã in
+        $totalPrintedTickets = (clone $baseSeatsQuery)
+            ->where('print_count', '>', 0)
             ->count();
 
         // Booking mới hôm nay
@@ -75,15 +77,15 @@ class CinemaStaffDashboardController extends Controller
             ];
         }
 
-        // ── Tỷ lệ check-in hôm nay ────────────────────────────────
+        // ── Tỷ lệ in vé hôm nay ────────────────────────────────────
         $totalTicketsForToday = (clone $baseSeatsQuery)
             ->whereHas('booking.showtime', function ($q) {
                 $q->whereDate('start_time', today());
             })
             ->whereIn('status', ['PAID', 'USED'])
             ->count();
-        $checkinRate = $totalTicketsForToday > 0
-            ? round($checkedInToday / $totalTicketsForToday * 100)
+        $printRate = $totalTicketsForToday > 0
+            ? round($printedToday / $totalTicketsForToday * 100)
             : 0;
 
         // ── Suất chiếu hôm nay ────────────────────────────────────
@@ -96,19 +98,19 @@ class CinemaStaffDashboardController extends Controller
             ->limit(10)
             ->get();
 
-        // ── Hoạt động gần đây (check-in) ─────────────────────────
-        $recentCheckIns = (clone $baseSeatsQuery)
+        // ── Hoạt động in vé gần đây ───────────────────────────────
+        $recentPrints = (clone $baseSeatsQuery)
             ->with(['booking.user', 'booking.showtime.movie', 'seat'])
-            ->where('status', 'USED')
-            ->whereNotNull('checked_in_at')
-            ->orderByDesc('checked_in_at')
+            ->where('print_count', '>', 0)
+            ->whereNotNull('printed_at')
+            ->orderByDesc('printed_at')
             ->limit(8)
             ->get();
 
-        // ── Vé sắp hết hạn (suất chiếu trong 2h tới) ─────────────
+        // ── Vé sắp chiếu (suất chiếu trong 2h tới) ────────────────
         $expiringSoon = (clone $baseSeatsQuery)
             ->with(['booking.showtime.movie', 'booking.showtime.room'])
-            ->where('status', 'PAID')
+            ->whereIn('status', ['PAID', 'USED'])
             ->whereHas('booking.showtime', function ($q) {
                 $q->where('start_time', '>=', now())
                   ->where('start_time', '<=', now()->addHours(2));
@@ -117,10 +119,10 @@ class CinemaStaffDashboardController extends Controller
             ->get();
 
         return view('staff.dashboard.index', compact(
-            'checkedInToday', 'unusedTickets', 'usedTickets',
+            'printedToday', 'unprintedTickets', 'totalPrintedTickets',
             'bookingsToday', 'revenueToday',
-            'revenueChart', 'checkinRate',
-            'todayShowtimes', 'recentCheckIns', 'expiringSoon'
+            'revenueChart', 'printRate',
+            'todayShowtimes', 'recentPrints', 'expiringSoon'
         ));
     }
 
@@ -138,7 +140,6 @@ class CinemaStaffDashboardController extends Controller
         $code = $request->query('code');
         $result = null;
         $warnings = [];
-        $canCheckIn = false;
         $isOtherCinema = false;
         $ticketCinemaName = '';
         $searchType = null; // 'booking' or 'seat'
@@ -196,30 +197,13 @@ class CinemaStaffDashboardController extends Controller
                 $isOtherCinema = ($ticketCinemaId && $ticketCinemaId != $cinemaId);
 
                 if ($isOtherCinema) {
-                    $warnings[] = "⚠️ VÉ THUỘC RẠP KHÁC: Vé này thuộc chi nhánh '{$ticketCinemaName}'. Bạn chỉ có quyền tra cứu/xem thông tin vé, KHÔNG THỂ Check-in, Chỉnh sửa hoặc In vé tại rạp này.";
-                    $canCheckIn = false;
+                    $warnings[] = "⚠️ VÉ THUỘC RẠP KHÁC: Vé này thuộc chi nhánh '{$ticketCinemaName}'. Bạn chỉ có quyền tra cứu/xem thông tin vé, KHÔNG THỂ Chỉnh sửa hoặc In vé tại rạp này.";
                 } else {
                     // Kiểm tra trạng thái thanh toán
                     if ($booking->status === 'Pending') {
-                        $warnings[] = "Vé chưa thanh toán (Trạng thái đơn: Chờ thanh toán). Vui lòng yêu cầu khách thanh toán trước.";
+                        $warnings[] = "Vé chưa thanh toán (Trạng thái đơn: Chờ thanh toán).";
                     } elseif ($booking->status === 'Cancelled') {
                         $warnings[] = "Đơn hàng vé này đã bị hủy.";
-                    }
-
-                    // Kiểm tra trạng thái sử dụng của các ghế
-                    $allSeats = $booking->bookedSeats;
-                    $usedSeatsCount = $allSeats->where('status', 'USED')->count();
-                    $paidSeatsCount = $allSeats->where('status', 'PAID')->count();
-                    $cancelledSeatsCount = $allSeats->where('status', 'CANCELLED')->count();
-
-                    if ($allSeats->count() > 0) {
-                        if ($usedSeatsCount == $allSeats->count() || $booking->status === 'Used') {
-                            $warnings[] = "Vé này đã được sử dụng (Đã check-in toàn bộ ghế).";
-                        } elseif ($paidSeatsCount === 0 && $usedSeatsCount > 0) {
-                            $warnings[] = "Vé này đã được check-in một phần, các ghế còn lại không hợp lệ để check-in.";
-                        }
-                    } else {
-                        $warnings[] = "Đơn hàng này không có ghế nào được đăng ký.";
                     }
 
                     // Kiểm tra suất chiếu hết hạn
@@ -230,11 +214,6 @@ class CinemaStaffDashboardController extends Controller
                         } elseif ($showtime->status === Showtime::STATUS_COMPLETED || ($showtime->end_time && $showtime->end_time->isPast())) {
                             $warnings[] = "Suất chiếu của vé này đã diễn ra hoặc đã kết thúc (" . ($showtime->end_time ? $showtime->end_time->format('d/m/Y H:i') : '') . "). Vé đã hết hạn.";
                         }
-                    }
-
-                    // Có thể checkin nếu: Đơn hàng 'Paid' và có ít nhất 1 ghế có trạng thái 'PAID'
-                    if ($booking->status === 'Paid' && $paidSeatsCount > 0) {
-                        $canCheckIn = true;
                     }
                 }
             } else {
@@ -260,16 +239,13 @@ class CinemaStaffDashboardController extends Controller
                     $isOtherCinema = ($ticketCinemaId && $ticketCinemaId != $cinemaId);
 
                     if ($isOtherCinema) {
-                        $warnings[] = "⚠️ VÉ THUỘC RẠP KHÁC: Vé này thuộc chi nhánh '{$ticketCinemaName}'. Bạn chỉ có quyền tra cứu/xem thông tin vé, KHÔNG THỂ Check-in, Chỉnh sửa hoặc In vé tại rạp này.";
-                        $canCheckIn = false;
+                        $warnings[] = "⚠️ VÉ THUỘC RẠP KHÁC: Vé này thuộc chi nhánh '{$ticketCinemaName}'. Bạn chỉ có quyền tra cứu/xem thông tin vé, KHÔNG THỂ Chỉnh sửa hoặc In vé tại rạp này.";
                     } else {
                         // Kiểm tra trạng thái ghế
-                        if ($bookedSeat->status === 'USED') {
-                            $warnings[] = "Ghế này đã được sử dụng (Check-in vào lúc: " . ($bookedSeat->checked_in_at ? $bookedSeat->checked_in_at->format('d/m/Y H:i:s') : 'N/A') . ").";
-                        } elseif ($bookedSeat->status === 'CANCELLED') {
+                        if ($bookedSeat->status === 'CANCELLED') {
                             $warnings[] = "Ghế này đã bị hủy bỏ.";
                         } elseif ($bookedSeat->status === 'RESERVED') {
-                            $warnings[] = "Vé chưa được thanh toán (Trạng thái ghế: Đã đặt trước). Vui lòng yêu cầu thanh toán.";
+                            $warnings[] = "Vé chưa được thanh toán (Trạng thái ghế: Đã đặt trước).";
                         }
 
                         // Kiểm tra suất chiếu hết hạn
@@ -283,10 +259,6 @@ class CinemaStaffDashboardController extends Controller
                                 }
                             }
                         }
-
-                        if ($bookedSeat->status === 'PAID') {
-                            $canCheckIn = true;
-                        }
                     }
                 } else {
                     // Không tìm thấy vé
@@ -295,7 +267,7 @@ class CinemaStaffDashboardController extends Controller
             }
         }
 
-        return view('staff.ticket.search', compact('code', 'result', 'searchType', 'warnings', 'canCheckIn', 'isOtherCinema', 'ticketCinemaName'));
+        return view('staff.ticket.search', compact('code', 'result', 'searchType', 'warnings', 'isOtherCinema', 'ticketCinemaName'));
     }
 
     /**
@@ -349,25 +321,12 @@ class CinemaStaffDashboardController extends Controller
             $isOtherCinema = ($ticketCinemaId && $ticketCinemaId != $cinemaId);
 
             if ($isOtherCinema) {
-                $warnings[] = "Vé này thuộc rạp {$ticketCinemaName}. Bạn chỉ có quyền tra cứu thông tin, không thể check-in hoặc in vé tại rạp này.";
-                $canCheckIn = false;
+                $warnings[] = "Vé này thuộc rạp {$ticketCinemaName}. Bạn chỉ có quyền tra cứu thông tin, không thể in vé tại rạp này.";
             } else {
                 if ($booking->status === 'Pending') {
                     $warnings[] = "Vé chưa thanh toán (Trạng thái đơn: Chờ thanh toán).";
                 } elseif ($booking->status === 'Cancelled') {
                     $warnings[] = "Đơn hàng vé này đã bị hủy.";
-                }
-
-                $allSeats = $booking->bookedSeats;
-                $usedSeatsCount = $allSeats->where('status', 'USED')->count();
-                $paidSeatsCount = $allSeats->where('status', 'PAID')->count();
-
-                if ($allSeats->count() > 0) {
-                    if ($usedSeatsCount == $allSeats->count() || $booking->status === 'Used') {
-                        $warnings[] = "Vé đã được sử dụng (Đã check-in toàn bộ ghế).";
-                    }
-                } else {
-                    $warnings[] = "Đơn hàng không có ghế.";
                 }
 
                 $showtime = $booking->showtime;
@@ -377,10 +336,6 @@ class CinemaStaffDashboardController extends Controller
                     } elseif ($showtime->status === Showtime::STATUS_COMPLETED || ($showtime->end_time && $showtime->end_time->isPast())) {
                         $warnings[] = "Suất chiếu đã kết thúc. Vé hết hạn.";
                     }
-                }
-
-                if ($booking->status === 'Paid' && $paidSeatsCount > 0) {
-                    $canCheckIn = true;
                 }
             }
 
@@ -393,14 +348,13 @@ class CinemaStaffDashboardController extends Controller
                     'price' => number_format($bs->price_at_booking) . 'đ',
                     'status' => $bs->status,
                     'qr_code' => $bs->qr_code,
-                    'checked_in_at' => $bs->checked_in_at ? $bs->checked_in_at->format('d/m/Y H:i:s') : null,
+                    'printed_at' => $bs->printed_at ? $bs->printed_at->format('d/m/Y H:i:s') : null,
                 ];
             }
 
             return response()->json([
                 'success' => true,
                 'type' => 'booking',
-                'can_checkin' => $canCheckIn,
                 'is_other_cinema' => $isOtherCinema,
                 'can_print' => !$isOtherCinema,
                 'warnings' => $warnings,
@@ -439,12 +393,9 @@ class CinemaStaffDashboardController extends Controller
             $isOtherCinema = ($ticketCinemaId && $ticketCinemaId != $cinemaId);
 
             if ($isOtherCinema) {
-                $warnings[] = "Vé này thuộc rạp {$ticketCinemaName}. Bạn chỉ có quyền tra cứu thông tin, không thể check-in hoặc in vé tại rạp này.";
-                $canCheckIn = false;
+                $warnings[] = "Vé này thuộc rạp {$ticketCinemaName}. Bạn chỉ có quyền tra cứu thông tin, không thể in vé tại rạp này.";
             } else {
-                if ($bookedSeat->status === 'USED') {
-                    $warnings[] = "Ghế này đã được sử dụng (Check-in vào lúc: " . ($bookedSeat->checked_in_at ? $bookedSeat->checked_in_at->format('d/m/Y H:i:s') : 'N/A') . ").";
-                } elseif ($bookedSeat->status === 'CANCELLED') {
+                if ($bookedSeat->status === 'CANCELLED') {
                     $warnings[] = "Ghế này đã bị hủy bỏ.";
                 } elseif ($bookedSeat->status === 'RESERVED') {
                     $warnings[] = "Vé chưa được thanh toán (Trạng thái ghế: Đã đặt trước).";
@@ -460,16 +411,11 @@ class CinemaStaffDashboardController extends Controller
                         }
                     }
                 }
-
-                if ($bookedSeat->status === 'PAID') {
-                    $canCheckIn = true;
-                }
             }
 
             return response()->json([
                 'success' => true,
                 'type' => 'seat',
-                'can_checkin' => $canCheckIn,
                 'is_other_cinema' => $isOtherCinema,
                 'can_print' => !$isOtherCinema,
                 'warnings' => $warnings,
@@ -479,7 +425,7 @@ class CinemaStaffDashboardController extends Controller
                     'seat_code' => $bookedSeat->seat ? ($bookedSeat->seat->row_name . $bookedSeat->seat->seat_number) : 'N/A',
                     'price' => number_format($bookedSeat->price_at_booking) . 'đ',
                     'status' => $bookedSeat->status,
-                    'checked_in_at' => $bookedSeat->checked_in_at ? $bookedSeat->checked_in_at->format('d/m/Y H:i:s') : null,
+                    'printed_at' => $bookedSeat->printed_at ? $bookedSeat->printed_at->format('d/m/Y H:i:s') : null,
                     'booking_code' => $booking->booking_code ?? 'N/A',
                     'customer_name' => $booking->user->name ?? 'N/A',
                     'movie_title' => $booking->showtime->movie->title ?? 'N/A',

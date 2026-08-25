@@ -218,8 +218,52 @@
         totalDiv.textContent = new Intl.NumberFormat('vi-VN').format(total) + '₫';
     }
     
-    function proceedToCheckout() {
+    async function ensureSelectedSeatsAvailable() {
+        if (selectedSeats.size === 0) return true;
+
+        try {
+            const response = await fetch(`/api/booking/showtime/${showtimeId}/booked-seats`);
+            const data = await response.json();
+            const bookedIds = new Set(data?.bookedSeats || []);
+            const conflictIds = Array.from(selectedSeats).filter(id => bookedIds.has(id));
+
+            if (conflictIds.length === 0) {
+                return true;
+            }
+
+            conflictIds.forEach(id => {
+                const button = document.querySelector(`[data-id="${id}"]`);
+                if (button) {
+                    button.classList.add('seat-booked');
+                    button.classList.remove('seat-selected');
+                    button.disabled = true;
+                    button.title = 'Ghế đã có người đặt hoặc đang được giữ';
+                }
+                selectedSeats.delete(id);
+            });
+
+            const conflictCodes = conflictIds.map(id => {
+                const button = document.querySelector(`[data-id="${id}"]`);
+                return button ? button.dataset.code : `ghế ${id}`;
+            }).join(', ');
+
+            alert(`Ghế ${conflictCodes} đã được khách chọn và đã có người đặt/giữ. Vui lòng chọn ghế khác.`);
+            updateCart();
+            return false;
+        } catch (error) {
+            console.error('Seat availability check failed:', error);
+            return true;
+        }
+    }
+
+    async function proceedToCheckout() {
         if(selectedSeats.size === 0) return;
+
+        const isAvailable = await ensureSelectedSeatsAvailable();
+        if (!isAvailable) {
+            return;
+        }
+
         const seatIds = Array.from(selectedSeats).join(',');
         window.location.href = `/staff/walk-in/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
     }
@@ -249,6 +293,10 @@
             })
             .catch(err => console.error('Error syncing POS seats:', err));
     }
+
+    @if(session('error'))
+        alert("{{ session('error') }}");
+    @endif
 
     document.addEventListener('DOMContentLoaded', () => {
         fetchFreshSeatState();
@@ -285,7 +333,7 @@
                 if (!isMe) {
                     btn.classList.add('seat-booked');
                     btn.classList.remove('seat-selected');
-                    btn.title = "Ghế đang được giữ hoặc đã bán online";
+                            btn.title = "Ghế đã có người đặt hoặc đang được giữ";
                     if (selectedSeats.has(seatId)) {
                         selectedSeats.delete(seatId);
                     }

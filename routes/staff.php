@@ -19,6 +19,7 @@ Route::middleware(['auth', 'role:STAFF', 'cinema.assignment'])->prefix('staff')-
     Route::get('/walk-in/movie/{movie}/dates', [\App\Http\Controllers\Staff\WalkInBookingController::class, 'selectDatesAndShowtimes'])->name('walkin.dates');
     Route::get('/walk-in/showtime/{showtime}/seats', [\App\Http\Controllers\Staff\WalkInBookingController::class, 'selectSeats'])->name('walkin.seats');
     Route::get('/walk-in/checkout', [\App\Http\Controllers\Staff\WalkInBookingController::class, 'checkout'])->name('walkin.checkout');
+    Route::post('/walk-in/release-hold', [\App\Http\Controllers\Staff\WalkInBookingController::class, 'releaseHold'])->name('walkin.release-hold');
     Route::post('/walk-in/reserve', [\App\Http\Controllers\Staff\WalkInBookingController::class, 'reserve'])->name('walkin.reserve');
     Route::get('/walk-in/success', [\App\Http\Controllers\Staff\WalkInBookingController::class, 'success'])->name('walkin.success');
 });

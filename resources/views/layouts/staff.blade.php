@@ -116,7 +116,7 @@
             </li>
             <li>
                 <a href="{{ route('staff.ticket.search') }}" class="@if(request()->routeIs('staff.ticket.search')) active @endif">
-                    <i class="fas fa-ticket-alt"></i> <span>Tra cứu & Check-in vé</span>
+                    <i class="fas fa-ticket-alt"></i> <span>Tra cứu & In vé</span>
                 </a>
             </li>
             <li>

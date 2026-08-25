@@ -460,10 +460,13 @@ class BookingService
 
                 $comboDetails = [];
                 if (!empty($combos)) {
+                    if (is_string($combos)) {
+                        $combos = json_decode($combos, true) ?: [];
+                    }
                     $comboIds = array_keys($combos);
                     $dbCombos = DB::table('combos')->whereIn('id', $comboIds)->get()->keyBy('id');
                     foreach ($combos as $comboId => $comboData) {
-                        $qty = (int) ($comboData['qty'] ?? 0);
+                        $qty = is_array($comboData) ? (int) ($comboData['qty'] ?? $comboData['quantity'] ?? 0) : (int) $comboData;
                         if ($qty > 0) {
                             if (!isset($dbCombos[$comboId])) {
                                 throw new Exception("Combo không tồn tại");
@@ -1119,6 +1122,9 @@ class BookingService
             $comboDetails = [];
 
             if (!empty($combos)) {
+                if (is_string($combos)) {
+                    $combos = json_decode($combos, true) ?: [];
+                }
                 $comboIds = array_keys($combos);
                 $dbCombos = DB::table('combos')
                     ->whereIn('id', $comboIds)
@@ -1126,7 +1132,7 @@ class BookingService
                     ->keyBy('id');
 
                 foreach ($combos as $comboId => $comboData) {
-                    $qty = (int) ($comboData['qty'] ?? 0);
+                    $qty = is_array($comboData) ? (int) ($comboData['qty'] ?? $comboData['quantity'] ?? 0) : (int) $comboData;
                     if ($qty > 0) {
                         if (!isset($dbCombos[$comboId])) {
                             throw new Exception("Combo không tồn tại.");

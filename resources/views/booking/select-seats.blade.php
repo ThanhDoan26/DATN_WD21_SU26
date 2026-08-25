@@ -864,13 +864,56 @@
             return response;
         }
 
-        function proceedToCheckout(e) {
+        async function ensureSelectedSeatsAvailable() {
+            if (selectedSeats.size === 0) return true;
+
+            try {
+                const response = await fetch(`/api/booking/showtime/${showtimeId}/booked-seats`);
+                const data = await response.json();
+                const bookedIds = new Set(data?.bookedSeats || []);
+                const conflictIds = Array.from(selectedSeats).filter(id => bookedIds.has(id));
+
+                if (conflictIds.length === 0) {
+                    return true;
+                }
+
+                conflictIds.forEach(id => {
+                    const button = document.querySelector(`[data-id="${id}"]`);
+                    if (button) {
+                        button.classList.add('booked');
+                        button.classList.remove('selected');
+                        button.disabled = true;
+                        button.title = 'Ghế đã có người đặt hoặc đang được giữ';
+                    }
+                    selectedSeats.delete(id);
+                });
+
+                const conflictCodes = conflictIds.map(id => {
+                    const button = document.querySelector(`[data-id="${id}"]`);
+                    return button ? button.dataset.code : `ghế ${id}`;
+                }).join(', ');
+
+                alert(`Ghế ${conflictCodes} đã được khách chọn và đã có người đặt/giữ. Vui lòng chọn ghế khác.`);
+                updateCart();
+                return false;
+            } catch (error) {
+                console.error('Seat availability check failed:', error);
+                return true;
+            }
+        }
+
+        async function proceedToCheckout(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
             if (selectedSeats.size === 0) return;
 
             const validation = validateSeatSelection();
             if (!validation.isValid) {
                 alert(validation.message || "Ghế không hợp lệ.");
+                return;
+            }
+
+            const isAvailable = await ensureSelectedSeatsAvailable();
+            if (!isAvailable) {
                 return;
             }
 
@@ -983,7 +1026,7 @@
                                 button.classList.add('booked');
                                 button.classList.remove('selected');
                                 button.disabled = true;
-                                button.title = "Ghế đã được đặt";
+                                button.title = "Ghế đã có người đặt hoặc đang được giữ";
                                 
                                 if (selectedSeats.has(seatId)) {
                                     selectedSeats.delete(seatId);
