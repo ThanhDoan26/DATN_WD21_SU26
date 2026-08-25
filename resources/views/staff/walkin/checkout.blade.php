@@ -216,7 +216,9 @@
                     'X-CSRF-TOKEN': csrfToken
                 },
                 body: JSON.stringify({
+                    code: code,
                     coupon_code: code,
+                    order_total: subtotal,
                     subtotal: subtotal
                 })
             });
@@ -268,7 +270,7 @@
         document.querySelectorAll('.combo-qty').forEach(input => {
             const qty = parseInt(input.value) || 0;
             if (qty > 0) {
-                combos[input.dataset.id] = qty;
+                combos[input.dataset.id] = { qty: qty };
             }
         });
         

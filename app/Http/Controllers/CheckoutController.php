@@ -397,13 +397,15 @@ class CheckoutController extends Controller
 
     public function applyCoupon(Request $request)
     {
-        $request->validate([
-            'code' => 'required|string',
-            'order_total' => 'required|numeric|min:0'
-        ]);
+        $code = trim($request->input('code') ?? $request->input('coupon_code') ?? '');
+        $orderTotal = floatval($request->input('order_total') ?? $request->input('subtotal') ?? 0);
 
-        $code = trim($request->code);
-        $orderTotal = floatval($request->order_total);
+        if (empty($code)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vui lòng cung cấp mã giảm giá.'
+            ], 422);
+        }
 
         $coupon = Coupon::where('code', $code)->first();
 
