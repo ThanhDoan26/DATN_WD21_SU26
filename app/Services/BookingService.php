@@ -1091,16 +1091,17 @@ class BookingService
         int $bookingId,
         ?string $paymentMethod = null,
         ?string $couponCode = null,
-        array $combos = []
+        array $combos = [],
+        array $extraData = []
     ): \App\Models\Booking {
-        return DB::transaction(function () use ($bookingId, $paymentMethod, $couponCode, $combos) {
+        return DB::transaction(function () use ($bookingId, $paymentMethod, $couponCode, $combos, $extraData) {
             $booking = \App\Models\Booking::with('bookedSeats')->where('id', $bookingId)->lockForUpdate()->first();
 
             if (!$booking) {
                 throw new Exception("Booking không tồn tại.");
             }
 
-            if ($booking->status !== 'Pending') {
+            if (!in_array($booking->status, ['Pending', 'PROCESSING'])) {
                 throw new Exception("Không thể cập nhật đơn đặt vé không ở trạng thái chờ thanh toán.");
             }
 
@@ -1202,6 +1203,15 @@ class BookingService
             $booking->discount_amount = $discountAmount;
             if ($paymentMethod) {
                 $booking->payment_method = $paymentMethod;
+            }
+            if (!empty($extraData['customer_name'])) {
+                $booking->customer_name = $extraData['customer_name'];
+            }
+            if (!empty($extraData['customer_phone'])) {
+                $booking->customer_phone = $extraData['customer_phone'];
+            }
+            if (!empty($extraData['customer_email'])) {
+                $booking->customer_email = $extraData['customer_email'];
             }
             $booking->save();
 
