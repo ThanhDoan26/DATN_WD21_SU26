@@ -58,9 +58,22 @@ class CheckoutController extends Controller
         }
 
         try {
-            // Lấy lại danh sách Combo đã chọn từ đơn giữ ghế cũ của suất chiếu này (nếu có)
+            // Lấy lại danh sách Combo đã chọn từ request (sessionStorage) hoặc từ đơn giữ ghế cũ của suất chiếu này (nếu có)
             $existingCombos = [];
-            if ($userId) {
+
+            $combosInput = $request->input('combos');
+            if (!empty($combosInput)) {
+                if (is_string($combosInput)) {
+                    $decoded = json_decode($combosInput, true);
+                    if (is_array($decoded)) {
+                        $existingCombos = $decoded;
+                    }
+                } elseif (is_array($combosInput)) {
+                    $existingCombos = $combosInput;
+                }
+            }
+
+            if (empty($existingCombos) && $userId) {
                 $existingPending = Booking::where('user_id', $userId)
                     ->where('showtime_id', $showtimeId)
                     ->whereIn('status', ['Pending', 'PROCESSING'])

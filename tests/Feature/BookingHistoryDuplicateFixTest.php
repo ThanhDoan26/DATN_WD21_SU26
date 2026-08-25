@@ -228,3 +228,115 @@ test('checkout reserve updates existing pending booking instead of creating a ca
     expect($counts['all'])->toBe(1);
 });
 
+test('checkout init preserves combos when user updates seats', function () {
+    $role = Role::firstOrCreate([
+        'role_name' => 'USER'
+    ], [
+        'description' => 'User role'
+    ]);
+
+    $user = User::create([
+        'name' => 'Test User 3',
+        'email' => 'user3@test.com',
+        'password' => bcrypt('password'),
+        'role_id' => $role->id,
+        'status' => 'ACTIVE',
+    ]);
+
+    $cinema = Cinema::create([
+        'name' => 'Cinema 3',
+        'address' => '789 Test St',
+        'city' => 'Hanoi',
+    ]);
+
+    $room = Room::create([
+        'cinema_id' => $cinema->id,
+        'name' => 'Room 3',
+        'capacity' => 50,
+        'format' => '2D',
+    ]);
+
+    $seat1 = Seat::create([
+        'room_id' => $room->id,
+        'row_name' => 'A',
+        'seat_number' => 1,
+        'seat_type' => 'Regular',
+        'status' => 'AVAILABLE',
+    ]);
+
+    $seat2 = Seat::create([
+        'room_id' => $room->id,
+        'row_name' => 'A',
+        'seat_number' => 2,
+        'seat_type' => 'Regular',
+        'status' => 'AVAILABLE',
+    ]);
+
+    $movie = Movie::create([
+        'title' => 'Test Movie 3',
+        'duration' => 120,
+        'status' => 'NOW_SHOWING',
+        'release_date' => now()->subDays(5),
+    ]);
+
+    $showtime = Showtime::create([
+        'movie_id' => $movie->id,
+        'room_id' => $room->id,
+        'start_time' => now()->addHours(3),
+        'end_time' => now()->addHours(5),
+        'status' => Showtime::STATUS_SCHEDULED,
+    ]);
+
+    \App\Models\TicketPrice::create([
+        'showtime_id' => $showtime->id,
+        'seat_type' => 'Regular',
+        'price' => 100000,
+        'status' => 'ACTIVE',
+    ]);
+
+    $combo = \App\Models\Combo::create([
+        'name' => 'Combo Bap Nuoc VIP',
+        'price' => 80000,
+        'status' => 'ACTIVE',
+    ]);
+
+    // 1. Initial checkout init with seat 1 and combo
+    $response = $this->actingAs($user)->post(route('checkout.init'), [
+        'showtime_id' => $showtime->id,
+        'seat_ids' => "{$seat1->id}",
+        'combos' => json_encode([
+            $combo->id => ['qty' => 2]
+        ]),
+    ]);
+
+    $response->assertRedirect(route('checkout', ['showtime_id' => $showtime->id]));
+
+    // Check DB has combo recorded
+    $booking = Booking::where('user_id', $user->id)->where('status', 'Pending')->first();
+    expect($booking)->not->toBeNull();
+    $bookingCombos = DB::table('booking_combos')->where('booking_id', $booking->id)->get();
+    expect($bookingCombos->count())->toBe(1);
+    expect($bookingCombos->first()->combo_id)->toBe($combo->id);
+    expect($bookingCombos->first()->quantity)->toBe(2);
+
+    // 2. User goes back to seat map, adds seat 2, and submits init with preserved combos
+    $response2 = $this->actingAs($user)->post(route('checkout.init'), [
+        'showtime_id' => $showtime->id,
+        'seat_ids' => "{$seat1->id},{$seat2->id}",
+        'combos' => json_encode([
+            $combo->id => ['qty' => 2]
+        ]),
+    ]);
+
+    $response2->assertRedirect(route('checkout', ['showtime_id' => $showtime->id]));
+
+    // Check new active pending booking still preserved the combos
+    $newPendingBooking = Booking::where('user_id', $user->id)->where('status', 'Pending')->first();
+    expect($newPendingBooking)->not->toBeNull();
+    $newBookingCombos = DB::table('booking_combos')->where('booking_id', $newPendingBooking->id)->get();
+    expect($newBookingCombos->count())->toBe(1);
+    expect($newBookingCombos->first()->combo_id)->toBe($combo->id);
+    expect($newBookingCombos->first()->quantity)->toBe(2);
+});
+
+
