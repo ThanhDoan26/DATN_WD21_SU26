@@ -3,7 +3,7 @@
 @section('content')
 <div class="container-fluid p-4 bg-white rounded-3 shadow-sm">
     <div class="d-flex align-items-center mb-4 border-bottom pb-3">
-        <a href="javascript:history.back()" class="btn btn-outline-secondary me-3">
+        <a href="#" id="backToSeats" class="btn btn-outline-secondary me-3">
             <i class="fas fa-arrow-left"></i> Trở Lại
         </a>
         <h2 class="mb-0 text-primary fw-bold"><i class="fas fa-cash-register me-2"></i>Thanh Toán</h2>
@@ -147,9 +147,23 @@
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const showtimeId = {{ $showtimeId }};
     const seatIds = "{{ is_array($seatIds) ? implode(',', $seatIds) : $seatIds }}";
+    const staffBookingId = {{ $staffBookingId ?? 'null' }};
     let baseTotal = {{ $total }}; // Includes ticket prices and surcharge
     let combosTotal = 0;
     let discountAmount = 0;
+
+    document.getElementById('backToSeats').addEventListener('click', async (event) => {
+        event.preventDefault();
+        try {
+            await fetch('{{ route('staff.walkin.release-hold') }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                keepalive: true,
+            });
+        } finally {
+            history.back();
+        }
+    });
     
     function updateCombo(id, change) {
         const input = document.querySelector(`.combo-qty[data-id="${id}"]`);
@@ -275,6 +289,7 @@
         const payload = {
             showtime_id: showtimeId,
             seat_ids: seatIds,
+            booking_id: staffBookingId,
             combos: Object.keys(combos).length > 0 ? combos : null,
             payment_method: 'CASH',
             coupon_code: document.getElementById('couponCode').value.trim() || null,
