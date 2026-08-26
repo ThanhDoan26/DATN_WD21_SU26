@@ -1,12 +1,12 @@
 @extends('layouts.manager')
 
-@section('title', 'Create Room - Admin')
-@section('page_title', 'Create New Room')
+@section('title', 'Thêm Phòng Mới')
+@section('page_title', 'Thêm phòng chiếu mới')
 
 @section('extra_css')
 <style>
     .seat-preview-wrapper { background: var(--bg-surface); padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; align-items: center; margin: 15px 0; border: 1px solid var(--border-light); overflow-x: auto; }
-    .preview-screen { width: 70%; max-width: 500px; margin: 0 auto 30px auto; padding: 10px 0; text-align: center; background: linear-gradient(180deg, rgba(147, 51, 234, 0.12) 0%, rgba(147, 51, 234, 0.02) 100%); border-top: 5px solid var(--primary-color); border-radius: 8px 8px 100px 100px; font-size: 0.75rem; font-weight: 700; letter-spacing: 6px; color: var(--primary-color); text-transform: uppercase; font-family: 'Sora', sans-serif; }
+    .preview-screen { width: 70%; max-width: 500px; margin: 0 auto 30px auto; padding: 10px 0; text-align: center; background: linear-gradient(180deg, rgba(13, 148, 136, 0.12) 0%, rgba(13, 148, 136, 0.02) 100%); border-top: 5px solid var(--primary-color); border-radius: 8px 8px 100px 100px; font-size: 0.75rem; font-weight: 700; letter-spacing: 6px; color: var(--primary-color); text-transform: uppercase; font-family: 'Sora', sans-serif; }
     .preview-layout { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
     .preview-row { display: flex; align-items: center; justify-content: center; gap: 5px; }
     .preview-row-label { font-size: 0.7rem; font-weight: 700; color: #94a3b8; width: 22px; text-align: center; }
@@ -28,9 +28,9 @@
 <div class="breadcrumb-custom">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('manager.rooms.index') }}">Rooms</a></li>
-            <li class="breadcrumb-item active">Create</li>
+            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('manager.rooms.index') }}">Phòng chiếu</a></li>
+            <li class="breadcrumb-item active">Thêm mới</li>
         </ol>
     </nav>
 </div>
