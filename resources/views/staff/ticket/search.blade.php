@@ -11,10 +11,11 @@
     }
     .status-badge {
         font-size: 0.9rem;
-        padding: 6px 12px;
+        padding: 6px 14px;
         border-radius: 50px;
-        font-weight: 600;
+        font-weight: 700;
         display: inline-block;
+        font-family: 'Sora', sans-serif;
     }
     .badge-paid { background-color: #dcfce7; color: #16a34a; }
     .badge-used { background-color: #e0f2fe; color: #0369a1; }
@@ -23,14 +24,15 @@
     .badge-printed { background-color: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe; }
     
     .ticket-card {
-        border: none;
-        border-radius: 16px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        border: 1px solid var(--border-light);
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.04);
         overflow: hidden;
-        background: #fff;
+        background: var(--bg-surface);
+        color: var(--text-ink);
     }
     .ticket-header {
-        background: linear-gradient(135deg, #a16207 0%, #ca8a04 100%);
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         color: #fff;
         padding: 20px 25px;
     }
@@ -38,23 +40,23 @@
         padding: 30px 25px;
     }
     .info-label {
-        font-size: 0.85rem;
-        color: #64748b;
+        font-size: 0.8rem;
+        color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 3px;
-        font-weight: 600;
+        font-weight: 700;
     }
     .info-value {
         font-size: 1.1rem;
-        color: #1e293b;
+        color: var(--text-ink);
         font-weight: 700;
         margin-bottom: 20px;
     }
     .seat-item {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
+        background: var(--bg-base);
+        border: 1px solid var(--border-light);
+        border-radius: 14px;
         padding: 15px;
         margin-bottom: 12px;
         display: flex;
@@ -63,13 +65,14 @@
         transition: all 0.3s;
     }
     .seat-item:hover {
-        border-color: #cbd5e1;
-        background: #f1f5f9;
+        border-color: var(--primary-color);
+        background: var(--primary-light);
     }
     .seat-code {
         font-size: 1.2rem;
         font-weight: 800;
-        color: #1e293b;
+        color: var(--text-ink);
+        font-family: 'Sora', sans-serif;
     }
     #reader {
         width: 100%;
@@ -80,10 +83,10 @@
         border: none !important;
     }
     #reader__scan_region {
-        background: #f8fafc;
+        background: var(--bg-base);
     }
     .scanner-active {
-        border: 3px solid #ca8a04 !important;
+        border: 3px solid #f59e0b !important;
     }
 </style>
 @endsection

@@ -1,87 +1,163 @@
 @extends('layouts.staff')
 
+@section('page_title', 'Tạo Vé Tại Quầy - Sơ Đồ Ghế')
+
 @section('extra_css')
 <style>
-    .pos-seat-map {
-        background-color: #f8f9fa;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
-        overflow-x: auto;
+    .pos-seat-container {
+        background: var(--bg-surface);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        border: 1px solid var(--border-light);
     }
-    .cinema-screen {
-        width: 100%;
-        max-width: 500px;
-        margin: 0 auto 30px;
-        padding: 10px 0;
+
+    .cinema-screen-curved {
+        width: 80%;
+        max-width: 550px;
+        margin: 0 auto 35px;
+        padding: 12px 0;
         text-align: center;
-        background: linear-gradient(180deg, #e9ecef 0%, #f8f9fa 100%);
-        border-top: 5px solid #0dcaf0;
-        border-radius: 4px 4px 50px 50px;
-        font-weight: bold;
-        letter-spacing: 5px;
-        color: #6c757d;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        background: linear-gradient(180deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.02) 100%);
+        border-top: 4px solid #f59e0b;
+        border-radius: 8px 8px 60px 60px;
+        font-family: 'Sora', sans-serif;
+        font-weight: 800;
+        letter-spacing: 6px;
+        color: #d97706;
+        box-shadow: 0 8px 25px rgba(245, 158, 11, 0.15);
     }
+
     .seat-row {
         display: flex;
         justify-content: center;
         align-items: center;
-        margin-bottom: 8px;
-        gap: 6px;
+        margin-bottom: 10px;
+        gap: 8px;
     }
+
     .row-label {
-        width: 25px;
+        width: 30px;
         text-align: center;
-        font-weight: bold;
-        color: #adb5bd;
+        font-family: 'Sora', sans-serif;
+        font-weight: 700;
+        color: var(--text-muted);
+        font-size: 0.85rem;
     }
+
     .seat-btn {
-        width: 35px;
-        height: 35px;
+        width: 38px;
+        height: 38px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.75rem;
-        font-weight: bold;
-        border-radius: 6px;
+        font-family: 'Sora', sans-serif;
+        font-size: 0.8rem;
+        font-weight: 700;
+        border-radius: 8px;
         cursor: pointer;
         border: 2px solid transparent;
-        transition: transform 0.1s;
+        transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         user-select: none;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    .seat-btn:active:not(:disabled) {
-        transform: scale(0.95);
+
+    .seat-btn:hover:not(.seat-booked) {
+        transform: translateY(-3px) scale(1.08);
+        box-shadow: 0 5px 12px rgba(0,0,0,0.15);
     }
-    .seat-regular { background-color: #0dcaf0; color: white; border-color: #0bacce; }
-    .seat-vip { background-color: #ffc107; color: #000; border-color: #e0a800; font-weight: 800; }
-    .seat-sweetbox { background-color: #ec4899; color: white; border-color: #db2777; font-weight: 800; width: 76px; } /* 35*2 + 6 gap */
-    .seat-booked { background-color: #dee2e6; color: #6c757d; cursor: not-allowed; border-color: #ced4da; }
-    .seat-selected { 
-        background-color: #198754 !important; 
-        color: white !important;
-        border-color: #146c43 !important;
-        box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.3);
+
+    .seat-btn:active:not(.seat-booked) {
+        transform: scale(0.92);
+    }
+
+    .seat-regular {
+        background-color: #38bdf8;
+        color: #ffffff;
+        border-color: #0284c7;
+    }
+
+    .seat-vip {
+        background-color: #f59e0b;
+        color: #ffffff;
+        border-color: #d97706;
+    }
+
+    .seat-sweetbox {
+        background-color: #ec4899;
+        color: #ffffff;
+        border-color: #db2777;
+        width: 84px; /* Double seat width */
+    }
+
+    .seat-booked {
+        background-color: #94a3b8 !important;
+        color: #e2e8f0 !important;
+        cursor: not-allowed !important;
+        border-color: #64748b !important;
+        opacity: 0.5;
+        box-shadow: none !important;
+    }
+
+    .seat-selected {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: #ffffff !important;
+        border-color: #047857 !important;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.3) !important;
+        transform: scale(1.08);
+    }
+
+    .legend-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: var(--bg-base);
+        border: 1px solid var(--border-light);
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    /* POS Terminal Right Sidebar Card */
+    .pos-terminal-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-light);
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.06);
     }
 </style>
 @endsection
 
 @section('content')
-<div class="container-fluid p-4 bg-white rounded-3 shadow-sm">
-    <div class="d-flex align-items-center mb-4 border-bottom pb-3">
-        <a href="javascript:history.back()" class="btn btn-outline-secondary me-3">
-            <i class="fas fa-arrow-left"></i> Trở Lại
-        </a>
-        <h2 class="mb-0 text-primary fw-bold"><i class="fas fa-chair me-2"></i>Chọn Ghế</h2>
+<div class="container-fluid px-0">
+    <!-- Action Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4 bg-surface p-3 rounded-4 shadow-sm border border-light">
+        <div class="d-flex align-items-center gap-3">
+            <a href="javascript:history.back()" class="btn btn-outline-secondary rounded-pill px-4 fw-bold shadow-sm">
+                <i class="fas fa-arrow-left me-2"></i>Trở Lại Suất Chiếu
+            </a>
+            <div>
+                <h4 class="mb-0 fw-extrabold text-ink font-sora"><i class="fas fa-th text-amber me-2"></i>Sơ Đồ Ghế - POS Counter</h4>
+                <small class="text-muted">Chọn ghế theo yêu cầu của khách hàng tại quầy</small>
+            </div>
+        </div>
+        <span class="badge bg-amber text-dark px-3 py-2 rounded-pill fw-bold">
+            <i class="fas fa-door-open me-1"></i> {{ $showtime->room->name }}
+        </span>
     </div>
 
-    <div class="row">
-        <!-- Seat Map Area -->
-        <div class="col-lg-8 mb-4">
-            <div class="pos-seat-map text-center">
-                <div class="cinema-screen mb-4">MÀN CẢNH</div>
+    <div class="row g-4">
+        <!-- Seat Map Interactive Area -->
+        <div class="col-lg-8">
+            <div class="pos-seat-container text-center">
+                <!-- Curved Screen Bar -->
+                <div class="cinema-screen-curved mb-4">
+                    <i class="fas fa-tv me-2"></i>MÀN CHIẾU / SCREEN
+                </div>
 
-                <div class="d-inline-block text-start">
+                <!-- Seat Matrix -->
+                <div class="d-inline-block text-start overflow-auto w-100 pb-3">
                     @php
                         $groupedSeats = $room->seats->groupBy('row_name')->sortKeys();
                     @endphp
@@ -109,7 +185,8 @@
                                      class="seat-btn {{ $seatClass }}" 
                                      data-id="{{ $seat->id }}" 
                                      data-code="{{ $seat->getSeatCode() }}" 
-                                     data-type="{{ $seat->seat_type }}">
+                                     data-type="{{ $seat->seat_type }}"
+                                     title="{{ $isBooked ? 'Ghế đã bán' : $seat->getSeatCode() }}">
                                     {{ $seat->seat_number }}
                                 </div>
                             @endforeach
@@ -117,44 +194,62 @@
                         </div>
                     @endforeach
                 </div>
-            </div>
 
-            <!-- Legend -->
-            <div class="d-flex justify-content-center gap-4 mt-4 text-muted">
-                <div class="d-flex align-items-center"><div class="seat-btn seat-regular me-2" style="width:25px;height:25px"></div> Thường</div>
-                <div class="d-flex align-items-center"><div class="seat-btn seat-vip me-2" style="width:25px;height:25px"></div> VIP</div>
-                <div class="d-flex align-items-center"><div class="seat-btn seat-sweetbox me-2" style="width:40px;height:25px"></div> Đôi</div>
-                <div class="d-flex align-items-center"><div class="seat-btn seat-selected me-2" style="width:25px;height:25px"></div> Đang chọn</div>
-                <div class="d-flex align-items-center"><div class="seat-btn seat-booked me-2" style="width:25px;height:25px"></div> Đã bán</div>
+                <!-- Legend Bar -->
+                <div class="d-flex flex-wrap justify-content-center gap-3 mt-4 pt-3 border-top border-light text-ink">
+                    <div class="legend-chip"><span class="seat-btn seat-regular" style="width:22px;height:22px;pointer-events:none;"></span> Thường</div>
+                    <div class="legend-chip"><span class="seat-btn seat-vip" style="width:22px;height:22px;pointer-events:none;"></span> VIP</div>
+                    <div class="legend-chip"><span class="seat-btn seat-sweetbox" style="width:36px;height:22px;pointer-events:none;"></span> Đôi (Sweetbox)</div>
+                    <div class="legend-chip"><span class="seat-btn seat-selected" style="width:22px;height:22px;pointer-events:none;"></span> Đang chọn</div>
+                    <div class="legend-chip"><span class="seat-btn seat-booked" style="width:22px;height:22px;pointer-events:none;"></span> Đã bán / Đang giữ</div>
+                </div>
             </div>
         </div>
 
-        <!-- POS Sidebar -->
+        <!-- POS Terminal Right Sidebar Card -->
         <div class="col-lg-4">
-            <div class="card border-primary mb-3">
-                <div class="card-header bg-primary text-white fw-bold">
-                    Thông tin GD ({{ $showtime->room->name }})
+            <div class="pos-terminal-card p-4">
+                <div class="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom border-light">
+                    <h5 class="fw-extrabold font-sora text-ink mb-0"><i class="fas fa-shopping-cart text-amber me-2"></i>Giỏ Hàng POS</h5>
+                    <span class="badge bg-light text-muted border px-2 py-1 small">Quầy Bán Vé</span>
                 </div>
-                <div class="card-body">
-                    <p class="mb-1 text-muted small">Phim</p>
-                    <h6 class="fw-bold text-dark">{{ $showtime->movie->title }}</h6>
-                    <hr>
-                    <p class="mb-1 text-muted small">Suất chiếu</p>
-                    <h6 class="fw-bold">{{ $showtime->start_time->format('H:i | d/m/Y') }}</h6>
-                    <hr>
-                    <div id="selectedSeatsList" class="mb-3 p-2 bg-light rounded text-center text-muted" style="min-height: 40px;">
-                        Chưa chọn ghế
-                    </div>
-                    
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="fw-bold">Tổng cộng:</span>
-                        <span class="fs-4 fw-bold text-danger" id="totalPriceDisplay">0₫</span>
-                    </div>
 
-                    <button class="btn btn-success w-100 py-3 fw-bold fs-5 shadow-sm" id="btnContinue" disabled onclick="proceedToCheckout()">
-                        Thanh Toán <i class="fas fa-arrow-right ms-2"></i>
-                    </button>
+                <!-- Movie & Showtime Info -->
+                <div class="mb-3 p-3 rounded-3 bg-light border border-light">
+                    <div class="fw-bold text-ink mb-1 fs-6">{{ $showtime->movie->title }}</div>
+                    <div class="small text-muted mb-1"><i class="fas fa-door-open me-1 text-amber"></i> {{ $showtime->room->name }}</div>
+                    <div class="small text-muted"><i class="fas fa-clock me-1 text-amber"></i> {{ $showtime->start_time->format('H:i') }} - {{ $showtime->start_time->format('d/m/Y') }}</div>
                 </div>
+
+                <!-- Selected Seats Tags List -->
+                <label class="form-label font-sora fw-bold small text-muted">DANH SÁCH GHẾ ĐÃ CHỌN:</label>
+                <div id="selectedSeatsChips" class="mb-3 p-3 rounded-3 border border-light text-center" style="min-height: 70px; background: var(--bg-base);">
+                    <span class="text-muted small"><i class="fas fa-mouse-pointer me-1"></i>Chưa chọn ghế nào</span>
+                </div>
+
+                <!-- Price Summary -->
+                <div class="space-y-2 mb-4">
+                    <div class="d-flex justify-content-between align-items-center text-muted small">
+                        <span>Giá vé cơ bản:</span>
+                        <span id="subtotalDisplay" class="fw-bold text-ink">0 ₫</span>
+                    </div>
+                    @if(($showtime->surcharge ?? 0) > 0)
+                        <div class="d-flex justify-content-between align-items-center text-muted small">
+                            <span>Phụ thu suất chiếu:</span>
+                            <span class="fw-bold text-amber">+{{ number_format($showtime->surcharge) }} ₫</span>
+                        </div>
+                    @endif
+                    <hr class="my-2 border-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-extrabold text-ink font-sora fs-6">TỔNG THÀNH TIỀN:</span>
+                        <span id="totalPriceDisplay" class="fw-extrabold text-danger fs-3 font-sora">0 ₫</span>
+                    </div>
+                </div>
+
+                <!-- Submit Action Button -->
+                <button type="button" class="btn btn-amber w-100 py-3 fw-extrabold font-sora fs-5 rounded-3 shadow-lg" id="btnContinue" disabled onclick="proceedToCheckout()">
+                    XÁC NHẬN VÀ CHUYỂN BƯỚC <i class="fas fa-arrow-right ms-2"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -186,40 +281,42 @@
     
     function updateCart() {
         const btnContinue = document.getElementById('btnContinue');
-        const listDiv = document.getElementById('selectedSeatsList');
+        const chipsDiv = document.getElementById('selectedSeatsChips');
+        const subtotalDiv = document.getElementById('subtotalDisplay');
         const totalDiv = document.getElementById('totalPriceDisplay');
         
         if (selectedSeats.size === 0) {
             btnContinue.disabled = true;
-            listDiv.innerHTML = 'Chưa chọn ghế';
-            listDiv.classList.add('text-muted');
-            listDiv.classList.remove('text-success', 'fw-bold');
-            totalDiv.textContent = '0₫';
+            chipsDiv.innerHTML = '<span class="text-muted small"><i class="fas fa-mouse-pointer me-1"></i>Chưa chọn ghế nào</span>';
+            subtotalDiv.textContent = '0 ₫';
+            totalDiv.textContent = '0 ₫';
             return;
         }
         
         btnContinue.disabled = false;
         
         let total = 0;
-        let codes = [];
+        let chipsHtml = '';
         
         selectedSeats.forEach(id => {
             const el = document.querySelector(`[data-id="${id}"]`);
             if (el) {
-                codes.push(el.dataset.code);
-                const basePrice = ticketPrices[el.dataset.type] || 0;
+                const code = el.dataset.code;
+                const type = el.dataset.type;
+                const basePrice = ticketPrices[type] || 0;
                 total += basePrice + surcharge;
+
+                chipsHtml += `<span class="badge bg-amber text-dark font-sora fw-bold px-2 py-1 me-1 mb-1 shadow-sm">${code} (${type})</span>`;
             }
         });
         
-        listDiv.innerHTML = codes.join(', ');
-        listDiv.classList.remove('text-muted');
-        listDiv.classList.add('text-success', 'fw-bold');
-        totalDiv.textContent = new Intl.NumberFormat('vi-VN').format(total) + '₫';
+        chipsDiv.innerHTML = chipsHtml;
+        subtotalDiv.textContent = new Intl.NumberFormat('vi-VN').format(total) + ' ₫';
+        totalDiv.textContent = new Intl.NumberFormat('vi-VN').format(total) + ' ₫';
     }
     
     function proceedToCheckout() {
-        if(selectedSeats.size === 0) return;
+        if (selectedSeats.size === 0) return;
         const seatIds = Array.from(selectedSeats).join(',');
         window.location.href = `/staff/walk-in/checkout?showtime_id=${showtimeId}&seat_ids=${seatIds}`;
     }
@@ -254,8 +351,6 @@
         fetchFreshSeatState();
 
         if (typeof window.Echo !== 'undefined') {
-            console.log('POS connecting to Showtime Channel: showtime.' + showtimeId);
-
             window.Echo.join(`showtime.${showtimeId}`)
                 .listen('.SeatStatusUpdated', handlePosSeatUpdate)
                 .listen('SeatStatusUpdated', handlePosSeatUpdate);
@@ -268,7 +363,6 @@
                 });
             }
         } else {
-            console.warn('Laravel Echo not available on POS. Polling every 5s.');
             setInterval(fetchFreshSeatState, 5000);
         }
     });
@@ -299,4 +393,16 @@
         updateCart();
     }
 </script>
+
+<style>
+    .btn-amber {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: #ffffff;
+        border: none;
+    }
+    .btn-amber:hover {
+        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+        color: #ffffff;
+    }
+</style>
 @endsection

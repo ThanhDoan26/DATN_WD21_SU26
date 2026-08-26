@@ -1,258 +1,190 @@
 @extends('layouts.manager')
 
-@section('title', 'Quản lý Phim')
-@section('page_title', 'Danh sách Phim')
+@section('title', 'Quản Lý Phim')
+@section('page_title', 'Danh Sách Phim Chiếu Rạp')
 
 @section('content')
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm rounded-4">
-            <div class="card-body p-4">
-                <form action="{{ route('manager.movies.index') }}" method="GET" class="row g-3 align-items-end">
-                    <div class="col-md-4">
-                        <label class="form-label text-muted fw-semibold mb-1">Tìm kiếm</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
-                            <input type="text" name="search" class="form-control border-start-0 bg-light" placeholder="Nhập tên phim..." value="{{ request('search') }}">
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label text-muted fw-semibold mb-1">Loại phim / Thể loại</label>
-                        <select name="category_id" class="form-select bg-light">
-                            <option value="">Tất cả loại phim</option>
-                            @foreach($categories as $category)
-                                <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
-                                    {{ $category->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label text-muted fw-semibold mb-1">Trạng thái</label>
-                        <select name="status" class="form-select bg-light">
-                            <option value="">Tất cả trạng thái</option>
-                            <option value="COMING_SOON" {{ request('status') == 'COMING_SOON' ? 'selected' : '' }}>Sắp chiếu</option>
-                            <option value="NOW_SHOWING" {{ request('status') == 'NOW_SHOWING' ? 'selected' : '' }}>Đang chiếu</option>
-                            <option value="ENDED" {{ request('status') == 'ENDED' ? 'selected' : '' }}>Ngưng chiếu</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100 fw-semibold shadow-sm">
-                            Lọc kết quả
-                        </button>
-                    </div>
-                </form>
+<!-- Breadcrumb -->
+<div class="breadcrumb-custom mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}" class="text-decoration-none text-muted fw-semibold">Dashboard</a></li>
+            <li class="breadcrumb-item active text-emerald font-sora fw-bold">Danh Sách Phim</li>
+        </ol>
+    </nav>
+</div>
+
+<!-- Page Title & Header Actions -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h2 class="fw-extrabold text-ink font-sora mb-1 fs-3"><i class="fas fa-film text-emerald me-2"></i>Danh Sách Phim Chiếu Rạp</h2>
+        <p class="text-muted small mb-0">Theo dõi thông tin và thời lượng tất cả các phim thuộc hệ thống</p>
+    </div>
+</div>
+
+<!-- Search & Filter Card -->
+<div class="card border-0 shadow-sm rounded-4 mb-4" style="background: var(--bg-surface);">
+    <div class="card-body p-4">
+        <form action="{{ route('manager.movies.index') }}" method="GET" class="row g-3 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label font-sora fw-bold small text-muted">Tìm kiếm phim</label>
+                <div class="input-group">
+                    <span class="input-group-text border-end-0 bg-transparent text-muted"><i class="fas fa-search"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Nhập tên phim cần tìm..." value="{{ request('search') }}">
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label font-sora fw-bold small text-muted">Thể loại</label>
+                <select name="category_id" class="form-select font-sora fw-semibold">
+                    <option value="">-- Tất cả thể loại --</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
+                            {{ $category->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label font-sora fw-bold small text-muted">Trạng thái chiếu</label>
+                <select name="status" class="form-select font-sora fw-semibold">
+                    <option value="">-- Tất cả trạng thái --</option>
+                    <option value="COMING_SOON" {{ request('status') == 'COMING_SOON' ? 'selected' : '' }}>Sắp chiếu</option>
+                    <option value="NOW_SHOWING" {{ request('status') == 'NOW_SHOWING' ? 'selected' : '' }}>Đang chiếu</option>
+                    <option value="ENDED" {{ request('status') == 'ENDED' ? 'selected' : '' }}>Ngưng chiếu</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <button type="submit" class="btn btn-emerald font-sora fw-bold w-100"><i class="fas fa-filter me-1"></i> Lọc kết quả</button>
             </div>
         </form>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Danh sách Phim</h5>
-        <div class="d-flex gap-2">
-            <!-- Read-only view for manager -->
-        </div>
+<!-- Movies Table Card -->
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="background: var(--bg-surface);">
+    <div class="card-header bg-transparent border-bottom border-light p-4 d-flex align-items-center justify-content-between">
+        <h5 class="mb-0 fw-extrabold font-sora text-ink"><i class="fas fa-video me-2 text-emerald"></i>Danh Sách Phim</h5>
+        <span class="badge bg-emerald-subtle text-emerald px-3 py-2 rounded-pill font-sora fw-extrabold" style="background-color: rgba(16, 185, 129, 0.1); color: #059669;">
+            Tổng: {{ $movies->total() ?? count($movies) }} phim
+        </span>
     </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th width="80">Poster</th>
-                        <th>Tên phim</th>
-                        <th>Danh mục</th>
-                        <th width="110">Định dạng</th>
-                        <th>Thời lượng</th>
-                        <th>Trạng thái</th>
-                        <th class="text-center" width="150">Hành động</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($movies as $movie)
-                    <tr>
-                        <td>
-                            @if($movie->poster_url)
-                                <img src="{{ asset('storage/' . $movie->poster_url) }}" alt="{{ $movie->title }}" class="img-thumbnail" style="width: 60px; height: 80px; object-fit: cover;">
-                            @else
-                                <div class="bg-light d-flex align-items-center justify-content-center text-muted" style="width: 60px; height: 80px; font-size: 10px;">
-                                    No Image
-                                </div>
+
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th class="ps-4" style="width: 80px;">Poster</th>
+                    <th>Tên Phim & Độ Tuổi</th>
+                    <th>Thể Loại</th>
+                    <th>Định Dạng</th>
+                    <th>Thời Lượng</th>
+                    <th>Trạng Thái</th>
+                    <th class="pe-4 text-end" style="width: 100px;">Hành Động</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($movies as $movie)
+                <tr>
+                    <td class="ps-4">
+                        @if($movie->poster_url)
+                            <img src="{{ str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" 
+                                 alt="{{ $movie->title }}" 
+                                 class="rounded-3 shadow-sm border border-light" 
+                                 style="width: 60px; height: 85px; object-fit: cover;">
+                        @else
+                            <div class="bg-emerald-subtle text-emerald rounded-3 d-flex align-items-center justify-content-center fw-bold" style="width: 60px; height: 85px; background: rgba(16, 185, 129, 0.1);">
+                                <i class="fas fa-film fa-lg"></i>
+                            </div>
+                        @endif
+                    </td>
+                    <td>
+                        <div class="font-sora fw-extrabold text-ink fs-6 mb-1">{{ $movie->title }}</div>
+                        <div class="d-flex align-items-center gap-2">
+                            @if($movie->age_rating)
+                                <span class="badge bg-danger px-2 py-1 font-sora fw-bold small">{{ $movie->age_rating }}</span>
                             @endif
-                        </td>
-                        <td>
-                            <strong>{{ $movie->title }}</strong><br>
-                            <small class="text-muted">{{ $movie->age_rating ?: 'Chưa đặt độ tuổi' }} | {{ $movie->language ?: 'Chưa cập nhật' }}</small>
-                        </td>
-                        <td>
+                            <small class="text-muted font-sora">{{ $movie->language ?? 'Phụ đề Tiếng Việt' }}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-1">
                             @foreach($movie->categories as $cat)
-                                <span class="badge bg-secondary">{{ $cat->name }}</span>
+                                <span class="badge bg-light text-muted border px-2 py-1 font-sora fw-semibold">{{ $cat->name }}</span>
                             @endforeach
-                        </td>
-                        <td>
-                            @if(is_array($movie->format) && count($movie->format) > 0)
-                                @foreach($movie->format as $fmt)
-                                    <span class="badge bg-info text-dark fw-bold mb-1 d-inline-block">{{ $fmt }}</span>
-                                @endforeach
-                            @elseif(is_string($movie->format) && $movie->format !== '')
-                                <span class="badge bg-info text-dark fw-bold mb-1 d-inline-block">{{ $movie->format }}</span>
-                            @else
-                                <span class="text-muted" style="font-size:12px;">--</span>
-                            @endif
-                        </td>
-                        <td>{{ $movie->getDurationFormatted() }}</td>
-                        <td>
-                            @if($movie->status == 'COMING_SOON')
-                                <span class="badge bg-warning text-dark">Sắp chiếu</span>
-                            @elseif($movie->status == 'NOW_SHOWING')
-                                <span class="badge bg-success">Đang chiếu</span>
-                            @else
-                                <span class="badge bg-danger">Ngưng chiếu</span>
-                            @endif
-                        </td>
-                        <td class="text-center">
-                            <a href="{{ route('manager.movies.show', $movie) }}" class="btn btn-sm btn-info" title="Xem chi tiết">
+                        </div>
+                    </td>
+                    <td>
+                        @php
+                            $fmtList = is_array($movie->format) ? $movie->format : (is_string($movie->format) ? explode(',', $movie->format) : ['2D']);
+                        @endphp
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach($fmtList as $fmt)
+                                @php
+                                    $fmtStr = trim(strtoupper($fmt));
+                                    $badgeClass = str_contains($fmtStr, 'IMAX') ? 'badge-format-imax' : (str_contains($fmtStr, '3D') ? 'badge-format-3d' : 'badge-format-2d');
+                                @endphp
+                                <span class="{{ $badgeClass }}">{{ $fmtStr }}</span>
+                            @endforeach
+                        </div>
+                    </td>
+                    <td>
+                        <span class="font-sora fw-bold text-ink"><i class="fas fa-clock text-amber me-1"></i>{{ $movie->duration }}</span> <small class="text-muted">phút</small>
+                    </td>
+                    <td>
+                        @if($movie->status == 'COMING_SOON')
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1 rounded-pill font-sora fw-bold">
+                                <i class="fas fa-hourglass-start me-1"></i>Sắp chiếu
+                            </span>
+                        @elseif($movie->status == 'NOW_SHOWING')
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill font-sora fw-bold">
+                                <i class="fas fa-play-circle me-1"></i>Đang chiếu
+                            </span>
+                        @else
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1 rounded-pill font-sora fw-bold">
+                                <i class="fas fa-stop-circle me-1"></i>Ngưng chiếu
+                            </span>
+                        @endif
+                    </td>
+                    <td class="pe-4 text-end">
+                        <div class="btn-action-group">
+                            <a href="{{ route('manager.movies.show', $movie) }}" class="btn-action btn-action-view" title="Xem Chi Tiết Phim">
                                 <i class="fas fa-eye"></i>
                             </a>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="6" class="text-center">Chưa có dữ liệu phim</td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        <div class="mt-3">
-            {{ $movies->withQueryString()->links() }}
-        </div>
+                        </div>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7" class="text-center py-5">
+                        <i class="fas fa-film text-muted opacity-50 mb-3" style="font-size: 3.5rem;"></i>
+                        <p class="text-muted font-sora fs-6">Chưa tìm thấy phim nào phù hợp.</p>
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
+    @if($movies->hasPages())
+        <div class="card-footer bg-transparent border-top border-light p-3 d-flex justify-content-center">
+            {{ $movies->withQueryString()->links('pagination::bootstrap-5') }}
+        </div>
+    @endif
 </div>
-<style>
-/* Custom Styles for Professional Look */
-.rounded-4 {
-    border-radius: 1rem !important;
-}
-.bg-light {
-    background-color: #f8f9fa !important;
-}
-.custom-table th {
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.5px;
-    padding-top: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #edf2f9;
-}
-.custom-table td {
-    padding-top: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #edf2f9;
-}
-.custom-table tbody tr {
-    transition: all 0.2s ease;
-}
-.custom-table tbody tr:hover {
-    background-color: #f8f9fc;
-}
-
-/* Poster styling */
-.poster-container {
-    width: 65px;
-    height: 90px;
-    border-radius: 8px;
-    overflow: hidden;
-    position: relative;
-    background-color: #e9ecef;
-}
-.movie-poster {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-}
-.custom-table tbody tr:hover .movie-poster {
-    transform: scale(1.05);
-}
-
-/* Badges */
-.custom-badge-category {
-    background-color: #e2e8f0;
-    color: #475569;
-    font-weight: 500;
-}
-.custom-badge-warning {
-    background-color: rgba(245, 158, 11, 0.1);
-    color: #d97706;
-}
-.custom-badge-success {
-    background-color: rgba(16, 185, 129, 0.1);
-    color: #059669;
-}
-.custom-badge-danger {
-    background-color: rgba(239, 68, 68, 0.1);
-    color: #dc2626;
-}
-
-/* Action buttons */
-.btn-icon {
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    transition: all 0.2s;
-}
-.btn-icon:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-}
-.btn-icon.text-primary:hover { background-color: #e0e7ff; }
-.btn-icon.text-warning:hover { background-color: #fef3c7; }
-.btn-icon.text-danger:hover { background-color: #fee2e2; }
-
-/* Empty state */
-.empty-state {
-    padding: 2rem 0;
-}
-
-/* Input styles */
-.form-control:focus, .form-select:focus {
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
-    border-color: #86b7fe;
-}
-.input-group-text {
-    border-right: none;
-}
-.input-group .form-control {
-    border-left: none;
-}
-.input-group .form-control:focus {
-    border-color: #dee2e6; /* Keep border color same as standard to avoid left border appearing */
-    box-shadow: none; /* Remove shadow on focus inside group for cleaner look */
-}
-.input-group:focus-within {
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
-    border-radius: 0.375rem;
-}
-.input-group:focus-within .form-control, .input-group:focus-within .input-group-text {
-    border-color: #86b7fe;
-}
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    // Initialize tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl)
-    });
-});
-</script>
 @endsection
 
+@section('extra_css')
+<style>
+    .btn-emerald {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: #ffffff;
+        border: none;
+    }
+    .btn-emerald:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: #ffffff;
+    }
+    .text-emerald {
+        color: #10b981 !important;
+    }
+</style>
+@endsection

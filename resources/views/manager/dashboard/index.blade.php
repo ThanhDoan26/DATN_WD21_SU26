@@ -51,7 +51,7 @@
         <div class="stat-card stat-card-danger shadow-sm">
             <div class="stat-card-body p-3 text-center">
                 <i class="fas fa-ticket-alt text-danger fs-3 animate-icon"></i>
-                <div class="stat-card-number fw-bold text-dark fs-4 mt-2 count-number" data-value="{{ $totalTicketsSold ?? 0 }}">0</div>
+                <div id="stat-tickets-sold" class="stat-card-number fw-bold text-dark fs-4 mt-2 count-number" data-value="{{ $totalTicketsSold ?? 0 }}">0</div>
                 <div class="stat-card-label text-muted small fw-semibold">Vé đã bán</div>
             </div>
         </div>
@@ -61,7 +61,7 @@
         <div class="stat-card stat-card-secondary shadow-sm">
             <div class="stat-card-body p-3 text-center">
                 <i class="fas fa-chart-line text-secondary fs-3 animate-icon"></i>
-                <div class="stat-card-number fw-bold text-dark fs-4 mt-2 count-number" data-value="{{ $totalRevenue ?? 0 }}" data-is-money="true">0 đ</div>
+                <div id="stat-total-revenue" class="stat-card-number fw-bold text-dark fs-4 mt-2 count-number" data-value="{{ $totalRevenue ?? 0 }}" data-is-money="true">0 đ</div>
                 <div class="stat-card-label text-muted small fw-semibold">Doanh thu tổng</div>
             </div>
         </div>
