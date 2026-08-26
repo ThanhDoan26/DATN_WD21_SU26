@@ -1,5 +1,8 @@
 @extends('layouts.staff')
 
+@section('title', 'Tạo vé tại quầy - Chọn Phim')
+@section('page_title', 'Tạo vé tại quầy')
+
 @section('content')
 <div class="container-fluid p-4">
     <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">

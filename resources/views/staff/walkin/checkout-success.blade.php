@@ -1,5 +1,8 @@
 @extends('layouts.staff')
 
+@section('title', 'Thanh Toán Thành Công')
+@section('page_title', 'Đặt Vé Thành Công')
+
 @section('content')
 <div class="container py-5">
     <div class="row justify-content-center">

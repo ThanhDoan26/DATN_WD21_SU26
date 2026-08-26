@@ -1,5 +1,8 @@
 @extends('layouts.staff')
 
+@section('title', 'Chọn Suất Chiếu: ' . $movie->title)
+@section('page_title', 'Chọn Suất Chiếu')
+
 @section('content')
 <div class="container-fluid p-4 bg-white rounded-3 shadow-sm">
     <div class="d-flex align-items-center mb-4 border-bottom pb-3">

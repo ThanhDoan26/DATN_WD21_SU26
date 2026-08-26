@@ -1,5 +1,8 @@
 @extends('layouts.staff')
 
+@section('title', 'Chọn Ghế - ' . ($showtime->movie->title ?? 'Walk-in Booking'))
+@section('page_title', 'Chọn Ghế')
+
 @section('extra_css')
 <style>
     .pos-seat-map {
