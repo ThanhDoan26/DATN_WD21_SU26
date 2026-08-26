@@ -75,10 +75,14 @@
 <script>
     function printTickets() {
         const printUrl = "{{ route('staff.ticket.print', ['type' => 'booking', 'id' => $booking['booking_id']]) }}";
-        const printWindow = window.open(printUrl, '_blank', 'width=450,height=750,scrollbars=yes');
-        if (printWindow) {
-            printWindow.focus();
+        let iframe = document.getElementById('print-iframe');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'print-iframe';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
         }
+        iframe.src = printUrl;
     }
 
     @if(request()->query('auto_print'))
