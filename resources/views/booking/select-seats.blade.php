@@ -515,6 +515,7 @@
         @csrf
         <input type="hidden" name="showtime_id" id="form_showtime_id" value="{{ $showtime->id }}" />
         <input type="hidden" name="seat_ids" id="form_seat_ids" value="" />
+        <input type="hidden" name="combos" id="form_combos" value="" />
         
         <div class="max-w-7xl mx-auto px-4 py-4 md:py-6 flex flex-col md:flex-row items-center justify-between gap-6">
             <!-- Selected Seats -->
@@ -697,6 +698,7 @@
                     selectedSeats.clear();
                     sessionStorage.removeItem(STORAGE_KEY);
                     sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
+                    sessionStorage.removeItem('selectedCombos_showtime_' + showtimeId);
                     window.location.href = "{{ route('movies.show', $showtime->movie_id) }}";
                 }
             } else {
@@ -921,6 +923,12 @@
             const seatIds = Array.from(selectedSeats).join(',');
             document.getElementById('form_seat_ids').value = seatIds;
 
+            const combosKey = 'selectedCombos_showtime_' + showtimeId;
+            const storedCombos = sessionStorage.getItem(combosKey);
+            if (storedCombos) {
+                document.getElementById('form_combos').value = storedCombos;
+            }
+
             const btn = document.getElementById('checkoutButton');
             if (btn) btn.disabled = true;
 
@@ -1144,6 +1152,7 @@
                     sessionStorage.removeItem(STORAGE_KEY);
                     sessionStorage.removeItem('booking_expires_at');
                     sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
+                    sessionStorage.removeItem('selectedCombos_showtime_' + showtimeId);
                     window.location.href = data.redirect_url || "{{ route('movies.show', $showtime->movie_id) }}";
                 } else {
                     alert(data.error || "Có lỗi xảy ra khi hủy vé.");

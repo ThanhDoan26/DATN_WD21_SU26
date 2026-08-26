@@ -205,7 +205,7 @@ it('allows staff of Cinema A to view seat map and reserve for Cinema A showtime'
 
 // ── TICKET SEARCH, LOOKUP, CHECK-IN, PRINT TESTS ────────────────────
 
-it('prevents staff of Cinema A from searching / viewing ticket info of Cinema B', function () {
+it('allows staff of Cinema A to search / view ticket info of Cinema B with read-only restriction', function () {
     $cinemaAData = createCinemaWithRoomAndShowtime('Cinema A');
     $cinemaBData = createCinemaWithRoomAndShowtime('Cinema B');
 
@@ -219,12 +219,12 @@ it('prevents staff of Cinema A from searching / viewing ticket info of Cinema B'
     ]);
 
     $customerB = User::create([
-        'name' => 'Secret Customer Cinema B',
-        'email' => 'secret_customer_b@example.com',
+        'name' => 'Customer Cinema B',
+        'email' => 'customer_b_' . uniqid() . '@example.com',
         'password' => bcrypt('password'),
     ]);
 
-    $bookingCode = 'BK-SECRET-B-' . uniqid();
+    $bookingCode = 'BK-OTHER-B-' . uniqid();
     $bookingB = Booking::create([
         'user_id' => $customerB->id,
         'showtime_id' => $cinemaBData['showtime']->id,
@@ -234,18 +234,29 @@ it('prevents staff of Cinema A from searching / viewing ticket info of Cinema B'
         'booking_time' => now(),
     ]);
 
+    $bookedSeatB = BookedSeat::create([
+        'booking_id' => $bookingB->id,
+        'seat_id' => $cinemaBData['seat']->id,
+        'price_at_booking' => 120000,
+        'status' => 'PAID',
+    ]);
+
     $response = $this->actingAs($staffA)->get(route('staff.ticket.search', ['code' => $bookingCode]));
 
     $response->assertStatus(200);
-    // Must NOT contain sensitive details of other cinema's booking
-    $response->assertDontSee($customerB->name);
-    $response->assertDontSee($customerB->email);
-    $response->assertDontSee('Mã đơn: ' . $bookingCode);
-    // Must show warning
-    $response->assertSee('không tồn tại hoặc không thuộc rạp');
+    // Can view booking details & Cinema B name
+    $response->assertSee($customerB->name);
+    $response->assertSee($bookingCode);
+    $response->assertSee('Cinema B');
+    // Must show warning banner for other cinema
+    $response->assertSee('Vé thuộc chi nhánh khác');
+    // Action buttons for check-in and printing must NOT be present
+    $response->assertDontSee('CHECK-IN TOÀN BỘ GHẾ');
+    $response->assertDontSee('IN TOÀN BỘ VÉ');
+    $response->assertSee('Chức năng Check-in và In vé bị khóa');
 });
 
-it('prevents staff of Cinema A from looking up ticket of Cinema B via API', function () {
+it('allows staff of Cinema A to look up ticket of Cinema B via API with read-only permissions', function () {
     $cinemaAData = createCinemaWithRoomAndShowtime('Cinema A');
     $cinemaBData = createCinemaWithRoomAndShowtime('Cinema B');
 
@@ -265,17 +276,23 @@ it('prevents staff of Cinema A from looking up ticket of Cinema B via API', func
         'total_price' => 60000,
         'status' => 'Paid',
         'booking_code' => $bookingCode,
-        'customer_name' => 'Secret B Name',
+        'customer_name' => 'Customer B Name',
         'booking_time' => now(),
     ]);
 
     $response = $this->actingAs($staffA)->getJson(route('staff.ticket.lookup', ['code' => $bookingCode]));
 
-    $response->assertStatus(404);
+    $response->assertStatus(200);
     $response->assertJson([
-        'success' => false,
+        'success' => true,
+        'is_other_cinema' => true,
+        'can_checkin' => false,
+        'can_print' => false,
+        'data' => [
+            'booking_code' => $bookingCode,
+            'cinema_name' => 'Cinema B',
+        ],
     ]);
-    $response->assertDontSee('Secret B Name');
 });
 
 it('prevents staff of Cinema A from checking in ticket of Cinema B', function () {
@@ -312,7 +329,7 @@ it('prevents staff of Cinema A from checking in ticket of Cinema B', function ()
         'id' => $bookingB->id,
     ]);
 
-    $response->assertStatus(404);
+    $response->assertStatus(403);
     expect($bookedSeatB->fresh()->status)->toBe('PAID'); // NOT checked in
 });
 
@@ -340,5 +357,5 @@ it('prevents staff of Cinema A from printing ticket of Cinema B', function () {
 
     $response = $this->actingAs($staffA)->get(route('staff.ticket.print', ['type' => 'booking', 'id' => $bookingB->id]));
 
-    $response->assertStatus(404);
+    $response->assertStatus(403);
 });
