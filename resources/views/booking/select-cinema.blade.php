@@ -66,7 +66,7 @@
                                 </div>
 
                                 <!-- Select Button -->
-                                <button class="w-full bg-primary hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 group-hover:shadow-lg group-hover:shadow-primary/50">
+                                <button type="button" class="w-full bg-primary hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 group-hover:shadow-lg group-hover:shadow-primary/50">
                                     <i class="fas fa-arrow-right mr-2"></i>Chọn Rạp Này
                                 </button>
                             </div>
@@ -89,7 +89,19 @@
 
 @push('scripts')
     <script>
-        function selectCinema(cinemaId, cinemaName) {
+        document.addEventListener('DOMContentLoaded', function() {
+            // Document ready
+        });
+
+        // Step 1: BFCache listener
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                console.log('Restored from BFCache...');
+            }
+        });
+
+        function selectCinema(cinemaId, cinemaName, e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
             const movieId = {{ $movie->id }};
             // Chuyển đến bước chọn ngày và suất chiếu
             @if(isset($isWalkIn) && $isWalkIn)

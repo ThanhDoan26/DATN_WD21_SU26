@@ -11,6 +11,8 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
     <style>
         :root {
             --primary-color: #854d0e; /* Yellow/Brown base for staff */
@@ -114,7 +116,7 @@
             </li>
             <li>
                 <a href="{{ route('staff.ticket.search') }}" class="@if(request()->routeIs('staff.ticket.search')) active @endif">
-                    <i class="fas fa-ticket-alt"></i> <span>Tra cứu & Check-in vé</span>
+                    <i class="fas fa-ticket-alt"></i> <span>Tra cứu & In vé</span>
                 </a>
             </li>
             <li>

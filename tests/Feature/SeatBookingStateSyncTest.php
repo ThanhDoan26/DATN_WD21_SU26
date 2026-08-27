@@ -332,8 +332,43 @@ it('enriches seat collection with correct is_held, is_booked, can_toggle, busine
 });
 
 // ─────────────────────────────────────────────────────────────
-// CASE 8: COMPLETE PAYMENT FOR BOOKING IN PROCESSING STATUS
+// CASE 8: COMPLETE PAYMENT TESTS
 // ─────────────────────────────────────────────────────────────
+it('allows completePayment to succeed when booking status is Pending', function () {
+    $data = createTestCinemaRoomAndSeat();
+
+    $booking = Booking::create([
+        'user_id' => $data['user']->id,
+        'showtime_id' => $data['showtime']->id,
+        'total_price' => 100000,
+        'status' => 'Pending',
+        'booking_code' => 'BK-PEND-' . uniqid(),
+        'booking_time' => now()->subMinutes(1),
+    ]);
+
+    DB::table('booked_seats')->insert([
+        'booking_id' => $booking->id,
+        'seat_id' => $data['seat']->id,
+        'price_at_booking' => 100000,
+        'status' => 'RESERVED',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $bookingService = new \App\Services\BookingService();
+    $result = $bookingService->completePayment($booking->id, 'MOCK_PAYMENT', []);
+
+    expect($result)->toBeTrue();
+
+    $updatedBooking = Booking::find($booking->id);
+    expect($updatedBooking->status)->toBe('Paid')
+        ->and($updatedBooking->payment_method)->toBe('MOCK_PAYMENT')
+        ->and($updatedBooking->payment_time)->not->toBeNull();
+
+    $bookedSeat = DB::table('booked_seats')->where('booking_id', $booking->id)->first();
+    expect($bookedSeat->status)->toBe('PAID');
+});
+
 it('allows completePayment to succeed when booking status is PROCESSING', function () {
     $data = createTestCinemaRoomAndSeat();
 
@@ -362,8 +397,97 @@ it('allows completePayment to succeed when booking status is PROCESSING', functi
 
     $updatedBooking = Booking::find($booking->id);
     expect($updatedBooking->status)->toBe('Paid')
-        ->and($updatedBooking->payment_method)->toBe('VNPAY');
+        ->and($updatedBooking->payment_method)->toBe('VNPAY')
+        ->and($updatedBooking->payment_time)->not->toBeNull();
 
     $bookedSeat = DB::table('booked_seats')->where('booking_id', $booking->id)->first();
     expect($bookedSeat->status)->toBe('PAID');
 });
+
+it('throws exception when completePayment is called on an already Paid booking', function () {
+    $data = createTestCinemaRoomAndSeat();
+
+    $booking = Booking::create([
+        'user_id' => $data['user']->id,
+        'showtime_id' => $data['showtime']->id,
+        'total_price' => 100000,
+        'status' => 'Paid',
+        'booking_code' => 'BK-PAID-' . uniqid(),
+        'booking_time' => now()->subMinutes(5),
+    ]);
+
+    $bookingService = new \App\Services\BookingService();
+
+    expect(fn () => $bookingService->completePayment($booking->id, 'VNPAY', []))
+        ->toThrow(\Exception::class, "Không thể thanh toán booking này. Status: Paid.");
+});
+
+it('throws exception when completePayment is called for a non-existent booking', function () {
+    $bookingService = new \App\Services\BookingService();
+    $nonExistentId = 9999999;
+
+    expect(fn () => $bookingService->completePayment($nonExistentId, 'VNPAY', []))
+        ->toThrow(\Exception::class, "Booking $nonExistentId không tồn tại");
+});
+
+// ─────────────────────────────────────────────────────────────
+// CASE 9: SEAT ROOM INTEGRITY TESTS
+// ─────────────────────────────────────────────────────────────
+it('throws exception when createBooking is called with seats from different rooms', function () {
+    $dataRoom1 = createTestCinemaRoomAndSeat();
+
+    // Create a second room and seat in the same cinema
+    $room2 = Room::create([
+        'cinema_id' => $dataRoom1['room']->cinema_id,
+        'name' => 'Room 2',
+        'format' => '2D',
+        'total_seats' => 50,
+        'status' => 'ACTIVE',
+    ]);
+
+    $seatRoom2 = Seat::create([
+        'room_id' => $room2->id,
+        'row_name' => 'A',
+        'seat_number' => 1,
+        'seat_type' => 'Regular',
+        'status' => Seat::STATUS_AVAILABLE,
+    ]);
+
+    $bookingService = new \App\Services\BookingService();
+
+    // Showtime belongs to room 1, but we request seats from both room 1 and room 2
+    expect(fn () => $bookingService->createBooking(
+        $dataRoom1['user']->id,
+        $dataRoom1['showtime']->id,
+        [$dataRoom1['seat']->id, $seatRoom2->id]
+    ))->toThrow(\Exception::class, "không thuộc phòng chiếu của suất chiếu này");
+});
+
+it('throws exception in SeatSelectionValidationService when seat does not belong to showtime room', function () {
+    $dataRoom1 = createTestCinemaRoomAndSeat();
+
+    $room2 = Room::create([
+        'cinema_id' => $dataRoom1['room']->cinema_id,
+        'name' => 'Room 2',
+        'format' => '2D',
+        'total_seats' => 50,
+        'status' => 'ACTIVE',
+    ]);
+
+    $seatRoom2 = Seat::create([
+        'room_id' => $room2->id,
+        'row_name' => 'A',
+        'seat_number' => 1,
+        'seat_type' => 'Regular',
+        'status' => Seat::STATUS_AVAILABLE,
+    ]);
+
+    $validator = new \App\Services\SeatSelectionValidationService();
+
+    expect(fn () => $validator->validateSelectedSeats(
+        $dataRoom1['showtime']->id,
+        [$seatRoom2->id]
+    ))->toThrow(\Exception::class, "không thuộc phòng chiếu của suất chiếu này");
+});
+
+

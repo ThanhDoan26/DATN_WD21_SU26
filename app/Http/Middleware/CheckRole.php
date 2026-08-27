@@ -16,11 +16,11 @@ class CheckRole
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
         if (!$request->user() || !$request->user()->role) {
-            abort(403, 'Unauthorized access.');
+            abort(403, 'Truy cập không được phép.');
         }
 
         if (!in_array($request->user()->role->role_name, $roles)) {
-            abort(403, 'You do not have permission to access this area.');
+            abort(403, 'Bạn không có quyền truy cập vào khu vực này.');
         }
 
         return $next($request);

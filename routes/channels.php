@@ -12,14 +12,10 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
  * Required return type: Array of user info
  */
 Broadcast::channel('showtime.{showtimeId}', function ($user, $showtimeId) {
-    if (!$user) {
-        return false;
-    }
-
     return [
-        'id' => $user->id,
-        'name' => $user->name ?? 'Khách hàng',
-        'role' => $user->role ?? 'CUSTOMER',
+        'id' => $user->id ?? ('guest_' . md5(session()->getId())),
+        'name' => $user->name ?? 'Khách hàng vãng lai',
+        'role' => $user->role ?? 'GUEST',
         'cinema_id' => $user->cinema_id ?? null,
     ];
 });
@@ -29,7 +25,7 @@ Broadcast::channel('showtime.{showtimeId}', function ($user, $showtimeId) {
  */
 Broadcast::channel('order.{bookingCode}', function ($user, $bookingCode) {
     if (!$user) {
-        return false;
+        return true; // Guest order channel listener support
     }
 
     // Admins and Staff can always inspect orders

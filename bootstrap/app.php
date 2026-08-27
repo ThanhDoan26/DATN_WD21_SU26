@@ -22,6 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->validateCsrfTokens(except: [
+            'cancel-explicit',
+            'api/booking/cancel-explicit',
+        ]);
+
         $middleware->web(append: [
             \App\Http\Middleware\CheckUserStatus::class,
         ]);
