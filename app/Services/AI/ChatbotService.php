@@ -34,13 +34,15 @@ class ChatbotService
         $history = $this->conversationService->getHistory($conversation, 6);
 
         // 3. Phân tích ý định (Intent)
-        $intent = $this->intentService->detectIntent($message, $history);
+        $intentData = $this->intentService->detectIntent($message, $history);
+        $intent = $intentData['intent'] ?? 'general';
+        $movieQuery = $intentData['movie_query'] ?? null;
 
         // 4. Lưu tin nhắn của User
         $this->conversationService->saveMessage($conversation, 'user', $message, $intent);
 
         // 5. Lấy dữ liệu (Knowledge)
-        $context = $this->knowledgeService->getContext($intent, $user, $message, $history);
+        $context = $this->knowledgeService->getContext($intent, $user, $message, $history, $movieQuery);
 
         // 6. Gắn context vào Prompt
         $finalPrompt = $this->promptService->buildPrompt($message, $context, $intent);
