@@ -49,7 +49,12 @@ class ChatbotService
         $systemInstruction = $this->promptService->buildSystemInstruction();
 
         // 7. Gọi AI kèm lịch sử
-        $response = $this->geminiService->generate($finalPrompt, $systemInstruction, $history);
+        try {
+            $response = $this->geminiService->generate($finalPrompt, $systemInstruction, $history);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Chatbot generate error: ' . $e->getMessage());
+            $response = 'Xin lỗi bạn, hiện tại hệ thống AI đang quá tải hoặc tạm thời gián đoạn. Bạn vui lòng thử lại sau giây lát nhé!';
+        }
 
         // 8. Lưu tin nhắn của AI
         $this->conversationService->saveMessage($conversation, 'assistant', $response);

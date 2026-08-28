@@ -53,11 +53,19 @@ Chỉ trả về JSON format CHÍNH XÁC như sau:
 }
 Không giải thích gì thêm.";
 
-        $response = $this->geminiService->generateJson($message, $systemInstruction);
-        
-        return [
-            'intent' => $response['intent'] ?? 'general',
-            'movie_query' => $response['movie_query'] ?? null
-        ];
+        try {
+            $response = $this->geminiService->generateJson($message, $systemInstruction);
+            
+            return [
+                'intent' => $response['intent'] ?? 'general',
+                'movie_query' => $response['movie_query'] ?? null
+            ];
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Intent detection failed, fallback to general: ' . $e->getMessage());
+            return [
+                'intent' => 'general',
+                'movie_query' => null
+            ];
+        }
     }
 }
