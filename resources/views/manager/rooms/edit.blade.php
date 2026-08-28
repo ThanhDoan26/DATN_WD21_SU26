@@ -1,29 +1,29 @@
 @extends('layouts.manager')
 
-@section('title', 'Edit Room - Admin')
-@section('page_title', 'Edit Room')
+@section('title', 'Sửa Phòng Chiếu')
+@section('page_title', 'Chỉnh sửa phòng chiếu')
 
 @section('content')
 <!-- Breadcrumb -->
 <div class="breadcrumb-custom">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('manager.rooms.index') }}">Rooms</a></li>
-            <li class="breadcrumb-item active">Edit</li>
+            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('manager.rooms.index') }}">Phòng chiếu</a></li>
+            <li class="breadcrumb-item active">Chỉnh sửa</li>
         </ol>
     </nav>
 </div>
 
 <!-- Page Title -->
 <div class="page-title">
-    <h2><i class="fas fa-edit"></i> Sửa Phòng</h2>
+    <h2><i class="fas fa-edit"></i> Sửa Phòng Chiếu</h2>
 </div>
 
 <!-- Form Card -->
 <div class="card">
     <div class="card-header">
-        <i class="fas fa-pencil"></i> Room Information
+        <i class="fas fa-edit"></i> Thông Tin Phòng Chiếu
     </div>
     <div class="card-body">
         <form action="{{ route('manager.rooms.update', $room->id) }}" method="POST">

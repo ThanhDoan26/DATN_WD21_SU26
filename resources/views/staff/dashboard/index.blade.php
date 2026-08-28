@@ -1,7 +1,7 @@
 @extends('layouts.staff')
 
-@section('title', 'Staff Dashboard')
-@section('page_title', 'Tổng quan')
+@section('title', 'Bảng điều khiển - Staff')
+@section('page_title', 'Bảng điều khiển')
 
 @section('extra_css')
 <link rel="preconnect" href="https://fonts.googleapis.com">
