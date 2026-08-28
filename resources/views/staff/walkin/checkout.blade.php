@@ -315,6 +315,7 @@
             if (result.success && result.redirect_url) {
                 window.location.href = result.redirect_url;
             } else {
+                window.showToast(result.message || 'Lỗi không xác định khi thanh toán.', 'error');
                 alertBox.textContent = result.message || 'Lỗi không xác định khi thanh toán.';
                 alertBox.classList.remove('d-none');
                 btn.disabled = false;
@@ -322,6 +323,7 @@
             }
         } catch (e) {
             console.error(e);
+            window.showToast('Lỗi hệ thống. Không thể kết nối tới server.', 'error');
             alertBox.textContent = 'Lỗi hệ thống. Không thể kết nối tới server.';
             alertBox.classList.remove('d-none');
             btn.disabled = false;
