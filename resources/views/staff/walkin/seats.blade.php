@@ -403,7 +403,7 @@
                 return button ? button.dataset.code : `ghế ${id}`;
             }).join(', ');
 
-            alert(`Ghế ${conflictCodes} đã được khách khác đặt hoặc đang giữ. Vui lòng chọn ghế khác.`);
+            window.showToast(`Ghế ${conflictCodes} đã được khách chọn và đã có người đặt/giữ. Vui lòng chọn ghế khác.`, 'error');
             updateCart();
             return false;
         } catch (error) {
@@ -439,6 +439,7 @@
                             btn.classList.remove('seat-selected');
                             if (selectedSeats.has(sid)) {
                                 selectedSeats.delete(sid);
+                                window.showToast(`Ghế ${btn.dataset.code} đã được khách chọn và đã có người đặt/giữ. Vui lòng chọn ghế khác.`, 'error');
                             }
                         } else if (!btn.classList.contains('seat-selected')) {
                             btn.classList.remove('seat-booked');
@@ -451,7 +452,10 @@
     }
 
     @if(session('error'))
-        alert("{{ session('error') }}");
+        window.showToast("{{ session('error') }}", 'error');
+    @endif
+    @if(session('success'))
+        window.showToast("{{ session('success') }}", 'success');
     @endif
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -476,24 +480,35 @@
 
     function handlePosSeatUpdate(e) {
         if (!e || !e.seatIds) return;
-        const isMe = e.userId && parseInt(e.userId) === currentStaffId;
+        const isMe = e.userId && currentStaffId && parseInt(e.userId) === parseInt(currentStaffId);
+        const statusUpper = e.status ? String(e.status).toUpperCase() : '';
+        const isLockedStatus = ['PAID', 'PENDING', 'HOLD', 'BOOKED'].includes(statusUpper);
+        const conflictSeatCodes = [];
 
         e.seatIds.forEach(seatId => {
             const btn = document.querySelector(`[data-id="${seatId}"]`);
             if (!btn) return;
 
-            if (e.status === 'PAID' || e.status === 'PENDING' || e.status === 'HOLD') {
+            if (isLockedStatus) {
                 if (!isMe) {
+                    const wasSelected = selectedSeats.has(seatId);
                     btn.classList.add('seat-booked');
                     btn.classList.remove('seat-selected');
-                    if (selectedSeats.has(seatId)) {
+                    btn.title = "Ghế đã có người đặt hoặc đang được giữ";
+                    if (wasSelected) {
                         selectedSeats.delete(seatId);
+                        conflictSeatCodes.push(btn.dataset.code || seatId);
                     }
                 }
-            } else if (e.status === 'AVAILABLE') {
+            } else if (statusUpper === 'AVAILABLE') {
                 btn.classList.remove('seat-booked');
             }
         });
+
+        if (conflictSeatCodes.length > 0) {
+            const seatListStr = conflictSeatCodes.join(', ');
+            window.showToast(`⚠️ Ghế ${seatListStr} đã được người khác đặt/giữ. Hệ thống đã tự động bỏ chọn các ghế này, vui lòng chọn ghế khác.`, 'error');
+        }
 
         updateCart();
     }

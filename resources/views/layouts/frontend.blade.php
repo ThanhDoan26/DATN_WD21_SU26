@@ -89,6 +89,7 @@
     <!-- AI Chatbot Widget -->
     @include('components.chatbot.widget')
 
+    @include('components.toast')
     @stack('scripts')
 </body>
 </html>

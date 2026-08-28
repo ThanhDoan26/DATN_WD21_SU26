@@ -502,6 +502,7 @@
             if (result.success && result.redirect_url) {
                 window.location.href = result.redirect_url;
             } else {
+                window.showToast(result.message || 'Lỗi không xác định khi thanh toán.', 'error');
                 alertBox.textContent = result.message || 'Lỗi không xác định khi thanh toán.';
                 alertBox.classList.remove('d-none');
                 btn.disabled = false;
@@ -509,7 +510,8 @@
             }
         } catch (e) {
             console.error(e);
-            alertBox.textContent = 'Lỗi hệ thống. Không thể kết nối tới máy chủ.';
+            window.showToast('Lỗi hệ thống. Không thể kết nối tới server.', 'error');
+            alertBox.textContent = 'Lỗi hệ thống. Không thể kết nối tới server.';
             alertBox.classList.remove('d-none');
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-money-bill-wave me-2"></i>THỬ LẠI';

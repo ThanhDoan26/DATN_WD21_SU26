@@ -284,6 +284,7 @@ class SeatSelectionValidationService
      */
     private function validateOrphanSeats(Collection $sortedSeats): void
     {
+        $allowBoundaryOrphan = (bool) config('booking.seat_hold.allow_boundary_orphan_seat', false);
         $seatsCount = $sortedSeats->count();
         $seats = $sortedSeats->values()->all();
 
@@ -295,24 +296,34 @@ class SeatSelectionValidationService
                 $leftOccupied = false;
                 if ($i > 0) {
                     $leftSeat = $seats[$i - 1];
-                    // Kiểm tra ghế kề bên trái thực sự có số thứ tự liền kề
                     if ((int)$leftSeat->seat_number === (int)$seat->seat_number - 1) {
                         $leftOccupied = $leftSeat->is_unavailable || !empty($leftSeat->is_selected);
                     }
+                } else {
+                    // $i == 0 là ghế đầu dãy. Nếu cho phép boundary thì leftOccupied = false, ngược lại = true
+                    $leftOccupied = !$allowBoundaryOrphan;
                 }
 
                 $rightOccupied = false;
                 if ($i < $seatsCount - 1) {
                     $rightSeat = $seats[$i + 1];
-                    // Kiểm tra ghế kề bên phải thực sự có số thứ tự liền kề
                     if ((int)$rightSeat->seat_number === (int)$seat->seat_number + 1) {
                         $rightOccupied = $rightSeat->is_unavailable || !empty($rightSeat->is_selected);
                     }
+                } else {
+                    // $i == $seatsCount - 1 là ghế cuối dãy. Nếu cho phép boundary thì rightOccupied = false, ngược lại = true
+                    $rightOccupied = !$allowBoundaryOrphan;
                 }
 
-                // Nếu cả 2 bên đều occupied -> Orphan seat -> Báo lỗi
+                // Nếu cả 2 bên đều occupied -> Báo lỗi cụ thể
                 if ($leftOccupied && $rightOccupied) {
-                    throw new Exception("Bạn không được để trống 1 ghế đơn độc (orphan seat) giữa các ghế đã chọn hoặc đã bán.");
+                    if ($i === 0) {
+                        throw new Exception("Bạn không thể bỏ trống 1 ghế ở đầu dãy.");
+                    } elseif ($i === $seatsCount - 1) {
+                        throw new Exception("Bạn không thể bỏ trống 1 ghế ở cuối dãy.");
+                    } else {
+                        throw new Exception("Bạn không thể bỏ trống 1 ghế ở giữa.");
+                    }
                 }
             }
         }
