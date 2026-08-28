@@ -106,7 +106,7 @@ class CheckoutController extends Controller
                 }
             }
 
-            // Lấy lại danh sách Combo đã chọn từ đơn giữ ghế cũ của suất chiếu này (nếu có)
+            // Lấy lại danh sách Combo đã chọn từ request (sessionStorage) hoặc từ đơn giữ ghế cũ của suất chiếu này (nếu có)
             $existingCombos = [];
 
             $combosInput = $request->input('combos');
