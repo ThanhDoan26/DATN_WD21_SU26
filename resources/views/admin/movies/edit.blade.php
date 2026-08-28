@@ -72,12 +72,48 @@
 
                     <div class="mb-3">
                         <label for="status" class="form-label">Trạng thái <span class="text-danger">*</span></label>
-                        <select class="form-select @error('status') is-invalid @enderror" id="status" name="status" required>
-                            <option value="COMING_SOON" {{ old('status', $movie->status) == 'COMING_SOON' ? 'selected' : '' }}>Sắp chiếu</option>
-                            <option value="NOW_SHOWING" {{ old('status', $movie->status) == 'NOW_SHOWING' ? 'selected' : '' }}>Đang chiếu</option>
-                            <option value="ENDED" {{ old('status', $movie->status) == 'ENDED' ? 'selected' : '' }}>Ngưng chiếu</option>
+                        <select class="form-select @error('status') is-invalid @enderror" id="status" name="status" required onchange="handleStatusChange()">
+                            <option value="SCHEDULED" {{ old('status', $movie->status) == 'SCHEDULED' ? 'selected' : '' }}>📅 Lên lịch (Scheduled)</option>
+                            <option value="PRE_ORDER" {{ old('status', $movie->status) == 'PRE_ORDER' ? 'selected' : '' }}>🎟️ Mở bán sớm (Pre-order)</option>
+                            <option value="COMING_SOON" {{ old('status', $movie->status) == 'COMING_SOON' ? 'selected' : '' }}>⏳ Sắp chiếu (Coming Soon)</option>
+                            <option value="NOW_SHOWING" {{ old('status', $movie->status) == 'NOW_SHOWING' ? 'selected' : '' }}>🎬 Đang chiếu (Now Showing)</option>
+                            <option value="ENDED" {{ old('status', $movie->status) == 'ENDED' ? 'selected' : '' }}>🛑 Ngưng chiếu (Ended)</option>
                         </select>
                         @error('status') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <div id="scheduled-status-hint" class="alert alert-info py-2 px-3 mt-2 small" style="display: none;">
+                            <i class="fas fa-info-circle me-1"></i> <strong>Lưu ý khi Lên lịch:</strong> Bắt buộc nhập đầy đủ Tên, Poster, Trailer, Thời lượng, Độ tuổi, Thể loại và <strong>Ngày phát hành dự kiến (trong tương lai)</strong>. Suất chiếu tạo cho phim này sẽ ở trạng thái Chờ duyệt (Pending) và chưa mở bán vé.
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="release_date" class="form-label">
+                                Ngày phát hành dự kiến <span id="release_date_req_star" class="text-danger" style="display: none;">*</span>
+                            </label>
+                            <input type="datetime-local" 
+                                   class="form-control @error('release_date') is-invalid @enderror" 
+                                   id="release_date" 
+                                   name="release_date" 
+                                   value="{{ old('release_date', $movie->release_date ? $movie->release_date->format('Y-m-d\TH:i') : '') }}">
+                            <small class="text-muted d-block">Bắt buộc khi phim ở trạng thái Lên lịch (phải là ngày tương lai).</small>
+                            <div id="release_date_client_error" class="text-danger small mt-1 d-none align-items-center gap-1">
+                                <i class="fas fa-circle-exclamation"></i> <span id="release_date_error_msg"></span>
+                            </div>
+                            @error('release_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="presale_date" class="form-label">Ngày mở bán sớm (nếu có)</label>
+                            <input type="datetime-local" 
+                                   class="form-control @error('presale_date') is-invalid @enderror" 
+                                   id="presale_date" 
+                                   name="presale_date" 
+                                   value="{{ old('presale_date', $movie->presale_date ? $movie->presale_date->format('Y-m-d\TH:i') : '') }}">
+                            <small class="text-muted d-block">Tự động chuyển "Mở bán sớm" khi đến ngày này.</small>
+                            <div id="presale_date_client_error" class="text-danger small mt-1 d-none align-items-center gap-1">
+                                <i class="fas fa-circle-exclamation"></i> <span id="presale_date_error_msg"></span>
+                            </div>
+                            @error('presale_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -139,7 +175,7 @@
                 <div class="col-md-4">
                     <div class="mb-3">
                         <label for="trailer_url" class="form-label">
-                            <i class="fab fa-youtube text-danger"></i> Trailer URL (YouTube)
+                            <i class="fab fa-youtube text-danger"></i> Trailer URL (YouTube) <span id="trailer_req_star" class="text-danger" style="display: none;">*</span>
                         </label>
                         <div class="input-group">
                             <input type="url" class="form-control @error('trailer_url') is-invalid @enderror" id="trailer_url" name="trailer_url" value="{{ old('trailer_url', $movie->trailer_url) }}" placeholder="https://youtube.com/watch?v=..." oninput="previewTrailer(this.value)">
@@ -161,7 +197,7 @@
 
             <div class="text-end mt-4">
                 <a href="{{ route('admin.movies.index') }}" class="btn btn-secondary">Hủy</a>
-                <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                <button type="submit" class="btn btn-primary" id="btn-save-movie">Lưu thay đổi</button>
             </div>
         </form>
     </div>
@@ -224,9 +260,177 @@
         else alert('Vui lòng nhập URL trailer trước.');
     }
 
+    function validateMovieDatesRealTime() {
+        const status = document.getElementById('status').value;
+        const releaseInput = document.getElementById('release_date');
+        const presaleInput = document.getElementById('presale_date');
+        const relErrEl = document.getElementById('release_date_client_error');
+        const relErrMsg = document.getElementById('release_date_error_msg');
+        const preErrEl = document.getElementById('presale_date_client_error');
+        const preErrMsg = document.getElementById('presale_date_error_msg');
+
+        let isValid = true;
+        const now = new Date();
+
+        // 1. Validate release_date
+        if (releaseInput.value) {
+            const relDateObj = new Date(releaseInput.value);
+            if (status === 'SCHEDULED' && relDateObj <= now) {
+                releaseInput.classList.add('is-invalid');
+                if (relErrEl && relErrMsg) {
+                    relErrMsg.textContent = 'Ngày phát hành dự kiến phải là thời gian trong tương lai (lớn hơn thời điểm hiện tại).';
+                    relErrEl.classList.remove('d-none');
+                    relErrEl.classList.add('d-flex');
+                }
+                isValid = false;
+            } else {
+                releaseInput.classList.remove('is-invalid');
+                if (relErrEl) {
+                    relErrEl.classList.add('d-none');
+                    relErrEl.classList.remove('d-flex');
+                }
+            }
+        } else if (status === 'SCHEDULED') {
+            if (relErrEl) {
+                relErrEl.classList.add('d-none');
+                relErrEl.classList.remove('d-flex');
+            }
+        } else {
+            releaseInput.classList.remove('is-invalid');
+            if (relErrEl) {
+                relErrEl.classList.add('d-none');
+                relErrEl.classList.remove('d-flex');
+            }
+        }
+
+        // 2. Validate presale_date
+        if (presaleInput.value) {
+            const preDateObj = new Date(presaleInput.value);
+            if (releaseInput.value) {
+                const relDateObj = new Date(releaseInput.value);
+                if (preDateObj > relDateObj) {
+                    presaleInput.classList.add('is-invalid');
+                    if (preErrEl && preErrMsg) {
+                        preErrMsg.textContent = 'Ngày mở bán sớm phải trước hoặc bằng Ngày phát hành dự kiến.';
+                        preErrEl.classList.remove('d-none');
+                        preErrEl.classList.add('d-flex');
+                    }
+                    isValid = false;
+                } else {
+                    presaleInput.classList.remove('is-invalid');
+                    if (preErrEl) {
+                        preErrEl.classList.add('d-none');
+                        preErrEl.classList.remove('d-flex');
+                    }
+                }
+            } else {
+                presaleInput.classList.remove('is-invalid');
+                if (preErrEl) {
+                    preErrEl.classList.add('d-none');
+                    preErrEl.classList.remove('d-flex');
+                }
+            }
+        } else {
+            presaleInput.classList.remove('is-invalid');
+            if (preErrEl) {
+                preErrEl.classList.add('d-none');
+                preErrEl.classList.remove('d-flex');
+            }
+        }
+
+        return isValid;
+    }
+
+    function handleStatusChange() {
+        const status = document.getElementById('status').value;
+        const hintEl = document.getElementById('scheduled-status-hint');
+        const releaseStar = document.getElementById('release_date_req_star');
+        const trailerStar = document.getElementById('trailer_req_star');
+        const releaseInput = document.getElementById('release_date');
+        const presaleInput = document.getElementById('presale_date');
+
+        const nowIso = new Date().toISOString().slice(0, 16);
+
+        if (status === 'SCHEDULED') {
+            hintEl.style.display = 'block';
+            if (releaseStar) releaseStar.style.display = 'inline';
+            if (trailerStar) trailerStar.style.display = 'inline';
+            releaseInput.min = nowIso;
+            presaleInput.min = nowIso;
+        } else {
+            hintEl.style.display = 'none';
+            if (releaseStar) releaseStar.style.display = 'none';
+            if (trailerStar) trailerStar.style.display = 'none';
+            releaseInput.removeAttribute('min');
+            presaleInput.removeAttribute('min');
+        }
+
+        validateMovieDatesRealTime();
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const url = document.getElementById('trailer_url').value;
         if (url) previewTrailer(url);
+        handleStatusChange();
+
+        const releaseInput = document.getElementById('release_date');
+        const presaleInput = document.getElementById('presale_date');
+        const statusSelect = document.getElementById('status');
+
+        ['input', 'change'].forEach(evt => {
+            releaseInput.addEventListener(evt, validateMovieDatesRealTime);
+            presaleInput.addEventListener(evt, validateMovieDatesRealTime);
+        });
+        statusSelect.addEventListener('change', handleStatusChange);
+
+        const form = document.querySelector('form[action="{{ route('admin.movies.update', $movie) }}"]');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const status = document.getElementById('status').value;
+                if (status === 'SCHEDULED') {
+                    const title = document.getElementById('title').value.trim();
+                    const poster = document.getElementById('poster');
+                    const hasExistingPoster = {{ $movie->poster_url ? 'true' : 'false' }};
+                    const trailerUrl = document.getElementById('trailer_url').value.trim();
+                    const duration = parseInt(document.getElementById('duration').value);
+                    const ageRating = document.getElementById('age_rating').value;
+                    const releaseDate = document.getElementById('release_date').value;
+                    const presaleDate = document.getElementById('presale_date').value;
+                    const categoryCheckboxes = document.querySelectorAll('input[name="categories[]"]:checked');
+
+                    const errors = [];
+
+                    if (!title) errors.push('Tên phim là bắt buộc khi Lên lịch.');
+                    if (!hasExistingPoster && (!poster || !poster.files || poster.files.length === 0)) {
+                        errors.push('Poster phim là bắt buộc khi Lên lịch.');
+                    }
+                    if (!trailerUrl) errors.push('Trailer URL là bắt buộc khi Lên lịch.');
+                    if (!duration || duration <= 0) errors.push('Thời lượng phim phải lớn hơn 0.');
+                    if (!ageRating) errors.push('Độ tuổi là bắt buộc khi Lên lịch.');
+                    if (categoryCheckboxes.length === 0) errors.push('Vui lòng chọn ít nhất một thể loại phim.');
+                    if (!releaseDate) {
+                        errors.push('Ngày phát hành dự kiến là bắt buộc khi Lên lịch.');
+                    } else {
+                        const relDateObj = new Date(releaseDate);
+                        if (relDateObj <= new Date()) {
+                            errors.push('Ngày phát hành dự kiến phải là thời gian trong tương lai (lớn hơn thời điểm hiện tại).');
+                        }
+                        if (presaleDate) {
+                            const preDateObj = new Date(presaleDate);
+                            if (preDateObj > relDateObj) {
+                                errors.push('Ngày mở bán sớm phải trước hoặc bằng ngày phát hành dự kiến.');
+                            }
+                        }
+                    }
+
+                    if (errors.length > 0) {
+                        e.preventDefault();
+                        alert("⚠️ Vui lòng hoàn tất đầy đủ thông tin để Lên lịch phim:\n\n- " + errors.join("\n- "));
+                        return false;
+                    }
+                }
+            });
+        }
     });
 </script>
 @endsection

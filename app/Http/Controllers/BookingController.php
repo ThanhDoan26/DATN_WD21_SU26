@@ -18,8 +18,13 @@ class BookingController extends Controller
      * Bước 1: Chọn cụm rạp
      * Hiển thị danh sách rạp có suất chiếu của phim được chọn
      */
-    public function selectCinema(Movie $movie): View
+    public function selectCinema(Movie $movie): mixed
     {
+        if ($movie->status === Movie::STATUS_SCHEDULED) {
+            return redirect()->route('movies.show', $movie->id)
+                ->with('error', 'Movie is currently scheduled and not yet open for ticket sales.');
+        }
+
         // Lấy danh sách rạp có suất chiếu còn mở bán online (trước giờ chiếu tối thiểu 15 phút)
         $cinemas = Cinema::whereHas('rooms', function ($query) use ($movie) {
             $query->whereHas('showtimes', function ($q) use ($movie) {
@@ -46,8 +51,13 @@ class BookingController extends Controller
     /**
      * Bước 2 & 3: Chọn ngày và suất chiếu
      */
-    public function selectDatesAndShowtimes(Movie $movie, Cinema $cinema): View
+    public function selectDatesAndShowtimes(Movie $movie, Cinema $cinema): mixed
     {
+        if ($movie->status === Movie::STATUS_SCHEDULED) {
+            return redirect()->route('movies.show', $movie->id)
+                ->with('error', 'Movie is currently scheduled and not yet open for ticket sales.');
+        }
+
         return view('booking.select-dates-and-showtimes', [
             'movie' => $movie,
             'cinema' => $cinema,
@@ -66,6 +76,11 @@ class BookingController extends Controller
         // Validate
         if (!$movieId || !$cinemaId) {
             return response()->json(['error' => 'Missing parameters'], 400);
+        }
+
+        $movie = Movie::find($movieId);
+        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
+            return response()->json(['data' => [], 'message' => 'Movie is currently scheduled and not yet open for ticket sales.'], 422);
         }
 
         // Lấy danh sách ngày chiếu theo phim + rạp (chỉ lấy suất mở bán online)
@@ -102,6 +117,11 @@ class BookingController extends Controller
         // Validate
         if (!$movieId || !$cinemaId || !$date) {
             return response()->json(['error' => 'Missing parameters'], 400);
+        }
+
+        $movie = Movie::find($movieId);
+        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
+            return response()->json(['data' => [], 'message' => 'Movie is currently scheduled and not yet open for ticket sales.'], 422);
         }
 
         // Lấy danh sách suất chiếu theo phim + rạp + ngày
@@ -143,6 +163,11 @@ class BookingController extends Controller
      */
     public function selectSeats(Showtime $showtime)
     {
+        $showtime->loadMissing('movie');
+        if ($showtime->movie && $showtime->movie->status === Movie::STATUS_SCHEDULED) {
+            return redirect()->route('home')->with('error', 'Movie is currently scheduled and not yet open for ticket sales.');
+        }
+
         // Kiểm tra suất chiếu có còn được phép đặt vé online không
         if (!$showtime->isOnlineBookable()) {
             return redirect()->route('home')->with('error', 'Suất chiếu này đã đóng cổng đặt vé trực tuyến (cần đặt trước giờ chiếu tối thiểu 15 phút). Vui lòng mua vé tại quầy hoặc chọn suất chiếu khác.');

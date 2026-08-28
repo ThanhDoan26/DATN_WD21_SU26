@@ -16,6 +16,28 @@ class Movie extends Model
 {
     use SoftDeletes;
 
+    public const STATUS_SCHEDULED = 'SCHEDULED';
+    public const STATUS_PRE_ORDER = 'PRE_ORDER';
+    public const STATUS_COMING_SOON = 'COMING_SOON';
+    public const STATUS_NOW_SHOWING = 'NOW_SHOWING';
+    public const STATUS_ENDED = 'ENDED';
+
+    public const STATUS_LABELS = [
+        self::STATUS_SCHEDULED   => 'Lên lịch',
+        self::STATUS_PRE_ORDER   => 'Mở bán sớm',
+        self::STATUS_COMING_SOON => 'Sắp chiếu',
+        self::STATUS_NOW_SHOWING => 'Đang chiếu',
+        self::STATUS_ENDED       => 'Ngưng chiếu',
+    ];
+
+    public const STATUSES = [
+        self::STATUS_SCHEDULED,
+        self::STATUS_PRE_ORDER,
+        self::STATUS_COMING_SOON,
+        self::STATUS_NOW_SHOWING,
+        self::STATUS_ENDED,
+    ];
+
     protected $fillable = [
         'title',
         'description',
@@ -29,10 +51,14 @@ class Movie extends Model
         'status',
         'language',
         'country',
+        'release_date',
+        'presale_date',
     ];
 
     protected $casts = [
         'format' => 'array',
+        'release_date' => 'datetime',
+        'presale_date' => 'datetime',
     ];
 
     /**
@@ -138,4 +164,89 @@ class Movie extends Model
             })
             ->count();
     }
+
+    public function isScheduled(): bool
+    {
+        return $this->status === self::STATUS_SCHEDULED;
+    }
+
+    public function isPreOrder(): bool
+    {
+        return $this->status === self::STATUS_PRE_ORDER;
+    }
+
+    public function isNowShowing(): bool
+    {
+        return $this->status === self::STATUS_NOW_SHOWING;
+    }
+
+    public function isComingSoon(): bool
+    {
+        return $this->status === self::STATUS_COMING_SOON;
+    }
+
+    public function isEnded(): bool
+    {
+        return $this->status === self::STATUS_ENDED;
+    }
+
+    public function isTicketSalesOpen(): bool
+    {
+        return $this->status !== self::STATUS_SCHEDULED;
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return self::STATUS_LABELS[$this->status] ?? $this->status;
+    }
+
+    /**
+     * Tự động chuyển đổi trạng thái phim và kích hoạt suất chiếu draft:
+     * - Nếu có presale_date và now >= presale_date (và now < release_date) -> PRE_ORDER (Mở bán sớm)
+     * - Nếu now >= release_date -> NOW_SHOWING (Đang chiếu)
+     */
+    public static function syncAllStatuses(): int
+    {
+        $now = now();
+        $updatedCount = 0;
+
+        // 1. Chuyển các phim SCHEDULED hoặc PRE_ORDER hoặc COMING_SOON có release_date <= now sang NOW_SHOWING
+        $nowShowingMovies = self::whereIn('status', [self::STATUS_SCHEDULED, self::STATUS_PRE_ORDER, self::STATUS_COMING_SOON])
+            ->whereNotNull('release_date')
+            ->where('release_date', '<=', $now)
+            ->get();
+
+        foreach ($nowShowingMovies as $movie) {
+            $movie->update(['status' => self::STATUS_NOW_SHOWING]);
+            // Chuyển các suất chiếu PENDING của phim sang SCHEDULED
+            $movie->showtimes()
+                ->where('status', Showtime::STATUS_PENDING)
+                ->where('start_time', '>', $now)
+                ->update(['status' => Showtime::STATUS_SCHEDULED]);
+            $updatedCount++;
+        }
+
+        // 2. Chuyển các phim SCHEDULED hoặc COMING_SOON có presale_date <= now (và chưa tới hoặc không có release_date) sang PRE_ORDER
+        $preOrderMovies = self::whereIn('status', [self::STATUS_SCHEDULED, self::STATUS_COMING_SOON])
+            ->whereNotNull('presale_date')
+            ->where('presale_date', '<=', $now)
+            ->where(function ($q) use ($now) {
+                $q->whereNull('release_date')
+                  ->orWhere('release_date', '>', $now);
+            })
+            ->get();
+
+        foreach ($preOrderMovies as $movie) {
+            $movie->update(['status' => self::STATUS_PRE_ORDER]);
+            // Chuyển các suất chiếu PENDING của phim sang SCHEDULED để mở bán sớm
+            $movie->showtimes()
+                ->where('status', Showtime::STATUS_PENDING)
+                ->where('start_time', '>', $now)
+                ->update(['status' => Showtime::STATUS_SCHEDULED]);
+            $updatedCount++;
+        }
+
+        return $updatedCount;
+    }
 }
+

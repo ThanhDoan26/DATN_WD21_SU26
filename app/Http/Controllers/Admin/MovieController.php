@@ -15,6 +15,8 @@ class MovieController extends Controller
      */
     public function index(Request $request)
     {
+        Movie::syncAllStatuses();
+
         $query = Movie::with('categories');
 
         if ($request->filled('search')) {
@@ -56,6 +58,11 @@ class MovieController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->input('status') === Movie::STATUS_SCHEDULED) {
+            $validationService = new \App\Services\MovieStatusValidationService();
+            $validationService->validateScheduledMetadata($request->all());
+        }
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -63,13 +70,15 @@ class MovieController extends Controller
             'cast' => 'nullable|string',
             'poster' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'trailer_url' => 'nullable|url|max:255',
-            'duration' => 'required|integer|min:30|max:300', // in minutes
+            'duration' => 'required|integer|min:1|max:500', // in minutes
             'age_rating' => 'nullable|string|max:50',
             'format' => 'nullable|array',
             'format.*' => 'string|max:100',
             'language' => 'nullable|string|max:50',
             'country' => 'nullable|string|max:100',
-            'status' => 'required|in:COMING_SOON,NOW_SHOWING,ENDED',
+            'release_date' => 'nullable|date',
+            'presale_date' => 'nullable|date',
+            'status' => 'required|in:SCHEDULED,PRE_ORDER,COMING_SOON,NOW_SHOWING,ENDED',
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
         ], [
@@ -77,8 +86,9 @@ class MovieController extends Controller
             'title.unique' => 'Phim này đã tồn tại',
             'duration.required' => 'Thời lượng phim là bắt buộc',
             'duration.integer' => 'Thời lượng phải là số',
-            'duration.min' => 'Thời lượng tối thiểu 30 phút',
+            'duration.min' => 'Thời lượng tối thiểu 1 phút',
             'status.required' => 'Trạng thái là bắt buộc',
+            'status.in' => 'Trạng thái không hợp lệ',
         ]);
 
         $data = collect($validated)->except(['poster', 'categories'])->toArray();
@@ -120,6 +130,11 @@ class MovieController extends Controller
 
     public function update(Request $request, Movie $movie)
     {
+        if ($request->input('status') === Movie::STATUS_SCHEDULED) {
+            $validationService = new \App\Services\MovieStatusValidationService();
+            $validationService->validateScheduledMetadata($request->all(), $movie);
+        }
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -127,13 +142,15 @@ class MovieController extends Controller
             'cast' => 'nullable|string',
             'poster' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'trailer_url' => 'nullable|url|max:255',
-            'duration' => 'required|integer|min:30|max:300',
+            'duration' => 'required|integer|min:1|max:500',
             'age_rating' => 'nullable|string|max:50',
             'format' => 'nullable|array',
             'format.*' => 'string|max:100',
             'language' => 'nullable|string|max:50',
             'country' => 'nullable|string|max:100',
-            'status' => 'required|in:COMING_SOON,NOW_SHOWING,ENDED',
+            'release_date' => 'nullable|date',
+            'presale_date' => 'nullable|date',
+            'status' => 'required|in:SCHEDULED,PRE_ORDER,COMING_SOON,NOW_SHOWING,ENDED',
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
         ], [
@@ -141,6 +158,7 @@ class MovieController extends Controller
             'title.unique' => 'Phim này đã tồn tại',
             'duration.required' => 'Thời lượng phim là bắt buộc',
             'status.required' => 'Trạng thái là bắt buộc',
+            'status.in' => 'Trạng thái không hợp lệ',
         ]);
 
         $data = collect($validated)->except(['poster', 'categories'])->toArray();

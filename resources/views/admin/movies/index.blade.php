@@ -31,6 +31,8 @@
                         <label class="form-label text-muted fw-semibold mb-1">Trạng thái</label>
                         <select name="status" class="form-select bg-light">
                             <option value="">Tất cả trạng thái</option>
+                            <option value="SCHEDULED" {{ request('status') == 'SCHEDULED' ? 'selected' : '' }}>Lên lịch</option>
+                            <option value="PRE_ORDER" {{ request('status') == 'PRE_ORDER' ? 'selected' : '' }}>Mở bán sớm</option>
                             <option value="COMING_SOON" {{ request('status') == 'COMING_SOON' ? 'selected' : '' }}>Sắp chiếu</option>
                             <option value="NOW_SHOWING" {{ request('status') == 'NOW_SHOWING' ? 'selected' : '' }}>Đang chiếu</option>
                             <option value="ENDED" {{ request('status') == 'ENDED' ? 'selected' : '' }}>Ngưng chiếu</option>
@@ -114,7 +116,11 @@
                         </td>
                         <td>{{ $movie->getDurationFormatted() }}</td>
                         <td>
-                            @if($movie->status == 'COMING_SOON')
+                            @if($movie->status == 'SCHEDULED')
+                                <span class="badge bg-primary">Lên lịch</span>
+                            @elseif($movie->status == 'PRE_ORDER')
+                                <span class="badge bg-info text-dark">Mở bán sớm</span>
+                            @elseif($movie->status == 'COMING_SOON')
                                 <span class="badge bg-warning text-dark">Sắp chiếu</span>
                             @elseif($movie->status == 'NOW_SHOWING')
                                 <span class="badge bg-success">Đang chiếu</span>
