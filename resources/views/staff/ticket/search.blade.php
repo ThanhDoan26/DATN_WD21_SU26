@@ -1,7 +1,7 @@
 @extends('layouts.staff')
 
-@section('title', 'Tra cứu & Check-in vé')
-@section('page_title', 'Tra cứu & Check-in vé')
+@section('title', 'Tra cứu & In vé')
+@section('page_title', 'Tra cứu & In vé')
 
 @section('extra_css')
 <style>
@@ -94,7 +94,7 @@
     <!-- Search Form Card -->
     <div class="card ticket-card mb-4">
         <div class="card-body p-4">
-            <h5 class="fw-bold mb-3"><i class="fas fa-search me-2 text-warning"></i> Tra cứu thông tin vé</h5>
+            <h5 class="fw-bold mb-3"><i class="fas fa-search me-2 text-warning"></i> Tra cứu & In vé</h5>
             
             <form action="{{ route('staff.ticket.search') }}" method="GET" id="searchForm">
                 <div class="row g-3">
@@ -164,20 +164,12 @@
     <!-- Warnings & Alerts Section -->
     @if(isset($warnings) && count($warnings) > 0)
         @foreach($warnings as $warning)
-            @php
-                // Xác định loại cảnh báo dựa trên nội dung
-                $isInfo = str_contains($warning, 'đã được sử dụng');
-                $alertClass = $isInfo ? 'alert-info' : 'alert-warning';
-                $iconClass = $isInfo ? 'fa-info-circle text-info' : 'fa-exclamation-triangle text-warning';
-                $title = $isInfo ? 'Thông tin vé:' : 'Lưu ý vé không đủ điều kiện Check-in:';
-                $textClass = $isInfo ? 'text-info-emphasis' : 'text-warning-emphasis';
-            @endphp
-            <div class="alert {{ $alertClass }} alert-dismissible fade show border-0 shadow-sm rounded-3 py-3 mb-3" role="alert">
+            <div class="alert alert-warning alert-dismissible fade show border-0 shadow-sm rounded-3 py-3 mb-3" role="alert">
                 <div class="d-flex align-items-center">
-                    <i class="fas {{ $iconClass }} fa-2x me-3"></i>
+                    <i class="fas fa-exclamation-triangle text-warning fa-2x me-3"></i>
                     <div>
-                        <h6 class="alert-heading fw-bold mb-1">{{ $title }}</h6>
-                        <p class="mb-0 {{ $textClass }}">{{ $warning }}</p>
+                        <h6 class="alert-heading fw-bold mb-1">Lưu ý:</h6>
+                        <p class="mb-0 text-warning-emphasis">{{ $warning }}</p>
                     </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -200,20 +192,25 @@
                         <h3 class="mb-0 fw-extrabold mt-1">Mã QR: {{ $result->qr_code }}</h3>
                     @endif
                 </div>
-                <div>
+                <div class="d-flex align-items-center gap-2">
+                    @if(!empty($isOtherCinema))
+                        <span class="badge bg-warning text-dark px-3 py-2 fw-bold shadow-sm" style="font-size: 0.85rem; border-radius: 50px;">
+                            <i class="fas fa-eye me-1"></i> VÉ RẠP KHÁC (CHỈ XEM)
+                        </span>
+                    @endif
                     @php
                         $statusStr = '';
                         $statusClass = '';
                         if ($searchType === 'booking') {
                             $status = $result->status;
-                            if ($status === 'Paid') { $statusStr = 'Đã thanh toán (Sẵn sàng)'; $statusClass = 'badge-paid'; }
-                            elseif ($status === 'Used') { $statusStr = 'Vé đã được in (Đã check-in)'; $statusClass = 'badge-used'; }
+                            if ($status === 'Paid') { $statusStr = 'Đã thanh toán'; $statusClass = 'badge-paid'; }
+                            elseif ($status === 'Used') { $statusStr = 'Đã sử dụng'; $statusClass = 'badge-used'; }
                             elseif ($status === 'Pending') { $statusStr = 'Chưa thanh toán (Chờ)'; $statusClass = 'badge-pending'; }
                             elseif ($status === 'Cancelled') { $statusStr = 'Đã hủy bỏ'; $statusClass = 'badge-cancelled'; }
                         } else {
                             $status = $result->status;
-                            if ($status === 'PAID') { $statusStr = 'Đã thanh toán (Sẵn sàng)'; $statusClass = 'badge-paid'; }
-                            elseif ($status === 'USED') { $statusStr = 'Vé đã được in (Đã check-in)'; $statusClass = 'badge-used'; }
+                            if ($status === 'PAID') { $statusStr = 'Đã thanh toán'; $statusClass = 'badge-paid'; }
+                            elseif ($status === 'USED') { $statusStr = 'Đã sử dụng'; $statusClass = 'badge-used'; }
                             elseif ($status === 'RESERVED') { $statusStr = 'Chưa thanh toán (Đặt trước)'; $statusClass = 'badge-pending'; }
                             elseif ($status === 'CANCELLED') { $statusStr = 'Đã hủy bỏ'; $statusClass = 'badge-cancelled'; }
                         }
@@ -225,6 +222,16 @@
             </div>
 
             <div class="ticket-body">
+                @if(!empty($isOtherCinema))
+                    <div class="alert alert-warning border-0 shadow-sm rounded-3 py-3 mb-4 d-flex align-items-center" style="background-color: #fffbeb; border-left: 5px solid #f59e0b !important;">
+                        <i class="fas fa-info-circle fa-2x text-warning me-3"></i>
+                        <div>
+                            <h6 class="fw-bold mb-1 text-dark">Vé thuộc chi nhánh khác: <span class="text-danger fw-bold">{{ $ticketCinemaName ?? ($searchType === 'booking' ? ($result->showtime->room->cinema->name ?? 'N/A') : ($result->booking->showtime->room->cinema->name ?? 'N/A')) }}</span></h6>
+                            <p class="mb-0 text-muted small">Nhân viên được phép tra cứu thông tin vé này nhưng <strong>không có quyền Chỉnh sửa hoặc In vé</strong> tại rạp hiện tại.</p>
+                        </div>
+                    </div>
+                @endif
+
                 <div class="row">
                     <!-- Column 1: Movie & Showtime -->
                     <div class="col-md-6 col-sm-12">
@@ -236,6 +243,11 @@
                         <div class="info-label">Rạp chiếu</div>
                         <div class="info-value">
                             {{ $searchType === 'booking' ? ($result->showtime->room->cinema->name ?? 'N/A') : ($result->booking->showtime->room->cinema->name ?? 'N/A') }}
+                            @if(!empty($isOtherCinema))
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-2" style="font-size: 0.75rem; vertical-align: middle;">
+                                    <i class="fas fa-map-marker-alt me-1"></i>Khác rạp hiện tại
+                                </span>
+                            @endif
                         </div>
 
                         <div class="info-label">Phòng chiếu & Định dạng</div>
@@ -313,11 +325,11 @@
 
                 <hr class="my-4">
 
-                <!-- Ghế & Checkin Actions -->
+                <!-- Ghế & In vé Actions -->
                 <h5 class="fw-bold mb-3"><i class="fas fa-chair me-2 text-warning"></i> Chi tiết ghế đặt</h5>
 
                 @if($searchType === 'booking')
-                    <!-- Case 1: Search by Booking Code - show list of all seats with individual buttons -->
+                    <!-- Case 1: Search by Booking Code - show list of all seats with print buttons -->
                     <div class="row">
                         <div class="col-12">
                             @foreach($result->bookedSeats as $seat)
@@ -338,27 +350,30 @@
                                         @endif
                                     </div>
                                     <div class="d-flex align-items-center gap-2">
-                                        <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $seat->id]) }}')" class="btn btn-sm {{ ($seat->printed_at || ($seat->print_count ?? 0) > 0) ? 'btn-outline-purple' : 'btn-outline-dark' }} fw-bold px-3">
-                                            <i class="fas fa-print me-1"></i> {{ ($seat->printed_at || ($seat->print_count ?? 0) > 0) ? 'In lại' : 'In vé' }}
-                                        </button>
-                                        @if($seat->status === 'PAID')
-                                            <span class="badge badge-paid"><i class="fas fa-check-circle me-1"></i>Sẵn sàng check-in</span>
-                                            
-                                            <!-- Individual Seat Check-in form -->
-                                            <form action="{{ route('staff.ticket.checkin') }}" method="POST" class="m-0 d-inline-block">
-                                                @csrf
-                                                <input type="hidden" name="type" value="booking">
-                                                <input type="hidden" name="id" value="{{ $result->id }}">
-                                                <input type="hidden" name="seat_id" value="{{ $seat->id }}">
-                                                <button type="submit" class="btn btn-sm btn-warning fw-bold px-3">Check-in ghế</button>
-                                            </form>
-                                        @elseif($seat->status === 'USED')
-                                            <span class="badge badge-used"><i class="fas fa-check-double me-1"></i>Vé đã được in</span>
-                                            <small class="text-muted ms-1">{{ $seat->checked_in_at ? $seat->checked_in_at->format('H:i d/m') : '' }}</small>
-                                        @elseif($seat->status === 'RESERVED')
-                                            <span class="badge badge-pending">Chờ thanh toán</span>
-                                        @elseif($seat->status === 'CANCELLED')
-                                            <span class="badge badge-cancelled">Đã hủy</span>
+                                        @if(empty($isOtherCinema))
+                                            <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $seat->id]) }}')" class="btn btn-sm {{ ($seat->printed_at || ($seat->print_count ?? 0) > 0) ? 'btn-outline-purple' : 'btn-outline-dark' }} fw-bold px-3">
+                                                <i class="fas fa-print me-1"></i> {{ ($seat->printed_at || ($seat->print_count ?? 0) > 0) ? 'In lại' : 'In vé' }}
+                                            </button>
+                                            @if($seat->status === 'PAID')
+                                                <span class="badge badge-paid"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
+                                            @elseif($seat->status === 'USED')
+                                                <span class="badge badge-used"><i class="fas fa-check-double me-1"></i>Đã sử dụng</span>
+                                            @elseif($seat->status === 'RESERVED')
+                                                <span class="badge badge-pending">Chờ thanh toán</span>
+                                            @elseif($seat->status === 'CANCELLED')
+                                                <span class="badge badge-cancelled">Đã hủy</span>
+                                            @endif
+                                        @else
+                                            @if($seat->status === 'PAID')
+                                                <span class="badge badge-paid"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
+                                            @elseif($seat->status === 'USED')
+                                                <span class="badge badge-used"><i class="fas fa-check-double me-1"></i>Đã sử dụng</span>
+                                            @elseif($seat->status === 'RESERVED')
+                                                <span class="badge badge-pending">Chờ thanh toán</span>
+                                            @elseif($seat->status === 'CANCELLED')
+                                                <span class="badge badge-cancelled">Đã hủy</span>
+                                            @endif
+                                            <span class="badge bg-secondary-subtle text-secondary border"><i class="fas fa-lock me-1"></i>Chỉ xem</span>
                                         @endif
                                     </div>
                                 </div>
@@ -367,27 +382,25 @@
                     </div>
 
                     <!-- Overall actions for booking -->
-                    @php
-                        $hasAnyPrinted = $result->bookedSeats->contains(fn($s) => $s->printed_at || ($s->print_count ?? 0) > 0);
-                    @endphp
-                    <div class="mt-4 text-center d-flex justify-content-center gap-3">
-                        <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'booking', 'id' => $result->id]) }}')" class="btn btn-dark fw-bold px-4 py-3 fs-5 shadow">
-                            <i class="fas fa-print me-2"></i> {{ $hasAnyPrinted ? 'IN LẠI TOÀN BỘ VÉ' : 'IN TOÀN BỘ VÉ' }}
-                        </button>
-                        @if($canCheckIn)
-                            <form action="{{ route('staff.ticket.checkin') }}" method="POST" class="d-inline-block">
-                                @csrf
-                                <input type="hidden" name="type" value="booking">
-                                <input type="hidden" name="id" value="{{ $result->id }}">
-                                <button type="submit" class="btn btn-warning fw-bold px-4 py-3 fs-5 shadow">
-                                    <i class="fas fa-check-circle me-2"></i> CHECK-IN TOÀN BỘ GHẾ
-                                </button>
-                            </form>
-                        @endif
-                    </div>
+                    @if(empty($isOtherCinema))
+                        @php
+                            $hasAnyPrinted = $result->bookedSeats->contains(fn($s) => $s->printed_at || ($s->print_count ?? 0) > 0);
+                        @endphp
+                        <div class="mt-4 text-center d-flex justify-content-center gap-3">
+                            <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'booking', 'id' => $result->id]) }}')" class="btn btn-dark fw-bold px-5 py-3 fs-5 shadow">
+                                <i class="fas fa-print me-2"></i> {{ $hasAnyPrinted ? 'IN LẠI TOÀN BỘ VÉ' : 'IN TOÀN BỘ VÉ' }}
+                            </button>
+                        </div>
+                    @else
+                        <div class="mt-4 p-3 bg-light rounded-3 border text-center">
+                            <span class="text-muted fw-bold">
+                                <i class="fas fa-lock me-2 text-warning"></i> Chức năng In vé bị khóa vì vé này thuộc rạp khác ({{ $ticketCinemaName ?? ($result->showtime->room->cinema->name ?? 'Rạp khác') }}).
+                            </span>
+                        </div>
+                    @endif
 
                 @else
-                    <!-- Case 2: Search by Seat QR code - display single seat info with big button -->
+                    <!-- Case 2: Search by Seat QR code - display single seat info with print button -->
                     <div class="seat-item p-3 mb-4">
                         <div class="d-flex align-items-center flex-wrap gap-2">
                             <span class="seat-code">{{ $result->seat ? ($result->seat->row_name . $result->seat->seat_number) : 'N/A' }}</span>
@@ -396,7 +409,7 @@
                             
                             @if($result->printed_at || ($result->print_count ?? 0) > 0)
                                 <span class="badge badge-printed" title="Thời gian in gần nhất: {{ $result->printed_at ? $result->printed_at->format('H:i:s d/m/Y') : 'N/A' }}">
-                                    <i class="fas fa-print me-1"></i>Đã in (Lần {{ $result->print_count ?: 1 }} - {{ $result->printed_at ? $result->printed_at->format('H:i d/m/Y') : '' }})
+                                                <i class="fas fa-print me-1"></i>Đã in (Lần {{ $result->print_count ?: 1 }} - {{ $result->printed_at ? $result->printed_at->format('H:i d/m/Y') : '' }})
                                 </span>
                             @else
                                 <span class="badge bg-light text-secondary border">
@@ -405,39 +418,49 @@
                             @endif
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $result->id]) }}')" class="btn btn-outline-dark fw-bold px-3 py-1">
-                                <i class="fas fa-print me-1"></i> {{ ($result->printed_at || ($result->print_count ?? 0) > 0) ? 'In lại' : 'In vé' }}
-                            </button>
-                            @if($result->status === 'PAID')
-                                <span class="badge badge-paid"><i class="fas fa-check-circle me-1"></i>Sẵn sàng check-in</span>
-                            @elseif($result->status === 'USED')
-                                <span class="badge badge-used"><i class="fas fa-check-double me-1"></i>Vé đã được in</span>
-                            @elseif($result->status === 'RESERVED')
-                                <span class="badge badge-pending">Chờ thanh toán</span>
-                            @elseif($result->status === 'CANCELLED')
-                                <span class="badge badge-cancelled">Đã hủy</span>
+                            @if(empty($isOtherCinema))
+                                <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $result->id]) }}')" class="btn btn-outline-dark fw-bold px-3 py-1">
+                                    <i class="fas fa-print me-1"></i> {{ ($result->printed_at || ($result->print_count ?? 0) > 0) ? 'In lại' : 'In vé' }}
+                                </button>
+                                @if($result->status === 'PAID')
+                                    <span class="badge badge-paid"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
+                                @elseif($result->status === 'USED')
+                                    <span class="badge badge-used"><i class="fas fa-check-double me-1"></i>Đã sử dụng</span>
+                                @elseif($result->status === 'RESERVED')
+                                    <span class="badge badge-pending">Chờ thanh toán</span>
+                                @elseif($result->status === 'CANCELLED')
+                                    <span class="badge badge-cancelled">Đã hủy</span>
+                                @endif
+                            @else
+                                @if($result->status === 'PAID')
+                                    <span class="badge badge-paid"><i class="fas fa-check-circle me-1"></i>Đã thanh toán</span>
+                                @elseif($result->status === 'USED')
+                                    <span class="badge badge-used"><i class="fas fa-check-double me-1"></i>Đã sử dụng</span>
+                                @elseif($result->status === 'RESERVED')
+                                    <span class="badge badge-pending">Chờ thanh toán</span>
+                                @elseif($result->status === 'CANCELLED')
+                                    <span class="badge badge-cancelled">Đã hủy</span>
+                                @endif
+                                <span class="badge bg-secondary-subtle text-secondary border"><i class="fas fa-lock me-1"></i>Chỉ xem</span>
                             @endif
                         </div>
                     </div>
 
-                    <div class="text-center d-flex justify-content-center gap-3">
-                        @if($canCheckIn)
-                            <form action="{{ route('staff.ticket.checkin') }}" method="POST" class="d-inline-block">
-                                @csrf
-                                <input type="hidden" name="type" value="seat">
-                                <input type="hidden" name="id" value="{{ $result->id }}">
-                                <button type="submit" class="btn btn-warning fw-bold px-5 py-3 fs-5 shadow">
-                                    <i class="fas fa-check-circle me-2"></i> XÁC NHẬN CHECK-IN VÉ NÀY
+                    @if(empty($isOtherCinema))
+                        <div class="text-center d-flex justify-content-center gap-3">
+                            @if($result->status === 'PAID' || $result->status === 'USED')
+                                <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $result->id]) }}')" class="btn btn-dark fw-bold px-5 py-3 fs-5 shadow">
+                                    <i class="fas fa-print me-2"></i> {{ ($result->printed_at || ($result->print_count ?? 0) > 0) ? 'IN LẠI VÉ' : 'IN VÉ' }}
                                 </button>
-                            </form>
-                        @endif
-
-                        @if($result->status === 'PAID' || $result->status === 'USED')
-                            <button type="button" onclick="printTicketIframe('{{ route('staff.ticket.print', ['type' => 'seat', 'id' => $result->id]) }}')" class="btn btn-secondary fw-bold px-5 py-3 fs-5 shadow">
-                                <i class="fas fa-print me-2"></i> {{ ($result->printed_at || ($result->print_count ?? 0) > 0) ? 'IN LẠI VÉ' : 'IN VÉ' }}
-                            </button>
-                        @endif
-                    </div>
+                            @endif
+                        </div>
+                    @else
+                        <div class="mt-4 p-3 bg-light rounded-3 border text-center">
+                            <span class="text-muted fw-bold">
+                                <i class="fas fa-lock me-2 text-warning"></i> Chức năng In vé bị khóa vì vé này thuộc rạp khác ({{ $ticketCinemaName ?? ($result->booking->showtime->room->cinema->name ?? 'Rạp khác') }}).
+                            </span>
+                        </div>
+                    @endif
                 @endif
             </div>
         </div>

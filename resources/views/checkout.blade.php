@@ -482,13 +482,22 @@
 
 @push('scripts')
     <script>
-        // Save current seat IDs to sessionStorage before navigating back
+        // Save current seat IDs and combos to sessionStorage before navigating back
         function saveSeatsBeforeBack() {
             const showtimeId = @json($showtimeId ?? '');
             const seatIds = @json($seatIds ?? []);
             if (showtimeId && seatIds && seatIds.length > 0) {
                 sessionStorage.setItem('resume_seats_showtime_' + showtimeId, '1');
                 sessionStorage.setItem('selectedSeats_showtime_' + showtimeId, JSON.stringify(seatIds));
+            }
+            if (showtimeId && typeof selectedCombos === 'object') {
+                const combosToSave = {};
+                Object.keys(selectedCombos).forEach(id => {
+                    if (selectedCombos[id] && selectedCombos[id].qty > 0) {
+                        combosToSave[id] = { qty: selectedCombos[id].qty };
+                    }
+                });
+                sessionStorage.setItem('selectedCombos_showtime_' + showtimeId, JSON.stringify(combosToSave));
             }
         }
 
@@ -628,6 +637,7 @@
                         console.log("Timer expired!");
                         clearInterval(countdownInterval);
                         sessionStorage.removeItem('booking_expires_at');
+                        sessionStorage.removeItem('selectedCombos_showtime_' + {{ $showtime->id }});
                         if (timerBar) timerBar.style.display = 'none';
                         if (expiredOverlay) expiredOverlay.classList.add('active');
 
@@ -696,8 +706,37 @@
 
             const selectedCombos = {};
             const savedCombosData = @json($savedCombos ?? []);
-            Object.keys(savedCombosData).forEach(id => {
-                const qty = parseInt(savedCombosData[id]);
+
+            function saveCombosToStorage() {
+                if (showtimeId && typeof selectedCombos === 'object') {
+                    const combosToSave = {};
+                    Object.keys(selectedCombos).forEach(id => {
+                        if (selectedCombos[id] && selectedCombos[id].qty > 0) {
+                            combosToSave[id] = { qty: selectedCombos[id].qty };
+                        }
+                    });
+                    sessionStorage.setItem('selectedCombos_showtime_' + showtimeId, JSON.stringify(combosToSave));
+                }
+            }
+
+            let storedCombos = {};
+            try {
+                const storedCombosJson = sessionStorage.getItem('selectedCombos_showtime_' + showtimeId);
+                if (storedCombosJson) {
+                    storedCombos = JSON.parse(storedCombosJson);
+                }
+            } catch (e) {}
+
+            const allComboIds = Array.from(new Set([...Object.keys(savedCombosData), ...Object.keys(storedCombos)]));
+
+            allComboIds.forEach(id => {
+                let qty = 0;
+                if (storedCombos[id] !== undefined) {
+                    qty = parseInt(storedCombos[id]?.qty ?? storedCombos[id] ?? 0);
+                } else if (savedCombosData[id] !== undefined) {
+                    qty = parseInt(savedCombosData[id]?.qty ?? savedCombosData[id] ?? 0);
+                }
+
                 if (qty > 0) {
                     const span = document.querySelector(`.combo-quantity[data-id="${id}"]`);
                     if (span) {
@@ -826,6 +865,7 @@
                         span.textContent = qty;
                         selectedCombos[id].qty = qty;
                         updateOrderSummary();
+                        saveCombosToStorage();
                     }
                 });
             });
@@ -847,6 +887,7 @@
                     }
                     selectedCombos[id].qty = qty;
                     updateOrderSummary();
+                    saveCombosToStorage();
                 });
             });
 
@@ -1046,6 +1087,7 @@
             sessionStorage.removeItem(storageKey);
             sessionStorage.removeItem('booking_expires_at');
             sessionStorage.removeItem('resume_seats_showtime_' + {{ $showtime->id }});
+            sessionStorage.removeItem('selectedCombos_showtime_' + {{ $showtime->id }});
 
             fetch("{{ route('api.booking.cancel-explicit') }}", {
                 method: "POST",

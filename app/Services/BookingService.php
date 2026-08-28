@@ -300,7 +300,60 @@ class BookingService
             $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData, $inheritedBookingTime, $isExtended) {
 
                 // ================================================================
-                // Step 1: Lock các hàng ghế (chỉ 1 request được giữ lock)
+                // Step 1: Lấy thông tin suất chiếu trước (🔒 lockForUpdate)
+                // ================================================================
+                $showtime = DB::table('showtimes')
+                    ->where('id', $showtimeId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$showtime) {
+                    throw new Exception("Suất chiếu $showtimeId không tồn tại");
+                }
+
+                $startTime = \Carbon\Carbon::parse($showtime->start_time);
+                $endTime = $showtime->end_time ? \Carbon\Carbon::parse($showtime->end_time) : null;
+                $isWalkIn = ($extraData['booking_source'] ?? 'online') !== 'online';
+
+                // Kiểm tra trạng thái và thời gian đặt vé theo quy định
+                if ($showtime->status === 'CANCELLED') {
+                    throw new Exception("Suất chiếu này đã bị hủy, không thể đặt vé.");
+                }
+
+                if ($isWalkIn) {
+                    // Tại quầy: Cho phép trong 30 phút đầu kể từ khi bắt đầu chiếu (và chưa kết thúc)
+                    if ($endTime && now()->gte($endTime)) {
+                        throw new Exception("Suất chiếu này đã kết thúc, không thể xuất vé.");
+                    }
+                    if (now()->gt($startTime->copy()->addMinutes(30))) {
+                        throw new Exception("Suất chiếu đã bắt đầu quá 30 phút, hệ thống đã khóa bán vé.");
+                    }
+                } else {
+                    // Trực tuyến (Online): Khóa trước giờ chiếu 15 phút
+                    if ($showtime->status !== 'SCHEDULED') {
+                        throw new Exception("Suất chiếu này không còn mở bán trực tuyến.");
+                    }
+                    if (now()->addMinutes(15)->gte($startTime)) {
+                        throw new Exception("Suất chiếu này đã đóng cổng đặt vé trực tuyến (cần đặt trước giờ chiếu tối thiểu 15 phút). Vui lòng mua vé trực tiếp tại quầy hoặc chọn suất chiếu khác.");
+                    }
+                }
+
+                // ================================================================
+                // Step 2: Lấy thông tin ghế thuộc đúng room_id của showtime (🔒 lockForUpdate)
+                // ================================================================
+                $selectedSeats = DB::table('seats')
+                    ->whereIn('id', $selectedSeatIds)
+                    ->where('room_id', $showtime->room_id)
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+
+                if ($selectedSeats->count() !== count($selectedSeatIds)) {
+                    throw new Exception('Một hoặc nhiều ghế không tồn tại hoặc không thuộc phòng chiếu của suất chiếu này');
+                }
+
+                // ================================================================
+                // Step 3: Lock các hàng ghế (chỉ 1 request được giữ lock)
                 // ================================================================
                 // 🔒 SELECT FOR UPDATE - lock các hàng trong booked_seats
                 // Các request khác phải đợi cho đến khi transaction này commit/rollback
@@ -319,9 +372,7 @@ class BookingService
                     ->select('booked_seats.seat_id', 'booked_seats.status')
                     ->get();
 
-                // ================================================================
-                // Step 2: Kiểm tra xem ghế đã bị đặt hay chưa
-                // ================================================================
+                // Kiểm tra xem ghế đã bị đặt hay chưa
                 if ($lockedBookedSeats->count() > 0) {
                     // Lấy danh sách ghế đã đặt dưới dạng Seat Code (ví dụ: A5, B6)
                     $bookedSeatIds = $lockedBookedSeats->pluck('seat_id')->toArray();
@@ -457,10 +508,13 @@ class BookingService
 
                 $comboDetails = [];
                 if (!empty($combos)) {
+                    if (is_string($combos)) {
+                        $combos = json_decode($combos, true) ?: [];
+                    }
                     $comboIds = array_keys($combos);
                     $dbCombos = DB::table('combos')->whereIn('id', $comboIds)->get()->keyBy('id');
                     foreach ($combos as $comboId => $comboData) {
-                        $qty = (int) ($comboData['qty'] ?? 0);
+                        $qty = is_array($comboData) ? (int) ($comboData['qty'] ?? $comboData['quantity'] ?? 0) : (int) $comboData;
                         if ($qty > 0) {
                             if (!isset($dbCombos[$comboId])) {
                                 throw new Exception("Combo không tồn tại");
@@ -1088,16 +1142,17 @@ class BookingService
         int $bookingId,
         ?string $paymentMethod = null,
         ?string $couponCode = null,
-        array $combos = []
+        array $combos = [],
+        array $extraData = []
     ): \App\Models\Booking {
-        return DB::transaction(function () use ($bookingId, $paymentMethod, $couponCode, $combos) {
+        return DB::transaction(function () use ($bookingId, $paymentMethod, $couponCode, $combos, $extraData) {
             $booking = \App\Models\Booking::with('bookedSeats')->where('id', $bookingId)->lockForUpdate()->first();
 
             if (!$booking) {
                 throw new Exception("Booking không tồn tại.");
             }
 
-            if ($booking->status !== 'Pending') {
+            if (!in_array($booking->status, ['Pending', 'PROCESSING'])) {
                 throw new Exception("Không thể cập nhật đơn đặt vé không ở trạng thái chờ thanh toán.");
             }
 
@@ -1115,6 +1170,9 @@ class BookingService
             $comboDetails = [];
 
             if (!empty($combos)) {
+                if (is_string($combos)) {
+                    $combos = json_decode($combos, true) ?: [];
+                }
                 $comboIds = array_keys($combos);
                 $dbCombos = DB::table('combos')
                     ->whereIn('id', $comboIds)
@@ -1122,7 +1180,7 @@ class BookingService
                     ->keyBy('id');
 
                 foreach ($combos as $comboId => $comboData) {
-                    $qty = (int) ($comboData['qty'] ?? 0);
+                    $qty = is_array($comboData) ? (int) ($comboData['qty'] ?? $comboData['quantity'] ?? 0) : (int) $comboData;
                     if ($qty > 0) {
                         if (!isset($dbCombos[$comboId])) {
                             throw new Exception("Combo không tồn tại.");
@@ -1199,6 +1257,15 @@ class BookingService
             $booking->discount_amount = $discountAmount;
             if ($paymentMethod) {
                 $booking->payment_method = $paymentMethod;
+            }
+            if (!empty($extraData['customer_name'])) {
+                $booking->customer_name = $extraData['customer_name'];
+            }
+            if (!empty($extraData['customer_phone'])) {
+                $booking->customer_phone = $extraData['customer_phone'];
+            }
+            if (!empty($extraData['customer_email'])) {
+                $booking->customer_email = $extraData['customer_email'];
             }
             $booking->save();
 
