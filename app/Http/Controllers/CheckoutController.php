@@ -309,6 +309,8 @@ class CheckoutController extends Controller
         }
 
         $showtimeId = (int) $request->input('showtime_id');
+
+        // 1. Kiểm tra ghế đã có người khác chọn/đặt chưa (Chống trùng ghế giữa 2 người dùng)
         $takenSeatIds = DB::table('booked_seats')
             ->join('bookings', 'booked_seats.booking_id', '=', 'bookings.id')
             ->where('bookings.showtime_id', $showtimeId)
@@ -350,7 +352,6 @@ class CheckoutController extends Controller
 
         try {
             $bookingService = new BookingService();
-            $showtimeId = (int) $request->input('showtime_id');
             $showtime = Showtime::find($showtimeId);
 
             if (!$showtime || !$showtime->isOnlineBookable()) {
@@ -360,7 +361,7 @@ class CheckoutController extends Controller
                 ], 422);
             }
 
-            // Chặn ghế hỏng, ghế đã đặt hoặc ghế không thuộc phòng chiếu này
+            // 2. Chặn ghế hỏng, ghế đã đặt hoặc ghế không thuộc phòng chiếu này (Bảo mật & Tránh hack request)
             $invalidSeats = Seat::whereIn('id', $seatIds)
                 ->where(function ($q) use ($showtime) {
                     $q->where('room_id', '!=', $showtime->room_id)
@@ -376,14 +377,6 @@ class CheckoutController extends Controller
                 ], 422);
             }
 
-            $bookingId = $bookingService->createBooking(
-                Auth::id(),
-                $showtimeId,
-                $seatIds,
-                $request->input('payment_method', 'ONLINE'),
-                $request->input('coupon_code'),
-                $request->input('combos', [])
-            );
             $userId = Auth::id();
             $existingBooking = null;
 

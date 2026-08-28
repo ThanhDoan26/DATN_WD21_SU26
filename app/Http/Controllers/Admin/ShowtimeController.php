@@ -121,6 +121,12 @@ class ShowtimeController extends AdminController
             }
         }
 
+        if (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
+            if (($validated['status'] ?? null) !== Showtime::STATUS_CANCELLED) {
+                $validated['status'] = Showtime::STATUS_SCHEDULED;
+            }
+        }
+
         $showtime = Showtime::create($validated);
 
         if (isset($validated['ticket_prices']) && is_array($validated['ticket_prices'])) {
@@ -245,6 +251,12 @@ class ShowtimeController extends AdminController
             if ($movie && $movie->duration) {
                 $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15);
                 $validated['end_time'] = $expected->format('Y-m-d H:i:s');
+            }
+        }
+
+        if (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
+            if (($validated['status'] ?? null) !== Showtime::STATUS_CANCELLED) {
+                $validated['status'] = Showtime::STATUS_SCHEDULED;
             }
         }
 

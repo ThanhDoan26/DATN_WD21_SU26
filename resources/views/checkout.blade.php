@@ -904,7 +904,7 @@
                     e.preventDefault();
 
                     if (!showtimeId || !seatIds) {
-                        alert('Vui lòng chọn ghế trước khi thanh toán');
+                        window.showToast('Vui lòng chọn ghế trước khi thanh toán', 'error');
                         window.location.href = '/';
                         return;
                     }
@@ -1022,7 +1022,7 @@
                         confirmReservationButton.innerHTML = '<span>Thanh toán ngay</span><i class="fas fa-arrow-right ml-2"></i>';
 
                         console.error('Error:', error);
-                        alert('❌ Lỗi: ' + error.message);
+                        window.showToast(error.message, 'error');
                     });
                 });
             }
@@ -1104,7 +1104,7 @@
                 if(data.success) {
                     window.location.href = data.redirect_url || "{{ route('movies.show', $showtime->movie_id) }}";
                 } else {
-                    alert(data.error || "Có lỗi xảy ra khi hủy vé.");
+                    window.showToast(data.error || "Có lỗi xảy ra khi hủy vé.", 'error');
                     closeCancelModal();
                     btn.disabled = false;
                     btn.innerHTML = 'Hủy đặt vé';
@@ -1112,7 +1112,7 @@
             })
             .catch(err => {
                 console.error(err);
-                alert("Lỗi kết nối.");
+                window.showToast("Lỗi kết nối.", 'error');
                 closeCancelModal();
                 btn.disabled = false;
                 btn.innerHTML = 'Hủy đặt vé';
