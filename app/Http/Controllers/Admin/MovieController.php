@@ -58,9 +58,11 @@ class MovieController extends Controller
 
     public function store(Request $request)
     {
+        $validationService = new \App\Services\MovieStatusValidationService();
         if ($request->input('status') === Movie::STATUS_SCHEDULED) {
-            $validationService = new \App\Services\MovieStatusValidationService();
             $validationService->validateScheduledMetadata($request->all());
+        } else {
+            $validationService->validateMovieDatesByStatus($request->all());
         }
 
         $validated = $request->validate([
@@ -93,6 +95,10 @@ class MovieController extends Controller
 
         $data = collect($validated)->except(['poster', 'categories'])->toArray();
         $data['format'] = $request->input('format', []);
+
+        if (in_array($data['status'] ?? '', [Movie::STATUS_NOW_SHOWING, Movie::STATUS_ENDED])) {
+            $data['presale_date'] = null;
+        }
 
         if ($request->hasFile('poster')) {
             $data['poster_url'] = $request->file('poster')->store('posters', 'public');
@@ -130,9 +136,11 @@ class MovieController extends Controller
 
     public function update(Request $request, Movie $movie)
     {
+        $validationService = new \App\Services\MovieStatusValidationService();
         if ($request->input('status') === Movie::STATUS_SCHEDULED) {
-            $validationService = new \App\Services\MovieStatusValidationService();
             $validationService->validateScheduledMetadata($request->all(), $movie);
+        } else {
+            $validationService->validateMovieDatesByStatus($request->all());
         }
 
         $validated = $request->validate([
@@ -163,6 +171,10 @@ class MovieController extends Controller
 
         $data = collect($validated)->except(['poster', 'categories'])->toArray();
         $data['format'] = $request->input('format', []);
+
+        if (in_array($data['status'] ?? '', [Movie::STATUS_NOW_SHOWING, Movie::STATUS_ENDED])) {
+            $data['presale_date'] = null;
+        }
 
         if ($request->hasFile('poster')) {
             if ($movie->poster_url && \Illuminate\Support\Facades\Storage::disk('public')->exists($movie->poster_url)) {

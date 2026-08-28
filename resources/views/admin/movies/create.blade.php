@@ -79,7 +79,7 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-6 mb-3" id="release_date_wrapper">
                             <label for="release_date" class="form-label">
                                 Ngày phát hành dự kiến <span id="release_date_req_star" class="text-danger" style="display: none;">*</span>
                             </label>
@@ -89,13 +89,13 @@
                                    id="release_date" 
                                    name="release_date" 
                                    value="{{ old('release_date') }}">
-                            <small class="text-muted d-block">Bắt buộc khi phim ở trạng thái Lên lịch (phải là ngày tương lai).</small>
+                            <small class="text-muted d-block" id="release_date_hint">Bắt buộc khi phim ở trạng thái Lên lịch (phải là ngày tương lai).</small>
                             <div id="release_date_client_error" class="text-danger small mt-1 d-none align-items-center gap-1">
                                 <i class="fas fa-circle-exclamation"></i> <span id="release_date_error_msg"></span>
                             </div>
                             @error('release_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-6 mb-3" id="presale_date_wrapper">
                             <label for="presale_date" class="form-label">Ngày mở bán sớm (nếu có)</label>
                             <input type="datetime-local" 
                                    min="{{ \Carbon\Carbon::now()->format('Y-m-d\TH:i') }}" 
@@ -276,31 +276,17 @@
         let isValid = true;
         const now = new Date();
 
-        // 1. Validate release_date
-        if (releaseInput.value) {
-            const relDateObj = new Date(releaseInput.value);
-            if (status === 'SCHEDULED' && relDateObj <= now) {
-                releaseInput.classList.add('is-invalid');
-                if (relErrEl && relErrMsg) {
-                    relErrMsg.textContent = 'Ngày phát hành dự kiến phải là thời gian trong tương lai (lớn hơn thời điểm hiện tại).';
-                    relErrEl.classList.remove('d-none');
-                    relErrEl.classList.add('d-flex');
-                }
-                isValid = false;
-            } else {
-                releaseInput.classList.remove('is-invalid');
-                if (relErrEl) {
-                    relErrEl.classList.add('d-none');
-                    relErrEl.classList.remove('d-flex');
-                }
+        function setReleaseError(msg) {
+            releaseInput.classList.add('is-invalid');
+            if (relErrEl && relErrMsg) {
+                relErrMsg.textContent = msg;
+                relErrEl.classList.remove('d-none');
+                relErrEl.classList.add('d-flex');
             }
-        } else if (status === 'SCHEDULED') {
-            // Chưa nhập ngày khi ở SCHEDULED
-            if (relErrEl) {
-                relErrEl.classList.add('d-none');
-                relErrEl.classList.remove('d-flex');
-            }
-        } else {
+            isValid = false;
+        }
+
+        function clearReleaseError() {
             releaseInput.classList.remove('is-invalid');
             if (relErrEl) {
                 relErrEl.classList.add('d-none');
@@ -308,39 +294,82 @@
             }
         }
 
-        // 2. Validate presale_date
-        if (presaleInput.value) {
-            const preDateObj = new Date(presaleInput.value);
-            if (releaseInput.value) {
-                const relDateObj = new Date(releaseInput.value);
-                if (preDateObj > relDateObj) {
-                    presaleInput.classList.add('is-invalid');
-                    if (preErrEl && preErrMsg) {
-                        preErrMsg.textContent = 'Ngày mở bán sớm phải trước hoặc bằng Ngày phát hành dự kiến.';
-                        preErrEl.classList.remove('d-none');
-                        preErrEl.classList.add('d-flex');
-                    }
-                    isValid = false;
-                } else {
-                    presaleInput.classList.remove('is-invalid');
-                    if (preErrEl) {
-                        preErrEl.classList.add('d-none');
-                        preErrEl.classList.remove('d-flex');
-                    }
-                }
-            } else {
-                presaleInput.classList.remove('is-invalid');
-                if (preErrEl) {
-                    preErrEl.classList.add('d-none');
-                    preErrEl.classList.remove('d-flex');
-                }
+        function setPresaleError(msg) {
+            presaleInput.classList.add('is-invalid');
+            if (preErrEl && preErrMsg) {
+                preErrMsg.textContent = msg;
+                preErrEl.classList.remove('d-none');
+                preErrEl.classList.add('d-flex');
             }
-        } else {
+            isValid = false;
+        }
+
+        function clearPresaleError() {
             presaleInput.classList.remove('is-invalid');
             if (preErrEl) {
                 preErrEl.classList.add('d-none');
                 preErrEl.classList.remove('d-flex');
             }
+        }
+
+        clearReleaseError();
+        clearPresaleError();
+
+        if (status === 'SCHEDULED') {
+            // 1. SCHEDULED: release_date required & > now
+            if (releaseInput.value) {
+                const relDate = new Date(releaseInput.value);
+                if (relDate <= now) {
+                    setReleaseError('Ngày phát hành dự kiến phải là thời gian trong tương lai (lớn hơn thời điểm hiện tại).');
+                }
+            }
+            // presale_date: optional. If present: now < presale_date <= release_date
+            if (presaleInput.value) {
+                const preDate = new Date(presaleInput.value);
+                if (preDate <= now) {
+                    setPresaleError('Ngày mở bán sớm phải là thời gian trong tương lai.');
+                } else if (releaseInput.value && preDate > new Date(releaseInput.value)) {
+                    setPresaleError('Ngày mở bán sớm phải trước hoặc bằng Ngày phát hành dự kiến.');
+                }
+            }
+        } else if (status === 'PRE_ORDER') {
+            // 2. PRE_ORDER: release_date required & > now
+            if (releaseInput.value) {
+                const relDate = new Date(releaseInput.value);
+                if (relDate <= now) {
+                    setReleaseError('Ngày phát hành dự kiến phải là thời gian trong tương lai (lớn hơn thời điểm hiện tại).');
+                }
+            }
+            // presale_date: optional. If present: presale_date <= release_date
+            if (presaleInput.value && releaseInput.value) {
+                const preDate = new Date(presaleInput.value);
+                if (preDate > new Date(releaseInput.value)) {
+                    setPresaleError('Ngày mở bán sớm phải trước hoặc bằng Ngày phát hành dự kiến.');
+                }
+            }
+        } else if (status === 'COMING_SOON') {
+            // 3. COMING_SOON: release_date optional. If present: release_date > now
+            if (releaseInput.value) {
+                const relDate = new Date(releaseInput.value);
+                if (relDate <= now) {
+                    setReleaseError('Ngày phát hành dự kiến phải là thời gian trong tương lai (lớn hơn thời điểm hiện tại).');
+                }
+            }
+            // presale_date: optional. If present: presale_date <= release_date
+            if (presaleInput.value && releaseInput.value) {
+                const preDate = new Date(presaleInput.value);
+                if (preDate > new Date(releaseInput.value)) {
+                    setPresaleError('Ngày mở bán sớm phải trước hoặc bằng Ngày phát hành dự kiến.');
+                }
+            }
+        } else if (status === 'NOW_SHOWING') {
+            // 4. NOW_SHOWING: release_date optional, allow past dates. presale_date ignored.
+            clearReleaseError();
+            clearPresaleError();
+        } else if (status === 'ENDED') {
+            // 5. ENDED: ignore validations
+            clearReleaseError();
+            clearPresaleError();
         }
 
         return isValid;
@@ -353,21 +382,72 @@
         const trailerStar = document.getElementById('trailer_req_star');
         const releaseInput = document.getElementById('release_date');
         const presaleInput = document.getElementById('presale_date');
+        const releaseWrapper = document.getElementById('release_date_wrapper');
+        const presaleWrapper = document.getElementById('presale_date_wrapper');
+        const releaseHint = document.getElementById('release_date_hint');
 
         const nowIso = new Date().toISOString().slice(0, 16);
 
-        if (status === 'SCHEDULED') {
-            hintEl.style.display = 'block';
-            if (releaseStar) releaseStar.style.display = 'inline';
-            if (trailerStar) trailerStar.style.display = 'inline';
-            releaseInput.min = nowIso;
-            presaleInput.min = nowIso;
-        } else {
-            hintEl.style.display = 'none';
+        // 1. Show/Hide & toggle width of presale_date vs release_date
+        if (status === 'NOW_SHOWING' || status === 'ENDED') {
+            // Hide presale_date completely & Auto-reset value
+            if (presaleWrapper) presaleWrapper.style.display = 'none';
+            if (presaleInput) {
+                presaleInput.value = ''; // Auto-reset value to avoid sending invalid background data
+                presaleInput.disabled = true;
+            }
+            if (releaseWrapper) {
+                releaseWrapper.className = 'col-md-12 mb-3';
+            }
             if (releaseStar) releaseStar.style.display = 'none';
-            if (trailerStar) trailerStar.style.display = 'none';
+            if (releaseHint) {
+                releaseHint.textContent = status === 'NOW_SHOWING' 
+                    ? 'Tùy chọn: Ngày phim đã công chiếu (cho phép chọn ngày trong quá khứ).' 
+                    : 'Tùy chọn: Ngày phim từng phát hành.';
+            }
             releaseInput.removeAttribute('min');
             presaleInput.removeAttribute('min');
+        } else if (status === 'SCHEDULED' || status === 'PRE_ORDER') {
+            // Show both fields
+            if (presaleWrapper) presaleWrapper.style.display = 'block';
+            if (presaleInput) presaleInput.disabled = false;
+            if (releaseWrapper) {
+                releaseWrapper.className = 'col-md-6 mb-3';
+            }
+            if (releaseStar) releaseStar.style.display = 'inline';
+            if (releaseHint) {
+                releaseHint.textContent = status === 'SCHEDULED'
+                    ? 'Bắt buộc khi phim ở trạng thái Lên lịch (phải là ngày tương lai).'
+                    : 'Bắt buộc khi phim ở trạng thái Mở bán sớm (phải là ngày tương lai).';
+            }
+            releaseInput.min = nowIso;
+            if (status === 'SCHEDULED') {
+                presaleInput.min = nowIso;
+            } else {
+                presaleInput.removeAttribute('min');
+            }
+        } else if (status === 'COMING_SOON') {
+            // COMING_SOON: Show both fields, keep optional (no red *)
+            if (presaleWrapper) presaleWrapper.style.display = 'block';
+            if (presaleInput) presaleInput.disabled = false;
+            if (releaseWrapper) {
+                releaseWrapper.className = 'col-md-6 mb-3';
+            }
+            if (releaseStar) releaseStar.style.display = 'none';
+            if (releaseHint) {
+                releaseHint.textContent = 'Tùy chọn: Ngày dự kiến khởi chiếu để hiển thị cho khán giả (phải là ngày tương lai nếu nhập).';
+            }
+            releaseInput.min = nowIso;
+            presaleInput.removeAttribute('min');
+        }
+
+        // Toggle scheduled banner & trailer star
+        if (status === 'SCHEDULED') {
+            if (hintEl) hintEl.style.display = 'block';
+            if (trailerStar) trailerStar.style.display = 'inline';
+        } else {
+            if (hintEl) hintEl.style.display = 'none';
+            if (trailerStar) trailerStar.style.display = 'none';
         }
 
         validateMovieDatesRealTime();
@@ -393,17 +473,18 @@
         if (form) {
             form.addEventListener('submit', function(e) {
                 const status = document.getElementById('status').value;
+                const releaseDate = document.getElementById('release_date').value;
+                const presaleDate = document.getElementById('presale_date').value;
+                const errors = [];
+                const now = new Date();
+
                 if (status === 'SCHEDULED') {
                     const title = document.getElementById('title').value.trim();
                     const poster = document.getElementById('poster');
                     const trailerUrl = document.getElementById('trailer_url').value.trim();
                     const duration = parseInt(document.getElementById('duration').value);
                     const ageRating = document.getElementById('age_rating').value;
-                    const releaseDate = document.getElementById('release_date').value;
-                    const presaleDate = document.getElementById('presale_date').value;
                     const categoryCheckboxes = document.querySelectorAll('input[name="categories[]"]:checked');
-
-                    const errors = [];
 
                     if (!title) errors.push('Tên phim là bắt buộc khi Lên lịch.');
                     if (!poster || !poster.files || poster.files.length === 0) {
@@ -417,7 +498,25 @@
                         errors.push('Ngày phát hành dự kiến là bắt buộc khi Lên lịch.');
                     } else {
                         const relDateObj = new Date(releaseDate);
-                        if (relDateObj <= new Date()) {
+                        if (relDateObj <= now) {
+                            errors.push('Ngày phát hành dự kiến phải là thời gian trong tương lai (lớn hơn thời điểm hiện tại).');
+                        }
+                        if (presaleDate) {
+                            const preDateObj = new Date(presaleDate);
+                            if (preDateObj <= now) {
+                                errors.push('Ngày mở bán sớm phải là thời gian trong tương lai.');
+                            }
+                            if (preDateObj > relDateObj) {
+                                errors.push('Ngày mở bán sớm phải trước hoặc bằng ngày phát hành dự kiến.');
+                            }
+                        }
+                    }
+                } else if (status === 'PRE_ORDER') {
+                    if (!releaseDate) {
+                        errors.push('Ngày phát hành dự kiến là bắt buộc khi Mở bán sớm.');
+                    } else {
+                        const relDateObj = new Date(releaseDate);
+                        if (relDateObj <= now) {
                             errors.push('Ngày phát hành dự kiến phải là thời gian trong tương lai (lớn hơn thời điểm hiện tại).');
                         }
                         if (presaleDate) {
@@ -427,12 +526,25 @@
                             }
                         }
                     }
-
-                    if (errors.length > 0) {
-                        e.preventDefault();
-                        alert("⚠️ Vui lòng hoàn tất đầy đủ thông tin để Lên lịch phim:\n\n- " + errors.join("\n- "));
-                        return false;
+                } else if (status === 'COMING_SOON') {
+                    if (releaseDate) {
+                        const relDateObj = new Date(releaseDate);
+                        if (relDateObj <= now) {
+                            errors.push('Ngày phát hành dự kiến phải là thời gian trong tương lai (lớn hơn thời điểm hiện tại).');
+                        }
+                        if (presaleDate) {
+                            const preDateObj = new Date(presaleDate);
+                            if (preDateObj > relDateObj) {
+                                errors.push('Ngày mở bán sớm phải trước hoặc bằng ngày phát hành dự kiến.');
+                            }
+                        }
                     }
+                }
+
+                if (errors.length > 0) {
+                    e.preventDefault();
+                    alert("⚠️ Vui lòng kiểm tra lại thông tin phim:\n\n- " + errors.join("\n- "));
+                    return false;
                 }
             });
         }

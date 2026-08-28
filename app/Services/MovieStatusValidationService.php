@@ -41,26 +41,6 @@ class MovieStatusValidationService
             'age_rating' => 'required|string|max:50',
             'categories' => 'required|array|min:1',
             'categories.*' => 'exists:categories,id',
-            'release_date' => [
-                'required',
-                'date',
-                function ($attribute, $value, $fail) {
-                    if ($value && Carbon::parse($value)->lte(now())) {
-                        $fail('Ngày phát hành dự kiến (release_date) phải là thời gian trong tương lai.');
-                    }
-                },
-            ],
-            'presale_date' => [
-                'nullable',
-                'date',
-                function ($attribute, $value, $fail) use ($data) {
-                    if ($value && !empty($data['release_date'])) {
-                        if (Carbon::parse($value)->gt(Carbon::parse($data['release_date']))) {
-                            $fail('Ngày mở bán sớm (presale_date) phải trước hoặc bằng ngày phát hành.');
-                        }
-                    }
-                },
-            ],
         ];
 
         // Poster validation
@@ -81,10 +61,12 @@ class MovieStatusValidationService
             'age_rating.required' => 'Độ tuổi giới hạn (Age Rating) là bắt buộc khi lên lịch chiếu.',
             'categories.required' => 'Thể loại phim (Genre) là bắt buộc khi lên lịch chiếu.',
             'categories.min' => 'Vui lòng chọn ít nhất một thể loại phim.',
-            'release_date.required' => 'Ngày phát hành dự kiến (release_date) là bắt buộc khi lên lịch chiếu.',
-            'release_date.date' => 'Ngày phát hành dự kiến không hợp lệ.',
-            'presale_date.date' => 'Ngày mở bán sớm không hợp lệ.',
         ];
+
+        // Merge date rules for SCHEDULED status
+        [$dateRules, $dateMessages] = $this->getDateRulesAndMessages(Movie::STATUS_SCHEDULED, $data);
+        $rules = array_merge($rules, $dateRules);
+        $messages = array_merge($messages, $dateMessages);
 
         $validator = Validator::make($data, $rules, $messages);
 
@@ -93,6 +75,141 @@ class MovieStatusValidationService
         }
 
         return $validator->validated();
+    }
+
+    /**
+     * Validate release_date and presale_date according to the movie status.
+     *
+     * Rules:
+     * - SCHEDULED:
+     *   release_date: Required, release_date > now().
+     *   presale_date: Optional. If present: now() < presale_date AND presale_date <= release_date.
+     * - PRE_ORDER:
+     *   release_date: Required, release_date > now().
+     *   presale_date: Optional. If present: presale_date <= release_date.
+     * - COMING_SOON:
+     *   release_date: Optional. If provided: release_date > now().
+     *   presale_date: Optional. If provided: presale_date <= release_date.
+     * - NOW_SHOWING:
+     *   release_date: Optional. Allow past dates (release_date <= now()).
+     *   presale_date: Ignore / Nullable.
+     * - ENDED:
+     *   Ignore time validations for release_date and presale_date.
+     *
+     * @param array $data
+     * @return void
+     * @throws ValidationException
+     */
+    public function validateMovieDatesByStatus(array $data): void
+    {
+        $status = $data['status'] ?? null;
+        [$rules, $messages] = $this->getDateRulesAndMessages($status, $data);
+
+        if (!empty($rules)) {
+            $validator = Validator::make($data, $rules, $messages);
+            if ($validator->fails()) {
+                throw new ValidationException($validator);
+            }
+        }
+    }
+
+    /**
+     * Helper to get date validation rules and error messages based on status.
+     *
+     * @param string|null $status
+     * @param array $data
+     * @return array [rules, messages]
+     */
+    public function getDateRulesAndMessages(?string $status, array $data): array
+    {
+        $rules = [];
+        $messages = [];
+
+        if ($status === Movie::STATUS_SCHEDULED) {
+            $rules['release_date'] = [
+                'required',
+                'date',
+                function ($attribute, $value, $fail) {
+                    if ($value && Carbon::parse($value)->lte(now())) {
+                        $fail('Ngày phát hành dự kiến (release_date) phải là thời gian trong tương lai.');
+                    }
+                },
+            ];
+            $rules['presale_date'] = [
+                'nullable',
+                'date',
+                function ($attribute, $value, $fail) use ($data) {
+                    if ($value) {
+                        $parsedPresale = Carbon::parse($value);
+                        if ($parsedPresale->lte(now())) {
+                            $fail('Ngày mở bán sớm (presale_date) phải là thời gian trong tương lai.');
+                        }
+                        if (!empty($data['release_date']) && $parsedPresale->gt(Carbon::parse($data['release_date']))) {
+                            $fail('Ngày mở bán sớm (presale_date) phải trước hoặc bằng ngày phát hành dự kiến.');
+                        }
+                    }
+                },
+            ];
+            $messages['release_date.required'] = 'Ngày phát hành dự kiến là bắt buộc khi Lên lịch.';
+            $messages['release_date.date'] = 'Ngày phát hành dự kiến không đúng định dạng ngày hợp lệ.';
+            $messages['presale_date.date'] = 'Ngày mở bán sớm không đúng định dạng ngày hợp lệ.';
+        } elseif ($status === Movie::STATUS_PRE_ORDER) {
+            $rules['release_date'] = [
+                'required',
+                'date',
+                function ($attribute, $value, $fail) {
+                    if ($value && Carbon::parse($value)->lte(now())) {
+                        $fail('Ngày phát hành dự kiến (release_date) phải là thời gian trong tương lai.');
+                    }
+                },
+            ];
+            $rules['presale_date'] = [
+                'nullable',
+                'date',
+                function ($attribute, $value, $fail) use ($data) {
+                    if ($value && !empty($data['release_date'])) {
+                        if (Carbon::parse($value)->gt(Carbon::parse($data['release_date']))) {
+                            $fail('Ngày mở bán sớm (presale_date) phải trước hoặc bằng ngày phát hành dự kiến.');
+                        }
+                    }
+                },
+            ];
+            $messages['release_date.required'] = 'Ngày phát hành dự kiến là bắt buộc khi Mở bán sớm.';
+            $messages['release_date.date'] = 'Ngày phát hành dự kiến không đúng định dạng ngày hợp lệ.';
+            $messages['presale_date.date'] = 'Ngày mở bán sớm không đúng định dạng ngày hợp lệ.';
+        } elseif ($status === Movie::STATUS_COMING_SOON) {
+            $rules['release_date'] = [
+                'nullable',
+                'date',
+                function ($attribute, $value, $fail) {
+                    if ($value && Carbon::parse($value)->lte(now())) {
+                        $fail('Ngày phát hành dự kiến (release_date) phải là thời gian trong tương lai.');
+                    }
+                },
+            ];
+            $rules['presale_date'] = [
+                'nullable',
+                'date',
+                function ($attribute, $value, $fail) use ($data) {
+                    if ($value && !empty($data['release_date'])) {
+                        if (Carbon::parse($value)->gt(Carbon::parse($data['release_date']))) {
+                            $fail('Ngày mở bán sớm (presale_date) phải trước hoặc bằng ngày phát hành dự kiến.');
+                        }
+                    }
+                },
+            ];
+            $messages['release_date.date'] = 'Ngày phát hành dự kiến không đúng định dạng ngày hợp lệ.';
+            $messages['presale_date.date'] = 'Ngày mở bán sớm không đúng định dạng ngày hợp lệ.';
+        } elseif ($status === Movie::STATUS_NOW_SHOWING) {
+            $rules['release_date'] = ['nullable', 'date'];
+            $rules['presale_date'] = ['nullable'];
+            $messages['release_date.date'] = 'Ngày phát hành dự kiến không đúng định dạng ngày hợp lệ.';
+        } elseif ($status === Movie::STATUS_ENDED) {
+            $rules['release_date'] = ['nullable'];
+            $rules['presale_date'] = ['nullable'];
+        }
+
+        return [$rules, $messages];
     }
 
     /**
