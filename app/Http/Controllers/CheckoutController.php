@@ -360,6 +360,30 @@ class CheckoutController extends Controller
                 ], 422);
             }
 
+            // Chặn ghế hỏng, ghế đã đặt hoặc ghế không thuộc phòng chiếu này
+            $invalidSeats = Seat::whereIn('id', $seatIds)
+                ->where(function ($q) use ($showtime) {
+                    $q->where('room_id', '!=', $showtime->room_id)
+                      ->orWhereIn('status', [Seat::STATUS_BROKEN, Seat::STATUS_BOOKED]);
+                })
+                ->get();
+
+            if ($invalidSeats->isNotEmpty()) {
+                $codes = $invalidSeats->map(fn($s) => $s->getSeatCode())->implode(', ');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Một hoặc nhiều ghế được chọn không thuộc phòng chiếu của suất chiếu này hoặc không khả dụng: ' . $codes
+                ], 422);
+            }
+
+            $bookingId = $bookingService->createBooking(
+                Auth::id(),
+                $showtimeId,
+                $seatIds,
+                $request->input('payment_method', 'ONLINE'),
+                $request->input('coupon_code'),
+                $request->input('combos', [])
+            );
             $userId = Auth::id();
             $existingBooking = null;
 
