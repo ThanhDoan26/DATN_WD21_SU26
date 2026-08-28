@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            UserRoleSeeder::class,
             FullDemoDataSeeder::class,
             PostCategoryAndPostSeeder::class,
             MovieCinemaSeeder::class, // Added to seed Bookings as well
