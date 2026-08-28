@@ -178,6 +178,9 @@ it('blocks staff checkout when seat is already selected by online customer', fun
         'showtime_id' => $showtime->id,
         'seat_ids' => [$seat->id],
         'payment_method' => 'CASH',
+        'customer_name' => 'Nguyen Van A',
+        'customer_phone' => '0901234567',
+        'customer_email' => 'customer@example.com',
     ]);
 
     $response->assertStatus(409);

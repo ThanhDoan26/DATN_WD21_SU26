@@ -4,9 +4,7 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\Movie;
-use App\Models\Cinema;
 use App\Models\Showtime;
-use App\Models\Room;
 use App\Models\Seat;
 use App\Models\Combo;
 use App\Models\Coupon;
@@ -20,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 use App\Mail\TicketConfirmationMail;
 
 class WalkInBookingController extends Controller
@@ -368,17 +367,30 @@ class WalkInBookingController extends Controller
             return response()->json(['success' => false, 'message' => 'Nhân viên chưa được phân công rạp.'], 403);
         }
 
-        $request->validate([
+        $validationRules = [
             'showtime_id' => 'required|exists:showtimes,id',
             'seat_ids' => 'required',
             'combos' => 'nullable|array',
             'payment_method' => 'nullable|string|max:100',
             'coupon_code' => 'nullable|string|max:50',
-            'customer_name' => 'nullable|string|max:255',
-            'customer_phone' => 'nullable|string|max:20',
-            'customer_email' => 'nullable|email|max:255',
+            'customer_name' => 'required|string|max:255',
+            'customer_phone' => 'required|string|max:20',
+            'customer_email' => 'required|email|max:255',
             'booking_id' => 'nullable|integer',
+        ];
+        $validator = Validator::make($request->all(), $validationRules, [
+            'customer_name.required' => 'Vui lòng nhập tên khách hàng.',
+            'customer_phone.required' => 'Vui lòng nhập số điện thoại khách hàng.',
+            'customer_email.required' => 'Vui lòng nhập email khách hàng.',
+            'customer_email.email' => 'Email khách hàng không đúng định dạng.',
         ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors(),
+            ], 422);
+        }
 
         $showtimeId = (int) $request->input('showtime_id');
         $showtime = Showtime::with('room.cinema')->find($showtimeId);

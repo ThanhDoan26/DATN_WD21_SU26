@@ -73,6 +73,34 @@ function createCinemaWithRoomAndShowtime(string $cinemaName): array
 
 // ── WALK-IN BOOKING TESTS ───────────────────────────────────────────
 
+it('requires customer information before staff can collect payment and issue tickets', function () {
+    $cinemaData = createCinemaWithRoomAndShowtime('Cinema A');
+    $cinemaData['showtime']->update([
+        'start_time' => now()->subMinutes(5),
+        'end_time' => now()->addHours(2),
+        'status' => Showtime::STATUS_ONGOING,
+    ]);
+
+    $staff = User::create([
+        'name' => 'Staff Cinema A',
+        'email' => 'staff_' . uniqid() . '@example.com',
+        'password' => bcrypt('password'),
+        'role_id' => 2,
+        'cinema_id' => $cinemaData['cinema']->id,
+        'status' => 'ACTIVE',
+    ]);
+
+    $response = $this->actingAs($staff)->postJson(route('staff.walkin.reserve'), [
+        'showtime_id' => $cinemaData['showtime']->id,
+        'seat_ids' => [$cinemaData['seat']->id],
+        'payment_method' => 'CASH',
+    ]);
+
+    $response->assertStatus(422);
+    $response->assertJsonPath('success', false);
+    $response->assertJsonPath('message', 'Vui lòng nhập tên khách hàng.');
+});
+
 it('prevents staff of Cinema A from viewing seat map of Cinema B showtime', function () {
     $cinemaAData = createCinemaWithRoomAndShowtime('Cinema A');
     $cinemaBData = createCinemaWithRoomAndShowtime('Cinema B');
@@ -191,6 +219,9 @@ it('allows staff of Cinema A to view seat map and reserve for Cinema A showtime'
         'showtime_id' => $cinemaAData['showtime']->id,
         'seat_ids' => [$cinemaAData['seat']->id],
         'payment_method' => 'CASH',
+        'customer_name' => 'Nguyen Van A',
+        'customer_phone' => '0901234567',
+        'customer_email' => 'customer@example.com',
     ]);
 
     $reserveResponse->assertStatus(200);

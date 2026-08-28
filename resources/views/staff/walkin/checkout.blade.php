@@ -18,19 +18,19 @@
             <!-- Customer Info -->
             <div class="card mb-4 shadow-sm border-0 bg-light">
                 <div class="card-body">
-                    <h5 class="card-title fw-bold text-dark mb-3"><i class="fas fa-user-circle text-primary me-2"></i>Thông tin Khách hàng (Tùy chọn)</h5>
+                    <h5 class="card-title fw-bold text-dark mb-3"><i class="fas fa-user-circle text-primary me-2"></i>Thông tin Khách hàng (Bắt buộc)</h5>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label text-muted small">Tên khách hàng</label>
-                            <input type="text" id="customer_name" class="form-control" placeholder="Nhập tên KH...">
+                            <label class="form-label text-muted small" for="customer_name">Tên khách hàng <span class="text-danger">*</span></label>
+                            <input type="text" id="customer_name" class="form-control" placeholder="Nhập tên KH..." required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-muted small">Số điện thoại</label>
-                            <input type="text" id="customer_phone" class="form-control" placeholder="Số điện thoại...">
+                            <label class="form-label text-muted small" for="customer_phone">Số điện thoại <span class="text-danger">*</span></label>
+                            <input type="tel" id="customer_phone" class="form-control" placeholder="Số điện thoại..." required>
                         </div>
                         <div class="col-12">
-                            <label class="form-label text-muted small">Email (Để gửi vé điện tử)</label>
-                            <input type="email" id="customer_email" class="form-control" placeholder="Email...">
+                            <label class="form-label text-muted small" for="customer_email">Email <span class="text-danger">*</span></label>
+                            <input type="email" id="customer_email" class="form-control" placeholder="Email..." required>
                         </div>
                     </div>
                 </div>
@@ -272,6 +272,34 @@
     async function processCheckout() {
         const btn = document.getElementById('btnCheckout');
         const alertBox = document.getElementById('checkoutAlert');
+
+        const customerFields = [
+            { id: 'customer_name', message: 'Vui lòng nhập tên khách hàng.' },
+            { id: 'customer_phone', message: 'Vui lòng nhập số điện thoại khách hàng.' },
+            { id: 'customer_email', message: 'Vui lòng nhập email khách hàng.' },
+        ];
+        const missingField = customerFields.find(field => !document.getElementById(field.id).value.trim());
+
+        document.querySelectorAll('#customer_name, #customer_phone, #customer_email').forEach(field => {
+            field.classList.toggle('is-invalid', !field.value.trim());
+            field.addEventListener('input', () => field.classList.remove('is-invalid'), { once: true });
+        });
+
+        if (missingField) {
+            alertBox.textContent = missingField.message + ' Vui lòng điền đầy đủ thông tin trước khi thu tiền và xuất vé.';
+            alertBox.classList.remove('d-none');
+            document.getElementById(missingField.id).focus();
+            return;
+        }
+
+        const emailField = document.getElementById('customer_email');
+        if (!emailField.checkValidity()) {
+            emailField.classList.add('is-invalid');
+            alertBox.textContent = 'Email khách hàng không đúng định dạng. Vui lòng kiểm tra lại trước khi thu tiền và xuất vé.';
+            alertBox.classList.remove('d-none');
+            emailField.focus();
+            return;
+        }
         
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
