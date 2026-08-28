@@ -257,7 +257,7 @@ class BookingController extends Controller
         // 1. Fetch Paid seats from Database
         $paidBookings = $showtime->bookings()
             ->whereIn('status', ['Paid', 'Used'])
-            ->with('bookedSeats')
+            ->with(['bookedSeats' => fn ($query) => $query->where('status', '!=', 'CANCELLED')])
             ->get();
             
         foreach ($paidBookings as $booking) {
@@ -289,7 +289,7 @@ class BookingController extends Controller
             $pendingBookings = $showtime->bookings()
                 ->whereIn('status', ['Pending', 'PROCESSING'])
                 ->where('booking_time', '>=', now()->subMinutes(\App\Services\BookingService::getHoldDuration()))
-                ->with('bookedSeats')
+                ->with(['bookedSeats' => fn ($query) => $query->where('status', '!=', 'CANCELLED')])
                 ->get();
 
             foreach ($pendingBookings as $booking) {
@@ -322,7 +322,12 @@ class BookingController extends Controller
         ]);
 
         $userId = Auth::id();
-        $query = \App\Models\Booking::whereIn('status', ['Pending', 'PROCESSING']);
+        if (!$userId) {
+            return response()->json(['error' => 'Bạn chưa đăng nhập.'], 401);
+        }
+
+        $query = \App\Models\Booking::where('user_id', $userId)
+            ->where('status', 'Pending');
 
         if ($request->booking_id) {
             $query->where('id', $request->booking_id);

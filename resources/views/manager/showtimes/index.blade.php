@@ -1,15 +1,15 @@
 @extends('layouts.manager')
 
-@section('title', 'Showtimes - Admin')
-@section('page_title', 'Showtimes Management')
+@section('title', 'Quản lý Lịch Chiếu')
+@section('page_title', 'Quản lý lịch chiếu')
 
 @section('content')
 <!-- Breadcrumb -->
 <div class="breadcrumb-custom">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item active">Showtimes</li>
+            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item active">Lịch chiếu</li>
         </ol>
     </nav>
 </div>

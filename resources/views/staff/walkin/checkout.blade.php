@@ -1,73 +1,185 @@
 @extends('layouts.staff')
 
+@section('title', 'Thanh Toán Tại Quầy (POS)')
+@section('page_title', 'Thanh Toán & Xuất Vé')
+
+@section('extra_css')
+<style>
+    .pos-card {
+        background: var(--bg-surface, #ffffff);
+        border-radius: 18px;
+        border: 1px solid var(--border-light, #e2e8f0);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+        overflow: hidden;
+    }
+    .pos-card-header {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        color: #ffffff;
+        padding: 16px 20px;
+    }
+    
+    .combo-pos-card {
+        background: var(--bg-surface, #ffffff);
+        border: 1.5px solid var(--border-light, #e2e8f0);
+        border-radius: 14px;
+        padding: 14px;
+        transition: all 0.2s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    .combo-pos-card:hover {
+        border-color: #f59e0b;
+        box-shadow: 0 8px 20px rgba(245, 158, 11, 0.12);
+        transform: translateY(-2px);
+    }
+    .combo-img {
+        width: 65px;
+        height: 65px;
+        border-radius: 10px;
+        object-fit: cover;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    
+    .btn-qty-pos {
+        width: 34px;
+        height: 34px;
+        font-weight: 800;
+        font-size: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .btn-qty-pos:hover {
+        background: #f59e0b;
+        color: #000;
+        border-color: #f59e0b;
+    }
+
+    /* Cash Calculator */
+    .cash-calc-panel {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%);
+        border: 1.5px dashed #f59e0b;
+        border-radius: 14px;
+        padding: 16px;
+    }
+    .cash-preset-btn {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .cash-preset-btn:hover {
+        background: #f59e0b;
+        color: #000;
+        border-color: #f59e0b;
+    }
+
+    .pos-receipt-sticky {
+        position: sticky;
+        top: 20px;
+    }
+</style>
+@endsection
+
 @section('content')
-<div class="container-fluid p-4 bg-white rounded-3 shadow-sm">
-    <div class="d-flex align-items-center mb-4 border-bottom pb-3">
-        <a href="javascript:history.back()" class="btn btn-outline-secondary me-3">
-            <i class="fas fa-arrow-left"></i> Trở Lại
+<div class="container-fluid p-4">
+    <!-- Header Navigation -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <a href="#" id="backToSeats" class="btn btn-outline-secondary px-3 py-2 rounded-3 fw-bold">
+            <i class="fas fa-arrow-left me-2"></i>Chọn Lại Ghế
         </a>
-        <h2 class="mb-0 text-primary fw-bold"><i class="fas fa-cash-register me-2"></i>Thanh Toán</h2>
+        <div class="text-muted small">
+            <i class="fas fa-clock text-warning me-1"></i> Ca làm việc: <strong class="text-dark">{{ Auth::user()->name ?? 'Nhân viên' }}</strong>
+        </div>
     </div>
 
     <!-- Alert for JS errors -->
-    <div id="checkoutAlert" class="alert alert-danger d-none"></div>
+    <div id="checkoutAlert" class="alert alert-danger d-none shadow-sm rounded-3"></div>
 
-    <div class="row">
-        <!-- Left Column: Combos & Customer Info -->
-        <div class="col-lg-7 mb-4">
-            <!-- Customer Info -->
-            <div class="card mb-4 shadow-sm border-0 bg-light">
-                <div class="card-body">
-                    <h5 class="card-title fw-bold text-dark mb-3"><i class="fas fa-user-circle text-primary me-2"></i>Thông tin Khách hàng (Tùy chọn)</h5>
+    <div class="row g-4">
+        <!-- Left Column: Customer & Concessions -->
+        <div class="col-xl-7 col-lg-6">
+            <!-- 1. Customer Info -->
+            <div class="pos-card mb-4">
+                <div class="pos-card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-bold font-sora"><i class="fas fa-user-circle text-warning me-2"></i>Thông Tin Khách Hàng</span>
+                    <button type="button" class="btn btn-sm btn-outline-light py-0 px-2" onclick="setGuestCustomer()">
+                        Khách Vãng Lai
+                    </button>
+                </div>
+                <div class="p-4">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label text-muted small">Tên khách hàng</label>
-                            <input type="text" id="customer_name" class="form-control" placeholder="Nhập tên KH...">
+                            <label class="form-label text-muted small fw-bold">Tên khách hàng</label>
+                            <input type="text" id="customer_name" class="form-control rounded-3 py-2" placeholder="Họ và tên...">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-muted small">Số điện thoại</label>
-                            <input type="text" id="customer_phone" class="form-control" placeholder="Số điện thoại...">
+                            <label class="form-label text-muted small fw-bold">Số điện thoại (Tích điểm)</label>
+                            <input type="tel" id="customer_phone" class="form-control rounded-3 py-2" placeholder="09xxxxxxxx...">
                         </div>
                         <div class="col-12">
-                            <label class="form-label text-muted small">Email (Để gửi vé điện tử)</label>
-                            <input type="email" id="customer_email" class="form-control" placeholder="Email...">
+                            <label class="form-label text-muted small fw-bold">Email (Nhận vé điện tử / Hóa đơn)</label>
+                            <input type="email" id="customer_email" class="form-control rounded-3 py-2" placeholder="email@example.com...">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Combos -->
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h5 class="card-title fw-bold text-dark mb-3"><i class="fas fa-popcorn text-warning me-2"></i>Chọn Bắp Ước</h5>
+            <!-- 2. Concessions & Combos -->
+            <div class="pos-card mb-4">
+                <div class="pos-card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-bold font-sora"><i class="fas fa-popcorn text-warning me-2"></i>Chọn Bắp Nước (Concessions)</span>
+                    <span class="badge bg-warning text-dark">{{ $combos->count() }} món khả dụng</span>
+                </div>
+                
+                <div class="p-4">
                     @if($combos->isEmpty())
-                        <p class="text-muted">Không có combo nào đang bán.</p>
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-box-open fa-2x mb-2 opacity-50"></i>
+                            <p class="mb-0 small">Hiện không có combo bắp nước nào đang bán.</p>
+                        </div>
                     @else
                         <div class="row g-3">
                             @foreach($combos as $combo)
                                 <div class="col-md-6">
-                                    <div class="border rounded p-3 h-100 d-flex flex-column">
-                                        <div class="d-flex align-items-start mb-2">
+                                    <div class="combo-pos-card">
+                                        <div class="d-flex align-items-start gap-3 mb-2">
                                             @if($combo->image)
-                                                <img src="{{ asset('storage/' . $combo->image) }}" class="rounded me-2" style="width: 50px; height: 50px; object-fit: cover;">
+                                                <img src="{{ asset('storage/' . $combo->image) }}" class="combo-img" alt="{{ $combo->name }}">
                                             @else
-                                                <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center me-2" style="width: 50px; height: 50px;">
-                                                    <i class="fas fa-image"></i>
+                                                <div class="combo-img bg-secondary d-flex align-items-center justify-content-center text-white">
+                                                    <i class="fas fa-popcorn fa-lg opacity-60"></i>
                                                 </div>
                                             @endif
-                                            <div>
-                                                <h6 class="fw-bold mb-1">{{ $combo->name }}</h6>
-                                                <p class="text-danger fw-bold mb-0 small">{{ number_format($combo->price) }}₫</p>
+                                            <div class="flex-grow-1">
+                                                <h6 class="fw-bold mb-1 font-sora">{{ $combo->name }}</h6>
+                                                <p class="text-danger fw-bold mb-0">{{ number_format($combo->price) }}₫</p>
+                                                @if($combo->description)
+                                                    <p class="text-muted small mb-0 fst-italic" style="font-size: 11px;">{{ $combo->description }}</p>
+                                                @endif
                                             </div>
                                         </div>
-                                        <div class="mt-auto pt-2 border-top">
-                                            <div class="input-group input-group-sm">
-                                                <button class="btn btn-outline-secondary btn-minus" type="button" onclick="updateCombo({{ $combo->id }}, -1)">-</button>
-                                                <input type="number" class="form-control text-center combo-qty bg-white" value="0" readonly 
+
+                                        <div class="mt-auto pt-2 border-top d-flex justify-content-between align-items-center">
+                                            <span class="text-muted small">Số lượng:</span>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <button class="btn-qty-pos" type="button" onclick="updateCombo({{ $combo->id }}, -1)">-</button>
+                                                <input type="number" class="form-control text-center combo-qty bg-light fw-bold p-1" 
+                                                       value="0" readonly style="width: 45px; height: 34px;"
                                                        data-id="{{ $combo->id }}" 
                                                        data-price="{{ $combo->price }}"
                                                        data-name="{{ $combo->name }}">
-                                                <button class="btn btn-outline-secondary btn-plus" type="button" onclick="updateCombo({{ $combo->id }}, 1)">+</button>
+                                                <button class="btn-qty-pos" type="button" onclick="updateCombo({{ $combo->id }}, 1)">+</button>
                                             </div>
                                         </div>
                                     </div>
@@ -77,64 +189,105 @@
                     @endif
                 </div>
             </div>
+
+            <!-- 3. Smart Cash Calculator -->
+            <div class="pos-card">
+                <div class="pos-card-header">
+                    <span class="fw-bold font-sora"><i class="fas fa-calculator text-warning me-2"></i>Tính Tiền Thối Cho Khách (Cash Calculator)</span>
+                </div>
+                <div class="p-4">
+                    <div class="cash-calc-panel">
+                        <div class="row g-3 align-items-center mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark mb-1">Tiền khách đưa (₫):</label>
+                                <input type="number" id="cashGivenInput" class="form-control form-control-lg fw-bold text-primary font-sora" 
+                                       placeholder="Nhập số tiền..." oninput="calculateChange()">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark mb-1">Tiền thối lại cho khách:</label>
+                                <div class="fs-3 fw-bold text-success font-sora" id="changeAmountDisplay">0₫</div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Cash Buttons -->
+                        <div class="d-flex flex-wrap gap-2 pt-2 border-top border-warning border-opacity-25">
+                            <span class="text-muted small align-self-center me-1">Chọn nhanh:</span>
+                            <button type="button" class="cash-preset-btn" onclick="setCashGiven('EXACT')">Vừa đủ</button>
+                            <button type="button" class="cash-preset-btn" onclick="setCashGiven(100000)">100.000₫</button>
+                            <button type="button" class="cash-preset-btn" onclick="setCashGiven(200000)">200.000₫</button>
+                            <button type="button" class="cash-preset-btn" onclick="setCashGiven(300000)">300.000₫</button>
+                            <button type="button" class="cash-preset-btn" onclick="setCashGiven(500000)">500.000₫</button>
+                            <button type="button" class="cash-preset-btn" onclick="setCashGiven(1000000)">1.000.000₫</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Right Column: Final Bill / Checkout -->
-        <div class="col-lg-5">
-            <div class="card border-primary sticky-top" style="top: 20px;">
-                <div class="card-header bg-primary text-white fw-bold">
-                    <i class="fas fa-receipt me-2"></i>Hóa Đơn Bán Hàng
+        <!-- Right Column: Final POS Receipt Sticky -->
+        <div class="col-xl-5 col-lg-6">
+            <div class="pos-card pos-receipt-sticky">
+                <div class="pos-card-header">
+                    <h5 class="fw-bold mb-0 font-sora d-flex align-items-center justify-content-between">
+                        <span><i class="fas fa-file-invoice-dollar me-2 text-warning"></i>Hóa Đơn Thu Ngân</span>
+                        <span class="badge bg-success text-white">POS Walk-in</span>
+                    </h5>
                 </div>
-                <div class="card-body bg-light">
-                    <!-- Tickets -->
+                
+                <div class="p-4">
+                    <!-- Movie Ticket Items -->
                     <div class="mb-3">
-                        <p class="fw-bold mb-2">Vé xem phim ({{ count($seatSummary) }} vé)</p>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold text-dark text-uppercase small">1. Vé Xem Phim</span>
+                            <span class="badge bg-primary">{{ count($seatSummary) }} vé</span>
+                        </div>
                         @foreach($seatSummary as $seat)
-                            <div class="d-flex justify-content-between text-muted small mb-1">
-                                <span>Ghế {{ $seat['code'] }} ({{ $seat['type'] }})</span>
-                                <span>{{ number_format($seat['final_price']) }}₫</span>
+                            <div class="d-flex justify-content-between text-muted small py-1 border-bottom border-light">
+                                <span>Ghế <strong>{{ $seat['code'] }}</strong> ({{ $seat['type'] }})</span>
+                                <span class="fw-bold text-dark">{{ number_format($seat['final_price']) }}₫</span>
                             </div>
                         @endforeach
                     </div>
                     
                     <!-- Combos placeholder -->
-                    <div id="comboSummaryContainer" class="mb-3 border-top pt-2 d-none">
-                        <p class="fw-bold mb-2">Bắp nước</p>
+                    <div id="comboSummaryContainer" class="mb-3 pt-2 d-none">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold text-dark text-uppercase small">2. Bắp Nước (Combo)</span>
+                        </div>
                         <div id="comboSummaryList"></div>
                     </div>
 
-                    <!-- Discount Section -->
-                    <div class="mb-3 border-top pt-3">
-                        <label class="form-label fw-bold small">Mã Giảm Giá</label>
+                    <!-- Coupon Code Section -->
+                    <div class="mb-3 pt-3 border-top">
+                        <label class="form-label fw-bold small text-dark">Mã Giảm Giá / Voucher</label>
                         <div class="input-group">
-                            <input type="text" id="couponCode" class="form-control" placeholder="Nhập mã...">
-                            <button class="btn btn-outline-primary" type="button" onclick="applyCoupon()">Áp dụng</button>
+                            <input type="text" id="couponCode" class="form-control text-uppercase" placeholder="Nhập mã voucher...">
+                            <button class="btn btn-outline-primary fw-bold" type="button" onclick="applyCoupon()">Áp dụng</button>
                         </div>
                         <div id="couponMessage" class="mt-1 small"></div>
                     </div>
 
-                    <hr class="border-secondary">
+                    <!-- Price Calculations -->
+                    <div class="pt-3 border-top">
+                        <div class="d-flex justify-content-between mb-2 text-muted">
+                            <span>Tổng tiền hàng:</span>
+                            <span class="fw-bold text-dark" id="subTotalDisplay">{{ number_format($total) }}₫</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 text-success fw-bold d-none" id="discountRow">
+                            <span>Giảm giá voucher:</span>
+                            <span id="discountDisplay">-0₫</span>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-4 pt-3 border-top border-dark">
+                            <span class="fw-bold fs-5 text-dark font-sora">KHÁCH PHẢI TRẢ:</span>
+                            <span class="fs-2 fw-bold text-danger font-sora" id="finalTotalDisplay">{{ number_format($total) }}₫</span>
+                        </div>
 
-                    <!-- Totals -->
-                    <div class="d-flex justify-content-between mb-1 text-muted">
-                        <span>Tổng tiền hàng:</span>
-                        <span id="subTotalDisplay">{{ number_format($total) }}₫</span>
+                        <!-- Action Button -->
+                        <button id="btnCheckout" class="btn btn-success w-100 py-3 fw-bold fs-5 rounded-3 shadow-sm" onclick="processCheckout()">
+                            <i class="fas fa-money-bill-wave me-2"></i>XÁC NHẬN THU TIỀN & IN VÉ
+                        </button>
                     </div>
-                    <div class="d-flex justify-content-between mb-2 text-success fw-bold d-none" id="discountRow">
-                        <span>Giảm giá:</span>
-                        <span id="discountDisplay">-0₫</span>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between align-items-center mb-4 pt-2 border-top border-dark">
-                        <span class="fw-bold fs-5">KHÁCH PHẢI TRẢ:</span>
-                        <span class="fs-3 fw-bold text-danger" id="finalTotalDisplay">{{ number_format($total) }}₫</span>
-                    </div>
-
-                    <p class="text-center text-muted small mb-2"><i class="fas fa-info-circle"></i> Phương thức thu: <strong>TIỀN MẶT</strong></p>
-
-                    <button id="btnCheckout" class="btn btn-success w-100 py-3 fw-bold fs-5 shadow-sm" onclick="processCheckout()">
-                        <i class="fas fa-money-bill-wave me-2"></i>THU TIỀN & XUẤT VÉ
-                    </button>
                 </div>
             </div>
         </div>
@@ -147,9 +300,30 @@
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const showtimeId = {{ $showtimeId }};
     const seatIds = "{{ is_array($seatIds) ? implode(',', $seatIds) : $seatIds }}";
+    const staffBookingId = {{ $staffBookingId ?? 'null' }};
     let baseTotal = {{ $total }}; // Includes ticket prices and surcharge
     let combosTotal = 0;
     let discountAmount = 0;
+    let finalAmountPayable = baseTotal;
+
+    function setGuestCustomer() {
+        document.getElementById('customer_name').value = 'Khách vãng lai';
+        document.getElementById('customer_phone').value = '';
+        document.getElementById('customer_email').value = '';
+    }
+
+    document.getElementById('backToSeats').addEventListener('click', async (event) => {
+        event.preventDefault();
+        try {
+            await fetch('{{ route('staff.walkin.release-hold') }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                keepalive: true,
+            });
+        } finally {
+            history.back();
+        }
+    });
     
     function updateCombo(id, change) {
         const input = document.querySelector(`.combo-qty[data-id="${id}"]`);
@@ -177,9 +351,9 @@
                 combosTotal += itemTotal;
                 
                 comboSummaryList.innerHTML += `
-                    <div class="d-flex justify-content-between text-muted small mb-1">
-                        <span>${qty}x ${input.dataset.name}</span>
-                        <span>${new Intl.NumberFormat('vi-VN').format(itemTotal)}₫</span>
+                    <div class="d-flex justify-content-between text-muted small py-1 border-bottom border-light">
+                        <span><strong>${qty}x</strong> ${input.dataset.name}</span>
+                        <span class="fw-bold text-dark">${new Intl.NumberFormat('vi-VN').format(itemTotal)}₫</span>
                     </div>
                 `;
             }
@@ -205,7 +379,7 @@
             return;
         }
         
-        msgEl.innerHTML = '<span class="text-primary">Đang kiểm tra...</span>';
+        msgEl.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin"></i> Đang kiểm tra voucher...</span>';
         
         try {
             const subtotal = baseTotal + combosTotal;
@@ -216,7 +390,9 @@
                     'X-CSRF-TOKEN': csrfToken
                 },
                 body: JSON.stringify({
+                    code: code,
                     coupon_code: code,
+                    order_total: subtotal,
                     subtotal: subtotal
                 })
             });
@@ -234,7 +410,7 @@
                 updateFinalTotal();
             }
         } catch (e) {
-            msgEl.innerHTML = '<span class="text-danger">Lỗi kết nối.</span>';
+            msgEl.innerHTML = '<span class="text-danger">Lỗi kết nối kiểm tra mã.</span>';
         }
     }
     
@@ -249,10 +425,37 @@
             document.getElementById('discountRow').classList.add('d-none');
         }
         
-        let finalAmount = subTotalAmount - discountAmount;
-        if (finalAmount < 0) finalAmount = 0;
+        finalAmountPayable = subTotalAmount - discountAmount;
+        if (finalAmountPayable < 0) finalAmountPayable = 0;
         
-        document.getElementById('finalTotalDisplay').textContent = new Intl.NumberFormat('vi-VN').format(finalAmount) + '₫';
+        document.getElementById('finalTotalDisplay').textContent = new Intl.NumberFormat('vi-VN').format(finalAmountPayable) + '₫';
+        calculateChange();
+    }
+
+    function setCashGiven(amount) {
+        if (amount === 'EXACT') {
+            document.getElementById('cashGivenInput').value = finalAmountPayable;
+        } else {
+            document.getElementById('cashGivenInput').value = amount;
+        }
+        calculateChange();
+    }
+
+    function calculateChange() {
+        const cashGiven = parseFloat(document.getElementById('cashGivenInput').value) || 0;
+        const changeDisplay = document.getElementById('changeAmountDisplay');
+        const diff = cashGiven - finalAmountPayable;
+
+        if (cashGiven === 0) {
+            changeDisplay.textContent = '0₫';
+            changeDisplay.className = 'fs-3 fw-bold text-muted font-sora';
+        } else if (diff >= 0) {
+            changeDisplay.textContent = new Intl.NumberFormat('vi-VN').format(diff) + '₫';
+            changeDisplay.className = 'fs-3 fw-bold text-success font-sora';
+        } else {
+            changeDisplay.textContent = 'Còn thiếu ' + new Intl.NumberFormat('vi-VN').format(Math.abs(diff)) + '₫';
+            changeDisplay.className = 'fs-3 fw-bold text-danger font-sora';
+        }
     }
     
     async function processCheckout() {
@@ -260,7 +463,7 @@
         const alertBox = document.getElementById('checkoutAlert');
         
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> ĐANG XUẤT VÉ & LƯU ĐƠN...';
         alertBox.classList.add('d-none');
         
         // Collect Combo Data
@@ -268,13 +471,14 @@
         document.querySelectorAll('.combo-qty').forEach(input => {
             const qty = parseInt(input.value) || 0;
             if (qty > 0) {
-                combos[input.dataset.id] = qty;
+                combos[input.dataset.id] = { qty: qty };
             }
         });
         
         const payload = {
             showtime_id: showtimeId,
             seat_ids: seatIds,
+            booking_id: staffBookingId,
             combos: Object.keys(combos).length > 0 ? combos : null,
             payment_method: 'CASH',
             coupon_code: document.getElementById('couponCode').value.trim() || null,
@@ -301,14 +505,14 @@
                 alertBox.textContent = result.message || 'Lỗi không xác định khi thanh toán.';
                 alertBox.classList.remove('d-none');
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-money-bill-wave me-2"></i>THU TIỀN LẠI';
+                btn.innerHTML = '<i class="fas fa-money-bill-wave me-2"></i>THỬ LẠI';
             }
         } catch (e) {
             console.error(e);
-            alertBox.textContent = 'Lỗi hệ thống. Không thể kết nối tới server.';
+            alertBox.textContent = 'Lỗi hệ thống. Không thể kết nối tới máy chủ.';
             alertBox.classList.remove('d-none');
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-money-bill-wave me-2"></i>THU TIỀN LẠI';
+            btn.innerHTML = '<i class="fas fa-money-bill-wave me-2"></i>THỬ LẠI';
         }
     }
 </script>

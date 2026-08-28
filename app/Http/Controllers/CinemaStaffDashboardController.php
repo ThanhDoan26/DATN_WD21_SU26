@@ -33,20 +33,22 @@ class CinemaStaffDashboardController extends Controller
         }
  
         // ── KPI Cards ──────────────────────────────────────────────
-        // Vé check-in hôm nay
-        $checkedInToday = (clone $baseSeatsQuery)
-            ->where('status', 'USED')
-            ->whereDate('checked_in_at', today())
+        // Vé đã in hôm nay
+        $printedToday = (clone $baseSeatsQuery)
+            ->whereDate('printed_at', today())
             ->count(); 
 
-        // Vé chưa sử dụng (sẵn sàng check-in)
-        $unusedTickets = (clone $baseSeatsQuery)
-            ->where('status', 'PAID')
+        // Vé chưa in (Đã thanh toán)
+        $unprintedTickets = (clone $baseSeatsQuery)
+            ->whereIn('status', ['PAID', 'USED'])
+            ->where(function($q) {
+                $q->whereNull('printed_at')->orWhere('print_count', 0);
+            })
             ->count();
 
-        // Tổng vé đã check-in
-        $usedTickets = (clone $baseSeatsQuery)
-            ->where('status', 'USED')
+        // Tổng vé đã in
+        $totalPrintedTickets = (clone $baseSeatsQuery)
+            ->where('print_count', '>', 0)
             ->count();
 
         // Booking mới hôm nay
@@ -75,15 +77,15 @@ class CinemaStaffDashboardController extends Controller
             ];
         }
 
-        // ── Tỷ lệ check-in hôm nay ────────────────────────────────
+        // ── Tỷ lệ in vé hôm nay ────────────────────────────────────
         $totalTicketsForToday = (clone $baseSeatsQuery)
             ->whereHas('booking.showtime', function ($q) {
                 $q->whereDate('start_time', today());
             })
             ->whereIn('status', ['PAID', 'USED'])
             ->count();
-        $checkinRate = $totalTicketsForToday > 0
-            ? round($checkedInToday / $totalTicketsForToday * 100)
+        $printRate = $totalTicketsForToday > 0
+            ? round($printedToday / $totalTicketsForToday * 100)
             : 0;
 
         // ── Suất chiếu hôm nay ────────────────────────────────────
@@ -96,19 +98,19 @@ class CinemaStaffDashboardController extends Controller
             ->limit(10)
             ->get();
 
-        // ── Hoạt động gần đây (check-in) ─────────────────────────
-        $recentCheckIns = (clone $baseSeatsQuery)
+        // ── Hoạt động in vé gần đây ───────────────────────────────
+        $recentPrints = (clone $baseSeatsQuery)
             ->with(['booking.user', 'booking.showtime.movie', 'seat'])
-            ->where('status', 'USED')
-            ->whereNotNull('checked_in_at')
-            ->orderByDesc('checked_in_at')
+            ->where('print_count', '>', 0)
+            ->whereNotNull('printed_at')
+            ->orderByDesc('printed_at')
             ->limit(8)
             ->get();
 
-        // ── Vé sắp hết hạn (suất chiếu trong 2h tới) ─────────────
+        // ── Vé sắp chiếu (suất chiếu trong 2h tới) ────────────────
         $expiringSoon = (clone $baseSeatsQuery)
             ->with(['booking.showtime.movie', 'booking.showtime.room'])
-            ->where('status', 'PAID')
+            ->whereIn('status', ['PAID', 'USED'])
             ->whereHas('booking.showtime', function ($q) {
                 $q->where('start_time', '>=', now())
                   ->where('start_time', '<=', now()->addHours(2));
@@ -117,10 +119,10 @@ class CinemaStaffDashboardController extends Controller
             ->get();
 
         return view('staff.dashboard.index', compact(
-            'checkedInToday', 'unusedTickets', 'usedTickets',
+            'printedToday', 'unprintedTickets', 'totalPrintedTickets',
             'bookingsToday', 'revenueToday',
-            'revenueChart', 'checkinRate',
-            'todayShowtimes', 'recentCheckIns', 'expiringSoon'
+            'revenueChart', 'printRate',
+            'todayShowtimes', 'recentPrints', 'expiringSoon'
         ));
     }
 
@@ -129,10 +131,17 @@ class CinemaStaffDashboardController extends Controller
      */
     public function searchForm(Request $request)
     {
+        $user = auth()->user();
+        $cinemaId = $user?->cinema_id;
+        if (!$cinemaId) {
+            abort(403, 'Nhân viên chưa được phân công rạp.');
+        }
+
         $code = $request->query('code');
         $result = null;
         $warnings = [];
-        $canCheckIn = false;
+        $isOtherCinema = false;
+        $ticketCinemaName = '';
         $searchType = null; // 'booking' or 'seat'
 
         if ($code) {
@@ -150,7 +159,7 @@ class CinemaStaffDashboardController extends Controller
                 $code = strtoupper($decoded['booking_code']);
                 $extractedToken = null;
             } else {
-                // 3. Nếu KHÔNG phải JSON (mã booking thường hoặc URL): giữ nguyên toàn bộ logic cũ
+                // 3. Nếu KHÔNG phải JSON (mã booking thường hoặc URL):
                 $code = strtoupper($originalCode);
                 
                 // Bóc tách token nếu QR Code là URL (VD: http://.../tickets/xxx-yyy)
@@ -162,123 +171,94 @@ class CinemaStaffDashboardController extends Controller
                 $extractedToken = strtolower($extractedToken);
             }
 
-            $user = auth()->user();
-            $cinemaId = $user->cinema_id;
-
-            // 1. Tìm theo mã booking
-            $bookingQuery = Booking::with([
+            // 1. Tìm theo mã booking - Cho phép tra cứu toàn hệ thống
+            $booking = Booking::with([
                 'user',
-                'showtime',
                 'showtime.movie',
-                'showtime.room',
                 'showtime.room.cinema',
-                'bookedSeats',
                 'bookedSeats.seat',
                 'combos'
-            ])->where('booking_code', $code);
-
-            if (!empty($extractedToken)) {
-                $bookingQuery->orWhere('ticket_token', $extractedToken);
-            }
-
-            $booking = $bookingQuery->first();
+            ])
+            ->where(function ($q) use ($code, $extractedToken) {
+                $q->where('booking_code', $code);
+                if (!empty($extractedToken)) {
+                    $q->orWhere('ticket_token', $extractedToken);
+                }
+            })
+            ->first();
 
             if ($booking) {
                 $result = $booking;
                 $searchType = 'booking';
 
-                // Kiểm tra rạp (nếu nhân viên thuộc rạp cụ thể)
-                if ($cinemaId && $booking->showtime->room->cinema_id != $cinemaId) {
-                    $warnings[] = "Vé thuộc rạp khác: " . ($booking->showtime->room->cinema->name ?? 'N/A') . ". Không thể check-in tại rạp hiện tại.";
-                }
+                $ticketCinema = $booking->showtime?->room?->cinema;
+                $ticketCinemaId = $ticketCinema?->id;
+                $ticketCinemaName = $ticketCinema?->name ?? 'Rạp khác';
+                $isOtherCinema = ($ticketCinemaId && $ticketCinemaId != $cinemaId);
 
-                // Kiểm tra trạng thái thanh toán
-                if ($booking->status === 'Pending') {
-                    $warnings[] = "Vé chưa thanh toán (Trạng thái đơn: Chờ thanh toán). Vui lòng yêu cầu khách thanh toán trước.";
-                } elseif ($booking->status === 'Cancelled') {
-                    $warnings[] = "Đơn hàng vé này đã bị hủy.";
-                }
-
-                // Kiểm tra trạng thái sử dụng của các ghế
-                $allSeats = $booking->bookedSeats;
-                $usedSeatsCount = $allSeats->where('status', 'USED')->count();
-                $paidSeatsCount = $allSeats->where('status', 'PAID')->count();
-                $cancelledSeatsCount = $allSeats->where('status', 'CANCELLED')->count();
-
-                if ($allSeats->count() > 0) {
-                    if ($usedSeatsCount == $allSeats->count() || $booking->status === 'Used') {
-                        $warnings[] = "Vé này đã được sử dụng (Đã check-in toàn bộ ghế).";
-                    } elseif ($paidSeatsCount === 0 && $usedSeatsCount > 0) {
-                        $warnings[] = "Vé này đã được check-in một phần, các ghế còn lại không hợp lệ để check-in.";
-                    }
+                if ($isOtherCinema) {
+                    $warnings[] = "⚠️ VÉ THUỘC RẠP KHÁC: Vé này thuộc chi nhánh '{$ticketCinemaName}'. Bạn chỉ có quyền tra cứu/xem thông tin vé, KHÔNG THỂ Chỉnh sửa hoặc In vé tại rạp này.";
                 } else {
-                    $warnings[] = "Đơn hàng này không có ghế nào được đăng ký.";
-                }
-
-                // Kiểm tra suất chiếu hết hạn
-                $showtime = $booking->showtime;
-                if ($showtime) {
-                    if ($showtime->status === Showtime::STATUS_CANCELLED) {
-                        $warnings[] = "Suất chiếu này đã bị hủy bỏ.";
-                    } elseif ($showtime->status === Showtime::STATUS_COMPLETED || ($showtime->end_time && $showtime->end_time->isPast())) {
-                        $warnings[] = "Suất chiếu của vé này đã diễn ra hoặc đã kết thúc (" . ($showtime->end_time ? $showtime->end_time->format('d/m/Y H:i') : '') . "). Vé đã hết hạn.";
+                    // Kiểm tra trạng thái thanh toán
+                    if ($booking->status === 'Pending') {
+                        $warnings[] = "Vé chưa thanh toán (Trạng thái đơn: Chờ thanh toán).";
+                    } elseif ($booking->status === 'Cancelled') {
+                        $warnings[] = "Đơn hàng vé này đã bị hủy.";
                     }
-                }
 
-                // Có thể checkin nếu: Đơn hàng 'Paid' và có ít nhất 1 ghế có trạng thái 'PAID'
-                // và không bị sai rạp
-                $hasEligibleSeats = $paidSeatsCount > 0;
-                $isCorrectCinema = !$cinemaId || $booking->showtime->room->cinema_id == $cinemaId;
-                if ($booking->status === 'Paid' && $hasEligibleSeats && $isCorrectCinema) {
-                    $canCheckIn = true;
+                    // Kiểm tra suất chiếu hết hạn
+                    $showtime = $booking->showtime;
+                    if ($showtime) {
+                        if ($showtime->status === Showtime::STATUS_CANCELLED) {
+                            $warnings[] = "Suất chiếu này đã bị hủy bỏ.";
+                        } elseif ($showtime->status === Showtime::STATUS_COMPLETED || ($showtime->end_time && $showtime->end_time->isPast())) {
+                            $warnings[] = "Suất chiếu của vé này đã diễn ra hoặc đã kết thúc (" . ($showtime->end_time ? $showtime->end_time->format('d/m/Y H:i') : '') . "). Vé đã hết hạn.";
+                        }
+                    }
                 }
             } else {
-                // 2. Tìm theo mã QR ghế
+                // 2. Tìm theo mã QR ghế - Cho phép tra cứu toàn hệ thống
                 $bookedSeat = BookedSeat::with([
                     'seat',
-                    'booking',
                     'booking.user',
-                    'booking.showtime',
                     'booking.showtime.movie',
-                    'booking.showtime.room',
                     'booking.showtime.room.cinema',
                     'booking.combos'
-                ])->where('qr_code', $code)->first();
+                ])
+                ->where('qr_code', $code)
+                ->first();
 
                 if ($bookedSeat) {
                     $result = $bookedSeat;
                     $searchType = 'seat';
                     $booking = $bookedSeat->booking;
 
-                    // Kiểm tra rạp
-                    if ($booking && $cinemaId && $booking->showtime->room->cinema_id != $cinemaId) {
-                        $warnings[] = "Vé thuộc rạp khác: " . ($booking->showtime->room->cinema->name ?? 'N/A') . ". Không thể check-in tại rạp hiện tại.";
-                    }
+                    $ticketCinema = $booking?->showtime?->room?->cinema;
+                    $ticketCinemaId = $ticketCinema?->id;
+                    $ticketCinemaName = $ticketCinema?->name ?? 'Rạp khác';
+                    $isOtherCinema = ($ticketCinemaId && $ticketCinemaId != $cinemaId);
 
-                    // Kiểm tra trạng thái ghế
-                    if ($bookedSeat->status === 'USED') {
-                        $warnings[] = "Ghế này đã được sử dụng (Check-in vào lúc: " . ($bookedSeat->checked_in_at ? $bookedSeat->checked_in_at->format('d/m/Y H:i:s') : 'N/A') . ").";
-                    } elseif ($bookedSeat->status === 'CANCELLED') {
-                        $warnings[] = "Ghế này đã bị hủy bỏ.";
-                    } elseif ($bookedSeat->status === 'RESERVED') {
-                        $warnings[] = "Vé chưa được thanh toán (Trạng thái ghế: Đã đặt trước). Vui lòng yêu cầu thanh toán.";
-                    }
+                    if ($isOtherCinema) {
+                        $warnings[] = "⚠️ VÉ THUỘC RẠP KHÁC: Vé này thuộc chi nhánh '{$ticketCinemaName}'. Bạn chỉ có quyền tra cứu/xem thông tin vé, KHÔNG THỂ Chỉnh sửa hoặc In vé tại rạp này.";
+                    } else {
+                        // Kiểm tra trạng thái ghế
+                        if ($bookedSeat->status === 'CANCELLED') {
+                            $warnings[] = "Ghế này đã bị hủy bỏ.";
+                        } elseif ($bookedSeat->status === 'RESERVED') {
+                            $warnings[] = "Vé chưa được thanh toán (Trạng thái ghế: Đã đặt trước).";
+                        }
 
-                    // Kiểm tra suất chiếu hết hạn
-                    if ($booking) {
-                        $showtime = $booking->showtime;
-                        if ($showtime) {
-                            if ($showtime->status === Showtime::STATUS_CANCELLED) {
-                                $warnings[] = "Suất chiếu của vé này đã bị hủy.";
-                            } elseif ($showtime->status === Showtime::STATUS_COMPLETED || ($showtime->end_time && $showtime->end_time->isPast())) {
-                                $warnings[] = "Suất chiếu của vé này đã diễn ra hoặc đã kết thúc (" . ($showtime->end_time ? $showtime->end_time->format('d/m/Y H:i') : '') . "). Vé đã hết hạn.";
+                        // Kiểm tra suất chiếu hết hạn
+                        if ($booking) {
+                            $showtime = $booking->showtime;
+                            if ($showtime) {
+                                if ($showtime->status === Showtime::STATUS_CANCELLED) {
+                                    $warnings[] = "Suất chiếu của vé này đã bị hủy.";
+                                } elseif ($showtime->status === Showtime::STATUS_COMPLETED || ($showtime->end_time && $showtime->end_time->isPast())) {
+                                    $warnings[] = "Suất chiếu của vé này đã diễn ra hoặc đã kết thúc (" . ($showtime->end_time ? $showtime->end_time->format('d/m/Y H:i') : '') . "). Vé đã hết hạn.";
+                                }
                             }
                         }
-                    }
-
-                    $isCorrectCinema = !$booking || !$cinemaId || $booking->showtime->room->cinema_id == $cinemaId;
-                    if ($bookedSeat->status === 'PAID' && $isCorrectCinema) {
-                        $canCheckIn = true;
                     }
                 } else {
                     // Không tìm thấy vé
@@ -287,7 +267,7 @@ class CinemaStaffDashboardController extends Controller
             }
         }
 
-        return view('staff.ticket.search', compact('code', 'result', 'searchType', 'warnings', 'canCheckIn'));
+        return view('staff.ticket.search', compact('code', 'result', 'searchType', 'warnings', 'isOtherCinema', 'ticketCinemaName'));
     }
 
     /**
@@ -310,58 +290,53 @@ class CinemaStaffDashboardController extends Controller
         $extractedToken = strtolower($extractedToken);
 
         $user = auth()->user();
-        $cinemaId = $user->cinema_id;
+        $cinemaId = $user?->cinema_id;
+        if (!$cinemaId) {
+            return response()->json(['success' => false, 'error' => 'Nhân viên chưa được phân công rạp.'], 403);
+        }
+
         $warnings = [];
         $canCheckIn = false;
+        $isOtherCinema = false;
 
-        // Tìm kiếm
+        // 1. Tìm kiếm theo booking trên toàn hệ thống
         $booking = Booking::with([
             'user',
-            'showtime',
             'showtime.movie',
-            'showtime.room',
             'showtime.room.cinema',
-            'bookedSeats',
             'bookedSeats.seat'
-        ])->where('booking_code', $code)
-          ->orWhere('ticket_token', $extractedToken)->first();
+        ])
+        ->where(function ($q) use ($code, $extractedToken) {
+            $q->where('booking_code', $code);
+            if (!empty($extractedToken)) {
+                $q->orWhere('ticket_token', $extractedToken);
+            }
+        })
+        ->first();
 
         if ($booking) {
-            if ($cinemaId && $booking->showtime->room->cinema_id != $cinemaId) {
-                $warnings[] = "Vé thuộc rạp khác: " . ($booking->showtime->room->cinema->name ?? 'N/A') . ". Không thể check-in tại rạp hiện tại.";
-            }
+            $ticketCinema = $booking->showtime?->room?->cinema;
+            $ticketCinemaId = $ticketCinema?->id;
+            $ticketCinemaName = $ticketCinema?->name ?? 'Rạp khác';
+            $isOtherCinema = ($ticketCinemaId && $ticketCinemaId != $cinemaId);
 
-            if ($booking->status === 'Pending') {
-                $warnings[] = "Vé chưa thanh toán (Trạng thái đơn: Chờ thanh toán).";
-            } elseif ($booking->status === 'Cancelled') {
-                $warnings[] = "Đơn hàng vé này đã bị hủy.";
-            }
-
-            $allSeats = $booking->bookedSeats;
-            $usedSeatsCount = $allSeats->where('status', 'USED')->count();
-            $paidSeatsCount = $allSeats->where('status', 'PAID')->count();
-
-            if ($allSeats->count() > 0) {
-                if ($usedSeatsCount == $allSeats->count() || $booking->status === 'Used') {
-                    $warnings[] = "Vé đã được sử dụng (Đã check-in toàn bộ ghế).";
-                }
+            if ($isOtherCinema) {
+                $warnings[] = "Vé này thuộc rạp {$ticketCinemaName}. Bạn chỉ có quyền tra cứu thông tin, không thể in vé tại rạp này.";
             } else {
-                $warnings[] = "Đơn hàng không có ghế.";
-            }
-
-            $showtime = $booking->showtime;
-            if ($showtime) {
-                if ($showtime->status === Showtime::STATUS_CANCELLED) {
-                    $warnings[] = "Suất chiếu đã bị hủy.";
-                } elseif ($showtime->status === Showtime::STATUS_COMPLETED || ($showtime->end_time && $showtime->end_time->isPast())) {
-                    $warnings[] = "Suất chiếu đã kết thúc. Vé hết hạn.";
+                if ($booking->status === 'Pending') {
+                    $warnings[] = "Vé chưa thanh toán (Trạng thái đơn: Chờ thanh toán).";
+                } elseif ($booking->status === 'Cancelled') {
+                    $warnings[] = "Đơn hàng vé này đã bị hủy.";
                 }
-            }
 
-            $hasEligibleSeats = $paidSeatsCount > 0;
-            $isCorrectCinema = !$cinemaId || $booking->showtime->room->cinema_id == $cinemaId;
-            if ($booking->status === 'Paid' && $hasEligibleSeats && $isCorrectCinema) {
-                $canCheckIn = true;
+                $showtime = $booking->showtime;
+                if ($showtime) {
+                    if ($showtime->status === Showtime::STATUS_CANCELLED) {
+                        $warnings[] = "Suất chiếu đã bị hủy.";
+                    } elseif ($showtime->status === Showtime::STATUS_COMPLETED || ($showtime->end_time && $showtime->end_time->isPast())) {
+                        $warnings[] = "Suất chiếu đã kết thúc. Vé hết hạn.";
+                    }
+                }
             }
 
             // Chuẩn bị data trả về
@@ -373,14 +348,15 @@ class CinemaStaffDashboardController extends Controller
                     'price' => number_format($bs->price_at_booking) . 'đ',
                     'status' => $bs->status,
                     'qr_code' => $bs->qr_code,
-                    'checked_in_at' => $bs->checked_in_at ? $bs->checked_in_at->format('d/m/Y H:i:s') : null,
+                    'printed_at' => $bs->printed_at ? $bs->printed_at->format('d/m/Y H:i:s') : null,
                 ];
             }
 
             return response()->json([
                 'success' => true,
                 'type' => 'booking',
-                'can_checkin' => $canCheckIn,
+                'is_other_cinema' => $isOtherCinema,
+                'can_print' => !$isOtherCinema,
                 'warnings' => $warnings,
                 'data' => [
                     'id' => $booking->id,
@@ -399,52 +375,49 @@ class CinemaStaffDashboardController extends Controller
             ]);
         }
 
-        // Tìm theo mã QR ghế
+        // 2. Tìm theo mã QR ghế trên toàn hệ thống
         $bookedSeat = BookedSeat::with([
             'seat',
-            'booking',
             'booking.user',
-            'booking.showtime',
             'booking.showtime.movie',
-            'booking.showtime.room',
             'booking.showtime.room.cinema'
-        ])->where('qr_code', $code)->first();
+        ])
+        ->where('qr_code', $code)
+        ->first();
 
         if ($bookedSeat) {
             $booking = $bookedSeat->booking;
+            $ticketCinema = $booking?->showtime?->room?->cinema;
+            $ticketCinemaId = $ticketCinema?->id;
+            $ticketCinemaName = $ticketCinema?->name ?? 'Rạp khác';
+            $isOtherCinema = ($ticketCinemaId && $ticketCinemaId != $cinemaId);
 
-            if ($booking && $cinemaId && $booking->showtime->room->cinema_id != $cinemaId) {
-                $warnings[] = "Vé thuộc rạp khác: " . ($booking->showtime->room->cinema->name ?? 'N/A') . ". Không thể check-in tại rạp hiện tại.";
-            }
+            if ($isOtherCinema) {
+                $warnings[] = "Vé này thuộc rạp {$ticketCinemaName}. Bạn chỉ có quyền tra cứu thông tin, không thể in vé tại rạp này.";
+            } else {
+                if ($bookedSeat->status === 'CANCELLED') {
+                    $warnings[] = "Ghế này đã bị hủy bỏ.";
+                } elseif ($bookedSeat->status === 'RESERVED') {
+                    $warnings[] = "Vé chưa được thanh toán (Trạng thái ghế: Đã đặt trước).";
+                }
 
-            if ($bookedSeat->status === 'USED') {
-                $warnings[] = "Ghế này đã được sử dụng (Check-in vào lúc: " . ($bookedSeat->checked_in_at ? $bookedSeat->checked_in_at->format('d/m/Y H:i:s') : 'N/A') . ").";
-            } elseif ($bookedSeat->status === 'CANCELLED') {
-                $warnings[] = "Ghế này đã bị hủy bỏ.";
-            } elseif ($bookedSeat->status === 'RESERVED') {
-                $warnings[] = "Vé chưa được thanh toán (Trạng thái ghế: Đã đặt trước).";
-            }
-
-            if ($booking) {
-                $showtime = $booking->showtime;
-                if ($showtime) {
-                    if ($showtime->status === Showtime::STATUS_CANCELLED) {
-                        $warnings[] = "Suất chiếu của vé này đã bị hủy.";
-                    } elseif ($showtime->status === Showtime::STATUS_COMPLETED || ($showtime->end_time && $showtime->end_time->isPast())) {
-                        $warnings[] = "Suất chiếu của vé này đã diễn ra hoặc đã kết thúc. Vé đã hết hạn.";
+                if ($booking) {
+                    $showtime = $booking->showtime;
+                    if ($showtime) {
+                        if ($showtime->status === Showtime::STATUS_CANCELLED) {
+                            $warnings[] = "Suất chiếu của vé này đã bị hủy.";
+                        } elseif ($showtime->status === Showtime::STATUS_COMPLETED || ($showtime->end_time && $showtime->end_time->isPast())) {
+                            $warnings[] = "Suất chiếu của vé này đã diễn ra hoặc đã kết thúc. Vé đã hết hạn.";
+                        }
                     }
                 }
-            }
-
-            $isCorrectCinema = !$booking || !$cinemaId || $booking->showtime->room->cinema_id == $cinemaId;
-            if ($bookedSeat->status === 'PAID' && $isCorrectCinema) {
-                $canCheckIn = true;
             }
 
             return response()->json([
                 'success' => true,
                 'type' => 'seat',
-                'can_checkin' => $canCheckIn,
+                'is_other_cinema' => $isOtherCinema,
+                'can_print' => !$isOtherCinema,
                 'warnings' => $warnings,
                 'data' => [
                     'id' => $bookedSeat->id,
@@ -452,7 +425,7 @@ class CinemaStaffDashboardController extends Controller
                     'seat_code' => $bookedSeat->seat ? ($bookedSeat->seat->row_name . $bookedSeat->seat->seat_number) : 'N/A',
                     'price' => number_format($bookedSeat->price_at_booking) . 'đ',
                     'status' => $bookedSeat->status,
-                    'checked_in_at' => $bookedSeat->checked_in_at ? $bookedSeat->checked_in_at->format('d/m/Y H:i:s') : null,
+                    'printed_at' => $bookedSeat->printed_at ? $bookedSeat->printed_at->format('d/m/Y H:i:s') : null,
                     'booking_code' => $booking->booking_code ?? 'N/A',
                     'customer_name' => $booking->user->name ?? 'N/A',
                     'movie_title' => $booking->showtime->movie->title ?? 'N/A',
@@ -479,17 +452,35 @@ class CinemaStaffDashboardController extends Controller
         $seatId = $request->input('seat_id'); // Optional, checkin specific seat from booking search
 
         $user = auth()->user();
-        $cinemaId = $user->cinema_id;
+        $cinemaId = $user?->cinema_id;
+        if (!$cinemaId) {
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Nhân viên chưa được phân công rạp.'], 403);
+            }
+            return back()->with('error', 'Nhân viên chưa được phân công rạp.');
+        }
 
         try {
             DB::beginTransaction();
 
             if ($type === 'booking') {
-                $booking = Booking::with(['bookedSeats', 'showtime.room'])->findOrFail($id);
+                $booking = Booking::with(['bookedSeats', 'showtime.room.cinema'])->find($id);
 
-                // Security check
-                if ($cinemaId && $booking->showtime->room->cinema_id != $cinemaId) {
-                    return back()->with('error', 'Không thể check-in vé thuộc rạp khác.');
+                if (!$booking) {
+                    if ($request->ajax()) {
+                        return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn hàng.'], 404);
+                    }
+                    return back()->with('error', 'Không tìm thấy đơn hàng.');
+                }
+
+                $ticketCinemaId = $booking->showtime?->room?->cinema_id;
+                $ticketCinemaName = $booking->showtime?->room?->cinema?->name ?? 'Rạp khác';
+                if ($ticketCinemaId && $ticketCinemaId != $cinemaId) {
+                    $errMsg = "Không thể check-in: Đơn hàng này thuộc rạp '{$ticketCinemaName}'. Bạn chỉ có quyền tra cứu thông tin, không thể check-in vé của rạp khác.";
+                    if ($request->ajax()) {
+                        return response()->json(['success' => false, 'message' => $errMsg], 403);
+                    }
+                    return back()->with('error', $errMsg);
                 }
 
                 if ($booking->status === 'Pending') {
@@ -509,7 +500,10 @@ class CinemaStaffDashboardController extends Controller
 
                 if ($seatId) {
                     // Check-in cụ thể 1 ghế trong booking
-                    $bookedSeat = BookedSeat::where('booking_id', $booking->id)->where('id', $seatId)->firstOrFail();
+                    $bookedSeat = BookedSeat::where('booking_id', $booking->id)->where('id', $seatId)->first();
+                    if (!$bookedSeat) {
+                        return back()->with('error', 'Không tìm thấy ghế yêu cầu.');
+                    }
                     if ($bookedSeat->status !== 'PAID') {
                         return back()->with('error', 'Ghế này không ở trạng thái hợp lệ để check-in.');
                     }
@@ -583,12 +577,26 @@ class CinemaStaffDashboardController extends Controller
                     ->with('success', "Đã check-in thành công {$checkedCount} ghế của đơn hàng.");
 
             } elseif ($type === 'seat') {
-                $bookedSeat = BookedSeat::with(['booking', 'booking.showtime.room', 'booking.showtime.movie', 'seat'])->findOrFail($id);
-                $booking = $bookedSeat->booking;
+                $bookedSeat = BookedSeat::with(['booking', 'booking.showtime.room.cinema'])->find($id);
 
-                if ($cinemaId && $booking && $booking->showtime->room->cinema_id != $cinemaId) {
-                    return back()->with('error', 'Không thể check-in vé thuộc rạp khác.');
+                if (!$bookedSeat) {
+                    if ($request->ajax()) {
+                        return response()->json(['success' => false, 'message' => 'Không tìm thấy vé.'], 404);
+                    }
+                    return back()->with('error', 'Không tìm thấy vé.');
                 }
+
+                $ticketCinemaId = $bookedSeat->booking?->showtime?->room?->cinema_id;
+                $ticketCinemaName = $bookedSeat->booking?->showtime?->room?->cinema?->name ?? 'Rạp khác';
+                if ($ticketCinemaId && $ticketCinemaId != $cinemaId) {
+                    $errMsg = "Không thể check-in: Vé này thuộc rạp '{$ticketCinemaName}'. Bạn chỉ có quyền tra cứu thông tin, không thể check-in vé của rạp khác.";
+                    if ($request->ajax()) {
+                        return response()->json(['success' => false, 'message' => $errMsg], 403);
+                    }
+                    return back()->with('error', $errMsg);
+                }
+
+                $booking = $bookedSeat->booking;
 
                 if ($bookedSeat->status !== 'PAID') {
                     return back()->with('error', 'Vé này đã được sử dụng hoặc chưa sẵn sàng check-in.');
@@ -661,13 +669,18 @@ class CinemaStaffDashboardController extends Controller
             return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
     }
+
     /**
      * In vé khổ K80
      */
     public function printTicket(Request $request, $type, $id)
     {
         $user = auth()->user();
-        $cinemaId = $user->cinema_id;
+        $cinemaId = $user?->cinema_id;
+        if (!$cinemaId) {
+            abort(403, 'Nhân viên chưa được phân công rạp.');
+        }
+
         $seatsToPrint = collect();
         $booking = null;
 
@@ -678,11 +691,16 @@ class CinemaStaffDashboardController extends Controller
                 'showtime.room.cinema',
                 'bookedSeats.seat',
                 'combos'
-            ])->findOrFail($id);
+            ])->find($id);
 
-            // Kiểm tra rạp
-            if ($cinemaId && $booking->showtime->room->cinema_id != $cinemaId) {
-                return abort(403, 'Không có quyền in vé thuộc rạp khác.');
+            if (!$booking) {
+                abort(404, 'Không tìm thấy đơn hàng.');
+            }
+
+            $ticketCinemaId = $booking->showtime?->room?->cinema_id;
+            $ticketCinemaName = $booking->showtime?->room?->cinema?->name ?? 'Rạp khác';
+            if ($ticketCinemaId && $ticketCinemaId != $cinemaId) {
+                abort(403, "Nhân viên không có quyền in vé của rạp khác ({$ticketCinemaName}).");
             }
 
             $seatsToPrint = $booking->bookedSeats;
@@ -697,13 +715,19 @@ class CinemaStaffDashboardController extends Controller
                 'booking.showtime.movie',
                 'booking.showtime.room.cinema',
                 'booking.combos'
-            ])->findOrFail($id);
+            ])->find($id);
             
-            $booking = $bookedSeat->booking;
-
-            if ($cinemaId && $booking->showtime->room->cinema_id != $cinemaId) {
-                return abort(403, 'Không có quyền in vé thuộc rạp khác.');
+            if (!$bookedSeat) {
+                abort(404, 'Không tìm thấy vé.');
             }
+
+            $ticketCinemaId = $bookedSeat->booking?->showtime?->room?->cinema_id;
+            $ticketCinemaName = $bookedSeat->booking?->showtime?->room?->cinema?->name ?? 'Rạp khác';
+            if ($ticketCinemaId && $ticketCinemaId != $cinemaId) {
+                abort(403, "Nhân viên không có quyền in vé của rạp khác ({$ticketCinemaName}).");
+            }
+
+            $booking = $bookedSeat->booking;
 
             $bookedSeat->increment('print_count');
             $bookedSeat->update(['printed_at' => now()]);

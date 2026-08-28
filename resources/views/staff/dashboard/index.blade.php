@@ -1,7 +1,7 @@
 @extends('layouts.staff')
 
-@section('title', 'Staff Dashboard')
-@section('page_title', 'Tổng quan')
+@section('title', 'Bảng điều khiển - Staff')
+@section('page_title', 'Bảng điều khiển')
 
 @section('extra_css')
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -238,23 +238,25 @@
     {{-- ══════════════════════════════════════════ --}}
     {{-- ROW 1: KPI Cards                         --}}
     {{-- ══════════════════════════════════════════ --}}
+    {{-- ROW 1: KPI Cards                         --}}
+    {{-- ══════════════════════════════════════════ --}}
     <div class="row g-3 mb-4">
-        {{-- Check-in hôm nay --}}
+        {{-- Vé đã in hôm nay --}}
         <div class="col-xl col-md-4 col-sm-6">
             <div class="kpi-card kpi-green">
-                <div class="kpi-icon"><i class="fas fa-clipboard-check"></i></div>
-                <div class="kpi-value" data-target="{{ $checkedInToday }}">{{ number_format($checkedInToday) }}</div>
-                <div class="kpi-label">Check-in hôm nay</div>
+                <div class="kpi-icon"><i class="fas fa-print"></i></div>
+                <div class="kpi-value" data-target="{{ $printedToday }}">{{ number_format($printedToday) }}</div>
+                <div class="kpi-label">Vé đã in hôm nay</div>
                 <div class="kpi-decor"></div><div class="kpi-decor2"></div>
             </div>
         </div>
 
-        {{-- Vé sẵn sàng --}}
+        {{-- Vé chưa in --}}
         <div class="col-xl col-md-4 col-sm-6">
             <div class="kpi-card kpi-amber">
                 <div class="kpi-icon"><i class="fas fa-ticket-alt"></i></div>
-                <div class="kpi-value">{{ number_format($unusedTickets) }}</div>
-                <div class="kpi-label">Vé sẵn sàng check-in</div>
+                <div class="kpi-value">{{ number_format($unprintedTickets) }}</div>
+                <div class="kpi-label">Vé chưa in (Đã thanh toán)</div>
                 <div class="kpi-decor"></div><div class="kpi-decor2"></div>
             </div>
         </div>
@@ -279,12 +281,12 @@
             </div>
         </div>
 
-        {{-- Tỷ lệ check-in --}}
+        {{-- Tỷ lệ in vé --}}
         <div class="col-xl col-md-6 col-sm-12">
             <div class="kpi-card kpi-teal">
                 <div class="kpi-icon"><i class="fas fa-percentage"></i></div>
-                <div class="kpi-value">{{ $checkinRate }}%</div>
-                <div class="kpi-label">Tỷ lệ check-in hôm nay</div>
+                <div class="kpi-value">{{ $printRate }}%</div>
+                <div class="kpi-label">Tỷ lệ in vé hôm nay</div>
                 <div class="kpi-decor"></div><div class="kpi-decor2"></div>
             </div>
         </div>
@@ -303,22 +305,22 @@
             </div>
         </div>
 
-        {{-- Tỷ lệ check-in donut --}}
+        {{-- Tỷ lệ in vé donut --}}
         <div class="col-lg-4">
             <div class="chart-card h-100 d-flex flex-column">
-                <div class="chart-title"><i class="fas fa-circle-notch text-success me-2"></i>Check-in hôm nay</div>
-                <div class="chart-sub">Tỷ lệ đã / chưa check-in</div>
+                <div class="chart-title"><i class="fas fa-circle-notch text-success me-2"></i>Tình trạng in vé hôm nay</div>
+                <div class="chart-sub">Tỷ lệ đã / chưa in vé</div>
                 <div class="d-flex align-items-center justify-content-center flex-grow-1">
                     <canvas id="checkinChart" style="max-height: 180px;"></canvas>
                 </div>
                 <div class="d-flex justify-content-center gap-4 mt-3">
                     <div class="text-center">
-                        <div style="font-size:1.3rem; font-weight:800; color:#10b981;">{{ $checkedInToday }}</div>
-                        <div style="font-size:0.72rem; color:#94a3b8;">Đã check-in</div>
+                        <div style="font-size:1.3rem; font-weight:800; color:#10b981;">{{ $printedToday }}</div>
+                        <div style="font-size:0.72rem; color:#94a3b8;">Đã in vé</div>
                     </div>
                     <div class="text-center">
-                        <div style="font-size:1.3rem; font-weight:800; color:#f59e0b;">{{ $unusedTickets }}</div>
-                        <div style="font-size:0.72rem; color:#94a3b8;">Chưa check-in</div>
+                        <div style="font-size:1.3rem; font-weight:800; color:#f59e0b;">{{ $unprintedTickets }}</div>
+                        <div style="font-size:0.72rem; color:#94a3b8;">Chưa in vé</div>
                     </div>
                 </div>
             </div>
@@ -384,28 +386,28 @@
                     <div class="col-6">
                         <a href="{{ route('staff.ticket.search') }}" id="qa-search" class="qa-btn qa-primary w-100">
                             <i class="fas fa-search"></i>
-                            <span>Tra cứu vé</span>
+                            <span>Tra cứu & In vé</span>
                         </a>
                     </div>
                     <div class="col-6">
                         <a href="{{ route('staff.ticket.search', ['scan' => 1]) }}" id="qa-qr" class="qa-btn qa-primary w-100">
                             <i class="fas fa-qrcode"></i>
-                            <span>Quét QR</span>
+                            <span>Quét QR vé</span>
                         </a>
                     </div>
                 </div>
             </div>
 
-            {{-- Vé sắp hết hạn --}}
+            {{-- Vé sắp đến giờ chiếu --}}
             <div class="chart-card flex-grow-1">
                 <div class="section-header">
-                    <span class="section-title"><i class="fas fa-clock text-danger me-2"></i>Vé sắp hết hạn</span>
+                    <span class="section-title"><i class="fas fa-clock text-danger me-2"></i>Vé sắp đến giờ chiếu</span>
                     <span style="font-size:0.72rem; color:#94a3b8;">Trong 2 giờ tới</span>
                 </div>
                 @if($expiringSoon->isEmpty())
                     <div class="empty-state" style="padding: 20px;">
                         <i class="fas fa-check-circle" style="color:#10b981; font-size:1.8rem;"></i>
-                        <p style="margin-top:8px;">Không có vé sắp hết hạn</p>
+                        <p style="margin-top:8px;">Không có vé sắp chiếu trong 2h tới</p>
                     </div>
                 @else
                     @foreach($expiringSoon as $es)
@@ -421,7 +423,7 @@
                             </div>
                         </div>
                         <a href="{{ route('staff.ticket.search', ['code' => $es->qr_code]) }}" class="btn btn-sm" style="background:#f59e0b; color:#fff; font-size:0.7rem; padding:3px 8px; border-radius:6px;">
-                            Check-in
+                            <i class="fas fa-print me-1"></i> In vé
                         </a>
                     </div>
                     @endforeach
@@ -431,32 +433,32 @@
     </div>
 
     {{-- ══════════════════════════════════════════ --}}
-    {{-- ROW 4: Recent Check-in Activity          --}}
+    {{-- ROW 4: Recent Print Activity             --}}
     {{-- ══════════════════════════════════════════ --}}
     <div class="row g-3">
         <div class="col-12">
             <div class="chart-card">
                 <div class="section-header">
-                    <span class="section-title"><i class="fas fa-history text-warning me-2"></i>Hoạt động check-in gần đây</span>
+                    <span class="section-title"><i class="fas fa-history text-warning me-2"></i>Hoạt động in vé gần đây</span>
                     <a href="{{ route('staff.ticket.search') }}" style="font-size:0.8rem; color:#ca8a04; text-decoration:none; font-weight:600;">
                         Tra cứu thêm <i class="fas fa-arrow-right fa-xs"></i>
                     </a>
                 </div>
 
-                @if($recentCheckIns->isEmpty())
+                @if($recentPrints->isEmpty())
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
-                        <p>Chưa có hoạt động check-in nào</p>
+                        <p>Chưa có hoạt động in vé nào gần đây</p>
                     </div>
                 @else
                     <div class="row">
-                        @foreach($recentCheckIns as $ci)
+                        @foreach($recentPrints as $ci)
                         @php
-                            $customerName = $ci->booking->user->name ?? 'Khách vãng lai';
+                            $customerName = $ci->booking->user->name ?? 'Khách tại quầy';
                             $initials = strtoupper(substr($customerName, 0, 1));
                             $movieTitle = $ci->booking->showtime->movie->title ?? 'N/A';
                             $seatCode = $ci->seat ? ($ci->seat->row_name . $ci->seat->seat_number) : 'N/A';
-                            $checkinTime = $ci->checked_in_at ? $ci->checked_in_at->diffForHumans() : '';
+                            $printTime = $ci->printed_at ? $ci->printed_at->diffForHumans() : '';
                         @endphp
                         <div class="col-lg-6">
                             <div class="activity-item">
@@ -468,10 +470,10 @@
                                         &nbsp;·&nbsp;
                                         <i class="fas fa-chair fa-xs me-1"></i>Ghế {{ $seatCode }}
                                     </div>
-                                    <div class="activity-time"><i class="fas fa-clock fa-xs me-1"></i>{{ $checkinTime }}</div>
+                                    <div class="activity-time"><i class="fas fa-clock fa-xs me-1"></i>{{ $printTime }}</div>
                                 </div>
                                 <div>
-                                    <span style="font-size:0.68rem; font-weight:700; background:#dcfce7; color:#15803d; padding:2px 8px; border-radius:50px;">✓ OK</span>
+                                    <span style="font-size:0.68rem; font-weight:700; background:#f3e8ff; color:#7e22ce; padding:2px 8px; border-radius:50px; border: 1px solid #d8b4fe;"><i class="fas fa-print me-1"></i>Đã in</span>
                                 </div>
                             </div>
                         </div>
@@ -542,17 +544,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ── Check-in Donut ─────────────────────────────────────────
-    const checkedIn  = {{ $checkedInToday }};
-    const notChecked = {{ $unusedTickets }};
+    // ── Print Donut ────────────────────────────────────────────
+    const printedCount   = {{ $printedToday }};
+    const unprintedCount = {{ $unprintedTickets }};
     const ctxDonut = document.getElementById('checkinChart')?.getContext('2d');
     if (ctxDonut) {
         new Chart(ctxDonut, {
             type: 'doughnut',
             data: {
-                labels: ['Đã check-in', 'Chưa check-in'],
+                labels: ['Đã in vé', 'Chưa in vé'],
                 datasets: [{
-                    data: [checkedIn, notChecked],
+                    data: [printedCount, unprintedCount],
                     backgroundColor: ['#10b981', '#f59e0b'],
                     borderColor: '#fff',
                     borderWidth: 3,
@@ -575,60 +577,6 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('mouseenter', () => btn.style.filter = 'brightness(1.08)');
         btn.addEventListener('mouseleave', () => btn.style.filter = '');
     });
-
-    // ── Realtime Live Check-in Feed via Reverb ──────────────────
-    const staffCinemaId = {{ auth()->user()->cinema_id ?? 1 }};
-    if (typeof window.Echo !== 'undefined') {
-        console.log('Staff dashboard listening on: private-cinema.' + staffCinemaId + '.staff');
-        window.Echo.private(`cinema.${staffCinemaId}.staff`)
-            .listen('.LiveTicketScanned', (data) => {
-                console.log('LiveTicketScanned received:', data);
-                handleLiveTicketScanned(data);
-            })
-            .listen('LiveTicketScanned', (data) => {
-                console.log('LiveTicketScanned received (unprefixed):', data);
-                handleLiveTicketScanned(data);
-            });
-    }
-
-    function handleLiveTicketScanned(data) {
-        // Show live floating toast
-        const toast = document.createElement('div');
-        toast.className = 'alert shadow-lg d-flex align-items-center gap-3';
-        toast.style.position = 'fixed';
-        toast.style.top = '20px';
-        toast.style.right = '20px';
-        toast.style.zIndex = '99999';
-        toast.style.borderRadius = '12px';
-        toast.style.minWidth = '320px';
-        toast.style.animation = 'slideIn 0.3s ease forwards';
-        toast.style.background = data.status === 'SUCCESS' ? '#064e3b' : '#7f1d1d';
-        toast.style.color = '#fff';
-        toast.style.border = data.status === 'SUCCESS' ? '1px solid #10b981' : '1px solid #ef4444';
-
-        toast.innerHTML = `
-            <i class="fas ${data.status === 'SUCCESS' ? 'fa-check-circle text-success' : 'fa-exclamation-triangle text-danger'} fa-2x"></i>
-            <div>
-                <div class="fw-bold">${data.status === 'SUCCESS' ? 'Khách đã vào rạp' : 'Cảnh báo vé'}</div>
-                <div class="small">${data.movieTitle} - Ghế: <b>${data.seatCode}</b> (${data.roomName})</div>
-                <div class="small opacity-75">${data.scannedAt} · Bởi: ${data.staffName}</div>
-            </div>
-        `;
-        document.body.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transition = 'opacity 0.5s ease';
-            setTimeout(() => toast.remove(), 500);
-        }, 5000);
-
-        // Update KPI Counters
-        const kpiCheckin = document.querySelector('.kpi-green .kpi-value');
-        if (kpiCheckin) {
-            let current = parseInt(kpiCheckin.textContent.replace(/,/g, '')) || 0;
-            kpiCheckin.textContent = (current + 1).toLocaleString('vi-VN');
-        }
-    }
 });
 </script>
 @endsection
