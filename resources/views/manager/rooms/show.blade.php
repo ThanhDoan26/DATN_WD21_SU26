@@ -147,8 +147,7 @@
                     @endphp
                     <div class="stat-number text-warning">{{ $activeShowtimes }}</div>
                     <div class="stat-label">Suất Chiếu Hợp Lệ</div>
-                    <!-- Assuming showtimes.index takes room_id in future implementation -->
-                    <a href="{{ route('admin.showtimes.index') }}?room_id={{ $room->id }}" class="btn btn-sm btn-outline-warning mt-2">Xem Chi Tiết</a>
+                    <a href="{{ route('manager.showtimes.index', ['room_id' => $room->id]) }}" class="btn btn-sm btn-outline-warning mt-2">Xem Chi Tiết</a>
                 </div>
             </div>
         </div>
@@ -168,7 +167,7 @@
                         <strong>Không thể xóa phòng</strong> - Phòng đang có <strong>{{ $activeShowtimes }} suất chiếu</strong> hợp lệ.
                         Vui lòng xóa hoặc hủy tất cả suất chiếu trước khi xóa phòng này.
                     </div>
-                    <a href="{{ route('admin.showtimes.index') }}?room_id={{ $room->id }}" class="btn btn-warning w-100">
+                    <a href="{{ route('manager.showtimes.index', ['room_id' => $room->id]) }}" class="btn btn-warning w-100">
                         <i class="fas fa-film"></i> Quản Lý Suất Chiếu
                     </a>
                 @else

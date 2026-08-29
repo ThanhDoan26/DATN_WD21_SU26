@@ -21,9 +21,17 @@ class UserRoleSeeder extends Seeder
         $managerRole = Role::firstOrCreate(['role_name' => 'MANAGER'], ['description' => 'Quản lý rạp']);
         $userRole    = Role::firstOrCreate(['role_name' => 'USER'], ['description' => 'Khách hàng xem phim']);
 
-        // 2. Lấy Rạp đầu tiên để gán cho Staff/Manager (Tránh dính lỗi 403 CheckCinemaAssignment)
-        $defaultCinema = Cinema::first();
-        $cinemaId = $defaultCinema ? $defaultCinema->id : null;
+        // 2. Lấy hoặc tạo sẵn Rạp mặc định để gán cho Staff/Manager (Tránh dính lỗi 403 CheckCinemaAssignment / SQL Error)
+        $defaultCinema = Cinema::firstOrCreate(
+            ['name' => 'movieGo Sư Vạn Hạnh'],
+            [
+                'address' => '123 Sư Vạn Hạnh, Phường 12, Quận 10, TP.HCM',
+                'description' => 'Rạp chiếu phim hiện đại với đầy đủ tiện nghi chuẩn quốc tế.',
+                'city' => 'TP.HCM',
+                'status' => 'ACTIVE'
+            ]
+        );
+        $cinemaId = $defaultCinema->id;
 
         $users = [
             [

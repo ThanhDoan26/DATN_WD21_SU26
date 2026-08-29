@@ -13,8 +13,6 @@ use App\Services\BookingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\TicketConfirmationMail;
 use Illuminate\Support\Facades\DB;
 
 class CheckoutController extends Controller
@@ -621,36 +619,8 @@ class CheckoutController extends Controller
             // Đánh dấu thanh toán thành công (BookingObserver sẽ tự động kích hoạt gửi TicketConfirmationMail bất đồng bộ qua Queue)
             $bookingService->completePayment($booking->id, $booking->payment_method ?? 'MOCK_PAYMENT');
             
-            // Lấy thông tin chi tiết để gửi email
-            $bookingDetails = $bookingService->getBookingDetails($booking->id);
-            $showtime = Showtime::with(['movie', 'room.cinema'])->find($booking->showtime_id);
-            
-            // Gửi email xác nhận
-            $email = $booking->customer_email ?? $booking->user?->email;
-            $mailSent = false;
-
-            if ($email) {
-                try {
-                    \Illuminate\Support\Facades\Log::info("CheckoutController: Đang gọi Mail::to()->send() gửi cho " . $email);
-                    Mail::to($email)->send(new TicketConfirmationMail($bookingDetails, $showtime));
-                    $mailSent = true;
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error("CheckoutController: Lỗi khi gọi Mail::to()->send() cho " . $email . ". Lỗi: " . $e->getMessage(), [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'trace' => $e->getTraceAsString(),
-                    ]);
-                }
-            } else {
-                \Illuminate\Support\Facades\Log::warning("CheckoutController: TicketConfirmationMail KHÔNG được gọi do không tìm thấy email.");
-            }
-            
-            if ($mailSent) {
-                return redirect()->route('booking.history.show', ['bookingCode' => $booking->booking_code])
-                                 ->with('success', 'Thanh toán thành công. Email xác nhận đã được gửi đến bạn.');
-            }
             return redirect()->route('booking.history.show', ['bookingCode' => $booking->booking_code])
-                             ->with('warning', 'Thanh toán thành công nhưng gửi email xác nhận thất bại. Vui lòng kiểm tra lại email hoặc liên hệ hỗ trợ.');
+                             ->with('success', 'Thanh toán thành công. Vé của bạn đã được xuất và email xác nhận sẽ được gửi đến bạn.');
         } catch (\Exception $e) {
             Log::error('Mock payment failed: ' . $e->getMessage());
             if ($request->wantsJson() || $request->ajax()) {
