@@ -190,6 +190,22 @@ class Movie extends Model
         return $this->status === self::STATUS_ENDED;
     }
 
+    /**
+     * Check if this movie has active bookings for upcoming showtimes.
+     */
+    public function hasActiveFutureBookings(): bool
+    {
+        return (new \App\Services\MovieStatusValidationService())->hasActiveFutureBookings($this);
+    }
+
+    /**
+     * Cancel all upcoming showtimes for this movie.
+     */
+    public function cancelUpcomingShowtimes(): int
+    {
+        return (new \App\Services\MovieStatusValidationService())->cancelUpcomingShowtimes($this);
+    }
+
     public function isTicketSalesOpen(): bool
     {
         return $this->status !== self::STATUS_SCHEDULED;

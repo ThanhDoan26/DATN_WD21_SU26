@@ -140,7 +140,7 @@ class MovieController extends Controller
         if ($request->input('status') === Movie::STATUS_SCHEDULED) {
             $validationService->validateScheduledMetadata($request->all(), $movie);
         } else {
-            $validationService->validateMovieDatesByStatus($request->all());
+            $validationService->validateMovieDatesByStatus($request->all(), $movie);
         }
 
         $validated = $request->validate([
@@ -184,6 +184,11 @@ class MovieController extends Controller
         }
 
         $movie->update($data);
+
+        // Cascade Showtime Closure: Khi chuyển sang ENDED, tự động hủy các suất chiếu tương lai
+        if ($movie->status === Movie::STATUS_ENDED) {
+            $validationService->cancelUpcomingShowtimes($movie);
+        }
 
         if ($request->has('categories')) {
             $movie->categories()->sync($request->categories);

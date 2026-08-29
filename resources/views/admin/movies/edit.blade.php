@@ -83,6 +83,9 @@
                         <div id="scheduled-status-hint" class="alert alert-info py-2 px-3 mt-2 small" style="display: none;">
                             <i class="fas fa-info-circle me-1"></i> <strong>Lưu ý khi Lên lịch:</strong> Bắt buộc nhập đầy đủ Tên, Poster, Trailer, Thời lượng, Độ tuổi, Thể loại và <strong>Ngày phát hành dự kiến (trong tương lai)</strong>. Suất chiếu tạo cho phim này sẽ ở trạng thái Chờ duyệt (Pending) và chưa mở bán vé.
                         </div>
+                        <div id="ended-status-hint" class="alert alert-warning py-2 px-3 mt-2 small" style="display: none;">
+                            <i class="fas fa-exclamation-triangle me-1"></i> <strong>Lưu ý khi Ngừng chiếu:</strong> Hệ thống sẽ tự động hủy (CANCELLED) toàn bộ các suất chiếu sắp tới của phim. Nếu đang có suất chiếu tương lai đã được đặt vé, hệ thống sẽ chặn thao tác này.
+                        </div>
                     </div>
 
                     <div class="row">
@@ -438,12 +441,19 @@
         }
 
         // Toggle scheduled banner & trailer star
+        const endedHintEl = document.getElementById('ended-status-hint');
         if (status === 'SCHEDULED') {
             if (hintEl) hintEl.style.display = 'block';
             if (trailerStar) trailerStar.style.display = 'inline';
         } else {
             if (hintEl) hintEl.style.display = 'none';
             if (trailerStar) trailerStar.style.display = 'none';
+        }
+
+        if (status === 'ENDED') {
+            if (endedHintEl) endedHintEl.style.display = 'block';
+        } else {
+            if (endedHintEl) endedHintEl.style.display = 'none';
         }
 
         validateMovieDatesRealTime();

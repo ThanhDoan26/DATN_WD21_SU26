@@ -100,9 +100,14 @@ class MovieStatusValidationService
      * @return void
      * @throws ValidationException
      */
-    public function validateMovieDatesByStatus(array $data): void
+    public function validateMovieDatesByStatus(array $data, ?Movie $existingMovie = null): void
     {
         $status = $data['status'] ?? null;
+
+        if ($status === Movie::STATUS_ENDED && $existingMovie) {
+            $this->validateCanTransitionToEnded($existingMovie);
+        }
+
         [$rules, $messages] = $this->getDateRulesAndMessages($status, $data);
 
         if (!empty($rules)) {
@@ -111,6 +116,59 @@ class MovieStatusValidationService
                 throw new ValidationException($validator);
             }
         }
+    }
+
+    /**
+     * Check if a movie has any active bookings (status = 'SUCCESS' or 'Paid')
+     * for future showtimes (start_time > now()).
+     *
+     * @param Movie|int $movieOrId
+     * @return bool
+     */
+    public function hasActiveFutureBookings(Movie|int $movieOrId): bool
+    {
+        $movieId = $movieOrId instanceof Movie ? $movieOrId->id : $movieOrId;
+
+        return DB::table('bookings')
+            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+            ->where('showtimes.movie_id', $movieId)
+            ->whereNull('showtimes.deleted_at')
+            ->where('showtimes.start_time', '>', now())
+            ->whereIn(DB::raw('UPPER(bookings.status)'), ['SUCCESS', 'PAID'])
+            ->exists();
+    }
+
+    /**
+     * Validate that a movie can be transitioned to 'ENDED' (Ngừng chiếu).
+     * Blocks transition if there are active bookings in future showtimes.
+     *
+     * @param Movie|int $movieOrId
+     * @throws ValidationException
+     */
+    public function validateCanTransitionToEnded(Movie|int $movieOrId): void
+    {
+        if ($this->hasActiveFutureBookings($movieOrId)) {
+            throw ValidationException::withMessages([
+                'status' => "Không thể chuyển phim sang 'Ngừng chiếu' vì đang có suất chiếu tương lai đã được đặt vé. Vui lòng hủy các suất chiếu và hoàn tiền cho khách trước.",
+            ]);
+        }
+    }
+
+    /**
+     * Automatically update all upcoming showtimes (start_time > now()) for this movie
+     * to CANCELLED status when movie status is changed to ENDED.
+     *
+     * @param Movie|int $movieOrId
+     * @return int Number of updated showtimes
+     */
+    public function cancelUpcomingShowtimes(Movie|int $movieOrId): int
+    {
+        $movieId = $movieOrId instanceof Movie ? $movieOrId->id : $movieOrId;
+
+        return Showtime::where('movie_id', $movieId)
+            ->where('start_time', '>', now())
+            ->where('status', '!=', Showtime::STATUS_CANCELLED)
+            ->update(['status' => Showtime::STATUS_CANCELLED]);
     }
 
     /**
