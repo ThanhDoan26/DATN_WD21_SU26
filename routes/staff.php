@@ -27,14 +27,7 @@ Route::middleware(['auth', 'role:STAFF', 'cinema.assignment'])->prefix('staff')-
 
     // ── Quản lý phiếu giảm giá ───────────────────────────────────────
     Route::get('/coupons/expired', [CouponController::class, 'expired'])->name('coupon.expired');
-    Route::resource('coupons', CouponController::class)->names([
-        'index'   => 'coupons.index',
-        'create'  => 'coupons.create',
-        'store'   => 'coupons.store',
-        'edit'    => 'coupons.edit',
-        'update'  => 'coupons.update',
-        'destroy' => 'coupons.destroy',
-    ])->except(['show']);
+    Route::resource('coupons', CouponController::class)->only(['index']);
 
     // ── Kiểm tra phiếu giảm giá (tra cứu nhanh) ─────────────────────
     Route::get('/coupon-check', [CouponCheckController::class, 'index'])->name('coupon.check');

@@ -805,12 +805,7 @@
                             <i class="fas fa-list-ul"></i>Danh sách mã
                         </a>
                     </li>
-                    <li>
-                        <a href="{{ route('staff.coupons.create') }}"
-                           class="@if(request()->routeIs('staff.coupons.create')) active @endif">
-                            <i class="fas fa-plus"></i>Thêm mã mới
-                        </a>
-                    </li>
+
                     <li>
                         <a href="{{ route('staff.coupon.check') }}"
                            class="@if(request()->routeIs('staff.coupon.check*')) active @endif">

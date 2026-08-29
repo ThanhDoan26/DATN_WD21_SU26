@@ -47,7 +47,7 @@
                             <th style="font-size:0.78rem; text-transform:uppercase; color:var(--text-muted); padding:12px 16px;">Đơn tối thiểu</th>
                             <th style="font-size:0.78rem; text-transform:uppercase; color:var(--text-muted); padding:12px 16px;">Lượt dùng</th>
                             <th style="font-size:0.78rem; text-transform:uppercase; color:var(--text-muted); padding:12px 16px;">Ngày hết hạn</th>
-                            <th style="font-size:0.78rem; text-transform:uppercase; color:var(--text-muted); padding:12px 16px; text-align:center;">Thao tác</th>
+
                         </tr>
                     </thead>
                     <tbody>
@@ -83,15 +83,11 @@
                                     <i class="fas fa-clock me-1"></i>
                                     {{ $coupon->end_date ? $coupon->end_date->format('d/m/Y H:i') : '—' }}
                                 </td>
-                                <td class="text-center">
-                                    <a href="{{ route('staff.coupons.edit', $coupon->id) }}" class="btn btn-warning btn-sm rounded-2 me-1" title="Sửa ngày">
-                                        <i class="fas fa-edit me-1"></i>Sửa ngày
-                                    </a>
-                                </td>
+
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-5">
+                                <td colspan="6" class="text-center text-muted py-5">
                                     <i class="fas fa-check-circle fa-3x mb-3 text-success opacity-50 d-block"></i>
                                     Không có mã giảm giá nào hết hạn.
                                 </td>

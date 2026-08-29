@@ -90,9 +90,7 @@
                 <a href="{{ route('staff.coupon.expired') }}" class="btn btn-outline-light btn-sm px-3 rounded-3">
                     <i class="fas fa-history me-1"></i>Mã hết hạn
                 </a>
-                <a href="{{ route('staff.coupons.create') }}" class="btn btn-warning btn-sm px-3 rounded-3 fw-bold text-dark">
-                    <i class="fas fa-plus me-1"></i>Thêm mới
-                </a>
+
             </div>
         </div>
 
@@ -135,7 +133,7 @@
                             <th>Lượt dùng</th>
                             <th>Thời gian hiệu lực</th>
                             <th>Trạng thái</th>
-                            <th class="text-center">Thao tác</th>
+
                         </tr>
                     </thead>
                     <tbody>
@@ -202,23 +200,11 @@
                                         <span class="badge bg-danger">Bị khoá</span>
                                     @endif
                                 </td>
-                                <td class="text-center">
-                                    <a href="{{ route('staff.coupons.edit', $coupon->id) }}"
-                                       class="btn btn-warning btn-sm rounded-2 me-1" title="Sửa">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <form action="{{ route('staff.coupons.destroy', $coupon->id) }}" method="POST"
-                                          class="d-inline" onsubmit="return confirm('Xoá mã {{ $coupon->code }}?');">
-                                        @csrf @method('DELETE')
-                                        <button class="btn btn-danger btn-sm rounded-2" title="Xoá">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </td>
+
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center text-muted py-5">
+                                <td colspan="7" class="text-center text-muted py-5">
                                     <i class="fas fa-inbox fa-3x mb-3 opacity-25 d-block"></i>
                                     Không có mã giảm giá nào.
                                 </td>
