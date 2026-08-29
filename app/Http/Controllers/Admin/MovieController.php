@@ -137,11 +137,7 @@ class MovieController extends Controller
     public function update(Request $request, Movie $movie)
     {
         $validationService = new \App\Services\MovieStatusValidationService();
-        if ($request->input('status') === Movie::STATUS_SCHEDULED) {
-            $validationService->validateScheduledMetadata($request->all(), $movie);
-        } else {
-            $validationService->validateMovieDatesByStatus($request->all(), $movie);
-        }
+        $validationService->validateMovieUpdate($movie, $request->all());
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -183,11 +179,17 @@ class MovieController extends Controller
             $data['poster_url'] = $request->file('poster')->store('posters', 'public');
         }
 
+        $previousStatus = $movie->status;
         $movie->update($data);
 
-        // Cascade Showtime Closure: Khi chuyển sang ENDED, tự động hủy các suất chiếu tương lai
+        // Cascade Showtime Sync:
+        // 1. Khi chuyển sang ENDED, tự động hủy các suất chiếu tương lai
         if ($movie->status === Movie::STATUS_ENDED) {
             $validationService->cancelUpcomingShowtimes($movie);
+        }
+        // 2. Khi chuyển sang PRE_ORDER hoặc NOW_SHOWING, tự động công bố các suất chiếu PENDING
+        elseif (in_array($movie->status, [Movie::STATUS_PRE_ORDER, Movie::STATUS_NOW_SHOWING])) {
+            $validationService->publishPendingShowtimes($movie);
         }
 
         if ($request->has('categories')) {
@@ -201,11 +203,13 @@ class MovieController extends Controller
 
     public function destroy(Movie $movie)
     {
-        // Kiểm tra phim có suất chiếu hợp lệ
-        if ($movie->hasActiveShowtimes()) {
+        $validationService = new \App\Services\MovieStatusValidationService();
+
+        // Kiểm tra phim có suất chiếu hợp lệ hoặc vé tương lai
+        if ($movie->hasActiveShowtimes() || $validationService->hasActiveFutureBookings($movie)) {
             $activeCount = $movie->getActiveShowtimesCount();
             return redirect()->route('admin.movies.index')
-                             ->with('error', "Không thể xóa phim '$movie->title' vì phim đang có $activeCount suất chiếu hợp lệ. Vui lòng xóa hoặc hủy tất cả suất chiếu trước.");
+                             ->with('error', "Không thể xóa phim '$movie->title' vì phim đang có $activeCount suất chiếu hợp lệ hoặc vé chưa hoàn tất. Vui lòng xóa hoặc hủy tất cả suất chiếu trước.");
         }
 
         $movie->delete();
@@ -246,6 +250,13 @@ class MovieController extends Controller
     public function forceDelete($id)
     {
         $movie = Movie::onlyTrashed()->findOrFail($id);
+        $validationService = new \App\Services\MovieStatusValidationService();
+
+        // Deletion Protection: Chặn xóa vĩnh viễn nếu có lịch sử đặt vé hoặc suất chiếu
+        if ($validationService->hasHistoricalBookings($movie) || $movie->showtimes()->withTrashed()->exists()) {
+            return redirect()->route('admin.movies.trashed')
+                             ->with('error', 'Không thể xóa vĩnh viễn phim này vì đã có lịch sử đặt vé hoặc suất chiếu liên quan. Chỉ được phép lưu trữ (Xóa mềm).');
+        }
         
         try {
             // Remove poster if exists

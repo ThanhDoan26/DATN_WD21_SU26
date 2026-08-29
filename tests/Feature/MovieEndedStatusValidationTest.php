@@ -16,36 +16,40 @@ uses(RefreshDatabase::class);
 
 describe('Movie ENDED Status Transition and Showtime Closure Validation', function () {
 
-    function getAdminUser(): User
-    {
-        $role = Role::firstOrCreate(['role_name' => 'ADMIN'], ['description' => 'Administrator']);
-        return User::factory()->create([
-            'role_id' => $role->id,
-            'status' => 'ACTIVE',
-        ]);
+    if (!function_exists('getEndedAdminUser')) {
+        function getEndedAdminUser(): User
+        {
+            $role = Role::firstOrCreate(['role_name' => 'ADMIN'], ['description' => 'Administrator']);
+            return User::factory()->create([
+                'role_id' => $role->id,
+                'status' => 'ACTIVE',
+            ]);
+        }
     }
 
-    function createCinemaAndRoom(): Room
-    {
-        $cinema = Cinema::create([
-            'name' => 'Test Cinema ' . uniqid(),
-            'address' => '123 Test Street',
-            'city' => 'Hanoi',
-            'status' => 'ACTIVE',
-        ]);
+    if (!function_exists('createEndedCinemaAndRoom')) {
+        function createEndedCinemaAndRoom(): Room
+        {
+            $cinema = Cinema::create([
+                'name' => 'Test Cinema ' . uniqid(),
+                'address' => '123 Test Street',
+                'city' => 'Hanoi',
+                'status' => 'ACTIVE',
+            ]);
 
-        return Room::create([
-            'cinema_id' => $cinema->id,
-            'name' => 'Screen 1',
-            'format' => '2D',
-            'total_seats' => 50,
-            'status' => 'ACTIVE',
-        ]);
+            return Room::create([
+                'cinema_id' => $cinema->id,
+                'name' => 'Screen 1',
+                'format' => '2D',
+                'total_seats' => 50,
+                'status' => 'ACTIVE',
+            ]);
+        }
     }
 
     test('blocks transition to ENDED if active bookings (SUCCESS or Paid) exist for future showtimes', function () {
-        $admin = getAdminUser();
-        $room = createCinemaAndRoom();
+        $admin = getEndedAdminUser();
+        $room = createEndedCinemaAndRoom();
 
         $movie = Movie::create([
             'title' => 'Test Movie With Active Booking',
@@ -89,8 +93,8 @@ describe('Movie ENDED Status Transition and Showtime Closure Validation', functi
     });
 
     test('blocks transition to ENDED with Paid status bookings as well', function () {
-        $admin = getAdminUser();
-        $room = createCinemaAndRoom();
+        $admin = getEndedAdminUser();
+        $room = createEndedCinemaAndRoom();
 
         $movie = Movie::create([
             'title' => 'Test Movie With Paid Booking',
@@ -128,8 +132,8 @@ describe('Movie ENDED Status Transition and Showtime Closure Validation', functi
     });
 
     test('allows transition to ENDED if future showtime only has Cancelled bookings', function () {
-        $admin = getAdminUser();
-        $room = createCinemaAndRoom();
+        $admin = getEndedAdminUser();
+        $room = createEndedCinemaAndRoom();
 
         $movie = Movie::create([
             'title' => 'Movie With Cancelled Bookings Only',
@@ -171,8 +175,8 @@ describe('Movie ENDED Status Transition and Showtime Closure Validation', functi
     });
 
     test('allows transition to ENDED if active bookings are only in PAST showtimes', function () {
-        $admin = getAdminUser();
-        $room = createCinemaAndRoom();
+        $admin = getEndedAdminUser();
+        $room = createEndedCinemaAndRoom();
 
         $movie = Movie::create([
             'title' => 'Movie With Past Bookings Only',
@@ -227,8 +231,8 @@ describe('Movie ENDED Status Transition and Showtime Closure Validation', functi
     });
 
     test('cascade cancellation updates all upcoming showtimes for the ended movie and leaves other movies unaffected', function () {
-        $admin = getAdminUser();
-        $room = createCinemaAndRoom();
+        $admin = getEndedAdminUser();
+        $room = createEndedCinemaAndRoom();
 
         $movieA = Movie::create([
             'title' => 'Movie To Be Ended',
@@ -290,7 +294,7 @@ describe('Movie ENDED Status Transition and Showtime Closure Validation', functi
 
     test('direct service and model validation methods work as expected', function () {
         $service = new MovieStatusValidationService();
-        $room = createCinemaAndRoom();
+        $room = createEndedCinemaAndRoom();
 
         $movie = Movie::create([
             'title' => 'Service Unit Test Movie',

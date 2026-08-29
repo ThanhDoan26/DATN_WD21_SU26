@@ -104,8 +104,9 @@ class MovieStatusValidationService
     {
         $status = $data['status'] ?? null;
 
-        if ($status === Movie::STATUS_ENDED && $existingMovie) {
-            $this->validateCanTransitionToEnded($existingMovie);
+        if ($existingMovie) {
+            $this->validateStatusTransition($existingMovie, $status ?? $existingMovie->status);
+            $this->validateFieldImmutability($existingMovie, $data);
         }
 
         [$rules, $messages] = $this->getDateRulesAndMessages($status, $data);
@@ -115,6 +116,120 @@ class MovieStatusValidationService
             if ($validator->fails()) {
                 throw new ValidationException($validator);
             }
+        }
+    }
+
+    /**
+     * Comprehensive validation when updating an existing movie.
+     *
+     * @param Movie $movie
+     * @param array $data
+     * @throws ValidationException
+     */
+    public function validateMovieUpdate(Movie $movie, array $data): void
+    {
+        $newStatus = $data['status'] ?? $movie->status;
+
+        // 1. Validate status transition constraints
+        $this->validateStatusTransition($movie, $newStatus);
+
+        // 2. Validate field immutability when movie has bookings
+        $this->validateFieldImmutability($movie, $data);
+
+        // 3. Validate metadata / dates based on new status
+        if ($newStatus === Movie::STATUS_SCHEDULED) {
+            $this->validateScheduledMetadata($data, $movie);
+        } else {
+            $this->validateMovieDatesByStatus($data, $movie);
+        }
+    }
+
+    /**
+     * Check if a movie has any active/successful bookings (status = 'SUCCESS' or 'Paid').
+     *
+     * @param Movie|int $movieOrId
+     * @return bool
+     */
+    public function hasSuccessfulBookings(Movie|int $movieOrId): bool
+    {
+        $movieId = $movieOrId instanceof Movie ? $movieOrId->id : $movieOrId;
+
+        return DB::table('bookings')
+            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+            ->where('showtimes.movie_id', $movieId)
+            ->whereIn(DB::raw('UPPER(bookings.status)'), ['SUCCESS', 'PAID'])
+            ->exists();
+    }
+
+    /**
+     * Check if a movie has any historical bookings (regardless of status).
+     *
+     * @param Movie|int $movieOrId
+     * @return bool
+     */
+    public function hasHistoricalBookings(Movie|int $movieOrId): bool
+    {
+        $movieId = $movieOrId instanceof Movie ? $movieOrId->id : $movieOrId;
+
+        return DB::table('bookings')
+            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+            ->where('showtimes.movie_id', $movieId)
+            ->exists();
+    }
+
+    /**
+     * Validate status transition constraints:
+     * - Prevent illegal status jumps.
+     * - Disallow changing status back from ENDED to any active status.
+     *
+     * @param Movie $movie
+     * @param string $newStatus
+     * @throws ValidationException
+     */
+    public function validateStatusTransition(Movie $movie, string $newStatus): void
+    {
+        if ($movie->status === Movie::STATUS_ENDED && $newStatus !== Movie::STATUS_ENDED) {
+            throw ValidationException::withMessages([
+                'status' => 'Không thể thay đổi trạng thái của phim đã ngừng chiếu (ENDED).',
+            ]);
+        }
+
+        if ($newStatus === Movie::STATUS_ENDED) {
+            $this->validateCanTransitionToEnded($movie);
+        }
+    }
+
+    /**
+     * Validate field immutability:
+     * If a movie has active/successful bookings, BLOCK any edits to duration and age_rating.
+     *
+     * @param Movie $movie
+     * @param array $data
+     * @throws ValidationException
+     */
+    public function validateFieldImmutability(Movie $movie, array $data): void
+    {
+        if (!$this->hasSuccessfulBookings($movie)) {
+            return;
+        }
+
+        $isDurationChanged = array_key_exists('duration', $data)
+            && $data['duration'] !== null
+            && (int) $data['duration'] !== (int) $movie->duration;
+
+        $incomingAge = isset($data['age_rating']) ? trim((string) $data['age_rating']) : '';
+        $currentAge = trim((string) ($movie->age_rating ?? ''));
+        $isAgeRatingChanged = array_key_exists('age_rating', $data) && $incomingAge !== $currentAge;
+
+        if ($isDurationChanged || $isAgeRatingChanged) {
+            $errors = [];
+            if ($isDurationChanged) {
+                $errors['duration'] = 'Không thể thay đổi thời lượng hoặc độ tuổi của phim đã có giao dịch đặt vé.';
+            }
+            if ($isAgeRatingChanged) {
+                $errors['age_rating'] = 'Không thể thay đổi thời lượng hoặc độ tuổi của phim đã có giao dịch đặt vé.';
+            }
+            throw ValidationException::withMessages($errors);
         }
     }
 
@@ -169,6 +284,23 @@ class MovieStatusValidationService
             ->where('start_time', '>', now())
             ->where('status', '!=', Showtime::STATUS_CANCELLED)
             ->update(['status' => Showtime::STATUS_CANCELLED]);
+    }
+
+    /**
+     * Automatically update all upcoming showtimes (start_time > now()) with status
+     * PENDING or UNPUBLISHED to SCHEDULED when movie switches to PRE_ORDER or NOW_SHOWING.
+     *
+     * @param Movie|int $movieOrId
+     * @return int Number of published showtimes
+     */
+    public function publishPendingShowtimes(Movie|int $movieOrId): int
+    {
+        $movieId = $movieOrId instanceof Movie ? $movieOrId->id : $movieOrId;
+
+        return Showtime::where('movie_id', $movieId)
+            ->whereIn('status', [Showtime::STATUS_PENDING, Showtime::STATUS_UNPUBLISHED])
+            ->where('start_time', '>', now())
+            ->update(['status' => Showtime::STATUS_SCHEDULED]);
     }
 
     /**

@@ -199,11 +199,35 @@ class Movie extends Model
     }
 
     /**
+     * Check if this movie has any successful bookings.
+     */
+    public function hasSuccessfulBookings(): bool
+    {
+        return (new \App\Services\MovieStatusValidationService())->hasSuccessfulBookings($this);
+    }
+
+    /**
+     * Check if this movie has any historical bookings.
+     */
+    public function hasHistoricalBookings(): bool
+    {
+        return (new \App\Services\MovieStatusValidationService())->hasHistoricalBookings($this);
+    }
+
+    /**
      * Cancel all upcoming showtimes for this movie.
      */
     public function cancelUpcomingShowtimes(): int
     {
         return (new \App\Services\MovieStatusValidationService())->cancelUpcomingShowtimes($this);
+    }
+
+    /**
+     * Publish all pending showtimes for this movie.
+     */
+    public function publishPendingShowtimes(): int
+    {
+        return (new \App\Services\MovieStatusValidationService())->publishPendingShowtimes($this);
     }
 
     public function isTicketSalesOpen(): bool

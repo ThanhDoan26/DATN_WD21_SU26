@@ -120,14 +120,27 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="duration" class="form-label">Thời lượng (phút) <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control @error('duration') is-invalid @enderror" id="duration" name="duration" value="{{ old('duration', $movie->duration) }}" min="1" required>
+                        <label for="duration" class="form-label">
+                            Thời lượng (phút) <span class="text-danger">*</span>
+                            @if($movie->hasSuccessfulBookings())
+                                <span class="badge bg-secondary ms-1"><i class="fas fa-lock me-1"></i> Khóa chỉnh sửa (Đã có vé)</span>
+                            @endif
+                        </label>
+                        <input type="number" class="form-control @error('duration') is-invalid @enderror" id="duration" name="duration" value="{{ old('duration', $movie->duration) }}" min="1" required {{ $movie->hasSuccessfulBookings() ? 'readonly' : '' }}>
+                        @if($movie->hasSuccessfulBookings())
+                            <small class="text-muted"><i class="fas fa-info-circle me-1"></i> Không thể thay đổi thời lượng của phim đã có giao dịch đặt vé.</small>
+                        @endif
                         @error('duration') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
                     <div class="mb-3">
-                        <label for="age_rating" class="form-label">Độ tuổi <i class="fas fa-info-circle text-muted" title="Hiển thị badge màu trên trang khách"></i></label>
-                        <select class="form-select @error('age_rating') is-invalid @enderror" id="age_rating" name="age_rating">
+                        <label for="age_rating" class="form-label">
+                            Độ tuổi <i class="fas fa-info-circle text-muted" title="Hiển thị badge màu trên trang khách"></i>
+                            @if($movie->hasSuccessfulBookings())
+                                <span class="badge bg-secondary ms-1"><i class="fas fa-lock me-1"></i> Khóa chỉnh sửa (Đã có vé)</span>
+                            @endif
+                        </label>
+                        <select class="form-select @error('age_rating') is-invalid @enderror" id="age_rating" name="age_rating" {{ $movie->hasSuccessfulBookings() ? 'disabled' : '' }}>
                             <option value="">-- Chọn độ tuổi --</option>
                             <option value="P"   {{ old('age_rating', $movie->age_rating) == 'P'   ? 'selected' : '' }}>🟢 P — Phổ biến (mọi độ tuổi)</option>
                             <option value="K"   {{ old('age_rating', $movie->age_rating) == 'K'   ? 'selected' : '' }}>🟢 K — Dành cho trẻ em</option>
@@ -135,7 +148,12 @@
                             <option value="T16" {{ old('age_rating', $movie->age_rating) == 'T16' ? 'selected' : '' }}>🟠 T16 — Từ 16 tuổi trở lên</option>
                             <option value="T18" {{ old('age_rating', $movie->age_rating) == 'T18' ? 'selected' : '' }}>🔴 T18 — Từ 18 tuổi trở lên</option>
                         </select>
-                        <small class="text-muted">Badge màu sẽ hiển thị tự động trên trang phím đang chiếu / sắp chiếu.</small>
+                        @if($movie->hasSuccessfulBookings())
+                            <input type="hidden" name="age_rating" value="{{ $movie->age_rating }}">
+                            <small class="text-muted"><i class="fas fa-info-circle me-1"></i> Không thể thay đổi độ tuổi của phim đã có giao dịch đặt vé.</small>
+                        @else
+                            <small class="text-muted">Badge màu sẽ hiển thị tự động trên trang phím đang chiếu / sắp chiếu.</small>
+                        @endif
                         @error('age_rating') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
