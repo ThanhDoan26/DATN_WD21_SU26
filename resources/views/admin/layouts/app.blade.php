@@ -18,8 +18,9 @@
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Font Awesome (jsDelivr + cdnjs fallback) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Google Fonts Inter & Sora -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,6 +29,15 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
+        /* FontAwesome Fix for Icon Display */
+        .fa, .fas, .far, .fal, .fad, .fab, [class*=" fa-"], [class^="fa-"] {
+            font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", "FontAwesome" !important;
+            font-style: normal !important;
+        }
+        .far, .fa-regular { font-weight: 400 !important; }
+        .fas, .fa-solid { font-weight: 900 !important; }
+        .fab, .fa-brands { font-family: "Font Awesome 6 Brands" !important; font-weight: 400 !important; }
+
         :root {
             --primary-color: #9333ea;
             --primary-hover: #7c3aed;

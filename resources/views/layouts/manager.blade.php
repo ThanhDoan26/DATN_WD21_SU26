@@ -18,8 +18,9 @@
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Font Awesome (jsDelivr + cdnjs fallback) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Google Fonts Inter & Sora -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,6 +29,15 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
+        /* FontAwesome Fix for Icon Display */
+        .fa, .fas, .far, .fal, .fad, .fab, [class*=" fa-"], [class^="fa-"] {
+            font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", "FontAwesome" !important;
+            font-style: normal !important;
+        }
+        .far, .fa-regular { font-weight: 400 !important; }
+        .fas, .fa-solid { font-weight: 900 !important; }
+        .fab, .fa-brands { font-family: "Font Awesome 6 Brands" !important; font-weight: 400 !important; }
+
         :root {
             --primary-color: #0d9488;
             --primary-hover: #0f766e;
@@ -678,6 +688,10 @@
                 <span class="manager-badge">MANAGER</span>
                 <p>Quản lý rạp</p>
             </div>
+            <div class="cinema-info-tag mt-2 d-flex align-items-center text-truncate" style="color: #99f6e4; font-size: 0.78rem; font-weight: 500;" title="{{ Auth::user()->cinema->name ?? 'Chưa phân công rạp' }}">
+                <i class="fas fa-building me-1 text-info"></i>
+                <span class="text-truncate">{{ Auth::user()->cinema->name ?? 'Chưa phân công rạp' }}</span>
+            </div>
         </div>
 
         <!-- Sidebar Menu -->
@@ -723,6 +737,13 @@
                     <span>Phim</span>
                 </a>
             </li>
+            <li>
+                <a href="{{ route('manager.coupons.index') }}"
+                   class="@if(request()->routeIs('manager.coupons.*')) active @endif">
+                    <i class="fas fa-tags"></i>
+                    <span>Mã giảm giá</span>
+                </a>
+            </li>
         </ul>
     </aside>
 
@@ -737,9 +758,15 @@
                 </button>
                 <div class="dropdown">
                     <div class="user-info dropdown-toggle" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
-                        <div class="text-end">
-                            <span class="badge" style="background: rgba(13, 148, 136, 0.15); color: #0d9488; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">MANAGER</span><br>
-                            <strong style="color: var(--text-ink);">{{ Auth::user()->name ?? 'Manager' }}</strong>
+                        <div class="text-end me-1">
+                            <div class="d-flex align-items-center justify-content-end gap-1 mb-1">
+                                <span class="badge" style="background: rgba(13, 148, 136, 0.15); color: #0d9488; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">MANAGER</span>
+                            </div>
+                            <strong style="color: var(--text-ink); font-size: 0.88rem;">{{ Auth::user()->name ?? 'Manager' }}</strong>
+                            <div class="small text-muted d-flex align-items-center justify-content-end" style="font-size: 0.73rem;">
+                                <i class="fas fa-building me-1 text-info" style="font-size: 0.7rem;"></i>
+                                <span>{{ Auth::user()->cinema->name ?? 'Chưa gán rạp' }}</span>
+                            </div>
                         </div>
                         <div class="user-avatar ms-2">
                             {{ strtoupper(substr(Auth::user()->name ?? 'M', 0, 1)) }}

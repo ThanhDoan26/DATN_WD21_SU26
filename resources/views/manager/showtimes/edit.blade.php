@@ -145,13 +145,18 @@
                 </div>
                 <div class="col-md-6">
                     <div class="mb-3">
-                        <label class="form-label">Thời Gian Kết Thúc *</label>
+                        <label class="form-label font-weight-bold d-flex align-items-center justify-content-between">
+                            <span>Thời Gian Kết Thúc (Tự Động)</span>
+                            <span class="badge bg-secondary font-weight-normal" style="font-size: 0.72rem;">
+                                <i class="fas fa-lock me-1"></i>Chuẩn Rạp Chiếu
+                            </span>
+                        </label>
                         <div class="row g-2 align-items-center">
                             <div class="col-md-5">
-                                <input type="date" id="end_date" min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" class="form-control @error('end_time') is-invalid @enderror" value="{{ old('end_time') ? \Carbon\Carbon::parse(old('end_time'))->format('Y-m-d') : $showtime->end_time->format('Y-m-d') }}" {{ isset($hasBookings) && $hasBookings ? 'disabled' : '' }} required>
+                                <input type="date" id="end_date" class="form-control bg-light" readonly disabled required>
                             </div>
                             <div class="col-md-3">
-                                <select id="end_hour" class="form-select" {{ isset($hasBookings) && $hasBookings ? 'disabled' : '' }} required>
+                                <select id="end_hour" class="form-select bg-light" disabled required>
                                     <option value="">Giờ</option>
                                     @for ($hour = 1; $hour <= 24; $hour++)
                                         <option value="{{ str_pad($hour, 2, '0', STR_PAD_LEFT) }}">{{ str_pad($hour, 2, '0', STR_PAD_LEFT) }}</option>
@@ -159,7 +164,7 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <select id="end_minute" class="form-select" required>
+                                <select id="end_minute" class="form-select bg-light" disabled required>
                                     @for ($minute = 0; $minute < 60; $minute++)
                                         <option value="{{ str_pad($minute, 2, '0', STR_PAD_LEFT) }}">{{ str_pad($minute, 2, '0', STR_PAD_LEFT) }}</option>
                                     @endfor
@@ -169,8 +174,10 @@
                                 <span id="end_period" class="form-text text-muted">&nbsp;</span>
                             </div>
                         </div>
-                        <input type="hidden" id="end_time" name="end_time" value="{{ old('end_time', $showtime->end_time->format('Y-m-d\TH:i:s')) }}">
-                        <div class="small text-muted">Chọn giờ .</div>
+                        <input type="hidden" id="end_time" name="end_time" value="{{ old('end_time', $showtime->end_time ? $showtime->end_time->format('Y-m-d\TH:i:s') : '') }}">
+                        <div class="small text-muted mt-1" id="end_time_hint">
+                            <i class="fas fa-info-circle me-1 text-primary"></i>Tự động tính = Giờ bắt đầu + [Thời lượng phim] + {{ config('booking.showtime.buffer_minutes', 15) }} phút dọn phòng.
+                        </div>
                         @error('end_time')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                             <div class="text-danger small mt-1 d-flex align-items-center gap-1">

@@ -66,11 +66,12 @@ class ShowtimeController extends AdminController
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id'))),
                 function ($attribute, $value, $fail) use ($request) {
-                    $endTime = $request->input('end_time');
-                    if (!$endTime && $request->filled('movie_id') && $request->filled('start_time')) {
+                    $endTime = null;
+                    if ($request->filled('movie_id') && $request->filled('start_time')) {
                         $movie = Movie::find($request->movie_id);
                         if ($movie && $movie->duration) {
-                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15)->format('Y-m-d H:i:s');
+                            $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
+                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes)->format('Y-m-d H:i:s');
                         }
                     }
 
@@ -99,9 +100,6 @@ class ShowtimeController extends AdminController
             'room_id.exists' => 'Phòng chiếu chọn không hợp lệ',
             'start_time.required' => 'Thời gian bắt đầu là bắt buộc',
             'start_time.date' => 'Thời gian bắt đầu không hợp lệ',
-            'end_time.required' => 'Thời gian kết thúc là bắt buộc',
-            'end_time.date' => 'Thời gian kết thúc không hợp lệ',
-            'end_time.after' => 'Thời gian kết thúc phải sau thời gian bắt đầu',
             'status.required' => 'Trạng thái suất chiếu là bắt buộc',
             'status.in' => 'Trạng thái suất chiếu không hợp lệ',
             'ticket_prices.required' => 'Vui lòng nhập giá vé cho các loại ghế.',
@@ -116,7 +114,8 @@ class ShowtimeController extends AdminController
         if ($request->filled('movie_id') && $request->filled('start_time')) {
             $movie = Movie::find($request->movie_id);
             if ($movie && $movie->duration) {
-                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15);
+                $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
+                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes);
                 $validated['end_time'] = $expected->format('Y-m-d H:i:s');
             }
         }
@@ -199,11 +198,12 @@ class ShowtimeController extends AdminController
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id')))
                     ->ignore($showtime->id),
                 function ($attribute, $value, $fail) use ($request, $showtime) {
-                    $endTime = $request->input('end_time');
-                    if (!$endTime && $request->filled('movie_id') && $request->filled('start_time')) {
+                    $endTime = null;
+                    if ($request->filled('movie_id') && $request->filled('start_time')) {
                         $movie = Movie::find($request->movie_id);
                         if ($movie && $movie->duration) {
-                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15)->format('Y-m-d H:i:s');
+                            $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
+                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes)->format('Y-m-d H:i:s');
                         }
                     }
 
@@ -232,9 +232,6 @@ class ShowtimeController extends AdminController
             'room_id.exists' => 'Phòng chiếu chọn không hợp lệ',
             'start_time.required' => 'Thời gian bắt đầu là bắt buộc',
             'start_time.date' => 'Thời gian bắt đầu không hợp lệ',
-            'end_time.required' => 'Thời gian kết thúc là bắt buộc',
-            'end_time.date' => 'Thời gian kết thúc không hợp lệ',
-            'end_time.after' => 'Thời gian kết thúc phải sau thời gian bắt đầu',
             'status.required' => 'Trạng thái suất chiếu là bắt buộc',
             'status.in' => 'Trạng thái suất chiếu không hợp lệ',
             'ticket_prices.required' => 'Vui lòng nhập giá vé cho các loại ghế.',
@@ -249,7 +246,8 @@ class ShowtimeController extends AdminController
         if ($request->filled('movie_id') && $request->filled('start_time')) {
             $movie = Movie::find($request->movie_id);
             if ($movie && $movie->duration) {
-                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15);
+                $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
+                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes);
                 $validated['end_time'] = $expected->format('Y-m-d H:i:s');
             }
         }

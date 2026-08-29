@@ -55,6 +55,11 @@ class Booking extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class)->withTrashed();
+    }
+
     public function showtime(): BelongsTo
     {
         return $this->belongsTo(Showtime::class)->withTrashed();
