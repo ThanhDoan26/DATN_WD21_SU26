@@ -19,6 +19,7 @@ class Showtime extends Model
     public const STATUS_SCHEDULED = 'SCHEDULED';
     public const STATUS_ONGOING = 'ONGOING';
     public const STATUS_COMPLETED = 'COMPLETED';
+    public const STATUS_FINISHED = 'COMPLETED';
     public const STATUS_CANCELLED = 'CANCELLED';
     public const STATUS_PENDING = 'PENDING';
     public const STATUS_UNPUBLISHED = 'UNPUBLISHED';

@@ -258,7 +258,7 @@ class CheckoutController extends Controller
             ->toArray();
 
         $combos = Combo::where('status', 'ACTIVE')->get();
-        $coupons = Coupon::validForCheckout()->get();
+        $coupons = Coupon::validForCheckout()->orderByAvailabilityAndExpiration()->get();
 
         $pendingBookingCode = $pendingBooking->booking_code;
 

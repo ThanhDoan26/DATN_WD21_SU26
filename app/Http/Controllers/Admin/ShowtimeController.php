@@ -49,6 +49,12 @@ class ShowtimeController extends AdminController
 
     public function store(Request $request)
     {
+        if ($request->filled('status') && strtoupper($request->status) === 'FINISHED') {
+            $request->merge(['status' => Showtime::STATUS_COMPLETED]);
+        }
+
+        $movie = Movie::find($request->movie_id);
+
         $validated = $request->validate([
             'movie_id' => 'required|exists:movies,id',
             'room_id' => [
@@ -92,7 +98,7 @@ class ShowtimeController extends AdminController
                 'date',
                 'after:start_time',
             ],
-            'status' => ['required', Rule::in(Showtime::STATUSES)],
+            'status' => ['required', Rule::in(array_merge(Showtime::STATUSES, ['FINISHED']))],
             'surcharge' => 'nullable|numeric|min:0',
             'ticket_prices' => 'required|array',
             'ticket_prices.*' => 'required|numeric|min:0',
@@ -112,10 +118,13 @@ class ShowtimeController extends AdminController
             'ticket_prices.*.min' => 'Giá vé không được nhỏ hơn 0.',
         ]);
 
+        if (strtoupper($validated['status']) === 'FINISHED') {
+            $validated['status'] = Showtime::STATUS_COMPLETED;
+        }
+
         $validated['surcharge'] = $validated['surcharge'] ?? 0;
 
         if ($request->filled('movie_id') && $request->filled('start_time')) {
-            $movie = Movie::find($request->movie_id);
             if ($movie && $movie->duration) {
                 $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
                 $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes);
@@ -123,14 +132,12 @@ class ShowtimeController extends AdminController
             }
         }
 
-        $movie = Movie::find($request->movie_id);
         if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
             $validated['status'] = Showtime::STATUS_PENDING;
-        } elseif (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
-            if (!in_array($validated['status'] ?? null, [Showtime::STATUS_CANCELLED, Showtime::STATUS_PENDING, Showtime::STATUS_UNPUBLISHED])) {
-                $validated['status'] = Showtime::STATUS_SCHEDULED;
-            }
         }
+
+        // Validate showtime status rules
+        (new MovieStatusValidationService())->validateShowtimeStatusRules(null, $validated, $movie);
 
         $showtime = Showtime::create($validated);
 
@@ -151,12 +158,6 @@ class ShowtimeController extends AdminController
 
     public function edit(Showtime $showtime)
     {
-        // Chặn sửa suất chiếu đã qua thời gian hoặc đã kết thúc
-        if (($showtime->end_time && $showtime->end_time <= now()) || $showtime->status === Showtime::STATUS_COMPLETED) {
-            return redirect()->route('admin.showtimes.index')
-                ->with('error', 'Không thể chỉnh sửa suất chiếu đã kết thúc trong quá khứ.');
-        }
-
         $showtime->load(['movie', 'room.cinema', 'ticketPrices', 'bookings']);
         $movies = Movie::orderBy('title')->get();
         $rooms = Room::with('cinema')->orderBy('name')->get();
@@ -167,11 +168,14 @@ class ShowtimeController extends AdminController
 
     public function update(Request $request, Showtime $showtime)
     {
-        // 1. Kiểm tra suất chiếu đã kết thúc chưa
-        if (($showtime->end_time && $showtime->end_time <= now()) || $showtime->status === Showtime::STATUS_COMPLETED) {
-            return redirect()->route('admin.showtimes.index')
-                ->with('error', 'Không thể chỉnh sửa suất chiếu đã kết thúc trong quá khứ.');
+        if ($request->filled('status') && strtoupper($request->status) === 'FINISHED') {
+            $request->merge(['status' => Showtime::STATUS_COMPLETED]);
         }
+
+        $movie = Movie::find($request->input('movie_id', $showtime->movie_id));
+
+        // 1. Kiểm tra toàn diện trạng thái suất chiếu và terminal lock
+        (new MovieStatusValidationService())->validateShowtimeStatusRules($showtime, $request->all(), $movie);
 
         // 2. Kiểm tra nếu suất chiếu đã có vé đặt thì khóa thay đổi phim, phòng chiếu, giờ chiếu
         $hasBookings = $showtime->bookings()->where('status', '!=', 'Cancelled')->exists();
@@ -229,7 +233,7 @@ class ShowtimeController extends AdminController
                 'date',
                 'after:start_time',
             ],
-            'status' => ['required', Rule::in(Showtime::STATUSES)],
+            'status' => ['required', Rule::in(array_merge(Showtime::STATUSES, ['FINISHED']))],
             'surcharge' => 'nullable|numeric|min:0',
             'ticket_prices' => 'required|array',
             'ticket_prices.*' => 'required|numeric|min:0',
@@ -249,10 +253,13 @@ class ShowtimeController extends AdminController
             'ticket_prices.*.min' => 'Giá vé không được nhỏ hơn 0.',
         ]);
 
+        if (strtoupper($validated['status']) === 'FINISHED') {
+            $validated['status'] = Showtime::STATUS_COMPLETED;
+        }
+
         $validated['surcharge'] = $validated['surcharge'] ?? 0;
 
         if ($request->filled('movie_id') && $request->filled('start_time')) {
-            $movie = Movie::find($request->movie_id);
             if ($movie && $movie->duration) {
                 $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
                 $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes);
@@ -260,12 +267,11 @@ class ShowtimeController extends AdminController
             }
         }
 
+        // Re-validate showtime status rules after computing end_time
+        (new MovieStatusValidationService())->validateShowtimeStatusRules($showtime, $validated, $movie);
+
         if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
             $validated['status'] = Showtime::STATUS_PENDING;
-        } elseif (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
-            if (!in_array($validated['status'] ?? null, [Showtime::STATUS_CANCELLED, Showtime::STATUS_PENDING, Showtime::STATUS_UNPUBLISHED])) {
-                $validated['status'] = Showtime::STATUS_SCHEDULED;
-            }
         }
 
         $showtime->update($validated);

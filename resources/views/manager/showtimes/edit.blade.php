@@ -9,6 +9,7 @@
     foreach($showtime->ticketPrices as $tp) {
         $prices[$tp->seat_type] = floatval($tp->price);
     }
+    $isTerminalState = in_array($showtime->status, [\App\Models\Showtime::STATUS_COMPLETED, \App\Models\Showtime::STATUS_CANCELLED]);
 @endphp
 
 <!-- Breadcrumb -->
@@ -53,7 +54,15 @@
                 </div>
             @endif
 
-            @if(isset($hasBookings) && $hasBookings)
+            @if($isTerminalState)
+                <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+                    <i class="fas fa-lock me-3 fs-3"></i>
+                    <div>
+                        <h6 class="alert-heading mb-1 fw-bold">Suất chiếu đã ở trạng thái kết thúc ({{ $showtime->status_label }})</h6>
+                        <p class="mb-0 small">Toàn bộ biểu mẫu đã bị khóa để bảo toàn dữ liệu lịch sử và phòng tránh gian lận / sai lệch dữ liệu.</p>
+                    </div>
+                </div>
+            @elseif(isset($hasBookings) && $hasBookings)
                 <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
                     <i class="fas fa-exclamation-triangle me-2 fs-5"></i>
                     <div>
@@ -204,14 +213,31 @@
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label for="status" class="form-label">Trạng Thái *</label>
-                        <select id="status" name="status" class="form-select @error('status') is-invalid @enderror" required>
+                        <select id="status" name="status" class="form-select @error('status') is-invalid @enderror" {{ $isTerminalState ? 'disabled' : '' }} required>
                             <option value="">-- Chọn trạng thái --</option>
-                            @foreach(\App\Models\Showtime::STATUSES as $status)
-                                <option value="{{ $status }}" {{ old('status', $showtime->status) == $status ? 'selected' : '' }}>
-                                    {{ \App\Models\Showtime::STATUS_LABELS[$status] ?? ucfirst(strtolower($status)) }}
-                                </option>
-                            @endforeach
+                            <option value="SCHEDULED" {{ old('status', $showtime->status) === 'SCHEDULED' ? 'selected' : '' }}>
+                                Lên lịch (SCHEDULED)
+                            </option>
+                            <option value="ONGOING" {{ old('status', $showtime->status) === 'ONGOING' ? 'selected' : '' }}>
+                                Đang chiếu (ONGOING)
+                            </option>
+                            <option value="COMPLETED" {{ in_array(old('status', $showtime->status), ['COMPLETED', 'FINISHED']) ? 'selected' : '' }}>
+                                Đã chiếu (FINISHED)
+                            </option>
+                            <option value="CANCELLED" {{ old('status', $showtime->status) === 'CANCELLED' ? 'selected' : '' }} {{ (isset($hasBookings) && $hasBookings && $showtime->status !== 'CANCELLED') ? 'disabled data-locked-by-bookings=1' : '' }}>
+                                Đã hủy (CANCELLED){{ (isset($hasBookings) && $hasBookings && $showtime->status !== 'CANCELLED') ? ' - (Đã khóa do có vé)' : '' }}
+                            </option>
+                            <option value="PENDING" {{ old('status', $showtime->status) === 'PENDING' ? 'selected' : '' }} {{ (isset($hasBookings) && $hasBookings && $showtime->status !== 'PENDING') ? 'disabled data-locked-by-bookings=1' : '' }}>
+                                Chờ/Chưa công bố (PENDING){{ (isset($hasBookings) && $hasBookings && $showtime->status !== 'PENDING') ? ' - (Đã khóa do có vé)' : '' }}
+                            </option>
                         </select>
+                        <div id="movie_scheduled_status_warning" class="alert alert-warning py-2 px-3 mt-2 small d-none align-items-center gap-2">
+                            <i class="fas fa-info-circle text-warning fs-5"></i>
+                            <div><strong>Phim đang ở trạng thái Lên lịch (SCHEDULED):</strong> Suất chiếu tự động khóa ở trạng thái <strong>Chờ/Chưa công bố (PENDING)</strong>.</div>
+                        </div>
+                        @if($isTerminalState)
+                            <input type="hidden" name="status" value="{{ $showtime->status }}">
+                        @endif
                         @error('status')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -220,7 +246,7 @@
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label for="surcharge" class="form-label">Phụ thu suất chiếu (VNĐ / ghế)</label>
-                        <input type="number" step="0.01" min="0" id="surcharge" name="surcharge" class="form-control @error('surcharge') is-invalid @enderror" value="{{ old('surcharge', $showtime->surcharge) }}">
+                        <input type="number" step="0.01" min="0" id="surcharge" name="surcharge" class="form-control @error('surcharge') is-invalid @enderror" value="{{ old('surcharge', $showtime->surcharge) }}" {{ $isTerminalState ? 'disabled' : '' }}>
                         @error('surcharge')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -234,69 +260,53 @@
             <div class="row mb-4" id="ticket-prices-section" style="display: none;">
                 <div class="col-md-4">
                     <label class="form-label text-success fw-bold">Giá Ghế Regular (VNĐ) *</label>
-                    <input type="text" id="price_Regular" name="ticket_prices[Regular]" class="form-control price-input @error('ticket_prices.Regular') is-invalid @enderror" value="{{ old('ticket_prices.Regular', $prices['Regular'] ?? '') }}" placeholder="VD: 80.000">
+                    <input type="text" id="price_Regular" name="ticket_prices[Regular]" class="form-control price-input @error('ticket_prices.Regular') is-invalid @enderror" value="{{ old('ticket_prices.Regular', $prices['Regular'] ?? '') }}" placeholder="VD: 80.000" {{ $isTerminalState ? 'disabled' : '' }}>
                     @error('ticket_prices.Regular')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-4">
                     <label class="form-label text-warning fw-bold">Giá Ghế VIP (VNĐ) *</label>
-                    <input type="text" id="price_VIP" name="ticket_prices[VIP]" class="form-control price-input @error('ticket_prices.VIP') is-invalid @enderror" value="{{ old('ticket_prices.VIP', $prices['VIP'] ?? '') }}" placeholder="VD: 100.000">
+                    <input type="text" id="price_VIP" name="ticket_prices[VIP]" class="form-control price-input @error('ticket_prices.VIP') is-invalid @enderror" value="{{ old('ticket_prices.VIP', $prices['VIP'] ?? '') }}" placeholder="VD: 100.000" {{ $isTerminalState ? 'disabled' : '' }}>
                     @error('ticket_prices.VIP')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-4">
                     <label class="form-label text-danger fw-bold">Giá Ghế Sweetbox (VNĐ) *</label>
-                    <input type="text" id="price_Sweetbox" name="ticket_prices[Sweetbox]" class="form-control price-input @error('ticket_prices.Sweetbox') is-invalid @enderror" value="{{ old('ticket_prices.Sweetbox', $prices['Sweetbox'] ?? '') }}" placeholder="VD: 150.000">
+                    <input type="text" id="price_Sweetbox" name="ticket_prices[Sweetbox]" class="form-control price-input @error('ticket_prices.Sweetbox') is-invalid @enderror" value="{{ old('ticket_prices.Sweetbox', $prices['Sweetbox'] ?? '') }}" placeholder="VD: 160.000" {{ $isTerminalState ? 'disabled' : '' }}>
                     @error('ticket_prices.Sweetbox')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
             </div>
 
-            <div class="row mb-4" id="seat-map-wrapper" style="display: none;">
-                <div class="col-md-8">
-                    <div class="card">
-                        <div class="card-body">
-                            <!-- Legend -->
-                            <div class="seat-legend">
-                                <div class="legend-item">
-                                    <div class="legend-box bg-sky">R</div>
-                                    <span>Regular</span>
-                                </div>
-                                <div class="legend-item">
-                                    <div class="legend-box bg-gold">V</div>
-                                    <span>VIP</span>
-                                </div>
-                                <div class="legend-item">
-                                    <div class="legend-box bg-pink">S</div>
-                                    <span>Sweetbox</span>
-                                </div>
-                                <div class="legend-item">
-                                    <div class="legend-box" style="background-color: #cbd5e1; color: #64748b;">
-                                        <i class="fas fa-wrench" style="font-size: 0.55rem;"></i>
-                                    </div>
-                                    <span>Unavailable</span>
-                                </div>
-                            </div>
+            <div class="row mb-4">
+                <div class="col-lg-8">
+                    <div class="seat-map-wrapper">
+                        <div class="seat-map-header text-center mb-3">
+                            <h5 class="fw-bold mb-1">Sơ Đồ Ghế Phòng Chiếu</h5>
+                            <span class="badge bg-secondary font-weight-normal" id="selected-room-info">Đang tải...</span>
+                        </div>
 
-                            <!-- Seat Map -->
-                            <div class="seat-map-wrapper-inner">
-                                <!-- Màn hình -->
-                                <div class="cinema-screen">
-                                    <i class="fas fa-tv"></i> MÀN HÌNH
-                                </div>
-                                <!-- Grid ghế -->
-                                <div id="seatsGrid"></div>
-                            </div>
+                        <div class="seat-legend">
+                            <div class="legend-item"><div class="legend-box bg-sky"></div> Regular</div>
+                            <div class="legend-item"><div class="legend-box bg-gold"></div> VIP</div>
+                            <div class="legend-item"><div class="legend-box bg-pink"></div> Sweetbox</div>
+                            <div class="legend-item"><div class="legend-box bg-secondary"></div> Ghế Hỏng</div>
+                        </div>
+
+                        <div class="cinema-screen">MÀN HÌNH CHIẾU</div>
+
+                        <div id="seat-grid-container" class="seat-layout-container">
+                            <!-- Seat grid will be rendered dynamically here -->
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card border-primary">
-                        <div class="card-header bg-primary text-white">
-                            <i class="fas fa-info-circle"></i> Chi tiết ghế chọn
+                <div class="col-lg-4">
+                    <div class="card bg-light border-0 shadow-sm sticky-top" style="top: 20px;">
+                        <div class="card-header bg-white font-weight-bold">
+                            <i class="fas fa-info-circle text-primary me-2"></i> Chi Tiết Ghế
                         </div>
                         <div class="card-body" id="seat-detail-card">
                             <p class="text-muted">Vui lòng click vào một ghế trên sơ đồ để xem chi tiết.</p>
@@ -306,8 +316,8 @@
             </div>
 
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Lưu Thay Đổi
+                <button type="submit" class="btn btn-primary" {{ $isTerminalState ? 'disabled' : '' }}>
+                    <i class="fas {{ $isTerminalState ? 'fa-lock' : 'fa-save' }}"></i> {{ $isTerminalState ? 'Biểu Mẫu Đã Khóa' : 'Lưu Thay Đổi' }}
                 </button>
                 <a href="{{ route('manager.showtimes.index') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Quay Lại
@@ -917,17 +927,110 @@
         
         filterCompatibleRooms();
 
+        const statusSelect = document.getElementById('status');
+        const statusWarningEl = document.getElementById('movie_scheduled_status_warning');
+
+        function updateStatusOptionsBasedOnMovieAndTime() {
+            if (!statusSelect) return;
+
+            const selectedMovieOption = movieSelect.options[movieSelect.selectedIndex];
+            const movieStatus = selectedMovieOption?.dataset?.status || '';
+
+            if (movieStatus === 'SCHEDULED') {
+                statusSelect.value = 'PENDING';
+                Array.from(statusSelect.options).forEach(opt => {
+                    if (opt.value && opt.value !== 'PENDING' && opt.value !== 'UNPUBLISHED' && opt.value !== 'CANCELLED') {
+                        opt.disabled = true;
+                    }
+                });
+                if (statusWarningEl) {
+                    statusWarningEl.classList.remove('d-none');
+                    statusWarningEl.classList.add('d-flex');
+                }
+            } else {
+                if (statusWarningEl) {
+                    statusWarningEl.classList.add('d-none');
+                    statusWarningEl.classList.remove('d-flex');
+                }
+                Array.from(statusSelect.options).forEach(opt => {
+                    if (!opt.dataset.lockedByBookings) {
+                        opt.disabled = false;
+                    }
+                });
+            }
+        }
+
+        function validateStatusWithTimeAndBookings() {
+            if (!statusSelect) return true;
+            const currentStatus = statusSelect.value;
+            const now = new Date();
+
+            let startTime = parseDatetimeLocal(hiddenStartInput?.value);
+            let endTime = parseDatetimeLocal(hiddenEndInput?.value);
+
+            if (!startTime) return true;
+
+            // 1. SCHEDULED or PENDING -> require start_time > now()
+            if (currentStatus === 'SCHEDULED' || currentStatus === 'PENDING') {
+                if (startTime.getTime() <= now.getTime()) {
+                    alert('Suất chiếu Lên lịch (SCHEDULED) hoặc Chờ công bố (PENDING) yêu cầu thời gian bắt đầu phải ở tương lai (start_time > hiện tại).');
+                    return false;
+                }
+            }
+
+            // 2. ONGOING -> require start_time <= now() AND end_time >= now()
+            if (currentStatus === 'ONGOING') {
+                if (!endTime) {
+                    const dur = getSelectedMovieDuration();
+                    endTime = new Date(startTime.getTime() + (dur + 15) * 60000);
+                }
+                if (startTime.getTime() > now.getTime() || (endTime && endTime.getTime() < now.getTime())) {
+                    alert("Suất chiếu 'Đang chiếu' (ONGOING) yêu cầu thời gian bắt đầu <= hiện tại và thời gian kết thúc >= hiện tại.");
+                    return false;
+                }
+            }
+
+            // 3. FINISHED / COMPLETED -> require end_time < now()
+            if (currentStatus === 'COMPLETED' || currentStatus === 'FINISHED') {
+                if (!endTime) {
+                    const dur = getSelectedMovieDuration();
+                    endTime = new Date(startTime.getTime() + (dur + 15) * 60000);
+                }
+                if (endTime && endTime.getTime() >= now.getTime()) {
+                    alert("Suất chiếu 'Đã chiếu' (FINISHED) yêu cầu thời gian kết thúc phải trong quá khứ (end_time < hiện tại).");
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        if (statusSelect) {
+            statusSelect.addEventListener('change', function() {
+                validateStatusWithTimeAndBookings();
+            });
+        }
+
         movieSelect.addEventListener('change', function () {
             updateAvailableTimeOptions();
             filterCompatibleRooms();
+            updateStatusOptionsBasedOnMovieAndTime();
         });
 
         syncAllTimeFields();
         updateAvailableTimeOptions();
+        updateStatusOptionsBasedOnMovieAndTime();
 
         const showtimeForm = document.querySelector('form');
         if (showtimeForm) {
             showtimeForm.addEventListener('submit', function (e) {
+                @if($isTerminalState)
+                    e.preventDefault();
+                    e.stopPropagation();
+                    alert('Suất chiếu này đã ở trạng thái kết thúc và đã bị khóa. Không thể chỉnh sửa.');
+                    return false;
+                @endif
+
                 updateStartHidden();
                 if (endAutoComputed || !hiddenEndInput.value) {
                     updateEndFromStart();
@@ -940,6 +1043,12 @@
                     e.stopPropagation();
                     alert('Thời gian bắt đầu suất chiếu không hợp lệ hoặc đã qua. Vui lòng kiểm tra lại.');
                     startDateInput.focus();
+                    return false;
+                }
+
+                if (!validateStatusWithTimeAndBookings()) {
+                    e.preventDefault();
+                    e.stopPropagation();
                     return false;
                 }
             });
