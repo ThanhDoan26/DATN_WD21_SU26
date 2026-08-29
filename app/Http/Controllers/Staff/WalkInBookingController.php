@@ -70,6 +70,11 @@ class WalkInBookingController extends Controller
             abort(403, 'Nhân viên chưa được phân công rạp.');
         }
 
+        if ($movie->status === Movie::STATUS_SCHEDULED) {
+            return redirect()->route('staff.walkin.movies')
+                ->with('error', 'Movie is currently scheduled and not yet open for ticket sales.');
+        }
+
         return view('staff.walkin.dates-showtimes', [
             'movie' => $movie,
             'cinema' => $cinema,
@@ -88,7 +93,11 @@ class WalkInBookingController extends Controller
             abort(403, 'Nhân viên chưa được phân công rạp.');
         }
 
-        $showtime->loadMissing('room.cinema');
+        $showtime->loadMissing(['movie', 'room.cinema']);
+
+        if ($showtime->movie && $showtime->movie->status === Movie::STATUS_SCHEDULED) {
+            abort(403, 'Movie is currently scheduled and not yet open for ticket sales.');
+        }
 
         // Kiểm tra suất chiếu có thuộc rạp của staff không
         if (!$showtime->room || $showtime->room->cinema_id !== $cinemaId) {
@@ -188,10 +197,15 @@ class WalkInBookingController extends Controller
             $staffBookingSeatIds = $staffBooking?->bookedSeats()->pluck('seat_id')->sort()->values()->all() ?? [];
             $requestedSeatIds = collect($seatIds)->unique()->sort()->values()->all();
 
-            $showtime = Showtime::with('room.cinema')->find($showtimeId);
+            $showtime = Showtime::with(['movie', 'room.cinema'])->find($showtimeId);
 
             if (!$showtime) {
                 abort(404, 'Suất chiếu không tồn tại.');
+            }
+
+            if ($showtime->movie && $showtime->movie->status === Movie::STATUS_SCHEDULED) {
+                return redirect()->route('staff.walkin.movies')
+                    ->with('error', 'Movie is currently scheduled and not yet open for ticket sales.');
             }
 
             // Kiểm tra suất chiếu thuộc rạp của staff
@@ -379,10 +393,17 @@ class WalkInBookingController extends Controller
         ]);
 
         $showtimeId = (int) $request->input('showtime_id');
-        $showtime = Showtime::with('room.cinema')->find($showtimeId);
+        $showtime = Showtime::with(['movie', 'room.cinema'])->find($showtimeId);
 
         if (!$showtime) {
             return response()->json(['success' => false, 'message' => 'Suất chiếu không tồn tại.'], 404);
+        }
+
+        if ($showtime->movie && $showtime->movie->status === Movie::STATUS_SCHEDULED) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Movie is currently scheduled and not yet open for ticket sales.'
+            ], 422);
         }
 
         // BẮT BUỘC kiểm tra showtime thuộc rạp của staff trước khi tạo booking hay giữ ghế
@@ -498,13 +519,15 @@ class WalkInBookingController extends Controller
                 'redirect_url' => route('staff.walkin.success', ['booking_id' => $bookingId, 'auto_print' => 1]),
                 'message' => 'Đã giữ ghế thành công.',
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Walkin Checkout reserve failed: ' . $e->getMessage());
+
+            $code = ($e instanceof \App\Exceptions\MovieScheduledException || $e->getMessage() === 'Movie is currently scheduled and not yet open for ticket sales.') ? 422 : 400;
 
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-            ], 400);
+            ], $code);
         }
     }
 

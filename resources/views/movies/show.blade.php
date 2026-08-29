@@ -48,13 +48,25 @@
                 <div class="w-full md:w-2/3 lg:w-3/4 flex flex-col gap-6">
                     <div>
                         <!-- Status Badge -->
-                        @if($movie->status === 'NOW_SHOWING')
+                        @if($movie->status === 'SCHEDULED')
+                            <span class="inline-block py-1 px-3 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold uppercase tracking-wider mb-4">
+                                <i class="fas fa-calendar-alt me-1"></i> Lên Lịch
+                            </span>
+                        @elseif($movie->status === 'PRE_ORDER')
+                            <span class="inline-block py-1 px-3 rounded-md bg-teal-500/20 text-teal-300 border border-teal-500/30 text-xs font-bold uppercase tracking-wider mb-4 animate-pulse">
+                                <i class="fas fa-ticket-alt me-1"></i> Mở Bán Sớm
+                            </span>
+                        @elseif($movie->status === 'NOW_SHOWING')
                             <span class="inline-block py-1 px-3 rounded-md bg-green-500/20 text-green-400 border border-green-500/30 text-xs font-bold uppercase tracking-wider mb-4 animate-pulse">
                                 Đang Chiếu
                             </span>
                         @elseif($movie->status === 'COMING_SOON')
-                            <span class="inline-block py-1 px-3 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-bold uppercase tracking-wider mb-4 animate-pulse">
+                            <span class="inline-block py-1 px-3 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-bold uppercase tracking-wider mb-4">
                                 Sắp Chiếu
+                            </span>
+                        @elseif($movie->status === 'ENDED')
+                            <span class="inline-block py-1 px-3 rounded-md bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold uppercase tracking-wider mb-4">
+                                Ngưng Chiếu
                             </span>
                         @endif
 
@@ -72,7 +84,13 @@
                             <span class="flex items-center gap-2 rounded bg-slate-800 border border-slate-700 px-2 py-0.5 text-xs font-bold text-white">
                                 {{ $movie->age_rating ?? 'P' }}
                             </span>
-                            @if($movie->created_at)
+                            @if($movie->release_date)
+                            <span class="w-1.5 h-1.5 bg-slate-600 rounded-full"></span>
+                            <span class="flex items-center gap-2">
+                                <i class="fas fa-calendar text-primary"></i>
+                                Khởi chiếu: {{ $movie->release_date->format('d/m/Y') }}
+                            </span>
+                            @elseif($movie->created_at)
                             <span class="w-1.5 h-1.5 bg-slate-600 rounded-full"></span>
                             <span class="flex items-center gap-2">
                                 <i class="fas fa-calendar text-primary"></i>
@@ -95,9 +113,19 @@
 
                     <!-- Action Buttons -->
                     <div class="flex flex-wrap gap-4 mt-4">
-                        <a href="{{ route('booking.select-cinema', $movie->id) }}" class="bg-primary hover:bg-red-700 text-white px-8 py-3.5 rounded-full font-bold text-lg transition-all transform hover:-translate-y-1 shadow-lg shadow-red-500/30 flex items-center gap-2">
-                            <i class="fas fa-ticket-alt"></i> Đặt Vé Ngay
-                        </a>
+                        @if($movie->status === 'SCHEDULED')
+                            <button type="button" disabled class="bg-slate-700/80 text-slate-400 cursor-not-allowed px-8 py-3.5 rounded-full font-bold text-lg flex items-center gap-2 border border-slate-600 shadow" title="Movie is currently scheduled and not yet open for ticket sales.">
+                                <i class="fas fa-lock"></i> Chưa Mở Bán Vé
+                            </button>
+                        @elseif($movie->status === 'PRE_ORDER')
+                            <a href="{{ route('booking.select-cinema', $movie->id) }}" class="bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white px-8 py-3.5 rounded-full font-bold text-lg transition-all transform hover:-translate-y-1 shadow-lg shadow-teal-500/30 flex items-center gap-2">
+                                <i class="fas fa-ticket-alt"></i> Đặt Vé Sớm (Pre-order)
+                            </a>
+                        @elseif($movie->status !== 'ENDED')
+                            <a href="{{ route('booking.select-cinema', $movie->id) }}" class="bg-primary hover:bg-red-700 text-white px-8 py-3.5 rounded-full font-bold text-lg transition-all transform hover:-translate-y-1 shadow-lg shadow-red-500/30 flex items-center gap-2">
+                                <i class="fas fa-ticket-alt"></i> Đặt Vé Ngay
+                            </a>
+                        @endif
                         <a href="#trailer-section" class="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 hover:border-slate-500 px-8 py-3.5 rounded-full font-bold text-lg transition-all flex items-center gap-2">
                             <i class="fas fa-play"></i> Xem Trailer
                         </a>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Combo;
 use App\Models\Coupon;
+use App\Models\Movie;
 use App\Models\Seat;
 use App\Models\Showtime;
 use App\Models\TicketPrice;
@@ -35,9 +36,13 @@ class CheckoutController extends Controller
             $seatIds = [];
         }
 
-        $showtime = \App\Models\Showtime::find($showtimeId);
+        $showtime = \App\Models\Showtime::with('movie')->find($showtimeId);
         if (!$showtime || !$showtime->isOnlineBookable()) {
             return redirect()->route('home')->with('error', 'Suất chiếu này đã đóng cổng đặt vé trực tuyến. Vui lòng chọn suất chiếu khác.');
+        }
+
+        if ($showtime->movie && $showtime->movie->status === \App\Models\Movie::STATUS_SCHEDULED) {
+            return redirect()->route('home')->with('error', 'Movie is currently scheduled and not yet open for ticket sales.');
         }
 
         $takenSeatIds = DB::table('booked_seats')
@@ -307,6 +312,18 @@ class CheckoutController extends Controller
         }
 
         $showtimeId = (int) $request->input('showtime_id');
+        $showtime = Showtime::with('movie')->find($showtimeId);
+
+        if (!$showtime) {
+            return response()->json(['success' => false, 'message' => 'Suất chiếu không tồn tại.'], 404);
+        }
+
+        if ($showtime->movie && $showtime->movie->status === Movie::STATUS_SCHEDULED) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Movie is currently scheduled and not yet open for ticket sales.'
+            ], 422);
+        }
 
         // 1. Kiểm tra ghế đã có người khác chọn/đặt chưa (Chống trùng ghế giữa 2 người dùng)
         $takenSeatIds = DB::table('booked_seats')
@@ -350,9 +367,8 @@ class CheckoutController extends Controller
 
         try {
             $bookingService = new BookingService();
-            $showtime = Showtime::find($showtimeId);
 
-            if (!$showtime || !$showtime->isOnlineBookable()) {
+            if (!$showtime->isOnlineBookable()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Suất chiếu này đã đóng cổng đặt vé trực tuyến (cần đặt trước giờ chiếu tối thiểu 15 phút). Vui lòng mua vé trực tiếp tại quầy hoặc chọn suất chiếu khác.'
@@ -453,10 +469,12 @@ class CheckoutController extends Controller
         } catch (\Throwable $e) {
             Log::error('Checkout reserve failed: ' . $e->getMessage());
 
+            $code = ($e instanceof \App\Exceptions\MovieScheduledException || $e->getMessage() === 'Movie is currently scheduled and not yet open for ticket sales.') ? 422 : 400;
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-            ], 400);
+            ], $code);
         }
     }
 

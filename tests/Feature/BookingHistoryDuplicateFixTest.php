@@ -266,8 +266,8 @@ test('checkout init preserves combos when user updates seats', function () {
 
     $seat2 = Seat::create([
         'room_id' => $room->id,
-        'row_name' => 'A',
-        'seat_number' => 2,
+        'row_name' => 'B',
+        'seat_number' => 1,
         'seat_type' => 'Regular',
         'status' => 'AVAILABLE',
     ]);

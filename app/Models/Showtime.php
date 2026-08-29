@@ -20,12 +20,16 @@ class Showtime extends Model
     public const STATUS_ONGOING = 'ONGOING';
     public const STATUS_COMPLETED = 'COMPLETED';
     public const STATUS_CANCELLED = 'CANCELLED';
+    public const STATUS_PENDING = 'PENDING';
+    public const STATUS_UNPUBLISHED = 'UNPUBLISHED';
 
     public const STATUS_LABELS = [
-        self::STATUS_SCHEDULED => 'Lên lịch',
-        self::STATUS_ONGOING   => 'Đang chiếu',
-        self::STATUS_COMPLETED => 'Đã chiếu',
-        self::STATUS_CANCELLED => 'Đã hủy',
+        self::STATUS_SCHEDULED   => 'Lên lịch',
+        self::STATUS_ONGOING     => 'Đang chiếu',
+        self::STATUS_COMPLETED   => 'Đã chiếu',
+        self::STATUS_CANCELLED   => 'Đã hủy',
+        self::STATUS_PENDING     => 'Chờ công bố',
+        self::STATUS_UNPUBLISHED => 'Chưa công bố',
     ];
 
     public const STATUSES = [
@@ -33,6 +37,8 @@ class Showtime extends Model
         self::STATUS_ONGOING,
         self::STATUS_COMPLETED,
         self::STATUS_CANCELLED,
+        self::STATUS_PENDING,
+        self::STATUS_UNPUBLISHED,
     ];
 
     protected $fillable = ['movie_id', 'room_id', 'start_time', 'end_time', 'status', 'surcharge'];

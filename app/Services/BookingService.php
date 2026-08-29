@@ -82,6 +82,8 @@ class BookingService
         }
 
         try {
+            (new \App\Services\MovieStatusValidationService())->validateTicketSalesAllowed($showtimeId);
+
             if (empty($selectedSeatIds)) {
                 throw new Exception('Vui lòng chọn ít nhất 1 ghế');
             }
@@ -314,6 +316,11 @@ class BookingService
                 $startTime = \Carbon\Carbon::parse($showtime->start_time);
                 $endTime = $showtime->end_time ? \Carbon\Carbon::parse($showtime->end_time) : null;
                 $isWalkIn = ($extraData['booking_source'] ?? 'online') !== 'online';
+
+                $movieRow = DB::table('movies')->where('id', $showtime->movie_id)->first();
+                if ($movieRow && $movieRow->status === 'SCHEDULED') {
+                    throw new \App\Exceptions\MovieScheduledException("Movie is currently scheduled and not yet open for ticket sales.");
+                }
 
                 // Kiểm tra trạng thái và thời gian đặt vé theo quy định
                 if ($showtime->status === 'CANCELLED') {

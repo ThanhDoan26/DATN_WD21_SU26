@@ -284,6 +284,12 @@ class SeatSelectionValidationService
      */
     private function validateOrphanSeats(Collection $sortedSeats): void
     {
+        // Nếu trong hàng này không có ghế nào được chọn trong đơn hiện tại, bỏ qua kiểm tra orphan của hàng này
+        $hasSelectedInRow = $sortedSeats->contains(fn ($s) => !empty($s->is_selected));
+        if (!$hasSelectedInRow) {
+            return;
+        }
+
         $allowBoundaryOrphan = (bool) config('booking.seat_hold.allow_boundary_orphan_seat', false);
         $seatsCount = $sortedSeats->count();
         $seats = $sortedSeats->values()->all();

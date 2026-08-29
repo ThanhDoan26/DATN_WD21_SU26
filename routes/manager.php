@@ -7,9 +7,16 @@ use App\Http\Controllers\CinemaManagerDashboardController;
 use App\Http\Controllers\Manager\RoomController;
 use App\Http\Controllers\Manager\ShowtimeController;
 use App\Http\Controllers\Manager\ComboController;
+use App\Http\Controllers\Manager\CouponController;
 
 Route::middleware(['auth', 'role:MANAGER', 'cinema.assignment'])->prefix('manager')->name('manager.')->group(function () {
     Route::get('/dashboard', [CinemaManagerDashboardController::class, 'index'])->name('dashboard');
+
+    // Quản lý Mã giảm giá (Manager)
+    Route::get('coupons/trashed', [CouponController::class, 'trashed'])->name('coupons.trashed');
+    Route::post('coupons/{id}/restore', [CouponController::class, 'restore'])->name('coupons.restore');
+    Route::delete('coupons/{id}/force-delete', [CouponController::class, 'forceDelete'])->name('coupons.forceDelete');
+    Route::resource('coupons', CouponController::class);
 
     // Quản lý Phòng chiếu (Manager)
     Route::get('rooms/trashed', [RoomController::class, 'trashed'])->name('rooms.trashed');
@@ -30,4 +37,7 @@ Route::middleware(['auth', 'role:MANAGER', 'cinema.assignment'])->prefix('manage
 
     // Xem danh sách Phim (Read-only)
     Route::resource('movies', \App\Http\Controllers\Manager\MovieController::class)->only(['index', 'show']);
+
+    // Xem chi tiết Đơn hàng / Vé đặt (Manager)
+    Route::get('bookings/{booking}', [\App\Http\Controllers\Admin\BookingController::class, 'show'])->name('bookings.show');
 });

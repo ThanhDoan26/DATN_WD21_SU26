@@ -7,6 +7,7 @@ use App\Models\Movie;
 use App\Models\Room;
 use App\Models\Showtime;
 use App\Rules\CompatibleFormatRule;
+use App\Services\MovieStatusValidationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -74,19 +75,22 @@ class ShowtimeController extends Controller
             'start_time' => [
                 'required',
                 'date',
-                function ($attribute, $value, $fail) {
-                    if ($value && Carbon::parse($value)->lt(now())) {
-                        $fail('Không thể tạo lịch chiếu cho thời gian đã qua. Thời gian bắt đầu phải từ thời điểm hiện tại trở đi.');
-                    }
+                function ($attribute, $value, $fail) use ($request) {
+                    (new MovieStatusValidationService())->validateShowtimeStartTime(
+                        $request->input('movie_id') ? (int) $request->input('movie_id') : null,
+                        $value,
+                        $fail
+                    );
                 },
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id'))),
                 function ($attribute, $value, $fail) use ($request) {
-                    $endTime = $request->input('end_time');
-                    if (!$endTime && $request->filled('movie_id') && $request->filled('start_time')) {
+                    $endTime = null;
+                    if ($request->filled('movie_id') && $request->filled('start_time')) {
                         $movie = Movie::find($request->movie_id);
                         if ($movie && $movie->duration) {
-                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15)->format('Y-m-d H:i:s');
+                            $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
+                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes)->format('Y-m-d H:i:s');
                         }
                     }
 
@@ -115,9 +119,6 @@ class ShowtimeController extends Controller
             'room_id.exists' => 'Phòng chiếu chọn không hợp lệ (phòng phải thuộc rạp của bạn)',
             'start_time.required' => 'Thời gian bắt đầu là bắt buộc',
             'start_time.date' => 'Thời gian bắt đầu không hợp lệ',
-            'end_time.required' => 'Thời gian kết thúc là bắt buộc',
-            'end_time.date' => 'Thời gian kết thúc không hợp lệ',
-            'end_time.after' => 'Thời gian kết thúc phải sau thời gian bắt đầu',
             'status.required' => 'Trạng thái suất chiếu là bắt buộc',
             'status.in' => 'Trạng thái suất chiếu không hợp lệ',
             'ticket_prices.required' => 'Vui lòng nhập giá vé cho các loại ghế.',
@@ -132,13 +133,16 @@ class ShowtimeController extends Controller
         if ($request->filled('movie_id') && $request->filled('start_time')) {
             $movie = Movie::find($request->movie_id);
             if ($movie && $movie->duration) {
-                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15);
+                $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
+                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes);
                 $validated['end_time'] = $expected->format('Y-m-d H:i:s');
             }
         }
 
-        if (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
-            if (($validated['status'] ?? null) !== Showtime::STATUS_CANCELLED) {
+        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
+            $validated['status'] = Showtime::STATUS_PENDING;
+        } elseif (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
+            if (!in_array($validated['status'] ?? null, [Showtime::STATUS_CANCELLED, Showtime::STATUS_PENDING, Showtime::STATUS_UNPUBLISHED])) {
                 $validated['status'] = Showtime::STATUS_SCHEDULED;
             }
         }
@@ -218,20 +222,23 @@ class ShowtimeController extends Controller
             'start_time' => [
                 'required',
                 'date',
-                function ($attribute, $value, $fail) {
-                    if ($value && Carbon::parse($value)->lt(now())) {
-                        $fail('Không thể tạo hoặc chỉnh sửa lịch chiếu cho thời gian đã qua. Thời gian bắt đầu phải từ thời điểm hiện tại trở đi.');
-                    }
+                function ($attribute, $value, $fail) use ($request) {
+                    (new MovieStatusValidationService())->validateShowtimeStartTime(
+                        $request->input('movie_id') ? (int) $request->input('movie_id') : null,
+                        $value,
+                        $fail
+                    );
                 },
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id')))
                     ->ignore($showtime->id),
                 function ($attribute, $value, $fail) use ($request, $showtime) {
-                    $endTime = $request->input('end_time');
-                    if (!$endTime && $request->filled('movie_id') && $request->filled('start_time')) {
+                    $endTime = null;
+                    if ($request->filled('movie_id') && $request->filled('start_time')) {
                         $movie = Movie::find($request->movie_id);
                         if ($movie && $movie->duration) {
-                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15)->format('Y-m-d H:i:s');
+                            $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
+                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes)->format('Y-m-d H:i:s');
                         }
                     }
 
@@ -260,9 +267,6 @@ class ShowtimeController extends Controller
             'room_id.exists' => 'Phòng chiếu chọn không hợp lệ',
             'start_time.required' => 'Thời gian bắt đầu là bắt buộc',
             'start_time.date' => 'Thời gian bắt đầu không hợp lệ',
-            'end_time.required' => 'Thời gian kết thúc là bắt buộc',
-            'end_time.date' => 'Thời gian kết thúc không hợp lệ',
-            'end_time.after' => 'Thời gian kết thúc phải sau thời gian bắt đầu',
             'status.required' => 'Trạng thái suất chiếu là bắt buộc',
             'status.in' => 'Trạng thái suất chiếu không hợp lệ',
             'ticket_prices.required' => 'Vui lòng nhập giá vé cho các loại ghế.',
@@ -277,13 +281,16 @@ class ShowtimeController extends Controller
         if ($request->filled('movie_id') && $request->filled('start_time')) {
             $movie = Movie::find($request->movie_id);
             if ($movie && $movie->duration) {
-                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15);
+                $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
+                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes);
                 $validated['end_time'] = $expected->format('Y-m-d H:i:s');
             }
         }
 
-        if (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
-            if (($validated['status'] ?? null) !== Showtime::STATUS_CANCELLED) {
+        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
+            $validated['status'] = Showtime::STATUS_PENDING;
+        } elseif (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
+            if (!in_array($validated['status'] ?? null, [Showtime::STATUS_CANCELLED, Showtime::STATUS_PENDING, Showtime::STATUS_UNPUBLISHED])) {
                 $validated['status'] = Showtime::STATUS_SCHEDULED;
             }
         }

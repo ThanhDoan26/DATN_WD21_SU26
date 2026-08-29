@@ -33,7 +33,7 @@ class BookingController extends AdminController
         $perPage = request('per_page', 10);
 
         // Build query with filters
-        $query = Booking::with(['user', 'showtime', 'showtime.movie', 'showtime.room', 'bookedSeats'])
+        $query = Booking::with(['user', 'showtime', 'showtime.movie', 'showtime.room', 'showtime.room.cinema', 'bookedSeats'])
             ->when($search, function($q) use ($search) {
                 return $q->where('booking_code', 'like', "%$search%")
                          ->orWhereHas('user', function($q) use ($search) {
@@ -111,7 +111,7 @@ class BookingController extends AdminController
     public function create()
     {
         $users = User::where('status', 'ACTIVE')->get();
-        $showtimes = Showtime::with(['movie', 'room'])->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])->get();
+        $showtimes = Showtime::with(['movie', 'room.cinema'])->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])->get();
         return view('admin.bookings.create', compact('users', 'showtimes'));
     }
 
@@ -146,7 +146,7 @@ class BookingController extends AdminController
      */
     public function show(Booking $booking)
     {
-        $booking = $booking->load(['user', 'showtime', 'showtime.movie', 'showtime.room', 'bookedSeats', 'bookedSeats.seat']);
+        $booking = $booking->load(['user', 'showtime', 'showtime.movie', 'showtime.room', 'showtime.room.cinema', 'bookedSeats', 'bookedSeats.seat']);
         $seatMapService = new SeatMapService();
         $seatMapData = $seatMapService->generateSeatMapData($booking);
         return view('admin.bookings.show', compact('booking', 'seatMapData'));
@@ -161,7 +161,7 @@ class BookingController extends AdminController
             ->orWhere('id', $booking->user_id)
             ->get();
             
-        $showtimes = Showtime::with(['movie', 'room'])
+        $showtimes = Showtime::with(['movie', 'room.cinema'])
             ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
             ->orWhere('id', $booking->showtime_id)
             ->get();

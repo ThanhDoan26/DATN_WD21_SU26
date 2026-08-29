@@ -71,4 +71,18 @@ return [
         'max_requests_per_minute' => 10,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Showtime Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Cấu hình quy tắc suất chiếu rạp.
+    |
+    */
+
+    'showtime' => [
+        // Thời gian dọn dẹp & vệ sinh phòng chiếu giữa 2 suất (phút)
+        'buffer_minutes' => 15,
+    ],
+
 ];

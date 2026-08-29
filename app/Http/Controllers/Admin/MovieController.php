@@ -15,6 +15,8 @@ class MovieController extends Controller
      */
     public function index(Request $request)
     {
+        Movie::syncAllStatuses();
+
         $query = Movie::with('categories');
 
         if ($request->filled('search')) {
@@ -56,6 +58,13 @@ class MovieController extends Controller
 
     public function store(Request $request)
     {
+        $validationService = new \App\Services\MovieStatusValidationService();
+        if ($request->input('status') === Movie::STATUS_SCHEDULED) {
+            $validationService->validateScheduledMetadata($request->all());
+        } else {
+            $validationService->validateMovieDatesByStatus($request->all());
+        }
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -63,13 +72,15 @@ class MovieController extends Controller
             'cast' => 'nullable|string',
             'poster' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'trailer_url' => 'nullable|url|max:255',
-            'duration' => 'required|integer|min:30|max:300', // in minutes
+            'duration' => 'required|integer|min:1|max:500', // in minutes
             'age_rating' => 'nullable|string|max:50',
             'format' => 'nullable|array',
             'format.*' => 'string|max:100',
             'language' => 'nullable|string|max:50',
             'country' => 'nullable|string|max:100',
-            'status' => 'required|in:COMING_SOON,NOW_SHOWING,ENDED',
+            'release_date' => 'nullable|date',
+            'presale_date' => 'nullable|date',
+            'status' => 'required|in:SCHEDULED,PRE_ORDER,COMING_SOON,NOW_SHOWING,ENDED',
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
         ], [
@@ -77,12 +88,17 @@ class MovieController extends Controller
             'title.unique' => 'Phim này đã tồn tại',
             'duration.required' => 'Thời lượng phim là bắt buộc',
             'duration.integer' => 'Thời lượng phải là số',
-            'duration.min' => 'Thời lượng tối thiểu 30 phút',
+            'duration.min' => 'Thời lượng tối thiểu 1 phút',
             'status.required' => 'Trạng thái là bắt buộc',
+            'status.in' => 'Trạng thái không hợp lệ',
         ]);
 
         $data = collect($validated)->except(['poster', 'categories'])->toArray();
         $data['format'] = $request->input('format', []);
+
+        if (in_array($data['status'] ?? '', [Movie::STATUS_NOW_SHOWING, Movie::STATUS_ENDED])) {
+            $data['presale_date'] = null;
+        }
 
         if ($request->hasFile('poster')) {
             $data['poster_url'] = $request->file('poster')->store('posters', 'public');
@@ -120,6 +136,9 @@ class MovieController extends Controller
 
     public function update(Request $request, Movie $movie)
     {
+        $validationService = new \App\Services\MovieStatusValidationService();
+        $validationService->validateMovieUpdate($movie, $request->all());
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -127,13 +146,15 @@ class MovieController extends Controller
             'cast' => 'nullable|string',
             'poster' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'trailer_url' => 'nullable|url|max:255',
-            'duration' => 'required|integer|min:30|max:300',
+            'duration' => 'required|integer|min:1|max:500',
             'age_rating' => 'nullable|string|max:50',
             'format' => 'nullable|array',
             'format.*' => 'string|max:100',
             'language' => 'nullable|string|max:50',
             'country' => 'nullable|string|max:100',
-            'status' => 'required|in:COMING_SOON,NOW_SHOWING,ENDED',
+            'release_date' => 'nullable|date',
+            'presale_date' => 'nullable|date',
+            'status' => 'required|in:SCHEDULED,PRE_ORDER,COMING_SOON,NOW_SHOWING,ENDED',
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
         ], [
@@ -141,10 +162,15 @@ class MovieController extends Controller
             'title.unique' => 'Phim này đã tồn tại',
             'duration.required' => 'Thời lượng phim là bắt buộc',
             'status.required' => 'Trạng thái là bắt buộc',
+            'status.in' => 'Trạng thái không hợp lệ',
         ]);
 
         $data = collect($validated)->except(['poster', 'categories'])->toArray();
         $data['format'] = $request->input('format', []);
+
+        if (in_array($data['status'] ?? '', [Movie::STATUS_NOW_SHOWING, Movie::STATUS_ENDED])) {
+            $data['presale_date'] = null;
+        }
 
         if ($request->hasFile('poster')) {
             if ($movie->poster_url && \Illuminate\Support\Facades\Storage::disk('public')->exists($movie->poster_url)) {
@@ -153,7 +179,18 @@ class MovieController extends Controller
             $data['poster_url'] = $request->file('poster')->store('posters', 'public');
         }
 
+        $previousStatus = $movie->status;
         $movie->update($data);
+
+        // Cascade Showtime Sync:
+        // 1. Khi chuyển sang ENDED, tự động hủy các suất chiếu tương lai
+        if ($movie->status === Movie::STATUS_ENDED) {
+            $validationService->cancelUpcomingShowtimes($movie);
+        }
+        // 2. Khi chuyển sang PRE_ORDER hoặc NOW_SHOWING, tự động công bố các suất chiếu PENDING
+        elseif (in_array($movie->status, [Movie::STATUS_PRE_ORDER, Movie::STATUS_NOW_SHOWING])) {
+            $validationService->publishPendingShowtimes($movie);
+        }
 
         if ($request->has('categories')) {
             $movie->categories()->sync($request->categories);
@@ -166,11 +203,13 @@ class MovieController extends Controller
 
     public function destroy(Movie $movie)
     {
-        // Kiểm tra phim có suất chiếu hợp lệ
-        if ($movie->hasActiveShowtimes()) {
+        $validationService = new \App\Services\MovieStatusValidationService();
+
+        // Kiểm tra phim có suất chiếu hợp lệ hoặc vé tương lai
+        if ($movie->hasActiveShowtimes() || $validationService->hasActiveFutureBookings($movie)) {
             $activeCount = $movie->getActiveShowtimesCount();
             return redirect()->route('admin.movies.index')
-                             ->with('error', "Không thể xóa phim '$movie->title' vì phim đang có $activeCount suất chiếu hợp lệ. Vui lòng xóa hoặc hủy tất cả suất chiếu trước.");
+                             ->with('error', "Không thể xóa phim '$movie->title' vì phim đang có $activeCount suất chiếu hợp lệ hoặc vé chưa hoàn tất. Vui lòng xóa hoặc hủy tất cả suất chiếu trước.");
         }
 
         $movie->delete();
@@ -211,6 +250,13 @@ class MovieController extends Controller
     public function forceDelete($id)
     {
         $movie = Movie::onlyTrashed()->findOrFail($id);
+        $validationService = new \App\Services\MovieStatusValidationService();
+
+        // Deletion Protection: Chặn xóa vĩnh viễn nếu có lịch sử đặt vé hoặc suất chiếu
+        if ($validationService->hasHistoricalBookings($movie) || $movie->showtimes()->withTrashed()->exists()) {
+            return redirect()->route('admin.movies.trashed')
+                             ->with('error', 'Không thể xóa vĩnh viễn phim này vì đã có lịch sử đặt vé hoặc suất chiếu liên quan. Chỉ được phép lưu trữ (Xóa mềm).');
+        }
         
         try {
             // Remove poster if exists
