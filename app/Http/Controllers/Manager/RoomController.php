@@ -314,6 +314,66 @@ class RoomController extends Controller
                          ->with('success', 'Xóa phòng chiếu thành công!');
     }
 
+    /**
+     * Display a listing of trashed rooms
+     */
+    public function trashed(Request $request)
+    {
+        $cinemaId = Auth::user()->cinema_id;
+        $rooms = Room::onlyTrashed()
+            ->with('cinema')
+            ->where('cinema_id', $cinemaId)
+            ->orderBy('deleted_at', 'desc')
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('manager.rooms.trashed', compact('rooms'));
+    }
+
+    /**
+     * Restore a trashed room
+     */
+    public function restore($id)
+    {
+        $cinemaId = Auth::user()->cinema_id;
+        $room = Room::withTrashed()
+            ->where('cinema_id', $cinemaId)
+            ->findOrFail($id);
+
+        if (! $room->trashed()) {
+            return redirect()->route('manager.rooms.trashed')
+                             ->with('error', 'Phòng chiếu không nằm trong thùng rác.');
+        }
+
+        $room->restore();
+
+        return redirect()->route('manager.rooms.trashed')
+                         ->with('success', 'Khôi phục phòng chiếu thành công!');
+    }
+
+    /**
+     * Permanently delete a room from storage
+     */
+    public function forceDelete($id)
+    {
+        $cinemaId = Auth::user()->cinema_id;
+        $room = Room::withTrashed()
+            ->where('cinema_id', $cinemaId)
+            ->findOrFail($id);
+
+        if (! $room->trashed()) {
+            return redirect()->route('manager.rooms.trashed')
+                             ->with('error', 'Phòng chiếu không nằm trong thùng rác.');
+        }
+
+        // Xóa các ghế liên quan trước khi xóa vĩnh viễn phòng
+        $room->seats()->delete();
+        $room->forceDelete();
+
+        return redirect()->route('manager.rooms.trashed')
+                         ->with('success', 'Xóa vĩnh viễn phòng chiếu thành công!');
+    }
+
     public function toggleSeatStatus(Request $request, $roomId, $seatId)
     {
         $room = Room::where('cinema_id', Auth::user()->cinema_id)->findOrFail($roomId);
