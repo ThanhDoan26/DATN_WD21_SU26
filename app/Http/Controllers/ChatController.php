@@ -56,14 +56,16 @@ class ChatController extends Controller
 
             return redirect()->back()->with('chat_open', true);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('ChatController Error: ' . $e->getMessage() . ' - Trace: ' . $e->getTraceAsString());
+            
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'AI đang bận, vui lòng thử lại sau.'
+                    'message' => $e->getMessage()
                 ], 500);
             }
 
-            return redirect()->back()->with('chat_open', true)->with('chat_error', 'AI đang bận, vui lòng thử lại sau.');
+            return redirect()->back()->with('chat_open', true)->with('chat_error', $e->getMessage());
         }
     }
 }

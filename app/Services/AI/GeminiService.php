@@ -6,53 +6,69 @@ class GeminiService
 {
     protected string $apiKey;
     protected string $model;
+    protected array $fallbackModels;
     protected string $baseUrl;
-    public function __construct(){
-        $this->apiKey = config('ai.gemini.api_key');
-        $this->model = config('ai.gemini.model');
-        $this->baseUrl = config('ai.gemini.base_url');
 
-        if(empty($this->apiKey)){
-            throw new Exception('Gemini chưa được cấu hình');
+    public function __construct()
+    {
+        $this->apiKey = config('ai.gemini.api_key') ?? '';
+        $this->model = config('ai.gemini.model', 'gemini-3.5-flash');
+        $this->fallbackModels = config('ai.gemini.fallback_models', [
+            'gemini-3.5-flash',
+            'gemini-3.5-flash-lite',
+            'gemini-flash-lite-latest',
+            'gemini-3.1-flash-lite',
+            'gemini-3-flash-preview',
+        ]);
+        $this->baseUrl = config('ai.gemini.base_url', 'https://generativelanguage.googleapis.com/v1beta');
+
+        if (empty($this->apiKey)) {
+            throw new Exception('Gemini API Key chưa được cấu hình');
         }
     }
+
     protected function makeRequest(array $payload): array
     {
-        $url = "{$this->baseUrl}/models/{$this->model}:generateContent?key={$this->apiKey}";
+        // Build list of models to try in sequence: primary model first, followed by fallbacks
+        $modelsToTry = array_values(array_unique(array_merge([$this->model], $this->fallbackModels)));
+        $lastErrorMessage = null;
 
-        try {
-            $response = Http::timeout(30)
-                ->acceptJson()
-                ->retry(3, 1000, function (\Exception $exception, \Illuminate\Http\Client\PendingRequest $request) {
-                    if ($exception instanceof \Illuminate\Http\Client\RequestException && $exception->response->clientError()) {
-                        return false;
-                    }
-                    return true;
-                })
-                ->post($url, $payload);
+        foreach ($modelsToTry as $modelName) {
+            $url = "{$this->baseUrl}/models/{$modelName}:generateContent?key={$this->apiKey}";
 
-            if (!$response->successful()) {
+            try {
+                $response = Http::timeout(25)
+                    ->acceptJson()
+                    ->post($url, $payload);
+
+                if ($response->successful()) {
+                    return $response->json();
+                }
+
                 $status = $response->status();
-                $message = match ($status) {
-                    400 => 'Dữ liệu yêu cầu không hợp lệ.',
-                    401 => 'Xác thực API thất bại.',
-                    403 => 'Không có quyền truy cập dịch vụ AI.',
-                    404 => 'Không tìm thấy mô hình AI.',
-                    429 => 'Hệ thống AI đang quá tải, vui lòng thử lại sau.',
-                    500 => 'Lỗi máy chủ nội bộ từ dịch vụ AI.',
-                    default => 'Có lỗi xảy ra khi kết nối tới dịch vụ AI.',
-                };
-                throw new Exception($message);
-            }
+                $body = $response->json();
+                $lastErrorMessage = $body['error']['message'] ?? "HTTP {$status}";
+                \Illuminate\Support\Facades\Log::warning("Gemini model [{$modelName}] failed with status {$status}: {$lastErrorMessage}");
 
-            return $response->json();
-        } catch (Exception $e) {
-            $safeMessage = $e->getMessage();
-            if (str_contains($safeMessage, $this->apiKey)) {
-                $safeMessage = 'Lỗi kết nối tới AI API.';
+                // Critical auth errors where retrying other models won't help
+                if ($status === 401 || $status === 403) {
+                    throw new Exception('Xác thực API AI thất bại hoặc không có quyền truy cập.');
+                }
+
+                // If 503, 429, 404, 500, etc., continue to next fallback model
+                continue;
+            } catch (Exception $e) {
+                if ($e->getMessage() === 'Xác thực API AI thất bại hoặc không có quyền truy cập.') {
+                    throw $e;
+                }
+                $lastErrorMessage = $e->getMessage();
+                \Illuminate\Support\Facades\Log::warning("Gemini request error for model [{$modelName}]: " . $lastErrorMessage);
+                continue;
             }
-            throw new Exception($safeMessage);
         }
+
+        \Illuminate\Support\Facades\Log::error("All Gemini fallback models failed. Last error: " . ($lastErrorMessage ?? 'unknown'));
+        throw new Exception('Hệ thống AI đang quá tải hoặc tạm thời gián đoạn. Vui lòng thử lại sau giây lát.');
     }
 
     public function generate(string $prompt, ?string $systemInstruction = null, array $history = []): string

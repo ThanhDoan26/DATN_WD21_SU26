@@ -734,7 +734,7 @@
             <h4><i class="fas fa-film"></i> MovieGo</h4>
             <div class="manager-tag-wrapper">
                 <span class="manager-badge">MANAGER</span>
-                <p>Quản lý rạp</p>
+                <p>{{ Auth::user()->cinema?->name ?? 'Quản lý rạp' }}</p>
             </div>
             <div class="cinema-info-tag mt-2 d-flex align-items-center text-truncate" style="color: #99f6e4; font-size: 0.78rem; font-weight: 500;" title="{{ Auth::user()->cinema->name ?? 'Chưa phân công rạp' }}">
                 <i class="fas fa-building me-1 text-info"></i>

@@ -1,5 +1,6 @@
 <?php   
 namespace App\Services\AI;
+
 class IntentService
 {
     protected GeminiService $geminiService;
@@ -9,12 +10,12 @@ class IntentService
         $this->geminiService = $geminiService;
     }
 
-    public function detectIntent(string $message, array $history = []): string
+    public function detectIntent(string $message, array $history = []): array
     {
         $historyText = empty($history) ? 'Không có' : json_encode($history, JSON_UNESCAPED_UNICODE);
         $systemInstruction = "Bạn là hệ thống phân tích ý định (Intent Classifier).
 Ngữ cảnh lịch sử trò chuyện (nếu có): {$historyText}
-Dựa vào lịch sử (để hiểu các đại từ như 'phim này', 'ai', 'dài bao lâu') và câu hỏi mới nhất của người dùng, hãy phân loại vào một trong các intent sau:
+Dựa vào lịch sử và câu hỏi mới nhất của người dùng, hãy phân loại vào một trong các intent sau:
 - ask_movies: Hỏi danh sách phim nói chung.
 - ask_movie_information: Nội dung, thể loại, đạo diễn, diễn viên, thời lượng...
 - ask_movie_status: Hỏi phim đang chiếu, sắp chiếu, ngừng chiếu.
@@ -25,24 +26,46 @@ Dựa vào lịch sử (để hiểu các đại từ như 'phim này', 'ai', 'd
 - ask_cinemas: Hỏi về thông tin rạp chiếu phim, địa chỉ, số điện thoại rạp.
 - ask_showtimes: Hỏi về lịch chiếu, suất chiếu, phòng chiếu.
 - ask_my_tickets: Hỏi về thông tin vé đã đặt, lịch sử mua vé của chính họ.
-- ask_website: Hỏi về thông tin website, chức năng, đăng ký, đăng nhập, lịch sử, bài viết, đánh giá phim.
-- ask_booking_guide: Hỏi về cách đặt vé, hướng dẫn các bước đặt vé, cách đặt nhiều vé.
-- ask_booking_status: Hỏi về trạng thái đơn vé, vé của tôi đã thành công chưa, booking bị hủy là sao.
-- ask_seat_hold: Hỏi về ghế bị khóa, giỏ hàng, thời gian giữ ghế.
-- ask_payment: Hỏi về các cổng thanh toán hỗ trợ (VNPay, Stripe).
-- ask_payment_error: Hỗ trợ khi thanh toán lỗi, thanh toán thất bại, trừ tiền chưa có vé.
-- ask_ticket_price: Hỏi về giá vé tiêu chuẩn, phụ thu, giá ghế VIP, ghế đôi.
-- ask_coupon: Hỏi về quy định, cách áp dụng mã giảm giá, coupon.
-- ask_combo: Hỏi về thông tin combo (bắp, nước), khi nào có thể mua.
-- ask_policy: Hỏi về chính sách hoàn vé, đổi vé.
-- ask_user_profile: Hỏi thông tin cá nhân, tôi là ai, tôi đăng nhập chưa, điểm tích lũy.
-- ask_booking_history: Hỏi về lịch sử mua vé, tôi đã xem phim gì, vé gần nhất của tôi.
-- ask_review_history: Hỏi về lịch sử đánh giá phim của tôi.
-- ask_conversation_summary: Yêu cầu tóm tắt lại cuộc trò chuyện từ đầu đến giờ, nãy giờ nói về cái gì.
-- general: Các câu giao tiếp thông thường, hỏi han cơ bản (xin chào, cảm ơn, bạn là ai...).
-Chỉ trả về JSON format: {\"intent\": \"TÊN_INTENT\"}. Không giải thích gì thêm.";
+- ask_website: Hỏi về thông tin website, chức năng, đăng nhập, đăng ký.
+- ask_booking_guide: Hỏi về cách đặt vé, hướng dẫn đặt vé.
+- ask_booking_status: Hỏi về trạng thái đơn vé.
+- ask_seat_hold: Hỏi về ghế bị khóa, thời gian giữ ghế.
+- ask_payment: Hỏi về các cổng thanh toán hỗ trợ.
+- ask_payment_error: Hỗ trợ khi thanh toán lỗi.
+- ask_ticket_price: Hỏi về giá vé.
+- ask_coupon: Hỏi về mã giảm giá.
+- ask_combo: Hỏi về combo bắp nước.
+- ask_policy: Hỏi về chính sách hoàn/đổi vé.
+- ask_user_profile: Hỏi thông tin cá nhân.
+- ask_booking_history: Hỏi về lịch sử mua vé.
+- ask_review_history: Hỏi về lịch sử đánh giá phim.
+- ask_conversation_summary: Tóm tắt cuộc trò chuyện.
+- general: Giao tiếp thông thường.
 
-        $response = $this->geminiService->generateJson($message, $systemInstruction);
-        return $response['intent'] ?? 'general';
+QUAN TRỌNG:
+Ngoài 'intent', nếu trong câu hỏi người dùng có nhắc đến tên một bộ phim cụ thể hoặc ngụ ý về một phim dựa trên lịch sử (ví dụ 'phần mới nhất', 'phim đó'), hãy trích xuất thêm 'movie_query'.
+Nếu câu hỏi KHÔNG liên quan đến phim cụ thể (như chào hỏi, hỏi chính sách...), 'movie_query' để null.
+
+Chỉ trả về JSON format CHÍNH XÁC như sau: 
+{
+    \"intent\": \"TÊN_INTENT\",
+    \"movie_query\": \"tên phim hoặc ngụ ý (null nếu không có)\"
+}
+Không giải thích gì thêm.";
+
+        try {
+            $response = $this->geminiService->generateJson($message, $systemInstruction);
+            
+            return [
+                'intent' => $response['intent'] ?? 'general',
+                'movie_query' => $response['movie_query'] ?? null
+            ];
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Intent detection failed, fallback to general: ' . $e->getMessage());
+            return [
+                'intent' => 'general',
+                'movie_query' => null
+            ];
+        }
     }
 }

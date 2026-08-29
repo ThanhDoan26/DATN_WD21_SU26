@@ -9,7 +9,7 @@ use App\Http\Controllers\Manager\ShowtimeController;
 use App\Http\Controllers\Manager\ComboController;
 use App\Http\Controllers\Manager\CouponController;
 
-Route::middleware(['auth', 'role:MANAGER'])->prefix('manager')->name('manager.')->group(function () {
+Route::middleware(['auth', 'role:MANAGER', 'cinema.assignment'])->prefix('manager')->name('manager.')->group(function () {
     Route::get('/dashboard', [CinemaManagerDashboardController::class, 'index'])->name('dashboard');
 
     // Quản lý Mã giảm giá (Manager)
