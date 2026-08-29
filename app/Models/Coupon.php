@@ -149,4 +149,29 @@ class Coupon extends Model
                   ->orWhereColumn('used_count', '<', 'quantity');
             });
     }
+
+    /**
+     * Scope sắp xếp thứ tự danh sách Coupon:
+     * 1. Ưu tiên mã hợp lệ & còn hoạt động (ACTIVE, chưa hết hạn, còn lượt) lên TRÊN CÙNG (0).
+     * 2. Mã đã hết hạn, bị khóa (INACTIVE) hoặc hết số lượng bị đẩy xuống DƯỚI (1).
+     * 3. Thứ tự phụ: Ngày hết hạn (end_date) tăng dần ASC (sắp hết hạn đứng trước, NULL đứng sau).
+     * 4. Id giảm dần DESC làm fallback.
+     */
+    public function scopeOrderByAvailabilityAndExpiration($query)
+    {
+        $now = now()->toDateTimeString();
+
+        return $query->orderByRaw("
+            CASE 
+                WHEN status = 'ACTIVE' 
+                     AND (end_date IS NULL OR end_date >= ?) 
+                     AND (quantity = 0 OR quantity IS NULL OR used_count < quantity) 
+                THEN 0 
+                ELSE 1 
+            END ASC
+        ", [$now])
+        ->orderByRaw("CASE WHEN end_date IS NULL THEN 1 ELSE 0 END ASC")
+        ->orderBy('end_date', 'asc')
+        ->orderBy('id', 'desc');
+    }
 }
