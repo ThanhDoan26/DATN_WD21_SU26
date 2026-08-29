@@ -13,6 +13,9 @@
     body {
         @apply bg-gray-950 text-gray-50;
         font-feature-settings: "rlig" 1, "calt" 1;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
     }
 
     h1,
@@ -50,7 +53,7 @@
     }
 
     .auth-subtitle {
-        @apply text-base text-gray-400 font-light;
+        @apply text-base text-gray-300 font-normal;
     }
 
     /* ============ FORM STYLING ============ */
@@ -59,22 +62,23 @@
     }
 
     .form-label {
-        @apply block text-sm font-medium text-gray-300 tracking-wide;
+        @apply block text-sm font-semibold tracking-wide;
+        color: inherit;
     }
 
     .form-input {
         /* ĐÃ FIX: Đổi font-regular thành font-normal ở cuối dòng dưới đây */
-        @apply w-full px-4 py-3 rounded-lg border border-gray-700 bg-gray-800/50 text-white placeholder-gray-500 transition-all duration-200 font-normal;
+        @apply w-full px-4 py-3 rounded-lg border border-gray-700 bg-gray-800/50 text-white placeholder-gray-400 transition-all duration-200 font-medium;
         @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-0 focus:border-primary-500 focus:bg-gray-800/80;
-        @apply hover:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed;
+        @apply hover:border-gray-600 disabled:opacity-100 disabled:cursor-not-allowed;
     }
 
     .form-input::placeholder {
-        @apply text-gray-600;
+        @apply text-gray-400 font-normal;
     }
 
     .form-input-icon {
-        @apply absolute left-4 top-3.5 text-gray-500 text-lg select-none pointer-events-none;
+        @apply absolute left-4 top-3.5 text-gray-400 text-lg select-none pointer-events-none;
     }
 
     .form-input-wrapper {
@@ -83,7 +87,7 @@
 
     /* ============ FORM VALIDATION ============ */
     .form-error {
-        @apply text-sm text-red-400 font-medium mt-1.5 flex items-center gap-1.5;
+        @apply text-sm text-red-500 font-semibold mt-1.5 flex items-center gap-1.5;
     }
 
     .form-error::before {
@@ -91,7 +95,7 @@
     }
 
     .form-success {
-        @apply text-sm text-emerald-400 font-medium mt-1.5 flex items-center gap-1.5;
+        @apply text-sm text-emerald-500 font-semibold mt-1.5 flex items-center gap-1.5;
     }
 
     .form-success::before {
@@ -99,7 +103,7 @@
     }
 
     .form-hint {
-        @apply text-xs text-gray-500 font-light mt-1;
+        @apply text-xs text-gray-600 font-medium mt-1;
     }
 
     /* ============ CHECKBOX STYLING ============ */
@@ -113,11 +117,11 @@
     }
 
     .checkbox-label {
-        @apply text-sm text-gray-400 cursor-pointer leading-relaxed select-none;
+        @apply text-sm text-gray-300 font-medium cursor-pointer leading-relaxed select-none;
     }
 
     .checkbox-label a {
-        @apply text-primary-400 hover:text-primary-300 font-medium transition-colors duration-200;
+        @apply text-primary-400 hover:text-primary-300 font-semibold transition-colors duration-200;
     }
 
     /* ============ BUTTON STYLING ============ */
@@ -130,7 +134,7 @@
     }
 
     .btn-secondary {
-        @apply btn bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 hover:border-gray-600 focus:ring-primary-500;
+        @apply btn bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 hover:border-gray-600 focus:ring-primary-500;
     }
 
     .btn-tertiary {
@@ -159,7 +163,7 @@
     }
 
     .text-muted {
-        @apply text-gray-400 font-light;
+        @apply text-gray-600 font-normal;
     }
 
     /* ============ DIVIDER ============ */
