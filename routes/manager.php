@@ -8,7 +8,7 @@ use App\Http\Controllers\Manager\RoomController;
 use App\Http\Controllers\Manager\ShowtimeController;
 use App\Http\Controllers\Manager\ComboController;
 
-Route::middleware(['auth', 'role:MANAGER'])->prefix('manager')->name('manager.')->group(function () {
+Route::middleware(['auth', 'role:MANAGER', 'cinema.assignment'])->prefix('manager')->name('manager.')->group(function () {
     Route::get('/dashboard', [CinemaManagerDashboardController::class, 'index'])->name('dashboard');
 
     // Quản lý Phòng chiếu (Manager)

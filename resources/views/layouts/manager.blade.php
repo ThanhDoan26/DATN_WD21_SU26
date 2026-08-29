@@ -676,7 +676,7 @@
             <h4><i class="fas fa-film"></i> MovieGo</h4>
             <div class="manager-tag-wrapper">
                 <span class="manager-badge">MANAGER</span>
-                <p>Quản lý rạp</p>
+                <p>{{ Auth::user()->cinema?->name ?? 'Quản lý rạp' }}</p>
             </div>
         </div>
 
@@ -738,7 +738,7 @@
                 <div class="dropdown">
                     <div class="user-info dropdown-toggle" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
                         <div class="text-end">
-                            <span class="badge" style="background: rgba(13, 148, 136, 0.15); color: #0d9488; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">MANAGER</span><br>
+                            <span class="badge" style="background: rgba(13, 148, 136, 0.15); color: #0d9488; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">{{ Auth::user()->cinema?->name ?? 'MANAGER' }}</span><br>
                             <strong style="color: var(--text-ink);">{{ Auth::user()->name ?? 'Manager' }}</strong>
                         </div>
                         <div class="user-avatar ms-2">
