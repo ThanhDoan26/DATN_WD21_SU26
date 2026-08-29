@@ -16,7 +16,11 @@ Schedule::command('booking:cleanup-expired')->everyFiveMinutes();
 // ── Tự động đồng bộ trạng thái suất chiếu theo thời gian thực (mỗi phút) ──
 Schedule::command('showtimes:sync-statuses')->everyMinute();
 
+// ── Tự động chuyển đổi trạng thái phim (PRE_ORDER / NOW_SHOWING) theo thời gian thực ──
+Schedule::command('movies:sync-statuses')->everyMinute();
+
 // ── Tự động dọn dẹp các suất chiếu đã kết thúc ──
 Schedule::command('showtimes:cleanup-past')->hourly();
+
 
 

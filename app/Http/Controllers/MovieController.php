@@ -19,6 +19,8 @@ class MovieController extends Controller
      */
     public function welcome(MovieSearchRequest $request, MovieSearchService $searchService): View
     {
+        Movie::syncAllStatuses();
+
         // Get cinemas and categories for search form
         $cinemas = Cinema::where('status', 'ACTIVE')->get();
         $categories = Category::all();
@@ -38,8 +40,8 @@ class MovieController extends Controller
             ]);
         }
 
-        // Currently showing movies
-        $currentMovies = Movie::where('status', 'NOW_SHOWING')
+        // Currently showing movies (including Pre-order)
+        $currentMovies = Movie::whereIn('status', ['NOW_SHOWING', 'PRE_ORDER'])
             ->with(['showtimes' => function ($query) {
                 $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
                       ->where('start_time', '>=', now())
@@ -49,8 +51,8 @@ class MovieController extends Controller
             ->limit(4)
             ->get();
 
-        // Upcoming movies
-        $upcomingMovies = Movie::where('status', 'COMING_SOON')
+        // Upcoming movies (including Scheduled and Coming Soon)
+        $upcomingMovies = Movie::whereIn('status', ['COMING_SOON', 'SCHEDULED'])
             ->with(['showtimes' => function ($query) {
                 $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
                       ->where('start_time', '>=', now())
@@ -61,7 +63,7 @@ class MovieController extends Controller
             ->get();
 
         // Featured movies (all non-ended movies)
-        $featuredMovies = Movie::whereIn('status', ['NOW_SHOWING', 'COMING_SOON'])
+        $featuredMovies = Movie::whereIn('status', ['NOW_SHOWING', 'PRE_ORDER', 'COMING_SOON', 'SCHEDULED'])
             ->with(['showtimes' => function ($query) {
                 $query->where('start_time', '>=', now())
                       ->orderBy('start_time');
@@ -85,7 +87,9 @@ class MovieController extends Controller
      */
     public function currentMovies(\Illuminate\Http\Request $request): View
     {
-        $query = Movie::where('status', 'NOW_SHOWING')
+        Movie::syncAllStatuses();
+
+        $query = Movie::whereIn('status', ['NOW_SHOWING', 'PRE_ORDER'])
             ->with([
                 'showtimes' => function ($q) {
                     $q->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
@@ -126,7 +130,9 @@ class MovieController extends Controller
      */
     public function upcomingMovies(\Illuminate\Http\Request $request): View
     {
-        $query = Movie::where('status', 'COMING_SOON')
+        Movie::syncAllStatuses();
+
+        $query = Movie::whereIn('status', ['COMING_SOON', 'SCHEDULED'])
             ->with([
                 'showtimes' => function ($q) {
                     $q->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])

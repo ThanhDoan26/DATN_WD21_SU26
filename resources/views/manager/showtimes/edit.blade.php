@@ -69,11 +69,23 @@
                         <select id="movie_id" name="movie_id" class="form-select @error('movie_id') is-invalid @enderror" {{ isset($hasBookings) && $hasBookings ? 'disabled' : '' }} required>
                             <option value="">-- Chọn phim --</option>
                             @foreach($movies as $movie)
-                                <option value="{{ $movie->id }}" data-duration="{{ $movie->duration }}" data-formats="{{ is_array($movie->format) ? implode(',', $movie->format) : $movie->format }}" {{ old('movie_id', $showtime->movie_id) == $movie->id ? 'selected' : '' }}>
+                                <option value="{{ $movie->id }}" 
+                                        data-duration="{{ $movie->duration }}" 
+                                        data-formats="{{ is_array($movie->format) ? implode(',', $movie->format) : $movie->format }}"
+                                        data-release-date="{{ $movie->release_date?->format('Y-m-d\TH:i') }}"
+                                        data-presale-date="{{ $movie->presale_date?->format('Y-m-d\TH:i') }}"
+                                        data-release-display="{{ $movie->release_date?->format('d/m/Y H:i') }}"
+                                        data-presale-display="{{ $movie->presale_date?->format('d/m/Y H:i') }}"
+                                        data-status="{{ $movie->status }}"
+                                        {{ old('movie_id', $showtime->movie_id) == $movie->id ? 'selected' : '' }}>
                                     {{ $movie->title }} ({{ is_array($movie->format) ? implode(', ', $movie->format) : $movie->format }})
                                 </option>
                             @endforeach
                         </select>
+                        <div id="movie_date_hint" class="alert alert-info py-2 px-3 mt-2 small d-none align-items-center gap-2">
+                            <i class="fas fa-calendar-check text-info fs-5"></i>
+                            <div id="movie_date_hint_text"></div>
+                        </div>
                         @if(isset($hasBookings) && $hasBookings)
                             <input type="hidden" name="movie_id" value="{{ $showtime->movie_id }}">
                         @endif
@@ -634,6 +646,117 @@
             endAutoComputed = true;
         }
 
+        function updateAvailableTimeOptions() {
+            @if(isset($hasBookings) && $hasBookings)
+                return; // Suất chiếu đã có vé bị khóa không sửa giờ
+            @endif
+
+            const selectedMovieOption = movieSelect.options[movieSelect.selectedIndex];
+            const releaseDateStr = selectedMovieOption?.dataset?.releaseDate || '';
+            const presaleDateStr = selectedMovieOption?.dataset?.presaleDate || '';
+            const releaseDisplay = selectedMovieOption?.dataset?.releaseDisplay || '';
+            const presaleDisplay = selectedMovieOption?.dataset?.presaleDisplay || '';
+
+            const hintEl = document.getElementById('movie_date_hint');
+            const hintTextEl = document.getElementById('movie_date_hint_text');
+
+            const now = new Date();
+            let earliestAllowed = new Date(now.getTime());
+
+            if (presaleDateStr) {
+                const parsedPresale = new Date(presaleDateStr);
+                if (parsedPresale > earliestAllowed) {
+                    earliestAllowed = parsedPresale;
+                }
+                if (hintEl && hintTextEl) {
+                    hintEl.className = 'alert alert-primary py-2 px-3 mt-2 small d-flex align-items-center gap-2';
+                    hintTextEl.innerHTML = `<strong>Mở bán sớm (Sneak Show):</strong> Phim cho phép tạo suất chiếu từ <strong>${presaleDisplay}</strong> (Khởi chiếu chính thức: <strong>${releaseDisplay || 'N/A'}</strong>).`;
+                }
+            } else if (releaseDateStr) {
+                const parsedRelease = new Date(releaseDateStr);
+                if (parsedRelease > earliestAllowed) {
+                    earliestAllowed = parsedRelease;
+                }
+                if (hintEl && hintTextEl) {
+                    hintEl.className = 'alert alert-info py-2 px-3 mt-2 small d-flex align-items-center gap-2';
+                    hintTextEl.innerHTML = `<strong>Ngày khởi chiếu chính thức:</strong> <strong>${releaseDisplay}</strong>. Suất chiếu cần được đặt từ thời gian này trở đi.`;
+                }
+            } else {
+                if (hintEl) hintEl.className = 'alert alert-info py-2 px-3 mt-2 small d-none align-items-center gap-2';
+            }
+
+            // Giới hạn ngày tối thiểu
+            const earliestDatePart = `${earliestAllowed.getFullYear()}-${pad(earliestAllowed.getMonth() + 1)}-${pad(earliestAllowed.getDate())}`;
+            startDateInput.min = earliestDatePart;
+            if (endDateInput) endDateInput.min = earliestDatePart;
+
+            // Kiểm tra nếu đang chọn ngày biên
+            const isBoundaryDate = (startDateInput.value === earliestDatePart);
+            const minHour = isBoundaryDate ? earliestAllowed.getHours() : 0;
+            const minMinute = isBoundaryDate ? earliestAllowed.getMinutes() : 0;
+
+            // Ẩn / Disable các giờ đã trôi qua
+            const currentHourVal = Number(startHourInput.value);
+            let hasValidSelectedHour = false;
+
+            startHourInput.querySelectorAll('option').forEach(option => {
+                if (!option.value) return;
+                const h = Number(option.value);
+                if (isBoundaryDate && h < minHour && h !== 24) {
+                    option.disabled = true;
+                    option.hidden = true;
+                } else {
+                    option.disabled = false;
+                    option.hidden = false;
+                    if (h === currentHourVal) {
+                        hasValidSelectedHour = true;
+                    }
+                }
+            });
+
+            if (!hasValidSelectedHour && isBoundaryDate) {
+                for (let opt of startHourInput.options) {
+                    if (opt.value && !opt.disabled) {
+                        startHourInput.value = opt.value;
+                        break;
+                    }
+                }
+            }
+
+            // Ẩn / Disable các phút đã trôi qua nếu đang chọn đúng giờ tối thiểu
+            const isMinHourSelected = isBoundaryDate && (Number(startHourInput.value) === minHour);
+            const currentMinuteVal = Number(startMinuteInput.value);
+            let hasValidSelectedMinute = false;
+
+            startMinuteInput.querySelectorAll('option').forEach(option => {
+                const m = Number(option.value);
+                if (isMinHourSelected && m < minMinute) {
+                    option.disabled = true;
+                    option.hidden = true;
+                } else {
+                    option.disabled = false;
+                    option.hidden = false;
+                    if (m === currentMinuteVal) {
+                        hasValidSelectedMinute = true;
+                    }
+                }
+            });
+
+            if (!hasValidSelectedMinute && isMinHourSelected) {
+                for (let opt of startMinuteInput.options) {
+                    if (opt.value && !opt.disabled) {
+                        startMinuteInput.value = opt.value;
+                        break;
+                    }
+                }
+            }
+
+            enforce24OnlyZeroMinute(startHourInput, startMinuteInput);
+            updateStartHidden();
+            updateEndFromStart();
+            validateStartTimeNotPast();
+        }
+
         function syncAllTimeFields() {
             setSelectorsFromHidden(startDateInput, startHourInput, startMinuteInput, startPeriodText, hiddenStartInput);
             setSelectorsFromHidden(endDateInput, endHourInput, endMinuteInput, endPeriodText, hiddenEndInput);
@@ -655,22 +778,47 @@
             const clientErr = document.getElementById('start_time_client_error');
             if (!hiddenStartInput.value) return true;
             const parsed = parseDatetimeLocal(hiddenStartInput.value);
-            // So sánh thời gian (cho phép sai số 30s)
+            
+            // Kiểm tra với thời gian hiện tại (cho phép sai số 30s)
             if (parsed && parsed.getTime() < (Date.now() - 30000)) {
                 if (clientErr) {
+                    clientErr.innerHTML = '<i class="fas fa-circle-exclamation"></i> Không thể lên lịch chiếu cho thời gian đã qua.';
                     clientErr.classList.remove('d-none');
                     clientErr.classList.add('d-flex');
                 }
                 startDateInput.classList.add('is-invalid');
                 return false;
-            } else {
-                if (clientErr) {
-                    clientErr.classList.add('d-none');
-                    clientErr.classList.remove('d-flex');
-                }
-                startDateInput.classList.remove('is-invalid');
-                return true;
             }
+
+            // Kiểm tra với release_date / presale_date của phim
+            const selectedMovieOption = movieSelect.options[movieSelect.selectedIndex];
+            const presaleDateStr = selectedMovieOption?.dataset?.presaleDate || '';
+            const releaseDateStr = selectedMovieOption?.dataset?.releaseDate || '';
+            const earliestDateStr = presaleDateStr || releaseDateStr;
+
+            if (earliestDateStr && parsed) {
+                const earliestDate = new Date(earliestDateStr);
+                if (parsed < earliestDate) {
+                    if (clientErr) {
+                        if (presaleDateStr) {
+                            clientErr.innerHTML = `<i class="fas fa-circle-exclamation"></i> Suất chiếu không được sớm hơn Ngày mở bán sớm (${selectedMovieOption?.dataset?.presaleDisplay}).`;
+                        } else {
+                            clientErr.innerHTML = `<i class="fas fa-circle-exclamation"></i> Suất chiếu không được trước Ngày khởi chiếu chính thức (${selectedMovieOption?.dataset?.releaseDisplay}).`;
+                        }
+                        clientErr.classList.remove('d-none');
+                        clientErr.classList.add('d-flex');
+                    }
+                    startDateInput.classList.add('is-invalid');
+                    return false;
+                }
+            }
+
+            if (clientErr) {
+                clientErr.classList.add('d-none');
+                clientErr.classList.remove('d-flex');
+            }
+            startDateInput.classList.remove('is-invalid');
+            return true;
         }
 
         [startHourInput, startMinuteInput].forEach(input => {
@@ -683,9 +831,7 @@
         });
 
         startDateInput.addEventListener('change', function () {
-            updateStartHidden();
-            updateEndFromStart();
-            validateStartTimeNotPast();
+            updateAvailableTimeOptions();
         });
 
         [endHourInput, endMinuteInput, endDateInput].forEach(input => {
@@ -772,14 +918,12 @@
         filterCompatibleRooms();
 
         movieSelect.addEventListener('change', function () {
-            updateStartHidden();
-            if (endAutoComputed) {
-                updateEndFromStart();
-            }
+            updateAvailableTimeOptions();
             filterCompatibleRooms();
         });
 
         syncAllTimeFields();
+        updateAvailableTimeOptions();
 
         const showtimeForm = document.querySelector('form');
         if (showtimeForm) {
@@ -794,7 +938,7 @@
                 if (!validateStartTimeNotPast()) {
                     e.preventDefault();
                     e.stopPropagation();
-                    alert('Không thể tạo hoặc chỉnh sửa lịch chiếu cho thời gian đã qua. Vui lòng chọn thời gian bắt đầu từ thời điểm hiện tại trở đi.');
+                    alert('Thời gian bắt đầu suất chiếu không hợp lệ hoặc đã qua. Vui lòng kiểm tra lại.');
                     startDateInput.focus();
                     return false;
                 }

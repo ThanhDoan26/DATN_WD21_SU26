@@ -84,7 +84,11 @@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Thông tin chi tiết</h5>
-                @if($movie->status == 'COMING_SOON')
+                @if($movie->status == 'SCHEDULED')
+                    <span class="badge bg-primary fs-6">Lên lịch</span>
+                @elseif($movie->status == 'PRE_ORDER')
+                    <span class="badge bg-info text-dark fs-6">Mở bán sớm</span>
+                @elseif($movie->status == 'COMING_SOON')
                     <span class="badge bg-warning text-dark fs-6">Sắp chiếu</span>
                 @elseif($movie->status == 'NOW_SHOWING')
                     <span class="badge bg-success fs-6">Đang chiếu</span>
@@ -178,6 +182,26 @@
                         <tr>
                             <th class="bg-light">Ngôn ngữ</th>
                             <td>{{ $movie->language ?: 'Chưa cập nhật' }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Ngày phát hành dự kiến</th>
+                            <td>
+                                @if($movie->release_date)
+                                    <span class="fw-bold text-primary">{{ $movie->release_date->format('H:i - d/m/Y') }}</span>
+                                @else
+                                    <span class="text-muted">Chưa cập nhật</span>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Ngày mở bán sớm (Presale)</th>
+                            <td>
+                                @if($movie->presale_date)
+                                    <span class="fw-bold text-success">{{ $movie->presale_date->format('H:i - d/m/Y') }}</span>
+                                @else
+                                    <span class="text-muted">Không áp dụng</span>
+                                @endif
+                            </td>
                         </tr>
                         <tr>
                             <th class="bg-light">Trailer URL</th>

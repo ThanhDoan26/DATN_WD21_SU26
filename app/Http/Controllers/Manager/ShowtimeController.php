@@ -7,6 +7,7 @@ use App\Models\Movie;
 use App\Models\Room;
 use App\Models\Showtime;
 use App\Rules\CompatibleFormatRule;
+use App\Services\MovieStatusValidationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -74,10 +75,12 @@ class ShowtimeController extends Controller
             'start_time' => [
                 'required',
                 'date',
-                function ($attribute, $value, $fail) {
-                    if ($value && Carbon::parse($value)->lt(now())) {
-                        $fail('Không thể tạo lịch chiếu cho thời gian đã qua. Thời gian bắt đầu phải từ thời điểm hiện tại trở đi.');
-                    }
+                function ($attribute, $value, $fail) use ($request) {
+                    (new MovieStatusValidationService())->validateShowtimeStartTime(
+                        $request->input('movie_id') ? (int) $request->input('movie_id') : null,
+                        $value,
+                        $fail
+                    );
                 },
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id'))),
@@ -136,8 +139,10 @@ class ShowtimeController extends Controller
             }
         }
 
-        if (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
-            if (($validated['status'] ?? null) !== Showtime::STATUS_CANCELLED) {
+        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
+            $validated['status'] = Showtime::STATUS_PENDING;
+        } elseif (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
+            if (!in_array($validated['status'] ?? null, [Showtime::STATUS_CANCELLED, Showtime::STATUS_PENDING, Showtime::STATUS_UNPUBLISHED])) {
                 $validated['status'] = Showtime::STATUS_SCHEDULED;
             }
         }
@@ -217,10 +222,12 @@ class ShowtimeController extends Controller
             'start_time' => [
                 'required',
                 'date',
-                function ($attribute, $value, $fail) {
-                    if ($value && Carbon::parse($value)->lt(now())) {
-                        $fail('Không thể tạo hoặc chỉnh sửa lịch chiếu cho thời gian đã qua. Thời gian bắt đầu phải từ thời điểm hiện tại trở đi.');
-                    }
+                function ($attribute, $value, $fail) use ($request) {
+                    (new MovieStatusValidationService())->validateShowtimeStartTime(
+                        $request->input('movie_id') ? (int) $request->input('movie_id') : null,
+                        $value,
+                        $fail
+                    );
                 },
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id')))
@@ -280,8 +287,10 @@ class ShowtimeController extends Controller
             }
         }
 
-        if (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
-            if (($validated['status'] ?? null) !== Showtime::STATUS_CANCELLED) {
+        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
+            $validated['status'] = Showtime::STATUS_PENDING;
+        } elseif (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
+            if (!in_array($validated['status'] ?? null, [Showtime::STATUS_CANCELLED, Showtime::STATUS_PENDING, Showtime::STATUS_UNPUBLISHED])) {
                 $validated['status'] = Showtime::STATUS_SCHEDULED;
             }
         }
