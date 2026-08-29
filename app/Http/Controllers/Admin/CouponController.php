@@ -22,7 +22,7 @@ class CouponController extends Controller
             $query->where('status', $request->status);
         }
 
-        $coupons = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
+        $coupons = $query->orderByAvailabilityAndExpiration()->paginate(15)->withQueryString();
 
         return view('admin.coupons.index', compact('coupons'));
     }
