@@ -18,6 +18,13 @@ class TicketConfirmationMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
+    /**
+     * Cấu hình Queue Retry & Timeout
+     */
+    public int $tries = 3;
+    public array $backoff = [10, 30, 60];
+    public int $timeout = 60;
+
     // Chỉ lưu booking (mảng) và showtime (Eloquent Model) để serialize siêu nhẹ trong queue payload.
     public $booking;
     public $showtime;
@@ -36,6 +43,7 @@ class TicketConfirmationMail extends Mailable implements ShouldQueue
     {
         $this->booking = $booking;
         $this->showtime = $showtime;
+        $this->afterCommit = true;
     }
 
     /**
@@ -267,7 +275,7 @@ class TicketConfirmationMail extends Mailable implements ShouldQueue
         }
 
         // Pre-send validation and data check logging
-        $bookingId = $this->booking['booking_id'] ?? 'N/A';
+        $bookingId = $this->booking['booking_id'] ?? null;
         $bookingCode = $this->booking['booking_code'] ?? 'N/A';
         $email = $this->booking['customer_email'] ?? $this->booking['user']['email'] ?? 'N/A';
         $movie = $this->showtime->movie->title ?? 'N/A';
@@ -277,8 +285,17 @@ class TicketConfirmationMail extends Mailable implements ShouldQueue
         $barcodeExists = !empty($this->barcodeData) ? 'Yes' : 'No';
         $pdfExists = !empty($this->pdfBinaryData) ? 'Yes' : 'No';
 
+        // 1. Kiểm tra Idempotency mức Database: Nếu đơn hàng đã được đánh dấu gửi thành công từ trước, dừng lại tránh gửi duplicate
+        if (!empty($bookingId)) {
+            $freshBooking = \App\Models\Booking::find($bookingId);
+            if ($freshBooking && !empty($freshBooking->ticket_email_sent_at)) {
+                \Illuminate\Support\Facades\Log::info("TicketConfirmationMail [Idempotency Check] - Đơn hàng ID {$bookingId} ({$bookingCode}) đã gửi email lúc {$freshBooking->ticket_email_sent_at}. Bỏ qua gửi lặp lại.");
+                return null;
+            }
+        }
+
         \Illuminate\Support\Facades\Log::info("TicketConfirmationMail - Pre-Send Data Validation Check:", [
-            'Booking ID' => $bookingId,
+            'Booking ID' => $bookingId ?? 'N/A',
             'Booking Code' => $bookingCode,
             'User Email' => $email,
             'Movie' => $movie,
@@ -295,6 +312,14 @@ class TicketConfirmationMail extends Mailable implements ShouldQueue
             
             $result = parent::send($mailer);
 
+            // 2. Gửi SMTP thành công -> Cập nhật ticket_email_sent_at vào Database
+            if (!empty($bookingId)) {
+                \App\Models\Booking::where('id', $bookingId)->update([
+                    'ticket_email_sent_at' => now(),
+                ]);
+                \Illuminate\Support\Facades\Log::info("TicketConfirmationMail [Idempotency Marked] - Đã cập nhật ticket_email_sent_at cho đơn hàng ID {$bookingId}.");
+            }
+
             \Illuminate\Support\Facades\Log::info("TicketConfirmationMail [Step: Finish] - Mail sending process completed successfully.");
             return $result;
         } catch (\Throwable $e) {
@@ -303,7 +328,7 @@ class TicketConfirmationMail extends Mailable implements ShouldQueue
             $line = $e->getLine();
             $trace = $e->getTraceAsString();
 
-            // 5. If Blade email error
+            // Nếu là lỗi Blade template
             if (str_contains($msg, '.blade.php') || str_contains($file, 'views') || str_contains($file, 'Blade') || str_contains($file, 'emails/ticket-confirmation')) {
                 $missingVar = 'Unknown';
                 if (preg_match('/Undefined variable \$([a-zA-Z0-9_]+)/', $msg, $matches)) {
@@ -316,7 +341,7 @@ class TicketConfirmationMail extends Mailable implements ShouldQueue
                     'trace' => $trace
                 ]);
             } else {
-                // 6. If SMTP / Connection / Authentication error
+                // Nếu là lỗi SMTP / Transport / Connection
                 $smtpErrorCategory = 'Unknown Transport/SMTP Error';
                 $lowerMsg = strtolower($msg);
                 
@@ -338,7 +363,23 @@ class TicketConfirmationMail extends Mailable implements ShouldQueue
                 ]);
             }
 
-            return null; // Return null to avoid failing queue and keep response clean
+            // QUAN TRỌNG: Re-throw Exception để Laravel Queue nhận biết job thất bại và kích hoạt cơ chế retry ($tries / $backoff)
+            throw $e;
         }
+    }
+
+    /**
+     * Callback khi job gửi mail đã thử lại hết số lần cho phép ($tries) mà vẫn thất bại
+     */
+    public function failed(\Throwable $exception): void
+    {
+        \Illuminate\Support\Facades\Log::critical("TicketConfirmationMail [Final Failure] - Gửi email xác nhận vé thất bại hoàn toàn sau {$this->tries} lần thử lại.", [
+            'booking_id' => $this->booking['booking_id'] ?? 'N/A',
+            'booking_code' => $this->booking['booking_code'] ?? 'N/A',
+            'customer_email' => $this->booking['customer_email'] ?? $this->booking['user']['email'] ?? 'N/A',
+            'error' => $exception->getMessage(),
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine(),
+        ]);
     }
 }
