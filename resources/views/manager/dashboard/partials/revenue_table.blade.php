@@ -26,9 +26,11 @@
                     </div>
                 </td>
                 <td>
-                    <code class="text-primary fw-bold font-monospace bg-light px-2 py-1 rounded" style="font-size: 0.82rem; cursor: pointer; border: 1px solid rgba(0,0,0,0.05);" title="Nhấn để sao chép mã: {{ $booking->booking_code }}" onclick="navigator.clipboard.writeText('{{ $booking->booking_code }}'); alert('Đã sao chép mã đơn hàng!')">
-                        {{ substr($booking->booking_code, 0, 6) }}...{{ substr($booking->booking_code, -4) }}
-                    </code>
+                    <a href="{{ route('manager.bookings.show', $booking->id) }}" class="text-decoration-none" title="Xem chi tiết đơn hàng #{{ $booking->booking_code }}">
+                        <code class="text-primary fw-bold font-monospace bg-light px-2 py-1 rounded" style="font-size: 0.82rem; border: 1px solid rgba(0,0,0,0.05);">
+                            {{ substr($booking->booking_code, 0, 6) }}...{{ substr($booking->booking_code, -4) }}
+                        </code>
+                    </a>
                 </td>
                 <td>
                     <div class="text-truncate fw-medium" style="max-width: 120px; font-size: 0.85rem;" title="{{ $booking->showtime->room->cinema->name ?? 'N/A' }}">

@@ -37,4 +37,7 @@ Route::middleware(['auth', 'role:MANAGER'])->prefix('manager')->name('manager.')
 
     // Xem danh sách Phim (Read-only)
     Route::resource('movies', \App\Http\Controllers\Manager\MovieController::class)->only(['index', 'show']);
+
+    // Xem chi tiết Đơn hàng / Vé đặt (Manager)
+    Route::get('bookings/{booking}', [\App\Http\Controllers\Admin\BookingController::class, 'show'])->name('bookings.show');
 });

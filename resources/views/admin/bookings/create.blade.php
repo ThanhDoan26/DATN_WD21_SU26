@@ -71,7 +71,7 @@
                             @forelse($showtimes as $showtime)
                                 <option value="{{ $showtime->id }}" {{ old('showtime_id') === (string)$showtime->id ? 'selected' : '' }}>
                                     {{ $showtime->movie->title }} - {{ $showtime->start_time->format('d/m H:i') }}
-                                    ({{ $showtime->room->name }})
+                                    ({{ $showtime->room?->cinema?->name ?? 'Rạp N/A' }} - {{ $showtime->room->name }})
                                 </option>
                             @empty
                                 <option disabled>Không có suất chiếu nào</option>

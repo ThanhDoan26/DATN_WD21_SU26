@@ -225,8 +225,9 @@
                     </td>
                     <td>
                         <small>
-                            {{ $booking->showtime?->movie?->title ?? 'N/A' }}<br>
-                            <span class="text-muted">{{ $booking->showtime?->start_time?->format('d/m H:i') ?? 'N/A' }}</span>
+                            <strong class="text-dark">{{ $booking->showtime?->movie?->title ?? 'N/A' }}</strong><br>
+                            <span class="text-primary fw-medium"><i class="fas fa-map-marker-alt me-1 text-danger"></i>{{ $booking->showtime?->room?->cinema?->name ?? 'N/A' }} ({{ $booking->showtime?->room?->name ?? 'N/A' }})</span><br>
+                            <span class="text-muted"><i class="far fa-clock me-1"></i>{{ $booking->showtime?->start_time?->format('d/m/Y H:i') ?? 'N/A' }}</span>
                         </small>
                     </td>
                     <td>
