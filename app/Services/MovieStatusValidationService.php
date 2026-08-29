@@ -472,5 +472,150 @@ class MovieStatusValidationService
             }
         }
     }
+
+    /**
+     * Validate Showtime Status Dropdown & Data Integrity Rules:
+     * 1. Terminal State Lock: If existing showtime status is COMPLETED / FINISHED or CANCELLED -> Block edit.
+     * 2. Active Booking Protection: If showtime has bookings -> Block changing status to PENDING or CANCELLED.
+     * 3. Movie Status Constraint: If movie.status === 'SCHEDULED' -> Force status to PENDING, block SCHEDULED / active statuses.
+     * 4. Time-based Rules:
+     *    - SCHEDULED or PENDING: Require start_time > now() AND start_time >= movie.release_date
+     *    - ONGOING: Require start_time <= now() AND end_time >= now()
+     *    - FINISHED / COMPLETED: Require end_time < now()
+     *
+     * @param Showtime|null $showtime
+     * @param array $data
+     * @param Movie|null $movie
+     * @throws ValidationException
+     */
+    public function validateShowtimeStatusRules(?Showtime $showtime, array $data, ?Movie $movie = null): void
+    {
+        $movieId = $data['movie_id'] ?? $showtime?->movie_id;
+        if (!$movie && $movieId) {
+            $movie = Movie::find($movieId);
+        }
+
+        $newStatus = $data['status'] ?? ($showtime?->status ?? Showtime::STATUS_SCHEDULED);
+        if (strtoupper($newStatus) === 'FINISHED') {
+            $newStatus = Showtime::STATUS_COMPLETED;
+        }
+
+        // 1. Terminal State Lock: If existing status is FINISHED/COMPLETED or CANCELLED -> Block any edit
+        if ($showtime) {
+            $currentStatus = $showtime->status;
+            if (in_array($currentStatus, [Showtime::STATUS_COMPLETED, Showtime::STATUS_CANCELLED])) {
+                $statusLabel = Showtime::STATUS_LABELS[$currentStatus] ?? $currentStatus;
+                $validator = Validator::make([], []);
+                $validator->errors()->add(
+                    'status',
+                    "Suất chiếu đã ở trạng thái kết thúc ({$statusLabel}), không thể chỉnh sửa để bảo toàn dữ liệu lịch sử."
+                );
+                throw new ValidationException($validator);
+            }
+        }
+
+        // 2. Active Booking Protection: If showtime has active bookings -> Block changing to PENDING or CANCELLED
+        if ($showtime) {
+            $hasBookings = $showtime->bookings()
+                ->where(function ($q) {
+                    $q->whereIn('status', ['Paid', 'SUCCESS', 'Pending', 'Used'])
+                      ->orWhere('status', '!=', 'Cancelled');
+                })
+                ->exists();
+
+            if ($hasBookings) {
+                if (in_array($newStatus, [Showtime::STATUS_PENDING, Showtime::STATUS_UNPUBLISHED, Showtime::STATUS_CANCELLED])) {
+                    $validator = Validator::make([], []);
+                    $validator->errors()->add(
+                        'status',
+                        'Không thể chuyển suất chiếu đã có vé đặt sang trạng thái Chờ (PENDING) hoặc Đã hủy (CANCELLED). Vui lòng hủy các suất chiếu và hoàn tiền cho khách trước.'
+                    );
+                    throw new ValidationException($validator);
+                }
+            }
+        }
+
+        // 3. Movie Status Constraint: If movie.status === 'SCHEDULED' -> Force PENDING, block SCHEDULED
+        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
+            if (!in_array($newStatus, [Showtime::STATUS_PENDING, Showtime::STATUS_UNPUBLISHED])) {
+                $validator = Validator::make([], []);
+                $validator->errors()->add(
+                    'status',
+                    "Phim đang ở trạng thái 'Lên lịch' (SCHEDULED), suất chiếu bắt buộc phải ở trạng thái 'Chờ/Chưa công bố' (PENDING)."
+                );
+                throw new ValidationException($validator);
+            }
+        }
+
+        // 4. Time-based Rules
+        if (!empty($data['start_time'])) {
+            $startTime = $data['start_time'] instanceof Carbon ? $data['start_time'] : Carbon::parse($data['start_time']);
+
+            $endTime = null;
+            if (!empty($data['end_time'])) {
+                $endTime = $data['end_time'] instanceof Carbon ? $data['end_time'] : Carbon::parse($data['end_time']);
+            } elseif ($movie && $movie->duration) {
+                $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
+                $endTime = $startTime->copy()->addMinutes($movie->duration + $bufferMinutes);
+            } else {
+                $endTime = $startTime->copy()->addHours(2);
+            }
+
+            // Rule 4a: SCHEDULED or PENDING -> start_time > now() AND start_time >= movie.release_date
+            if (in_array($newStatus, [Showtime::STATUS_SCHEDULED, Showtime::STATUS_PENDING, Showtime::STATUS_UNPUBLISHED])) {
+                if ($startTime->lte(now())) {
+                    $validator = Validator::make([], []);
+                    $validator->errors()->add(
+                        'status',
+                        'Suất chiếu Lên lịch (SCHEDULED) hoặc Chờ công bố (PENDING) yêu cầu thời gian bắt đầu phải ở tương lai (start_time > hiện tại).'
+                    );
+                    throw new ValidationException($validator);
+                }
+
+                if ($movie) {
+                    $earliestAllowed = $movie->presale_date ?? $movie->release_date;
+                    if ($earliestAllowed && $startTime->lt($earliestAllowed)) {
+                        $validator = Validator::make([], []);
+                        if ($movie->presale_date) {
+                            $validator->errors()->add(
+                                'start_time',
+                                "Thời gian suất chiếu ({$startTime->format('d/m/Y H:i')}) không được sớm hơn Ngày mở bán sớm của phim ({$movie->presale_date->format('d/m/Y H:i')})."
+                            );
+                        } else {
+                            $validator->errors()->add(
+                                'start_time',
+                                "Thời gian suất chiếu ({$startTime->format('d/m/Y H:i')}) không được sớm hơn Ngày công chiếu của phim ({$movie->release_date->format('d/m/Y H:i')})."
+                            );
+                        }
+                        throw new ValidationException($validator);
+                    }
+                }
+            }
+
+            // Rule 4b: ONGOING -> start_time <= now() AND end_time >= now()
+            if ($newStatus === Showtime::STATUS_ONGOING) {
+                if ($startTime->gt(now()) || $endTime->lt(now())) {
+                    $validator = Validator::make([], []);
+                    $validator->errors()->add(
+                        'status',
+                        "Suất chiếu 'Đang chiếu' (ONGOING) yêu cầu thời gian bắt đầu <= hiện tại và thời gian kết thúc >= hiện tại."
+                    );
+                    throw new ValidationException($validator);
+                }
+            }
+
+            // Rule 4c: FINISHED / COMPLETED -> end_time < now()
+            if ($newStatus === Showtime::STATUS_COMPLETED) {
+                if ($endTime->gte(now())) {
+                    $validator = Validator::make([], []);
+                    $validator->errors()->add(
+                        'status',
+                        "Suất chiếu 'Đã chiếu' (FINISHED/COMPLETED) yêu cầu thời gian kết thúc phải trong quá khứ (end_time < hiện tại)."
+                    );
+                    throw new ValidationException($validator);
+                }
+            }
+        }
+    }
 }
 

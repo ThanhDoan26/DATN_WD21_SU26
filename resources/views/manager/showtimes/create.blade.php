@@ -185,12 +185,26 @@
                         <label for="status" class="form-label">Trạng Thái *</label>
                         <select id="status" name="status" class="form-select @error('status') is-invalid @enderror" required>
                             <option value="">-- Chọn trạng thái --</option>
-                            @foreach(\App\Models\Showtime::STATUSES as $status)
-                                <option value="{{ $status }}" {{ old('status', \App\Models\Showtime::STATUS_SCHEDULED) == $status ? 'selected' : '' }}>
-                                    {{ \App\Models\Showtime::STATUS_LABELS[$status] ?? ucfirst(strtolower($status)) }}
-                                </option>
-                            @endforeach
+                            <option value="SCHEDULED" {{ old('status', 'SCHEDULED') === 'SCHEDULED' ? 'selected' : '' }}>
+                                Lên lịch (SCHEDULED)
+                            </option>
+                            <option value="ONGOING" {{ old('status') === 'ONGOING' ? 'selected' : '' }}>
+                                Đang chiếu (ONGOING)
+                            </option>
+                            <option value="COMPLETED" {{ in_array(old('status'), ['COMPLETED', 'FINISHED']) ? 'selected' : '' }}>
+                                Đã chiếu (FINISHED)
+                            </option>
+                            <option value="CANCELLED" {{ old('status') === 'CANCELLED' ? 'selected' : '' }}>
+                                Đã hủy (CANCELLED)
+                            </option>
+                            <option value="PENDING" {{ old('status') === 'PENDING' ? 'selected' : '' }}>
+                                Chờ/Chưa công bố (PENDING)
+                            </option>
                         </select>
+                        <div id="movie_scheduled_status_warning" class="alert alert-warning py-2 px-3 mt-2 small d-none align-items-center gap-2">
+                            <i class="fas fa-info-circle text-warning fs-5"></i>
+                            <div><strong>Phim đang ở trạng thái Lên lịch (SCHEDULED):</strong> Suất chiếu tự động khóa ở trạng thái <strong>Chờ/Chưa công bố (PENDING)</strong>.</div>
+                        </div>
                         @error('status')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -900,13 +914,97 @@
         
         filterCompatibleRooms();
 
+        const statusSelect = document.getElementById('status');
+        const statusWarningEl = document.getElementById('movie_scheduled_status_warning');
+
+        function updateStatusOptionsBasedOnMovieAndTime() {
+            if (!statusSelect) return;
+
+            const selectedMovieOption = movieSelect.options[movieSelect.selectedIndex];
+            const movieStatus = selectedMovieOption?.dataset?.status || '';
+
+            if (movieStatus === 'SCHEDULED') {
+                statusSelect.value = 'PENDING';
+                Array.from(statusSelect.options).forEach(opt => {
+                    if (opt.value && opt.value !== 'PENDING' && opt.value !== 'UNPUBLISHED' && opt.value !== 'CANCELLED') {
+                        opt.disabled = true;
+                    }
+                });
+                if (statusWarningEl) {
+                    statusWarningEl.classList.remove('d-none');
+                    statusWarningEl.classList.add('d-flex');
+                }
+            } else {
+                if (statusWarningEl) {
+                    statusWarningEl.classList.add('d-none');
+                    statusWarningEl.classList.remove('d-flex');
+                }
+                Array.from(statusSelect.options).forEach(opt => {
+                    opt.disabled = false;
+                });
+            }
+        }
+
+        function validateStatusWithTimeAndBookings() {
+            if (!statusSelect) return true;
+            const currentStatus = statusSelect.value;
+            const now = new Date();
+
+            let startTime = parseDatetimeLocal(hiddenStartInput?.value);
+            let endTime = parseDatetimeLocal(hiddenEndInput?.value);
+
+            if (!startTime) return true;
+
+            // 1. SCHEDULED or PENDING -> require start_time > now()
+            if (currentStatus === 'SCHEDULED' || currentStatus === 'PENDING') {
+                if (startTime.getTime() <= now.getTime()) {
+                    alert('Suất chiếu Lên lịch (SCHEDULED) hoặc Chờ công bố (PENDING) yêu cầu thời gian bắt đầu phải ở tương lai (start_time > hiện tại).');
+                    return false;
+                }
+            }
+
+            // 2. ONGOING -> require start_time <= now() AND end_time >= now()
+            if (currentStatus === 'ONGOING') {
+                if (!endTime) {
+                    const dur = getSelectedMovieDuration();
+                    endTime = new Date(startTime.getTime() + (dur + 15) * 60000);
+                }
+                if (startTime.getTime() > now.getTime() || (endTime && endTime.getTime() < now.getTime())) {
+                    alert("Suất chiếu 'Đang chiếu' (ONGOING) yêu cầu thời gian bắt đầu <= hiện tại và thời gian kết thúc >= hiện tại.");
+                    return false;
+                }
+            }
+
+            // 3. FINISHED / COMPLETED -> require end_time < now()
+            if (currentStatus === 'COMPLETED' || currentStatus === 'FINISHED') {
+                if (!endTime) {
+                    const dur = getSelectedMovieDuration();
+                    endTime = new Date(startTime.getTime() + (dur + 15) * 60000);
+                }
+                if (endTime && endTime.getTime() >= now.getTime()) {
+                    alert("Suất chiếu 'Đã chiếu' (FINISHED) yêu cầu thời gian kết thúc phải trong quá khứ (end_time < hiện tại).");
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        if (statusSelect) {
+            statusSelect.addEventListener('change', function() {
+                validateStatusWithTimeAndBookings();
+            });
+        }
+
         movieSelect.addEventListener('change', function () {
             updateAvailableTimeOptions();
             filterCompatibleRooms();
+            updateStatusOptionsBasedOnMovieAndTime();
         });
 
         syncAllTimeFields();
         updateAvailableTimeOptions();
+        updateStatusOptionsBasedOnMovieAndTime();
 
         const showtimeForm = document.querySelector('form');
         if (showtimeForm) {
@@ -923,6 +1021,12 @@
                     e.stopPropagation();
                     alert('Thời gian bắt đầu suất chiếu không hợp lệ hoặc đã qua. Vui lòng kiểm tra lại.');
                     startDateInput.focus();
+                    return false;
+                }
+
+                if (!validateStatusWithTimeAndBookings()) {
+                    e.preventDefault();
+                    e.stopPropagation();
                     return false;
                 }
             });
