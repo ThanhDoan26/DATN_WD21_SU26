@@ -67,21 +67,12 @@
 
             <div class="row">
                 <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="city" class="form-label">Tỉnh / Thành phố *</label>
-                        <select class="form-select @error('city') is-invalid @enderror"
-                                id="city" name="city" required>
-                            <option value="">-- Chọn Tỉnh / Thành phố --</option>
-                            @foreach($provinces as $province)
-                                <option value="{{ $province }}" {{ old('city') === $province ? 'selected' : '' }}>
-                                    {{ $province }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('city')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+                    <x-province-select 
+                        :provinces="$provinces" 
+                        :selected="old('city')" 
+                        name="city" 
+                        label="Tỉnh / Thành phố" 
+                        id="cinema-create-city" />
                 </div>
                 <div class="col-md-6">
                     <div class="mb-3">

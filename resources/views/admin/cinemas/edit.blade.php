@@ -68,21 +68,12 @@
 
             <div class="row">
                 <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="city" class="form-label">Tỉnh / Thành phố *</label>
-                        <select class="form-select @error('city') is-invalid @enderror"
-                                id="city" name="city" required>
-                            <option value="">-- Chọn Tỉnh / Thành phố --</option>
-                            @foreach($provinces as $province)
-                                <option value="{{ $province }}" {{ (old('city', $cinema->city) === $province || (str_contains($cinema->city, 'Hồ Chí Minh') && str_contains($province, 'Hồ Chí Minh'))) ? 'selected' : '' }}>
-                                    {{ $province }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('city')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+                    <x-province-select 
+                        :provinces="$provinces" 
+                        :selected="old('city', $cinema->city)" 
+                        name="city" 
+                        label="Tỉnh / Thành phố" 
+                        id="cinema-edit-city" />
                 </div>
                 <div class="col-md-6">
                     <div class="mb-3">
