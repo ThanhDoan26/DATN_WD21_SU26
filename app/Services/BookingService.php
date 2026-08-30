@@ -129,10 +129,11 @@ class BookingService
                         $isExtended = (bool) $oldestBooking->is_extended;
                     }
 
-                    // Hoàn lại lượt dùng mã giảm giá nếu có
+                    // Chỉ hoàn lại lượt dùng mã giảm giá nếu đơn bị hủy trước đó ĐÃ THANH TOÁN (status = Paid)
                     $bookingsWithCoupons = DB::table('bookings')
                         ->whereIn('id', $userPendingBookingIds)
                         ->whereNotNull('coupon_id')
+                        ->where('status', 'Paid')
                         ->get();
 
                     foreach ($bookingsWithCoupons as $b) {
@@ -164,12 +165,16 @@ class BookingService
                             'updated_at' => now(),
                         ]);
 
-                    // Release Redis locks & broadcast AVAILABLE for seats no longer selected
-                    $releasedSeatIds = array_diff($oldSeatIds, $selectedSeatIds);
-                    foreach ($releasedSeatIds as $oldSeatId) {
+                    // Release Redis locks for all old seats of the user's cancelled pending booking
+                    foreach ($oldSeatIds as $oldSeatId) {
                         try {
                             \Illuminate\Support\Facades\Redis::del("seat_lock:showtime_{$showtimeId}:seat_{$oldSeatId}");
                         } catch (\Throwable $t) {}
+                    }
+
+                    // Release Redis locks & broadcast AVAILABLE for seats no longer selected
+                    $releasedSeatIds = array_diff($oldSeatIds, $selectedSeatIds);
+                    foreach ($releasedSeatIds as $oldSeatId) {
                         if ($userId) {
                             \Illuminate\Support\Facades\Cache::put(
                                 "cooldown_user_{$userId}_showtime_{$showtimeId}_seat_{$oldSeatId}",
@@ -557,8 +562,7 @@ class BookingService
                     $discountAmount = $coupon->calculateDiscount($totalPrice);
                     $couponId = $coupon->id;
 
-                    // Tăng lượt sử dụng
-                    $coupon->increment('used_count');
+                    // Lưu ý: Lượt sử dụng (used_count) sẽ chỉ tăng khi thanh toán thành công (completePayment)
                 }
 
                 $finalTotalPrice = max(0, $totalPrice - $discountAmount);
@@ -792,10 +796,11 @@ class BookingService
             
             $expiredBookingIds = $expiredBookings->pluck('id')->toArray();
 
-            // Hoàn lại lượt dùng mã giảm giá
+            // Chỉ hoàn lại lượt dùng mã giảm giá nếu đơn quá hạn trước đó ĐÃ THANH TOÁN
             $bookingsWithCoupons = DB::table('bookings')
                 ->whereIn('id', $expiredBookingIds)
                 ->whereNotNull('coupon_id')
+                ->where('status', 'Paid')
                 ->get();
 
             foreach ($bookingsWithCoupons as $b) {
@@ -914,6 +919,13 @@ class BookingService
             $bookingModel->payment_method = $paymentMethod;
             $bookingModel->payment_time = now();
             $bookingModel->save();
+
+            // Tăng lượt sử dụng coupon CHÍNH THỨC khi thanh toán thành công
+            if ($bookingModel->coupon_id) {
+                DB::table('coupons')
+                    ->where('id', $bookingModel->coupon_id)
+                    ->increment('used_count');
+            }
 
             // Cập nhật status các vé
             DB::table('booked_seats')
@@ -1236,24 +1248,12 @@ class BookingService
                 $discountAmount = $coupon->calculateDiscount($subtotal);
                 $couponId = $coupon->id;
 
-                // Nếu đổi mã coupon mới hoặc trước đó chưa dùng mã này
-                if ($booking->coupon_id !== $couponId) {
-                    if ($booking->coupon_id) {
-                        DB::table('coupons')
-                            ->where('id', $booking->coupon_id)
-                            ->where('used_count', '>', 0)
-                            ->decrement('used_count');
-                    }
-                    $coupon->increment('used_count');
-                }
+                // Ghi nhận coupon_id mới cho đơn hàng (used_count sẽ được tăng khi completePayment)
+                $booking->coupon_id = $couponId;
             } else {
                 // Hủy mã giảm giá nếu trước đó có áp dụng mà giờ bỏ
-                if ($booking->coupon_id) {
-                    DB::table('coupons')
-                        ->where('id', $booking->coupon_id)
-                        ->where('used_count', '>', 0)
-                        ->decrement('used_count');
-                }
+                $booking->coupon_id = null;
+                $discountAmount = 0;
             }
 
             $finalTotalPrice = max(0, $subtotal - $discountAmount);
