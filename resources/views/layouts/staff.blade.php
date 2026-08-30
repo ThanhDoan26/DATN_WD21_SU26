@@ -874,6 +874,7 @@
             updateThemeIcon(isDark);
         });
     </script>
+    @include('components.toast')
     @stack('scripts')
     @yield('extra_js')
 </body>
