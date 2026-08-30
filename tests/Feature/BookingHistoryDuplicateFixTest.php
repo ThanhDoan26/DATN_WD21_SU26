@@ -300,6 +300,8 @@ test('checkout init preserves combos when user updates seats', function () {
         'status' => 'ACTIVE',
     ]);
 
+    config(['booking.seat_hold.allow_boundary_orphan_seat' => true]);
+
     // 1. Initial checkout init with seat 1 and combo
     $response = $this->actingAs($user)->post(route('checkout.init'), [
         'showtime_id' => $showtime->id,
@@ -320,7 +322,7 @@ test('checkout init preserves combos when user updates seats', function () {
     expect($bookingCombos->first()->quantity)->toBe(2);
 
     // 2. User goes back to seat map, adds seat 2, and submits init with preserved combos
-    $response2 = $this->actingAs($user)->post(route('checkout.init'), [
+    $response2 = $this->actingAs($user)->from(route('booking.select-seats', ['showtime' => $showtime->id]))->post(route('checkout.init'), [
         'showtime_id' => $showtime->id,
         'seat_ids' => "{$seat1->id},{$seat2->id}",
         'combos' => json_encode([
