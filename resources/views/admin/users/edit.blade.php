@@ -96,15 +96,14 @@
                         @enderror
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-6" id="cinemaGroup" style="display: none;">
                     <div class="mb-3">
                         <label for="cinema_id" class="form-label">
-                            Rạp làm việc 
-                            <span id="cinemaRequiredBadge" class="text-danger d-none">* (Bắt buộc cho Manager & Staff)</span>
+                            Rạp làm việc <span class="text-danger">* (Bắt buộc cho Manager & Staff)</span>
                         </label>
                         <select class="form-select @error('cinema_id') is-invalid @enderror"
                                 id="cinema_id" name="cinema_id">
-                            <option value="">-- Không áp dụng (hoặc chọn rạp) --</option>
+                            <option value="">-- Chọn rạp làm việc --</option>
                             @foreach($cinemas as $cinema)
                                 <option value="{{ $cinema->id }}" {{ old('cinema_id', $user->cinema_id) == $cinema->id ? 'selected' : '' }}>
                                     {{ $cinema->name }}
@@ -116,10 +115,7 @@
                         @enderror
                     </div>
                 </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-6" id="statusGroup">
                     <div class="mb-3">
                         <label for="status" class="form-label">Trạng thái *</label>
                         <select class="form-select @error('status') is-invalid @enderror"
@@ -151,18 +147,19 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const roleSelect = document.getElementById('role_id');
+    const cinemaGroup = document.getElementById('cinemaGroup');
     const cinemaSelect = document.getElementById('cinema_id');
-    const cinemaBadge = document.getElementById('cinemaRequiredBadge');
 
     function checkRoleCinemaRequirement() {
         const selectedOpt = roleSelect.options[roleSelect.selectedIndex];
         const roleName = selectedOpt ? (selectedOpt.getAttribute('data-role') || '') : '';
         if (roleName === 'MANAGER' || roleName === 'STAFF') {
-            cinemaBadge.classList.remove('d-none');
+            cinemaGroup.style.display = 'block';
             cinemaSelect.setAttribute('required', 'required');
         } else {
-            cinemaBadge.classList.add('d-none');
+            cinemaGroup.style.display = 'none';
             cinemaSelect.removeAttribute('required');
+            cinemaSelect.value = '';
         }
     }
 

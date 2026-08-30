@@ -92,6 +92,12 @@ class UserController extends AdminController
     {
         $validated = $request->validated();
         $validated['password'] = Hash::make($validated['password']);
+
+        $role = Role::find($validated['role_id']);
+        if ($role && !in_array(strtoupper($role->role_name), ['MANAGER', 'STAFF'])) {
+            $validated['cinema_id'] = null;
+        }
+
         User::create($validated);
 
         return redirect()->route('admin.users.index')
@@ -119,6 +125,11 @@ class UserController extends AdminController
             $validated['password'] = Hash::make($validated['password']);
         } else {
             unset($validated['password']);
+        }
+
+        $role = Role::find($validated['role_id']);
+        if ($role && !in_array(strtoupper($role->role_name), ['MANAGER', 'STAFF'])) {
+            $validated['cinema_id'] = null;
         }
 
         $user->update($validated);
