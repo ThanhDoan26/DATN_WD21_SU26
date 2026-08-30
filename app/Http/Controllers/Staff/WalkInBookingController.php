@@ -312,6 +312,16 @@ class WalkInBookingController extends Controller
         $combos = Combo::where('status', 'ACTIVE')->get();
         $coupons = Coupon::activeAndValid()->orderByAvailabilityAndExpiration()->get();
 
+        $savedCombos = [];
+        if (!empty($staffBookingId)) {
+            $savedCombosRaw = DB::table('booking_combos')
+                ->where('booking_id', $staffBookingId)
+                ->get();
+            foreach ($savedCombosRaw as $sc) {
+                $savedCombos[$sc->combo_id] = (int) $sc->quantity;
+            }
+        }
+
         return view('staff.walkin.checkout', compact(
             'showtime',
             'selectedSeats',
@@ -323,6 +333,7 @@ class WalkInBookingController extends Controller
             'seatIds',
             'showtimeId',
             'combos',
+            'savedCombos',
             'coupons',
             'staffBookingId'
         ))->with([

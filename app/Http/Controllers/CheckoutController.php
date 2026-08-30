@@ -540,6 +540,8 @@ class CheckoutController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Áp dụng mã giảm giá thành công!',
+            'discount_amount' => $discountAmount,
+            'final_total' => max(0, $orderTotal - $discountAmount),
             'data' => [
                 'coupon_id' => $coupon->id,
                 'code' => $coupon->code,

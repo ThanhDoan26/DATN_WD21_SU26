@@ -217,29 +217,107 @@ class KnowledgeService
 
         switch ($intent) {
             case 'ask_movies':
-                $movies = Movie::whereIn('status', ['NOW_SHOWING', 'COMING_SOON'])
+                $nowShowing = Movie::where('status', 'NOW_SHOWING')
                     ->with('categories:name')
                     ->get();
-                if ($movies->isEmpty()) return "Hiện tại không có phim nào đang chiếu hoặc sắp chiếu.";
-                $data = $movies->map(function ($m) {
-                    return [
-                        'ten_phim' => $m->title,
-                        'dao_dien' => $m->director,
-                        'the_loai' => $m->categories->pluck('name')->implode(', '),
-                        'thoi_luong' => $m->duration . ' phút',
-                        'gioi_han_tuoi' => $m->age_rating,
-                        'trang_thai' => $m->status
-                    ];
-                });
-                return "Danh sách phim đang chiếu/sắp chiếu: " . json_encode($data->toArray(), JSON_UNESCAPED_UNICODE);
+                $comingSoon = Movie::where('status', 'COMING_SOON')
+                    ->with('categories:name')
+                    ->get();
+                $todayShowtimes = Showtime::upcoming()
+                    ->whereDate('start_time', today())
+                    ->with(['movie:id,title', 'room.cinema:id,name'])
+                    ->get();
+
+                if ($nowShowing->isEmpty() && $comingSoon->isEmpty()) {
+                    return "Hiện tại không có phim nào đang chiếu hoặc sắp chiếu.";
+                }
+
+                $data = [
+                    'phim_dang_chieu' => $nowShowing->map(function ($m) {
+                        return [
+                            'ten_phim' => $m->title,
+                            'dao_dien' => $m->director,
+                            'the_loai' => $m->categories->pluck('name')->implode(', '),
+                            'thoi_luong' => $m->duration . ' phút',
+                            'gioi_han_tuoi' => $m->age_rating,
+                            'trang_thai' => 'Đang chiếu'
+                        ];
+                    }),
+                    'suat_chieu_hom_nay' => $todayShowtimes->map(function ($s) {
+                        return [
+                            'phim' => $s->movie->title ?? '',
+                            'rap' => $s->room->cinema->name ?? '',
+                            'gio_chieu' => optional($s->start_time)->format('H:i')
+                        ];
+                    }),
+                    'phim_sap_chieu' => $comingSoon->map(function ($m) {
+                        return [
+                            'ten_phim' => $m->title,
+                            'dao_dien' => $m->director,
+                            'the_loai' => $m->categories->pluck('name')->implode(', '),
+                            'thoi_luong' => $m->duration . ' phút',
+                            'gioi_han_tuoi' => $m->age_rating,
+                            'trang_thai' => 'Sắp chiếu'
+                        ];
+                    })
+                ];
+                return "Danh sách phim và lịch chiếu: " . json_encode($data, JSON_UNESCAPED_UNICODE);
+
+            case 'ask_movie_status':
+                if ($movieResolution && $movieResolution['status'] === 'resolved') {
+                    $matchedMovies = $movieResolution['movies'];
+                    $data = $matchedMovies->map(function ($m) {
+                        return [
+                            'ten_phim' => $m->title,
+                            'trang_thai' => $m->status === 'NOW_SHOWING' ? 'Đang chiếu' : ($m->status === 'COMING_SOON' ? 'Sắp chiếu' : $m->status),
+                            'thoi_luong' => $m->duration . ' phút',
+                            'gioi_han_tuoi' => $m->age_rating,
+                            'mo_ta' => $m->description
+                        ];
+                    });
+                    return "Trạng thái phim: " . json_encode($data->toArray(), JSON_UNESCAPED_UNICODE);
+                }
+
+                $nowShowing = Movie::where('status', 'NOW_SHOWING')->with('categories:name')->get();
+                $comingSoon = Movie::where('status', 'COMING_SOON')->with('categories:name')->get();
+                $todayShowtimes = Showtime::upcoming()
+                    ->whereDate('start_time', today())
+                    ->with(['movie:id,title', 'room.cinema:id,name'])
+                    ->get();
+
+                $data = [
+                    'phim_dang_chieu' => $nowShowing->map(function ($m) {
+                        return [
+                            'ten_phim' => $m->title,
+                            'the_loai' => $m->categories->pluck('name')->implode(', '),
+                            'thoi_luong' => $m->duration . ' phút',
+                            'trang_thai' => 'Đang chiếu'
+                        ];
+                    }),
+                    'suat_chieu_hom_nay' => $todayShowtimes->map(function ($s) {
+                        return [
+                            'phim' => $s->movie->title ?? '',
+                            'rap' => $s->room->cinema->name ?? '',
+                            'gio_chieu' => optional($s->start_time)->format('H:i')
+                        ];
+                    }),
+                    'phim_sap_chieu' => $comingSoon->map(function ($m) {
+                        return [
+                            'ten_phim' => $m->title,
+                            'the_loai' => $m->categories->pluck('name')->implode(', '),
+                            'thoi_luong' => $m->duration . ' phút',
+                            'trang_thai' => 'Sắp chiếu'
+                        ];
+                    })
+                ];
+                return "Thông tin trạng thái các phim và suất chiếu hôm nay: " . json_encode($data, JSON_UNESCAPED_UNICODE);
 
             case 'ask_movie_information':
-            case 'ask_movie_status':
             case 'ask_movie_compare':
                 if ($movieResolution && $movieResolution['status'] === 'resolved') {
                     $matchedMovies = $movieResolution['movies'];
                 } else {
-                    $matchedMovies = Movie::whereIn('status', ['NOW_SHOWING', 'COMING_SOON'])->take(3)->get();
+                    $matchedMovies = Movie::whereIn('status', ['NOW_SHOWING', 'COMING_SOON'])->take(6)->get();
                 }
                 
                 $data = $matchedMovies->map(function ($m) {
@@ -250,7 +328,7 @@ class KnowledgeService
                         'thoi_luong' => $m->duration . ' phút',
                         'gioi_han_tuoi' => $m->age_rating,
                         'mo_ta' => $m->description,
-                        'trang_thai' => $m->status
+                        'trang_thai' => $m->status === 'NOW_SHOWING' ? 'Đang chiếu' : ($m->status === 'COMING_SOON' ? 'Sắp chiếu' : $m->status)
                     ];
                 });
                 return "Thông tin chi tiết các phim: " . json_encode($data->toArray(), JSON_UNESCAPED_UNICODE);
@@ -277,7 +355,7 @@ class KnowledgeService
                     return [
                         'ten_phim' => $m->title,
                         'gioi_han_tuoi' => $m->age_rating,
-                        'trang_thai' => $m->status
+                        'trang_thai' => $m->status === 'NOW_SHOWING' ? 'Đang chiếu' : ($m->status === 'COMING_SOON' ? 'Sắp chiếu' : $m->status)
                     ];
                 });
                 return "Gợi ý phim: " . json_encode($data->toArray(), JSON_UNESCAPED_UNICODE);
@@ -298,7 +376,7 @@ class KnowledgeService
                     $showtimesQuery->whereIn('movie_id', $movieResolution['movies']->pluck('id'));
                 }
                 
-                $showtimes = $showtimesQuery->take(10)->get();
+                $showtimes = $showtimesQuery->take(15)->get();
                 
                 if ($showtimes->isEmpty()) return "Hiện tại không có suất chiếu nào sắp diễn ra.";
                 $data = $showtimes->map(function ($s) {
@@ -308,7 +386,7 @@ class KnowledgeService
                         'dia_chi' => $s->room->cinema->address ?? '',
                         'phong' => $s->room->name ?? '',
                         'thoi_gian_bat_dau' => optional($s->start_time)->format('d/m/Y H:i'),
-                        'tinh_trang' => $s->status
+                        'tinh_trang' => $s->status === 'SCHEDULED' ? 'Sắp chiếu / Đang mở bán' : ($s->status === 'ONGOING' ? 'Đang chiếu' : $s->status)
                     ];
                 });
                 return "Lịch chiếu suất chiếu sắp tới: " . json_encode($data->toArray(), JSON_UNESCAPED_UNICODE);

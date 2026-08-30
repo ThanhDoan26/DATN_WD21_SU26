@@ -26,8 +26,9 @@ class UserRoleSeeder extends Seeder
             ['name' => 'movieGo Sư Vạn Hạnh'],
             [
                 'address' => '123 Sư Vạn Hạnh, Phường 12, Quận 10, TP.HCM',
-                'description' => 'Rạp chiếu phim hiện đại với đầy đủ tiện nghi chuẩn quốc tế.',
                 'city' => 'TP.HCM',
+                'phone' => '028.3838.3838',
+                'email' => 'svh@moviego.vn',
                 'status' => 'ACTIVE'
             ]
         );
