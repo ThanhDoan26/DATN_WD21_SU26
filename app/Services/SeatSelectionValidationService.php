@@ -183,6 +183,7 @@ class SeatSelectionValidationService
         $bookedSeatIds = DB::table('booked_seats')
             ->join('bookings', 'booked_seats.booking_id', '=', 'bookings.id')
             ->where('bookings.showtime_id', $showtimeId)
+            ->where('booked_seats.status', '!=', 'CANCELLED')
             ->where('bookings.status', '!=', 'Cancelled')
             ->where(function ($q) {
                 $q->whereNotIn('bookings.status', ['Pending', 'PROCESSING'])
