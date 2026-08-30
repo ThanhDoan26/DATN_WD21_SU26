@@ -189,7 +189,11 @@
                         @endif
                     </td>
                     <td>
-                        <span class="badge bg-light text-dark border">{{ $user->cinema?->name ?? 'N/A' }}</span>
+                        @if($user->isManager() || $user->isStaff())
+                            <span class="badge bg-light text-dark border"><i class="fas fa-building me-1 text-muted"></i>{{ $user->cinema?->name ?? 'Chưa gán rạp' }}</span>
+                        @else
+                            <span class="text-muted small">—</span>
+                        @endif
                     </td>
                     <td>
                         @if($user->status === 'ACTIVE')
