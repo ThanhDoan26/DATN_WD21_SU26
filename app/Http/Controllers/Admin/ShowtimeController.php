@@ -324,6 +324,29 @@ class ShowtimeController extends AdminController
                 ->with('error', 'Suất chiếu không nằm trong thùng rác.');
         }
 
+        if ($showtime->room?->trashed() || $showtime->movie?->trashed()) {
+            return redirect()->route('admin.showtimes.trashed')
+                ->with('error', 'Không thể khôi phục suất chiếu vì phòng chiếu hoặc phim tương ứng đã bị xóa. Vui lòng khôi phục phòng/phim trước.');
+        }
+
+        $conflict = Showtime::where('room_id', $showtime->room_id)
+            ->where('id', '!=', $showtime->id)
+            ->where('status', '!=', Showtime::STATUS_CANCELLED)
+            ->whereNotNull('end_time')
+            ->where('start_time', '<', $showtime->end_time)
+            ->where('end_time', '>', $showtime->start_time)
+            ->with('movie')
+            ->first();
+
+        if ($conflict) {
+            $conflictStart = Carbon::parse($conflict->start_time)->format('H:i d/m/Y');
+            $conflictEnd   = Carbon::parse($conflict->end_time)->format('H:i d/m/Y');
+            $movieTitle    = $conflict->movie?->title ?? 'Không rõ';
+
+            return redirect()->route('admin.showtimes.trashed')
+                ->with('error', "Không thể khôi phục vì bị trùng lịch với suất chiếu đang hoạt động \"{$movieTitle}\" ({$conflictStart} – {$conflictEnd}) trong cùng phòng.");
+        }
+
         $showtime->restore();
 
         return redirect()->route('admin.showtimes.trashed')
@@ -339,14 +362,40 @@ class ShowtimeController extends AdminController
                 ->with('error', 'Suất chiếu không nằm trong thùng rác.');
         }
 
-        $showtime->forceDelete();
+        if ($showtime->bookings()->exists()) {
+            return redirect()->route('admin.showtimes.trashed')
+                ->with('error', 'Không thể xóa vĩnh viễn suất chiếu này vì đã có dữ liệu đơn hàng/vé đặt liên quan. Chỉ được phép lưu trữ trong thùng rác.');
+        }
 
-        return redirect()->route('admin.showtimes.trashed')
-            ->with('success', 'Xóa vĩnh viễn suất chiếu thành công!');
+        try {
+            $showtime->ticketPrices()->delete();
+            $showtime->forceDelete();
+
+            return redirect()->route('admin.showtimes.trashed')
+                ->with('success', 'Xóa vĩnh viễn suất chiếu thành công!');
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == 23000) {
+                return redirect()->route('admin.showtimes.trashed')
+                    ->with('error', 'Không thể xóa vĩnh viễn suất chiếu này vì đang có dữ liệu liên quan trong hệ thống.');
+            }
+            throw $e;
+        }
     }
 
     public function destroy(Showtime $showtime)
     {
+        $hasBookings = $showtime->bookings()
+            ->where(function ($q) {
+                $q->whereIn('status', ['Paid', 'SUCCESS', 'Used'])
+                  ->orWhere('status', 'Pending');
+            })
+            ->exists();
+
+        if ($hasBookings) {
+            return redirect()->route('admin.showtimes.index')
+                ->with('error', 'Không thể xóa suất chiếu đã phát sinh vé đặt hoặc vé đã thanh toán của khách hàng. Vui lòng xử lý hủy vé hoặc hoàn tiền trước!');
+        }
+
         $showtime->delete();
 
         return redirect()->route('admin.showtimes.index')
