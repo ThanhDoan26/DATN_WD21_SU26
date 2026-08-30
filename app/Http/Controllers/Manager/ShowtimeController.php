@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ShowtimeController extends Controller
 {
@@ -155,18 +156,20 @@ class ShowtimeController extends Controller
         // Validate showtime status rules
         (new MovieStatusValidationService())->validateShowtimeStatusRules(null, $validated, $movie);
 
-        $showtime = Showtime::create($validated);
+        DB::transaction(function () use ($validated) {
+            $showtime = Showtime::create($validated);
 
-        if (isset($validated['ticket_prices']) && is_array($validated['ticket_prices'])) {
-            foreach ($validated['ticket_prices'] as $seatType => $price) {
-                \App\Models\TicketPrice::create([
-                    'showtime_id' => $showtime->id,
-                    'seat_type' => $seatType,
-                    'price' => $price,
-                    'status' => 'ACTIVE'
-                ]);
+            if (isset($validated['ticket_prices']) && is_array($validated['ticket_prices'])) {
+                foreach ($validated['ticket_prices'] as $seatType => $price) {
+                    \App\Models\TicketPrice::create([
+                        'showtime_id' => $showtime->id,
+                        'seat_type' => $seatType,
+                        'price' => $price,
+                        'status' => 'ACTIVE'
+                    ]);
+                }
             }
-        }
+        });
 
         return redirect()->route('manager.showtimes.index')
             ->with('success', 'Thêm suất chiếu thành công!');
@@ -302,22 +305,24 @@ class ShowtimeController extends Controller
             $validated['status'] = Showtime::STATUS_PENDING;
         }
 
-        $showtime->update($validated);
+        DB::transaction(function () use ($showtime, $validated) {
+            $showtime->update($validated);
 
-        if (isset($validated['ticket_prices']) && is_array($validated['ticket_prices'])) {
-            foreach ($validated['ticket_prices'] as $seatType => $price) {
-                \App\Models\TicketPrice::updateOrCreate(
-                    [
-                        'showtime_id' => $showtime->id,
-                        'seat_type' => $seatType
-                    ],
-                    [
-                        'price' => $price,
-                        'status' => 'ACTIVE'
-                    ]
-                );
+            if (isset($validated['ticket_prices']) && is_array($validated['ticket_prices'])) {
+                foreach ($validated['ticket_prices'] as $seatType => $price) {
+                    \App\Models\TicketPrice::updateOrCreate(
+                        [
+                            'showtime_id' => $showtime->id,
+                            'seat_type' => $seatType
+                        ],
+                        [
+                            'price' => $price,
+                            'status' => 'ACTIVE'
+                        ]
+                    );
+                }
             }
-        }
+        });
 
         return redirect()->route('manager.showtimes.index')
             ->with('success', 'Cập nhật suất chiếu thành công!');
