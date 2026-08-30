@@ -42,9 +42,12 @@ class BookingController extends Controller
         }])
         ->get();
 
+        $cities = $cinemas->pluck('city')->filter()->unique()->values();
+
         return view('booking.select-cinema', [
             'movie' => $movie,
             'cinemas' => $cinemas,
+            'cities' => $cities,
         ]);
     }
 

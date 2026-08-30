@@ -53,7 +53,8 @@ class CinemaController extends AdminController
      */
     public function create()
     {
-        return view('admin.cinemas.create');
+        $provinces = config('provinces', []);
+        return view('admin.cinemas.create', compact('provinces'));
     }
 
     /**
@@ -81,7 +82,8 @@ class CinemaController extends AdminController
      */
     public function edit(Cinema $cinema)
     {
-        return view('admin.cinemas.edit', compact('cinema'));
+        $provinces = config('provinces', []);
+        return view('admin.cinemas.edit', compact('cinema', 'provinces'));
     }
 
     /**
