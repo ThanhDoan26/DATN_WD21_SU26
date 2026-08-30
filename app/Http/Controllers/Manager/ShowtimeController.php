@@ -419,6 +419,7 @@ class ShowtimeController extends Controller
         $newEnd   = Carbon::parse($endTime);
 
         $conflict = Showtime::where('room_id', $roomId)
+            ->where('status', '!=', Showtime::STATUS_CANCELLED)
             ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
             ->whereNotNull('end_time')
             ->where('start_time', '<', $newEnd)
