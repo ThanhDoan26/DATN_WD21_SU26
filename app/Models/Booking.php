@@ -26,6 +26,7 @@ class Booking extends Model
         'cancellation_reason',
         'booking_code',
         'ticket_token',
+        'ticket_email_sent_at',
         'notes',
     ];
 
@@ -48,11 +49,17 @@ class Booking extends Model
         'booking_time' => 'datetime',
         'payment_time' => 'datetime',
         'cancelled_at' => 'datetime',
+        'ticket_email_sent_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class)->withTrashed();
     }
 
     public function showtime(): BelongsTo

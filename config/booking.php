@@ -22,6 +22,11 @@ return [
         // Số ghế tối đa đang được giữ (active hold) của 1 user (soft limit)
         // Áp dụng cho customer. Staff được exempt.
         'max_active_seats_per_user' => 8,
+
+        // Cho phép để trống 1 ghế ở mép hàng (đầu/cuối dãy) hay không?
+        // true: Chế độ Chuẩn Rạp Chiếu Phim — Cho phép để trống 1 ghế sát lối đi/tường (A1/mép), chỉ chặn ghế kẹp ở giữa.
+        // false: Chế độ CGV Strict — Cấm để trống 1 ghế ở cả đầu, cuối và giữa.
+        'allow_boundary_orphan_seat' => true,
     ],
 
     /*
@@ -64,6 +69,20 @@ return [
     'rate_limit' => [
         // Số request tối đa mỗi phút cho mỗi user
         'max_requests_per_minute' => 10,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Showtime Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Cấu hình quy tắc suất chiếu rạp.
+    |
+    */
+
+    'showtime' => [
+        // Thời gian dọn dẹp & vệ sinh phòng chiếu giữa 2 suất (phút)
+        'buffer_minutes' => 15,
     ],
 
 ];

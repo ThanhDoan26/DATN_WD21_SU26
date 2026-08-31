@@ -13,6 +13,8 @@ class MovieController extends Controller
      */
     public function index(Request $request)
     {
+        Movie::syncAllStatuses();
+
         $query = Movie::with('categories');
 
         // Xử lý tìm kiếm cơ bản

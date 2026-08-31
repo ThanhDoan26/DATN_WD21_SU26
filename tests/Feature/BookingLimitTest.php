@@ -10,11 +10,12 @@ use App\Models\User;
 use App\Services\BookingService;
 use Illuminate\Support\Facades\DB;
 
-it('rejects booking requests with more than ten seats', function () {
+it('rejects booking requests with more than max seats', function () {
     $service = new BookingService();
+    $maxSeats = config('booking.seat_hold.max_seats_per_booking', 8);
 
-    expect(fn () => $service->createBooking(1, 1, range(1, 11)))
-        ->toThrow(Exception::class, 'Bạn chỉ được đặt tối đa 10 vé cho mỗi đơn.');
+    expect(fn () => $service->createBooking(1, 1, range(1, $maxSeats + 1)))
+        ->toThrow(Exception::class, 'tối đa');
 });
 
 it('counts existing tickets per movie instead of across all movies', function () {
@@ -53,14 +54,16 @@ it('counts existing tickets per movie instead of across all movies', function ()
         'status' => 'ACTIVE',
     ]);
 
+    $seatIds = [];
     for ($i = 1; $i <= 11; $i++) {
-        Seat::create([
+        $s = Seat::create([
             'room_id' => $room->id,
             'row_name' => 'A',
             'seat_number' => $i,
             'seat_type' => 'Regular',
             'status' => 'AVAILABLE',
         ]);
+        $seatIds[] = $s->id;
     }
 
     $showtimeA = Showtime::create([
@@ -88,10 +91,10 @@ it('counts existing tickets per movie instead of across all movies', function ()
         'booking_time' => now(),
     ]);
 
-    for ($i = 1; $i <= 10; $i++) {
+    for ($i = 0; $i < 10; $i++) {
         DB::table('booked_seats')->insert([
             'booking_id' => $bookingA->id,
-            'seat_id' => $i,
+            'seat_id' => $seatIds[$i],
             'price_at_booking' => 0,
             'status' => 'RESERVED',
             'created_at' => now(),
@@ -110,7 +113,7 @@ it('counts existing tickets per movie instead of across all movies', function ()
 
     DB::table('booked_seats')->insert([
         'booking_id' => $bookingB->id,
-        'seat_id' => 11,
+        'seat_id' => $seatIds[10],
         'price_at_booking' => 0,
         'status' => 'RESERVED',
         'created_at' => now(),

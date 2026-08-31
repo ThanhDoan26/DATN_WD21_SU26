@@ -88,7 +88,7 @@ class DashboardService
         $allTimeRevenue = $allTimeRevenueQuery->sum('total_price');
 
         $dailyRevenueQuery = Booking::whereIn('status', $paidStatuses)
-            ->whereDate('payment_time', $today);
+            ->whereDate(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $today);
         if ($cinemaId) {
             $dailyRevenueQuery->whereHas('showtime.room', function ($q) use ($cinemaId) {
                 $q->where('cinema_id', $cinemaId);
@@ -102,8 +102,8 @@ class DashboardService
         $dailyRevenue = $dailyRevenueQuery->sum('total_price');
 
         $monthlyRevenueQuery = Booking::whereIn('status', $paidStatuses)
-            ->whereYear('payment_time', $selectedYear)
-            ->whereMonth('payment_time', $selectedMonth);
+            ->whereYear(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $selectedYear)
+            ->whereMonth(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $selectedMonth);
         if ($cinemaId) {
             $monthlyRevenueQuery->whereHas('showtime.room', function ($q) use ($cinemaId) {
                 $q->where('cinema_id', $cinemaId);
@@ -117,7 +117,7 @@ class DashboardService
         $monthlyRevenue = $monthlyRevenueQuery->sum('total_price');
 
         $yearlyRevenueQuery = Booking::whereIn('status', $paidStatuses)
-            ->whereYear('payment_time', $selectedYear);
+            ->whereYear(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $selectedYear);
         if ($cinemaId) {
             $yearlyRevenueQuery->whereHas('showtime.room', function ($q) use ($cinemaId) {
                 $q->where('cinema_id', $cinemaId);
@@ -164,25 +164,25 @@ class DashboardService
             $tDate = $toDate ?? Carbon::now()->toDateString();
             $dateRange = [Carbon::parse($fDate)->startOfDay(), Carbon::parse($tDate)->endOfDay()];
             
-            $periodRevenueQuery->whereBetween('payment_time', $dateRange);
-            $bookingsQuery->whereBetween('payment_time', $dateRange);
+            $periodRevenueQuery->whereBetween(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $dateRange);
+            $bookingsQuery->whereBetween(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $dateRange);
         } elseif ($selectedReportType === 'week') {
             $startOfWeek = Carbon::now()->setISODate($selectedYear, $selectedWeek)->startOfWeek();
             $endOfWeek = Carbon::now()->setISODate($selectedYear, $selectedWeek)->endOfWeek();
             $dateRange = [$startOfWeek, $endOfWeek];
 
-            $periodRevenueQuery->whereBetween('payment_time', $dateRange);
-            $bookingsQuery->whereBetween('payment_time', $dateRange);
+            $periodRevenueQuery->whereBetween(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $dateRange);
+            $bookingsQuery->whereBetween(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $dateRange);
         } elseif ($selectedReportType === 'month') {
-            $periodRevenueQuery->whereYear('payment_time', $selectedYear)->whereMonth('payment_time', $selectedMonth);
-            $bookingsQuery->whereYear('payment_time', $selectedYear)->whereMonth('payment_time', $selectedMonth);
+            $periodRevenueQuery->whereYear(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $selectedYear)->whereMonth(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $selectedMonth);
+            $bookingsQuery->whereYear(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $selectedYear)->whereMonth(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $selectedMonth);
         } elseif ($selectedReportType === 'year') {
-            $periodRevenueQuery->whereYear('payment_time', $selectedYear);
-            $bookingsQuery->whereYear('payment_time', $selectedYear);
+            $periodRevenueQuery->whereYear(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $selectedYear);
+            $bookingsQuery->whereYear(DB::raw('COALESCE(payment_time, booking_time, created_at)'), $selectedYear);
         }
 
         $periodRevenue = $periodRevenueQuery->sum('total_price');
-        $detailedBookings = $bookingsQuery->orderBy('payment_time', 'desc')->get();
+        $detailedBookings = $bookingsQuery->orderBy(DB::raw('COALESCE(payment_time, booking_time, created_at)'), 'desc')->get();
 
         // 8. Top phim bán chạy (Top Movies)
         $topMoviesQuery = DB::table('movies')
@@ -202,13 +202,13 @@ class DashboardService
 
         // Áp dụng điều kiện thời gian
         if ($selectedReportType === 'date') {
-            $topMoviesQuery->whereBetween('bookings.payment_time', $dateRange);
+            $topMoviesQuery->whereBetween(DB::raw('COALESCE(bookings.payment_time, bookings.booking_time, bookings.created_at)'), $dateRange);
         } elseif ($selectedReportType === 'week') {
-            $topMoviesQuery->whereBetween('bookings.payment_time', $dateRange);
+            $topMoviesQuery->whereBetween(DB::raw('COALESCE(bookings.payment_time, bookings.booking_time, bookings.created_at)'), $dateRange);
         } elseif ($selectedReportType === 'month') {
-            $topMoviesQuery->whereYear('bookings.payment_time', $selectedYear)->whereMonth('bookings.payment_time', $selectedMonth);
+            $topMoviesQuery->whereYear(DB::raw('COALESCE(bookings.payment_time, bookings.booking_time, bookings.created_at)'), $selectedYear)->whereMonth(DB::raw('COALESCE(bookings.payment_time, bookings.booking_time, bookings.created_at)'), $selectedMonth);
         } elseif ($selectedReportType === 'year') {
-            $topMoviesQuery->whereYear('bookings.payment_time', $selectedYear);
+            $topMoviesQuery->whereYear(DB::raw('COALESCE(bookings.payment_time, bookings.booking_time, bookings.created_at)'), $selectedYear);
         }
 
         $topMovies = $topMoviesQuery->select(
@@ -240,13 +240,13 @@ class DashboardService
         }
 
         if ($selectedReportType === 'date') {
-            $movieStatisticsQuery->whereBetween('bookings.payment_time', $dateRange);
+            $movieStatisticsQuery->whereBetween(DB::raw('COALESCE(bookings.payment_time, bookings.booking_time, bookings.created_at)'), $dateRange);
         } elseif ($selectedReportType === 'week') {
-            $movieStatisticsQuery->whereBetween('bookings.payment_time', $dateRange);
+            $movieStatisticsQuery->whereBetween(DB::raw('COALESCE(bookings.payment_time, bookings.booking_time, bookings.created_at)'), $dateRange);
         } elseif ($selectedReportType === 'month') {
-            $movieStatisticsQuery->whereYear('bookings.payment_time', $selectedYear)->whereMonth('bookings.payment_time', $selectedMonth);
+            $movieStatisticsQuery->whereYear(DB::raw('COALESCE(bookings.payment_time, bookings.booking_time, bookings.created_at)'), $selectedYear)->whereMonth(DB::raw('COALESCE(bookings.payment_time, bookings.booking_time, bookings.created_at)'), $selectedMonth);
         } elseif ($selectedReportType === 'year') {
-            $movieStatisticsQuery->whereYear('bookings.payment_time', $selectedYear);
+            $movieStatisticsQuery->whereYear(DB::raw('COALESCE(bookings.payment_time, bookings.booking_time, bookings.created_at)'), $selectedYear);
         }
 
         $movieStatistics = $movieStatisticsQuery->select(

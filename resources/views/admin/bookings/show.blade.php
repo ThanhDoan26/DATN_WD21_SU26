@@ -1,6 +1,6 @@
-@extends('admin.layouts.app')
+@extends(auth()->user()?->role?->role_name === 'MANAGER' ? 'layouts.manager' : 'admin.layouts.app')
 
-@section('title', 'Booking Detail - Admin')
+@section('title', 'Booking Detail - ' . (auth()->user()?->role?->role_name === 'MANAGER' ? 'Manager' : 'Admin'))
 @section('page_title', 'Chi Tiết Đơn Hàng')
 
 @section('content')
@@ -8,7 +8,7 @@
 <div class="breadcrumb-custom">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ auth()->user()?->role?->role_name === 'MANAGER' ? route('manager.dashboard') : route('admin.dashboard') }}">Dashboard</a></li>
             <li class="breadcrumb-item"><a href="{{ route('admin.bookings.index') }}">Bookings</a></li>
             <li class="breadcrumb-item active">{{ $booking->booking_code }}</li>
         </ol>
@@ -25,7 +25,7 @@
         <!-- <a href="{{ route('admin.bookings.edit', $booking->id) }}" class="btn btn-warning btn-sm">
             <i class="fas fa-edit"></i> Sửa
         </a> -->
-        <a href="{{ route('admin.bookings.index') }}" class="btn btn-secondary btn-sm">
+        <a href="{{ url()->previous() != url()->current() ? url()->previous() : route('admin.bookings.index') }}" class="btn btn-secondary btn-sm">
             <i class="fas fa-arrow-left"></i> Quay Lại
         </a>
     </div>
@@ -76,32 +76,55 @@
 
         <!-- Movie & Showtime Info -->
         <div class="card mb-3">
-            <div class="card-header">
-                <i class="fas fa-film"></i> Thông Tin Suất Chiếu
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-film"></i> Thông Tin Suất Chiếu & Rạp</span>
+                @if($booking->showtime?->room?->cinema)
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                        <i class="fas fa-building me-1"></i>{{ $booking->showtime->room->cinema->name }}
+                    </span>
+                @endif
             </div>
             <div class="card-body">
                 <div class="row mb-3">
                     <div class="col-md-8">
                         <label class="text-muted small">Phim</label>
-                        <p><strong>{{ $booking->showtime->movie->title }}</strong></p>
-                        <small class="text-muted">{{ $booking->showtime->movie->description }}</small>
+                        <p class="mb-1"><strong class="fs-5 text-dark">{{ $booking->showtime?->movie?->title ?? 'N/A' }}</strong></p>
+                        @if(!empty($booking->showtime?->movie?->description))
+                            <small class="text-muted">{{ Str::limit($booking->showtime->movie->description, 150) }}</small>
+                        @endif
                     </div>
                     <div class="col-md-4">
                         <label class="text-muted small">Thời Lượng</label>
-                        <p><strong>{{ $booking->showtime->movie->duration }} phút</strong></p>
+                        <p><strong>{{ $booking->showtime?->movie?->duration ?? 'N/A' }} phút</strong></p>
                     </div>
                 </div>
 
-                <hr>
+                <hr class="my-3">
 
-                <div class="row">
+                <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="text-muted small">Thời Gian Chiếu</label>
-                        <p><strong>{{ $booking->showtime->start_time->format('d/m/Y H:i') }}</strong></p>
+                        <label class="text-muted small">Cụm Rạp Chiếu</label>
+                        <p class="mb-1">
+                            <strong class="text-primary fs-6">
+                                <i class="fas fa-map-marker-alt me-1 text-danger"></i>{{ $booking->showtime?->room?->cinema?->name ?? 'N/A' }}
+                            </strong>
+                        </p>
+                        @if($booking->showtime?->room?->cinema?->address)
+                            <small class="text-muted d-block">{{ $booking->showtime->room->cinema->address }}{{ $booking->showtime->room->cinema->city ? ', ' . $booking->showtime->room->cinema->city : '' }}</small>
+                        @endif
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <label class="text-muted small">Phòng Chiếu</label>
-                        <p><strong>{{ $booking->showtime->room->name }}</strong> ({{ $booking->showtime->room->format }})</p>
+                        <p class="mb-0">
+                            <strong>{{ $booking->showtime?->room?->name ?? 'N/A' }}</strong>
+                            <span class="badge bg-secondary-subtle text-secondary border ms-1">{{ $booking->showtime?->room?->format ?? '2D' }}</span>
+                        </p>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="text-muted small">Thời Gian Chiếu</label>
+                        <p class="mb-0">
+                            <strong class="text-dark">{{ $booking->showtime?->start_time ? $booking->showtime->start_time->format('H:i d/m/Y') : 'N/A' }}</strong>
+                        </p>
                     </div>
                 </div>
             </div>

@@ -133,6 +133,12 @@ class ComboController extends Controller
      */
     public function destroy(Combo $combo)
     {
+        $hasBookings = $combo->bookingCombos()->exists();
+        if ($hasBookings) {
+            return redirect()->route('admin.combos.index')
+                ->with('error', 'Không thể xóa combo bắp nước này vì đã có lịch sử đặt trong các đơn hàng của khách. Vui lòng tắt trạng thái (chuyển sang INACTIVE) thay vì xóa.');
+        }
+
         if ($combo->image && Storage::disk('public')->exists($combo->image)) {
             Storage::disk('public')->delete($combo->image);
         }

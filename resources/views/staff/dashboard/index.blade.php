@@ -235,6 +235,28 @@
 @section('content')
 <div class="container-fluid p-0">
 
+    {{-- WELCOME & CINEMA INFO BANNER --}}
+    <div class="card border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 16px;">
+        <div class="card-body p-4 text-white d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="avatar-box rounded-circle bg-warning text-dark fw-bold d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 1.2rem;">
+                    {{ strtoupper(substr(Auth::user()->name ?? 'S', 0, 1)) }}
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-1 text-white">Xin chào, {{ Auth::user()->name }} 👋</h5>
+                    <p class="mb-0 text-white-50 small">Chúc bạn một ngày làm việc hiệu quả tại hệ thống MovieGo!</p>
+                </div>
+            </div>
+            <div class="bg-white bg-opacity-10 px-3 py-2 rounded-3 border border-white border-opacity-10 d-flex align-items-center gap-2">
+                <i class="fas fa-map-marker-alt text-warning fs-5"></i>
+                <div>
+                    <div class="text-white-50 text-uppercase fw-semibold" style="font-size: 0.68rem; letter-spacing: 0.5px;">Rạp đang làm việc</div>
+                    <strong class="text-warning fw-bold">{{ Auth::user()->cinema->name ?? 'Chưa phân công rạp' }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- ══════════════════════════════════════════ --}}
     {{-- ROW 1: KPI Cards                         --}}
     {{-- ══════════════════════════════════════════ --}}

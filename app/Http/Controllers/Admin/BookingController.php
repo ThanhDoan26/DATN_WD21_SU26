@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Showtime;
 use App\Services\SeatMapService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * BookingController
@@ -33,7 +34,7 @@ class BookingController extends AdminController
         $perPage = request('per_page', 10);
 
         // Build query with filters
-        $query = Booking::with(['user', 'showtime', 'showtime.movie', 'showtime.room', 'bookedSeats'])
+        $query = Booking::with(['user', 'showtime', 'showtime.movie', 'showtime.room', 'showtime.room.cinema', 'bookedSeats'])
             ->when($search, function($q) use ($search) {
                 return $q->where('booking_code', 'like', "%$search%")
                          ->orWhereHas('user', function($q) use ($search) {
@@ -111,7 +112,7 @@ class BookingController extends AdminController
     public function create()
     {
         $users = User::where('status', 'ACTIVE')->get();
-        $showtimes = Showtime::with(['movie', 'room'])->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])->get();
+        $showtimes = Showtime::with(['movie', 'room.cinema'])->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])->get();
         return view('admin.bookings.create', compact('users', 'showtimes'));
     }
 
@@ -146,7 +147,7 @@ class BookingController extends AdminController
      */
     public function show(Booking $booking)
     {
-        $booking = $booking->load(['user', 'showtime', 'showtime.movie', 'showtime.room', 'bookedSeats', 'bookedSeats.seat']);
+        $booking = $booking->load(['user', 'showtime', 'showtime.movie', 'showtime.room', 'showtime.room.cinema', 'bookedSeats', 'bookedSeats.seat']);
         $seatMapService = new SeatMapService();
         $seatMapData = $seatMapService->generateSeatMapData($booking);
         return view('admin.bookings.show', compact('booking', 'seatMapData'));
@@ -161,7 +162,7 @@ class BookingController extends AdminController
             ->orWhere('id', $booking->user_id)
             ->get();
             
-        $showtimes = Showtime::with(['movie', 'room'])
+        $showtimes = Showtime::with(['movie', 'room.cinema'])
             ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
             ->orWhere('id', $booking->showtime_id)
             ->get();
@@ -184,15 +185,29 @@ class BookingController extends AdminController
             'cancellation_reason' => 'nullable|string|max:500',
         ]);
 
-        if ($validated['status'] === 'Paid' && $booking->status !== 'Paid') {
-            $validated['payment_time'] = now();
-        }
+        DB::transaction(function () use ($booking, $validated) {
+            $oldStatus = $booking->status;
+            $newStatus = $validated['status'];
 
-        if ($validated['status'] === 'Cancelled' && $booking->status !== 'Cancelled') {
-            $validated['cancelled_at'] = now();
-        }
+            if ($newStatus === 'Paid' && $oldStatus !== 'Paid') {
+                $validated['payment_time'] = now();
+                $booking->bookedSeats()->update(['status' => 'CONFIRMED']);
+            }
 
-        $booking->update($validated);
+            if ($newStatus === 'Cancelled' && $oldStatus !== 'Cancelled') {
+                $validated['cancelled_at'] = now();
+
+                // Hoàn lại lượt dùng mã giảm giá nếu có
+                if ($booking->coupon_id && in_array($oldStatus, ['Paid', 'Pending', 'SUCCESS'])) {
+                    $booking->coupon()->decrement('used_count');
+                }
+
+                // Cập nhật trạng thái ghế đã đặt
+                $booking->bookedSeats()->update(['status' => 'CANCELLED']);
+            }
+
+            $booking->update($validated);
+        });
 
         return redirect()->route('admin.bookings.index')
                          ->with('success', 'Cập nhật đơn hàng thành công!');
@@ -203,7 +218,20 @@ class BookingController extends AdminController
      */
     public function destroy(Booking $booking)
     {
-        $booking->delete();
+        if (in_array($booking->status, ['Paid', 'Used', 'SUCCESS'])) {
+            return redirect()->route('admin.bookings.index')
+                ->with('error', 'Không thể xóa đơn hàng đã thanh toán hoặc đã sử dụng để bảo toàn dữ liệu tài chính và báo cáo doanh thu. Vui lòng chuyển trạng thái sang "Cancelled" nếu cần hủy đơn.');
+        }
+
+        DB::transaction(function () use ($booking) {
+            if ($booking->coupon_id && in_array($booking->status, ['Paid', 'Pending', 'SUCCESS'])) {
+                $booking->coupon()->decrement('used_count');
+            }
+
+            $booking->bookedSeats()->delete();
+            $booking->combos()->detach();
+            $booking->delete();
+        });
 
         return redirect()->route('admin.bookings.index')
                          ->with('success', 'Xóa đơn hàng thành công!');

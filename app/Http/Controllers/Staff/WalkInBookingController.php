@@ -19,8 +19,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\TicketConfirmationMail;
 
 class WalkInBookingController extends Controller
 {
@@ -72,6 +70,11 @@ class WalkInBookingController extends Controller
             abort(403, 'Nhân viên chưa được phân công rạp.');
         }
 
+        if ($movie->status === Movie::STATUS_SCHEDULED) {
+            return redirect()->route('staff.walkin.movies')
+                ->with('error', 'Movie is currently scheduled and not yet open for ticket sales.');
+        }
+
         return view('staff.walkin.dates-showtimes', [
             'movie' => $movie,
             'cinema' => $cinema,
@@ -90,7 +93,11 @@ class WalkInBookingController extends Controller
             abort(403, 'Nhân viên chưa được phân công rạp.');
         }
 
-        $showtime->loadMissing('room.cinema');
+        $showtime->loadMissing(['movie', 'room.cinema']);
+
+        if ($showtime->movie && $showtime->movie->status === Movie::STATUS_SCHEDULED) {
+            abort(403, 'Movie is currently scheduled and not yet open for ticket sales.');
+        }
 
         // Kiểm tra suất chiếu có thuộc rạp của staff không
         if (!$showtime->room || $showtime->room->cinema_id !== $cinemaId) {
@@ -190,10 +197,15 @@ class WalkInBookingController extends Controller
             $staffBookingSeatIds = $staffBooking?->bookedSeats()->pluck('seat_id')->sort()->values()->all() ?? [];
             $requestedSeatIds = collect($seatIds)->unique()->sort()->values()->all();
 
-            $showtime = Showtime::with('room.cinema')->find($showtimeId);
+            $showtime = Showtime::with(['movie', 'room.cinema'])->find($showtimeId);
 
             if (!$showtime) {
                 abort(404, 'Suất chiếu không tồn tại.');
+            }
+
+            if ($showtime->movie && $showtime->movie->status === Movie::STATUS_SCHEDULED) {
+                return redirect()->route('staff.walkin.movies')
+                    ->with('error', 'Movie is currently scheduled and not yet open for ticket sales.');
             }
 
             // Kiểm tra suất chiếu thuộc rạp của staff
@@ -298,7 +310,17 @@ class WalkInBookingController extends Controller
         }
 
         $combos = Combo::where('status', 'ACTIVE')->get();
-        $coupons = Coupon::activeAndValid()->get();
+        $coupons = Coupon::activeAndValid()->orderByAvailabilityAndExpiration()->get();
+
+        $savedCombos = [];
+        if (!empty($staffBookingId)) {
+            $savedCombosRaw = DB::table('booking_combos')
+                ->where('booking_id', $staffBookingId)
+                ->get();
+            foreach ($savedCombosRaw as $sc) {
+                $savedCombos[$sc->combo_id] = (int) $sc->quantity;
+            }
+        }
 
         return view('staff.walkin.checkout', compact(
             'showtime',
@@ -311,6 +333,7 @@ class WalkInBookingController extends Controller
             'seatIds',
             'showtimeId',
             'combos',
+            'savedCombos',
             'coupons',
             'staffBookingId'
         ))->with([
@@ -381,10 +404,17 @@ class WalkInBookingController extends Controller
         ]);
 
         $showtimeId = (int) $request->input('showtime_id');
-        $showtime = Showtime::with('room.cinema')->find($showtimeId);
+        $showtime = Showtime::with(['movie', 'room.cinema'])->find($showtimeId);
 
         if (!$showtime) {
             return response()->json(['success' => false, 'message' => 'Suất chiếu không tồn tại.'], 404);
+        }
+
+        if ($showtime->movie && $showtime->movie->status === Movie::STATUS_SCHEDULED) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Movie is currently scheduled and not yet open for ticket sales.'
+            ], 422);
         }
 
         // BẮT BUỘC kiểm tra showtime thuộc rạp của staff trước khi tạo booking hay giữ ghế
@@ -484,40 +514,12 @@ class WalkInBookingController extends Controller
             // If it's CASH payment (Walk-in), complete it immediately (BookingObserver handles TicketConfirmationMail queued sending)
             if ($paymentMethod === 'CASH') {
                 $bookingService->completePayment($bookingId, 'CASH');
-                
-                // If email provided, send confirmation
-                $bookingDetails = $bookingService->getBookingDetails($bookingId);
-                $mailSent = false;
-                $hasEmail = false;
-
-                if ($request->input('customer_email')) {
-                    $hasEmail = true;
-                    \Illuminate\Support\Facades\Log::info("WalkInBookingController: Đang gọi Mail::to()->send() gửi cho " . $request->input('customer_email'));
-                    $showtimeWithMovie = Showtime::with(['movie', 'room.cinema'])->find($showtimeId);
-                    try {
-                        Mail::to($request->input('customer_email'))->send(new TicketConfirmationMail($bookingDetails, $showtimeWithMovie));
-                        $mailSent = true;
-                    } catch (\Exception $e) {
-                        Log::error('Walk-in payment email failed: ' . $e->getMessage(), [
-                            'file' => $e->getFile(),
-                            'line' => $e->getLine(),
-                            'trace' => $e->getTraceAsString(),
-                        ]);
-                    }
-                } else {
-                    \Illuminate\Support\Facades\Log::warning("WalkInBookingController: TicketConfirmationMail KHÔNG được gọi do khách hàng không cung cấp email.");
-                }
-
-                $message = 'Đặt vé và thanh toán thành công.';
-                if ($hasEmail && !$mailSent) {
-                    $message = 'Đặt vé và thanh toán thành công nhưng gửi email xác nhận thất bại. Vui lòng kiểm tra lại email hoặc liên hệ hỗ trợ.';
-                }
 
                 return response()->json([
                     'success' => true,
                     'isWalkIn' => true,
                     'redirect_url' => route('staff.walkin.success', ['booking_id' => $bookingId, 'auto_print' => 1]),
-                    'message' => $message,
+                    'message' => 'Đặt vé và thanh toán thành công.',
                 ]);
             }
 
@@ -528,13 +530,15 @@ class WalkInBookingController extends Controller
                 'redirect_url' => route('staff.walkin.success', ['booking_id' => $bookingId, 'auto_print' => 1]),
                 'message' => 'Đã giữ ghế thành công.',
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Walkin Checkout reserve failed: ' . $e->getMessage());
+
+            $code = ($e instanceof \App\Exceptions\MovieScheduledException || $e->getMessage() === 'Movie is currently scheduled and not yet open for ticket sales.') ? 422 : 400;
 
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-            ], 400);
+            ], $code);
         }
     }
 

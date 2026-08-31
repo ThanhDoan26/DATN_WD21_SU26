@@ -7,10 +7,12 @@ use App\Models\Movie;
 use App\Models\Room;
 use App\Models\Showtime;
 use App\Rules\CompatibleFormatRule;
+use App\Services\MovieStatusValidationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ShowtimeController extends Controller
 {
@@ -62,6 +64,12 @@ class ShowtimeController extends Controller
     {
         $cinemaId = Auth::user()->cinema_id;
 
+        if ($request->filled('status') && strtoupper($request->status) === 'FINISHED') {
+            $request->merge(['status' => Showtime::STATUS_COMPLETED]);
+        }
+
+        $movie = Movie::find($request->movie_id);
+
         $validated = $request->validate([
             'movie_id' => 'required|exists:movies,id',
             'room_id' => [
@@ -74,19 +82,22 @@ class ShowtimeController extends Controller
             'start_time' => [
                 'required',
                 'date',
-                function ($attribute, $value, $fail) {
-                    if ($value && Carbon::parse($value)->lt(now())) {
-                        $fail('Không thể tạo lịch chiếu cho thời gian đã qua. Thời gian bắt đầu phải từ thời điểm hiện tại trở đi.');
-                    }
+                function ($attribute, $value, $fail) use ($request) {
+                    (new MovieStatusValidationService())->validateShowtimeStartTime(
+                        $request->input('movie_id') ? (int) $request->input('movie_id') : null,
+                        $value,
+                        $fail
+                    );
                 },
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id'))),
                 function ($attribute, $value, $fail) use ($request) {
-                    $endTime = $request->input('end_time');
-                    if (!$endTime && $request->filled('movie_id') && $request->filled('start_time')) {
+                    $endTime = null;
+                    if ($request->filled('movie_id') && $request->filled('start_time')) {
                         $movie = Movie::find($request->movie_id);
                         if ($movie && $movie->duration) {
-                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15)->format('Y-m-d H:i:s');
+                            $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
+                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes)->format('Y-m-d H:i:s');
                         }
                     }
 
@@ -104,7 +115,7 @@ class ShowtimeController extends Controller
                 'date',
                 'after:start_time',
             ],
-            'status' => ['required', Rule::in(Showtime::STATUSES)],
+            'status' => ['required', Rule::in(array_merge(Showtime::STATUSES, ['FINISHED']))],
             'surcharge' => 'nullable|numeric|min:0',
             'ticket_prices' => 'required|array',
             'ticket_prices.*' => 'required|numeric|min:0',
@@ -115,9 +126,6 @@ class ShowtimeController extends Controller
             'room_id.exists' => 'Phòng chiếu chọn không hợp lệ (phòng phải thuộc rạp của bạn)',
             'start_time.required' => 'Thời gian bắt đầu là bắt buộc',
             'start_time.date' => 'Thời gian bắt đầu không hợp lệ',
-            'end_time.required' => 'Thời gian kết thúc là bắt buộc',
-            'end_time.date' => 'Thời gian kết thúc không hợp lệ',
-            'end_time.after' => 'Thời gian kết thúc phải sau thời gian bắt đầu',
             'status.required' => 'Trạng thái suất chiếu là bắt buộc',
             'status.in' => 'Trạng thái suất chiếu không hợp lệ',
             'ticket_prices.required' => 'Vui lòng nhập giá vé cho các loại ghế.',
@@ -127,34 +135,41 @@ class ShowtimeController extends Controller
             'ticket_prices.*.min' => 'Giá vé không được nhỏ hơn 0.',
         ]);
 
+        if (strtoupper($validated['status']) === 'FINISHED') {
+            $validated['status'] = Showtime::STATUS_COMPLETED;
+        }
+
         $validated['surcharge'] = $validated['surcharge'] ?? 0;
 
         if ($request->filled('movie_id') && $request->filled('start_time')) {
-            $movie = Movie::find($request->movie_id);
             if ($movie && $movie->duration) {
-                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15);
+                $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
+                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes);
                 $validated['end_time'] = $expected->format('Y-m-d H:i:s');
             }
         }
 
-        if (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
-            if (($validated['status'] ?? null) !== Showtime::STATUS_CANCELLED) {
-                $validated['status'] = Showtime::STATUS_SCHEDULED;
-            }
+        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
+            $validated['status'] = Showtime::STATUS_PENDING;
         }
 
-        $showtime = Showtime::create($validated);
+        // Validate showtime status rules
+        (new MovieStatusValidationService())->validateShowtimeStatusRules(null, $validated, $movie);
 
-        if (isset($validated['ticket_prices']) && is_array($validated['ticket_prices'])) {
-            foreach ($validated['ticket_prices'] as $seatType => $price) {
-                \App\Models\TicketPrice::create([
-                    'showtime_id' => $showtime->id,
-                    'seat_type' => $seatType,
-                    'price' => $price,
-                    'status' => 'ACTIVE'
-                ]);
+        DB::transaction(function () use ($validated) {
+            $showtime = Showtime::create($validated);
+
+            if (isset($validated['ticket_prices']) && is_array($validated['ticket_prices'])) {
+                foreach ($validated['ticket_prices'] as $seatType => $price) {
+                    \App\Models\TicketPrice::create([
+                        'showtime_id' => $showtime->id,
+                        'seat_type' => $seatType,
+                        'price' => $price,
+                        'status' => 'ACTIVE'
+                    ]);
+                }
             }
-        }
+        });
 
         return redirect()->route('manager.showtimes.index')
             ->with('success', 'Thêm suất chiếu thành công!');
@@ -166,12 +181,6 @@ class ShowtimeController extends Controller
         $showtime = Showtime::whereHas('room', function($q) use ($cinemaId) {
             $q->where('cinema_id', $cinemaId);
         })->findOrFail($id);
-
-        // Chặn sửa suất chiếu đã qua thời gian hoặc đã kết thúc
-        if (($showtime->end_time && $showtime->end_time <= now()) || $showtime->status === Showtime::STATUS_COMPLETED) {
-            return redirect()->route('manager.showtimes.index')
-                ->with('error', 'Không thể chỉnh sửa suất chiếu đã kết thúc trong quá khứ.');
-        }
 
         $showtime->load(['movie', 'room.cinema', 'ticketPrices', 'bookings']);
         $movies = Movie::orderBy('title')->get();
@@ -188,11 +197,14 @@ class ShowtimeController extends Controller
             $q->where('cinema_id', $cinemaId);
         })->findOrFail($id);
 
-        // 1. Kiểm tra suất chiếu đã kết thúc chưa
-        if (($showtime->end_time && $showtime->end_time <= now()) || $showtime->status === Showtime::STATUS_COMPLETED) {
-            return redirect()->route('manager.showtimes.index')
-                ->with('error', 'Không thể chỉnh sửa suất chiếu đã kết thúc trong quá khứ.');
+        if ($request->filled('status') && strtoupper($request->status) === 'FINISHED') {
+            $request->merge(['status' => Showtime::STATUS_COMPLETED]);
         }
+
+        $movie = Movie::find($request->input('movie_id', $showtime->movie_id));
+
+        // 1. Kiểm tra toàn diện trạng thái suất chiếu và terminal lock
+        (new MovieStatusValidationService())->validateShowtimeStatusRules($showtime, $request->all(), $movie);
 
         // 2. Kiểm tra nếu suất chiếu đã có vé đặt thì khóa thay đổi phim, phòng chiếu, giờ chiếu
         $hasBookings = $showtime->bookings()->where('status', '!=', 'Cancelled')->exists();
@@ -218,20 +230,23 @@ class ShowtimeController extends Controller
             'start_time' => [
                 'required',
                 'date',
-                function ($attribute, $value, $fail) {
-                    if ($value && Carbon::parse($value)->lt(now())) {
-                        $fail('Không thể tạo hoặc chỉnh sửa lịch chiếu cho thời gian đã qua. Thời gian bắt đầu phải từ thời điểm hiện tại trở đi.');
-                    }
+                function ($attribute, $value, $fail) use ($request) {
+                    (new MovieStatusValidationService())->validateShowtimeStartTime(
+                        $request->input('movie_id') ? (int) $request->input('movie_id') : null,
+                        $value,
+                        $fail
+                    );
                 },
                 Rule::unique('showtimes', 'start_time')
                     ->where(fn ($query) => $query->where('room_id', $request->input('room_id')))
                     ->ignore($showtime->id),
                 function ($attribute, $value, $fail) use ($request, $showtime) {
-                    $endTime = $request->input('end_time');
-                    if (!$endTime && $request->filled('movie_id') && $request->filled('start_time')) {
+                    $endTime = null;
+                    if ($request->filled('movie_id') && $request->filled('start_time')) {
                         $movie = Movie::find($request->movie_id);
                         if ($movie && $movie->duration) {
-                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15)->format('Y-m-d H:i:s');
+                            $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
+                            $endTime = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes)->format('Y-m-d H:i:s');
                         }
                     }
 
@@ -249,7 +264,7 @@ class ShowtimeController extends Controller
                 'date',
                 'after:start_time',
             ],
-            'status' => ['required', Rule::in(Showtime::STATUSES)],
+            'status' => ['required', Rule::in(array_merge(Showtime::STATUSES, ['FINISHED']))],
             'surcharge' => 'nullable|numeric|min:0',
             'ticket_prices' => 'required|array',
             'ticket_prices.*' => 'required|numeric|min:0',
@@ -260,9 +275,6 @@ class ShowtimeController extends Controller
             'room_id.exists' => 'Phòng chiếu chọn không hợp lệ',
             'start_time.required' => 'Thời gian bắt đầu là bắt buộc',
             'start_time.date' => 'Thời gian bắt đầu không hợp lệ',
-            'end_time.required' => 'Thời gian kết thúc là bắt buộc',
-            'end_time.date' => 'Thời gian kết thúc không hợp lệ',
-            'end_time.after' => 'Thời gian kết thúc phải sau thời gian bắt đầu',
             'status.required' => 'Trạng thái suất chiếu là bắt buộc',
             'status.in' => 'Trạng thái suất chiếu không hợp lệ',
             'ticket_prices.required' => 'Vui lòng nhập giá vé cho các loại ghế.',
@@ -272,38 +284,45 @@ class ShowtimeController extends Controller
             'ticket_prices.*.min' => 'Giá vé không được nhỏ hơn 0.',
         ]);
 
+        if (strtoupper($validated['status']) === 'FINISHED') {
+            $validated['status'] = Showtime::STATUS_COMPLETED;
+        }
+
         $validated['surcharge'] = $validated['surcharge'] ?? 0;
 
         if ($request->filled('movie_id') && $request->filled('start_time')) {
-            $movie = Movie::find($request->movie_id);
             if ($movie && $movie->duration) {
-                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + 15);
+                $bufferMinutes = config('booking.showtime.buffer_minutes', 15);
+                $expected = Carbon::parse($request->start_time)->addMinutes($movie->duration + $bufferMinutes);
                 $validated['end_time'] = $expected->format('Y-m-d H:i:s');
             }
         }
 
-        if (isset($validated['start_time']) && Carbon::parse($validated['start_time'])->gt(now())) {
-            if (($validated['status'] ?? null) !== Showtime::STATUS_CANCELLED) {
-                $validated['status'] = Showtime::STATUS_SCHEDULED;
-            }
+        // Re-validate showtime status rules after computing end_time
+        (new MovieStatusValidationService())->validateShowtimeStatusRules($showtime, $validated, $movie);
+
+        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
+            $validated['status'] = Showtime::STATUS_PENDING;
         }
 
-        $showtime->update($validated);
+        DB::transaction(function () use ($showtime, $validated) {
+            $showtime->update($validated);
 
-        if (isset($validated['ticket_prices']) && is_array($validated['ticket_prices'])) {
-            foreach ($validated['ticket_prices'] as $seatType => $price) {
-                \App\Models\TicketPrice::updateOrCreate(
-                    [
-                        'showtime_id' => $showtime->id,
-                        'seat_type' => $seatType
-                    ],
-                    [
-                        'price' => $price,
-                        'status' => 'ACTIVE'
-                    ]
-                );
+            if (isset($validated['ticket_prices']) && is_array($validated['ticket_prices'])) {
+                foreach ($validated['ticket_prices'] as $seatType => $price) {
+                    \App\Models\TicketPrice::updateOrCreate(
+                        [
+                            'showtime_id' => $showtime->id,
+                            'seat_type' => $seatType
+                        ],
+                        [
+                            'price' => $price,
+                            'status' => 'ACTIVE'
+                        ]
+                    );
+                }
             }
-        }
+        });
 
         return redirect()->route('manager.showtimes.index')
             ->with('success', 'Cập nhật suất chiếu thành công!');
@@ -351,6 +370,29 @@ class ShowtimeController extends Controller
                 ->with('error', 'Suất chiếu không nằm trong thùng rác.');
         }
 
+        if ($showtime->room?->trashed() || $showtime->movie?->trashed()) {
+            return redirect()->route('manager.showtimes.trashed')
+                ->with('error', 'Không thể khôi phục suất chiếu vì phòng chiếu hoặc phim tương ứng đã bị xóa. Vui lòng liên hệ Admin để khôi phục.');
+        }
+
+        $conflict = Showtime::where('room_id', $showtime->room_id)
+            ->where('id', '!=', $showtime->id)
+            ->where('status', '!=', Showtime::STATUS_CANCELLED)
+            ->whereNotNull('end_time')
+            ->where('start_time', '<', $showtime->end_time)
+            ->where('end_time', '>', $showtime->start_time)
+            ->with('movie')
+            ->first();
+
+        if ($conflict) {
+            $conflictStart = Carbon::parse($conflict->start_time)->format('H:i d/m/Y');
+            $conflictEnd   = Carbon::parse($conflict->end_time)->format('H:i d/m/Y');
+            $movieTitle    = $conflict->movie?->title ?? 'Không rõ';
+
+            return redirect()->route('manager.showtimes.trashed')
+                ->with('error', "Không thể khôi phục vì bị trùng lịch với suất chiếu đang hoạt động \"{$movieTitle}\" ({$conflictStart} – {$conflictEnd}) trong cùng phòng.");
+        }
+
         $showtime->restore();
 
         return redirect()->route('manager.showtimes.trashed')
@@ -371,10 +413,24 @@ class ShowtimeController extends Controller
                 ->with('error', 'Suất chiếu không nằm trong thùng rác.');
         }
 
-        $showtime->forceDelete();
+        if ($showtime->bookings()->exists()) {
+            return redirect()->route('manager.showtimes.trashed')
+                ->with('error', 'Không thể xóa vĩnh viễn suất chiếu này vì đã có dữ liệu đơn hàng/vé đặt liên quan. Chỉ được phép lưu trữ trong thùng rác.');
+        }
 
-        return redirect()->route('manager.showtimes.trashed')
-            ->with('success', 'Xóa vĩnh viễn suất chiếu thành công!');
+        try {
+            $showtime->ticketPrices()->delete();
+            $showtime->forceDelete();
+
+            return redirect()->route('manager.showtimes.trashed')
+                ->with('success', 'Xóa vĩnh viễn suất chiếu thành công!');
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == 23000) {
+                return redirect()->route('manager.showtimes.trashed')
+                    ->with('error', 'Không thể xóa vĩnh viễn suất chiếu này vì đang có dữ liệu liên quan trong hệ thống.');
+            }
+            throw $e;
+        }
     }
 
     public function destroy($id)
@@ -383,6 +439,18 @@ class ShowtimeController extends Controller
         $showtime = Showtime::whereHas('room', function($q) use ($cinemaId) {
             $q->where('cinema_id', $cinemaId);
         })->findOrFail($id);
+
+        $hasBookings = $showtime->bookings()
+            ->where(function ($q) {
+                $q->whereIn('status', ['Paid', 'SUCCESS', 'Used'])
+                  ->orWhere('status', 'Pending');
+            })
+            ->exists();
+
+        if ($hasBookings) {
+            return redirect()->route('manager.showtimes.index')
+                ->with('error', 'Không thể xóa suất chiếu đã phát sinh vé đặt hoặc vé đã thanh toán của khách hàng. Vui lòng xử lý hủy vé hoặc hoàn tiền trước!');
+        }
         
         $showtime->delete();
 
@@ -405,6 +473,7 @@ class ShowtimeController extends Controller
         $newEnd   = Carbon::parse($endTime);
 
         $conflict = Showtime::where('room_id', $roomId)
+            ->where('status', '!=', Showtime::STATUS_CANCELLED)
             ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
             ->whereNotNull('end_time')
             ->where('start_time', '<', $newEnd)

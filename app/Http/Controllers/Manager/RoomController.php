@@ -9,6 +9,7 @@ use App\Services\SeatBookingStateService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class RoomController extends Controller
 {
@@ -82,51 +83,53 @@ class RoomController extends Controller
             $validated['total_seats'] = $totalSeats;
         }
 
-        $room = Room::create($validated);
+        DB::transaction(function () use ($validated, $totalSeats, $totalRows, $totalCols) {
+            $room = Room::create($validated);
 
-        if ($totalSeats > 0) {
-            $seatsData = [];
-            $now = now();
-            $seatCount = 0;
+            if ($totalSeats > 0) {
+                $seatsData = [];
+                $now = now();
+                $seatCount = 0;
 
-            for ($r = 1; $r <= $totalRows; $r++) {
-                $rowIndex = $r - 1;
-                $rowName = chr(65 + $rowIndex);
-                if ($rowIndex >= 26) {
-                    $rowName = chr(65 + floor($rowIndex / 26) - 1) . chr(65 + ($rowIndex % 26));
+                for ($r = 1; $r <= $totalRows; $r++) {
+                    $rowIndex = $r - 1;
+                    $rowName = chr(65 + $rowIndex);
+                    if ($rowIndex >= 26) {
+                        $rowName = chr(65 + floor($rowIndex / 26) - 1) . chr(65 + ($rowIndex % 26));
+                    }
+
+                    $remainingSeats = $totalSeats - $seatCount;
+
+                    if ($r == $totalRows && $totalRows > 1) {
+                        $seatType = 'Sweetbox';
+                        $rowCols = (int) floor($totalCols / 2);
+                    } elseif ($r <= 3) {
+                        $seatType = 'Regular';
+                        $rowCols = min($totalCols, $remainingSeats);
+                    } else {
+                        $seatType = 'VIP';
+                        $rowCols = min($totalCols, $remainingSeats);
+                    }
+
+                    for ($c = 1; $c <= $rowCols; $c++) {
+                        $seatsData[] = [
+                            'room_id'     => $room->id,
+                            'row_name'    => $rowName,
+                            'seat_number' => $c,
+                            'seat_type'   => $seatType, 
+                            'status'      => 'AVAILABLE', 
+                            'created_at'  => $now,
+                            'updated_at'  => $now,
+                        ];
+                        
+                        $seatCount++;
+                    }
                 }
 
-                $remainingSeats = $totalSeats - $seatCount;
-
-                if ($r == $totalRows && $totalRows > 1) {
-                    $seatType = 'Sweetbox';
-                    $rowCols = (int) floor($totalCols / 2);
-                } elseif ($r <= 3) {
-                    $seatType = 'Regular';
-                    $rowCols = min($totalCols, $remainingSeats);
-                } else {
-                    $seatType = 'VIP';
-                    $rowCols = min($totalCols, $remainingSeats);
-                }
-
-                for ($c = 1; $c <= $rowCols; $c++) {
-                    $seatsData[] = [
-                        'room_id'     => $room->id,
-                        'row_name'    => $rowName,
-                        'seat_number' => $c,
-                        'seat_type'   => $seatType, 
-                        'status'      => 'AVAILABLE', 
-                        'created_at'  => $now,
-                        'updated_at'  => $now,
-                    ];
-                    
-                    $seatCount++;
-                }
+                $room->update(['total_seats' => $seatCount]);
+                Seat::insert($seatsData);
             }
-
-            $room->update(['total_seats' => $seatCount]);
-            Seat::insert($seatsData);
-        }
+        });
 
         return redirect()->route('manager.rooms.index')
                          ->with('success', 'Thêm phòng chiếu thành công và hệ thống đã tự động tạo sơ đồ ghế!');
@@ -236,60 +239,72 @@ class RoomController extends Controller
             if ($room->hasActiveShowtimes()) {
                 return redirect()->back()
                     ->withInput()
-                    ->with('error', 'Không thể thay đổi số lượng ghế vì phòng đang có suất chiếu hoạt động. Vui lòng hủy suất chiếu trước khi thay đổi sơ đồ ghế.');
+                    ->with('error', 'Không thể thay đổi số lượng/sơ đồ ghế vì phòng đang có suất chiếu hoạt động. Vui lòng hủy suất chiếu trước khi thay đổi sơ đồ ghế.');
             }
 
-            $room->seats()->delete();
+            // Kiểm tra xem phòng chiếu đã có vé đặt trong lịch sử chưa
+            $hasHistoricalBookings = \App\Models\BookedSeat::whereHas('seat', fn($q) => $q->where('room_id', $room->id))->exists();
+            if ($hasHistoricalBookings) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Không thể thay đổi cấu trúc/số lượng ghế vì phòng chiếu này đã có lịch sử bán vé. Việc xóa và tạo lại ghế sẽ làm mất toàn bộ dữ liệu lịch sử đặt vé của khách hàng.');
+            }
 
-            if ($totalSeats > 0) {
-                $seatsData = [];
-                $now = now();
-                $seatCount = 0;
+            DB::transaction(function () use ($room, $totalSeats, $totalRows, $totalCols, $oldSeatsMap, &$validated) {
+                $room->seats()->delete();
 
-                for ($r = 1; $r <= $totalRows; $r++) {
-                    $rowIndex = $r - 1;
-                    $rowName = chr(65 + $rowIndex);
-                    if ($rowIndex >= 26) {
-                        $rowName = chr(65 + floor($rowIndex / 26) - 1) . chr(65 + ($rowIndex % 26));
+                if ($totalSeats > 0) {
+                    $seatsData = [];
+                    $now = now();
+                    $seatCount = 0;
+
+                    for ($r = 1; $r <= $totalRows; $r++) {
+                        $rowIndex = $r - 1;
+                        $rowName = chr(65 + $rowIndex);
+                        if ($rowIndex >= 26) {
+                            $rowName = chr(65 + floor($rowIndex / 26) - 1) . chr(65 + ($rowIndex % 26));
+                        }
+
+                        $remainingSeats = $totalSeats - $seatCount;
+
+                        if ($r == $totalRows && $totalRows > 1) {
+                            $seatType = 'Sweetbox';
+                            $rowCols = (int) floor($totalCols / 2);
+                        } elseif ($r <= 3) {
+                            $seatType = 'Regular';
+                            $rowCols = min($totalCols, $remainingSeats);
+                        } else {
+                            $seatType = 'VIP';
+                            $rowCols = min($totalCols, $remainingSeats);
+                        }
+
+                        for ($c = 1; $c <= $rowCols; $c++) {
+                            $seatKey = $rowName . '-' . $c;
+                            $status = $oldSeatsMap[$seatKey] ?? 'AVAILABLE';
+
+                            $seatsData[] = [
+                                'room_id'     => $room->id,
+                                'row_name'    => $rowName,
+                                'seat_number' => $c,
+                                'seat_type'   => $seatType, 
+                                'status'      => $status, 
+                                'created_at'  => $now,
+                                'updated_at'  => $now,
+                            ];
+                            
+                            $seatCount++;
+                        }
                     }
 
-                    $remainingSeats = $totalSeats - $seatCount;
-
-                    if ($r == $totalRows && $totalRows > 1) {
-                        $seatType = 'Sweetbox';
-                        $rowCols = (int) floor($totalCols / 2);
-                    } elseif ($r <= 3) {
-                        $seatType = 'Regular';
-                        $rowCols = min($totalCols, $remainingSeats);
-                    } else {
-                        $seatType = 'VIP';
-                        $rowCols = min($totalCols, $remainingSeats);
-                    }
-
-                    for ($c = 1; $c <= $rowCols; $c++) {
-                        $seatKey = $rowName . '-' . $c;
-                        $status = $oldSeatsMap[$seatKey] ?? 'AVAILABLE';
-
-                        $seatsData[] = [
-                            'room_id'     => $room->id,
-                            'row_name'    => $rowName,
-                            'seat_number' => $c,
-                            'seat_type'   => $seatType, 
-                            'status'      => $status, 
-                            'created_at'  => $now,
-                            'updated_at'  => $now,
-                        ];
-                        
-                        $seatCount++;
-                    }
+                    Seat::insert($seatsData);
+                    $validated['total_seats'] = $seatCount;
                 }
 
-                Seat::insert($seatsData);
-                $validated['total_seats'] = $seatCount;
-            }
+                $room->update($validated);
+            });
+        } else {
+            $room->update($validated);
         }
-
-        $room->update($validated);
 
         return redirect()->route('manager.rooms.show', $room->id)
                          ->with('success', 'Cập nhật phòng chiếu thành công!');
@@ -308,10 +323,96 @@ class RoomController extends Controller
                              ->with('error', "Không thể xóa phòng '$room->name' vì phòng đang có $activeCount suất chiếu hợp lệ.");
         }
 
+        $hasFutureBookings = \App\Models\Booking::whereHas('showtime', function($q) use ($room) {
+            $q->where('room_id', $room->id)->where('start_time', '>', now());
+        })->whereIn('status', ['Paid', 'SUCCESS', 'Pending'])->exists();
+
+        if ($hasFutureBookings) {
+            return redirect()->route('manager.rooms.index')
+                             ->with('error', "Không thể xóa phòng '$room->name' vì đang có vé đặt cho các suất chiếu trong tương lai.");
+        }
+
         $room->delete();
 
         return redirect()->route('manager.rooms.index')
                          ->with('success', 'Xóa phòng chiếu thành công!');
+    }
+
+    /**
+     * Display a listing of trashed rooms
+     */
+    public function trashed(Request $request)
+    {
+        $cinemaId = Auth::user()->cinema_id;
+        $rooms = Room::onlyTrashed()
+            ->with('cinema')
+            ->where('cinema_id', $cinemaId)
+            ->orderBy('deleted_at', 'desc')
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('manager.rooms.trashed', compact('rooms'));
+    }
+
+    /**
+     * Restore a trashed room
+     */
+    public function restore($id)
+    {
+        $cinemaId = Auth::user()->cinema_id;
+        $room = Room::withTrashed()
+            ->where('cinema_id', $cinemaId)
+            ->findOrFail($id);
+
+        if (! $room->trashed()) {
+            return redirect()->route('manager.rooms.trashed')
+                             ->with('error', 'Phòng chiếu không nằm trong thùng rác.');
+        }
+
+        $room->restore();
+
+        return redirect()->route('manager.rooms.trashed')
+                         ->with('success', 'Khôi phục phòng chiếu thành công!');
+    }
+
+    /**
+     * Permanently delete a room from storage
+     */
+    public function forceDelete($id)
+    {
+        $cinemaId = Auth::user()->cinema_id;
+        $room = Room::withTrashed()
+            ->where('cinema_id', $cinemaId)
+            ->findOrFail($id);
+
+        if (! $room->trashed()) {
+            return redirect()->route('manager.rooms.trashed')
+                             ->with('error', 'Phòng chiếu không nằm trong thùng rác.');
+        }
+
+        $hasHistoricalData = \App\Models\BookedSeat::whereHas('seat', fn($q) => $q->where('room_id', $room->id))->exists()
+            || $room->showtimes()->withTrashed()->exists();
+
+        if ($hasHistoricalData) {
+            return redirect()->route('manager.rooms.trashed')
+                ->with('error', 'Không thể xóa vĩnh viễn phòng chiếu này vì đã có dữ liệu suất chiếu hoặc vé liên quan trong lịch sử. Chỉ được phép lưu trữ trong thùng rác.');
+        }
+
+        try {
+            DB::transaction(function () use ($room) {
+                $room->seats()->delete();
+                $room->forceDelete();
+            });
+
+            return redirect()->route('manager.rooms.trashed')
+                             ->with('success', 'Xóa vĩnh viễn phòng chiếu thành công!');
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == 23000) {
+                return redirect()->route('manager.rooms.trashed')
+                    ->with('error', 'Không thể xóa vĩnh viễn phòng chiếu này vì đang có dữ liệu liên quan trong hệ thống.');
+            }
+            throw $e;
+        }
     }
 
     public function toggleSeatStatus(Request $request, $roomId, $seatId)

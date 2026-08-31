@@ -7,9 +7,22 @@
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
-        <!-- Fonts -->
+        <!-- Fonts & Icons -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+        <style>
+            /* FontAwesome Fix for Icon Display */
+            .fa, .fas, .far, .fal, .fad, .fab, [class*=" fa-"], [class^="fa-"] {
+                font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", "FontAwesome" !important;
+                font-style: normal !important;
+            }
+            .far, .fa-regular { font-weight: 400 !important; }
+            .fas, .fa-solid { font-weight: 900 !important; }
+            .fab, .fa-brands { font-family: "Font Awesome 6 Brands" !important; font-weight: 400 !important; }
+        </style>
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])

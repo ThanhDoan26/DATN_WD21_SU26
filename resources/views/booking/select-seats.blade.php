@@ -779,62 +779,71 @@
         }
 
         function validateSeatSelection() {
-            let result = { isValid: true, bypassRule: null };
+            const ALLOW_BOUNDARY_ORPHAN = @json(config('booking.seat_hold.allow_boundary_orphan_seat', false));
+            let result = { isValid: true };
+            const seatRows = document.querySelectorAll('.row-seats');
             
-            const rows = document.querySelectorAll('.row-seats');
-            for (let r = 0; r < rows.length; r++) {
-                const rowElement = rows[r];
-                const seats = Array.from(rowElement.querySelectorAll('.seat'));
+            for (let row of seatRows) {
+                const seats = Array.from(row.children).filter(el => el.classList.contains('seat'));
                 const totalSeats = seats.length;
                 
                 let emptyBlocks = [];
                 let currentEmptyBlock = [];
                 
-                seats.forEach((seat, index) => {
-                    let isBookedOrBroken = seat.classList.contains('booked') || seat.classList.contains('broken') || seat.disabled;
-                    let isSelected = seat.classList.contains('selected');
-                    let isAvailableEmpty = !isBookedOrBroken && !isSelected;
+                for (let i = 0; i < totalSeats; i++) {
+                    const el = seats[i];
+                    const isTaken = el.classList.contains('booked') || el.classList.contains('holding') || el.classList.contains('broken');
+                    const isSelected = el.classList.contains('selected');
                     
-                    if (isAvailableEmpty) {
-                        currentEmptyBlock.push(index);
+                    if (!isTaken && !isSelected) {
+                        currentEmptyBlock.push(i);
                     } else {
                         if (currentEmptyBlock.length > 0) {
                             emptyBlocks.push(currentEmptyBlock);
                             currentEmptyBlock = [];
                         }
                     }
-                });
+                }
                 
                 if (currentEmptyBlock.length > 0) {
                     emptyBlocks.push(currentEmptyBlock);
                 }
                 
-                // Check each empty block for gap = 1
-                for (let i = 0; i < emptyBlocks.length; i++) {
-                    const block = emptyBlocks[i];
+                for (let block of emptyBlocks) {
                     if (block.length === 1) {
-                        let emptyIndex = block[0];
+                        const emptyIndex = block[0];
+                        const isLeftSelected = (emptyIndex > 0) && seats[emptyIndex - 1].classList.contains('selected');
+                        const isRightSelected = (emptyIndex < totalSeats - 1) && seats[emptyIndex + 1].classList.contains('selected');
                         
-                        let leftAdjacent = (emptyIndex > 0) ? seats[emptyIndex - 1] : null;
-                        let rightAdjacent = (emptyIndex < totalSeats - 1) ? seats[emptyIndex + 1] : null;
-                        
-                        let isLeftSelected = leftAdjacent && leftAdjacent.classList.contains('selected');
-                        let isRightSelected = rightAdjacent && rightAdjacent.classList.contains('selected');
-                        
-                        // We only care if this single empty seat is adjacent to at least one selected seat
                         if (isLeftSelected || isRightSelected) {
-                            let isAbsoluteStart = (emptyIndex === 0);
-                            let isAbsoluteEnd = (emptyIndex === totalSeats - 1);
+                            const isAbsoluteStart = (emptyIndex === 0);
+                            const isAbsoluteEnd = (emptyIndex === totalSeats - 1);
                             
-                            if (isAbsoluteStart || isAbsoluteEnd) {
-                                // Boundary Exception applies
-                                result.bypassRule = 'BOUNDARY_EXCEPTION';
+                            if (isAbsoluteStart) {
+                                if (!ALLOW_BOUNDARY_ORPHAN) {
+                                    return {
+                                        isValid: false,
+                                        errorCode: 'SINGLE_SEAT_AT_START',
+                                        message: 'Bạn không thể bỏ trống 1 ghế ở đầu dãy.'
+                                    };
+                                } else {
+                                    result.bypassRule = 'BOUNDARY_EXCEPTION';
+                                }
+                            } else if (isAbsoluteEnd) {
+                                if (!ALLOW_BOUNDARY_ORPHAN) {
+                                    return {
+                                        isValid: false,
+                                        errorCode: 'SINGLE_SEAT_AT_END',
+                                        message: 'Bạn không thể bỏ trống 1 ghế ở cuối dãy.'
+                                    };
+                                } else {
+                                    result.bypassRule = 'BOUNDARY_EXCEPTION';
+                                }
                             } else {
-                                // REJECTED: Single seat in the middle
                                 return { 
                                     isValid: false, 
                                     errorCode: 'SINGLE_SEAT_IN_MIDDLE', 
-                                    message: 'Không thể bỏ trống 1 ghế ở giữa. Vui lòng chọn ghế sát mép hoặc chọn liên tiếp.' 
+                                    message: 'Bạn không thể bỏ trống 1 ghế ở giữa.' 
                                 };
                             }
                         }
@@ -985,20 +994,20 @@
                 // Scenario A1 (Boundary Left): 5 seats [1,2,3,4,5], user selects [2,3,4,5] -> indices [1,2,3,4]
                 mockRows = [createMockRow(5, [1, 2, 3, 4])];
                 let resA1 = validateSeatSelection();
-                console.assert(resA1.isValid === true && resA1.bypassRule === 'BOUNDARY_EXCEPTION', "Test A1 Failed");
-                if (resA1.isValid) console.log("Scenario A1 Passed");
+                console.assert(resA1.isValid === false && resA1.errorCode === 'SINGLE_SEAT_AT_START', "Test A1 Failed");
+                if (!resA1.isValid) console.log("Scenario A1 (Head Blocked) Passed");
 
                 // Scenario A2 (Boundary Right): 5 seats [1,2,3,4,5], user selects [1,2,3,4] -> indices [0,1,2,3]
                 mockRows = [createMockRow(5, [0, 1, 2, 3])];
                 let resA2 = validateSeatSelection();
-                console.assert(resA2.isValid === true && resA2.bypassRule === 'BOUNDARY_EXCEPTION', "Test A2 Failed");
-                if (resA2.isValid) console.log("Scenario A2 Passed");
+                console.assert(resA2.isValid === false && resA2.errorCode === 'SINGLE_SEAT_AT_END', "Test A2 Failed");
+                if (!resA2.isValid) console.log("Scenario A2 (End Blocked) Passed");
 
                 // Scenario B1 (Middle Gap): 5 seats [1,2,3,4,5], user selects [1,2,4,5] -> indices [0,1,3,4], empty [2]
                 mockRows = [createMockRow(5, [0, 1, 3, 4])];
                 let resB1 = validateSeatSelection();
                 console.assert(resB1.isValid === false && resB1.errorCode === 'SINGLE_SEAT_IN_MIDDLE', "Test B1 Failed");
-                if (!resB1.isValid) console.log("Scenario B1 Passed");
+                if (!resB1.isValid) console.log("Scenario B1 (Middle Blocked) Passed");
                 
                 // Scenario C1 (Trapped next to booked): 5 seats, index 4 booked, user selects 0,1,2. Empty at 3.
                 let mockRowC1 = createMockRow(5, [0, 1, 2]);

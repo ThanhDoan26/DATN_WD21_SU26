@@ -37,12 +37,14 @@ class MovieDetailService
             });
         });
 
-        // Prepare mapping cinemaName => cinemaId for fetching cinema reviews
+        // Prepare mapping cinemaName => cinemaId & cinemaCity for filtering
         $cinemaNameToId = [];
+        $cinemaNameToCity = [];
         foreach ($showtimesByCinema as $cinemaName => $group) {
             $first = $group->flatten()->first();
             if ($first && $first->room && $first->room->cinema) {
                 $cinemaNameToId[$cinemaName] = $first->room->cinema->id;
+                $cinemaNameToCity[$cinemaName] = $first->room->cinema->city ?? 'Khác';
             }
         }
 
@@ -162,6 +164,7 @@ class MovieDetailService
             'purchasedCombos' => $purchasedCombos,
             'comboReviews' => $comboReviews,
             'cinemaReviewsByName' => $cinemaReviewsByName,
+            'cinemaNameToCity' => $cinemaNameToCity,
         ];
     }
 }

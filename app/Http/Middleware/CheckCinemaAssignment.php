@@ -19,10 +19,11 @@ class CheckCinemaAssignment
         $user = $request->user();
 
         if (!$user || !$user->cinema_id) {
+            $msg = 'Tài khoản của bạn chưa được phân công rạp hoạt động. Vui lòng liên hệ Quản trị viên để được chỉ định rạp.';
             if ($request->expectsJson() || $request->ajax()) {
-                return response()->json(['success' => false, 'message' => 'Nhân viên không được phân công rạp.'], 403);
+                return response()->json(['success' => false, 'message' => $msg], 403);
             }
-            abort(403, 'Nhân viên không được phân công rạp.');
+            abort(403, $msg);
         }
 
         // 1. Kiểm tra showtime (từ route parameter hoặc input/query)

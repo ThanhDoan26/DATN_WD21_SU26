@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
+use Illuminate\Support\Facades\DB;
 
 /**
  * UserController
@@ -92,6 +93,12 @@ class UserController extends AdminController
     {
         $validated = $request->validated();
         $validated['password'] = Hash::make($validated['password']);
+
+        $role = Role::find($validated['role_id']);
+        if ($role && !in_array(strtoupper($role->role_name), ['MANAGER', 'STAFF'])) {
+            $validated['cinema_id'] = null;
+        }
+
         User::create($validated);
 
         return redirect()->route('admin.users.index')
@@ -121,6 +128,11 @@ class UserController extends AdminController
             unset($validated['password']);
         }
 
+        $role = Role::find($validated['role_id']);
+        if ($role && !in_array(strtoupper($role->role_name), ['MANAGER', 'STAFF'])) {
+            $validated['cinema_id'] = null;
+        }
+
         $user->update($validated);
 
         return redirect()->route('admin.users.index')
@@ -132,6 +144,11 @@ class UserController extends AdminController
      */
     public function destroy(User $user)
     {
+        if ($user->id === auth()->id()) {
+            return redirect()->route('admin.users.index')
+                             ->with('error', 'Bạn không thể tự xóa tài khoản của chính mình!');
+        }
+
         // Kiểm tra xem người dùng có booking vé chưa sử dụng/chưa hết hạn không
         $hasActiveBookings = $user->bookings()
             ->whereNotIn('bookings.status', ['Cancelled', 'Used'])
@@ -146,10 +163,20 @@ class UserController extends AdminController
                              ->with('error', 'Không thể xóa người dùng này vì họ đang có vé chưa sử dụng!');
         }
 
-        // Gỡ liên kết user_id cho các booking đã hết hạn/sử dụng/hủy để tránh lỗi foreign key (onDelete restrict)
-        $user->bookings()->update(['user_id' => null]);
+        DB::transaction(function () use ($user) {
+            // Gỡ liên kết user_id cho các booking đã hết hạn/sử dụng/hủy
+            $user->bookings()->update(['user_id' => null]);
 
-        $user->delete();
+            // Dọn dẹp các đánh giá của người dùng để tránh lỗi khóa ngoại
+            \App\Models\Review::where('user_id', $user->id)->delete();
+            \App\Models\CinemaReview::where('user_id', $user->id)->delete();
+            \App\Models\ComboReview::where('user_id', $user->id)->delete();
+
+            // Chuyển quyền tác giả bài viết sang Admin hiện tại nếu có
+            \App\Models\Post::where('author_id', $user->id)->update(['author_id' => auth()->id()]);
+
+            $user->delete();
+        });
 
         return redirect()->route('admin.users.index')
                          ->with('success', 'Xóa người dùng thành công!');
