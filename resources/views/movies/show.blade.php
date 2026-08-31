@@ -327,7 +327,25 @@
                                 </h2>
                             </div>
 
-                            <div class="p-2 max-h-[600px] overflow-y-auto custom-scrollbar" x-data="{ activeCinema: '{{ $showtimesByCinema->keys()->first() }}' }">
+                            @php
+                                $uniqueCities = collect($cinemaNameToCity ?? [])->values()->filter()->unique()->values();
+                            @endphp
+                            <div class="p-2 max-h-[600px] overflow-y-auto custom-scrollbar" 
+                                 x-data="{ 
+                                     activeCity: 'ALL',
+                                     activeCinema: '{{ $showtimesByCinema->keys()->first() }}',
+                                     cinemaCityMap: {{ json_encode($cinemaNameToCity ?? []) }},
+                                     isCinemaVisible(cName) {
+                                         return this.activeCity === 'ALL' || this.cinemaCityMap[cName] === this.activeCity || (this.cinemaCityMap[cName] && this.cinemaCityMap[cName].includes(this.activeCity));
+                                     },
+                                     selectCity(city) {
+                                         this.activeCity = city;
+                                         const firstMatch = Object.keys(this.cinemaCityMap).find(cName => this.isCinemaVisible(cName));
+                                         if (firstMatch) {
+                                             this.activeCinema = firstMatch;
+                                         }
+                                     }
+                                 }">
                                 
                                 @if($showtimesByCinema->isEmpty())
                                     <div class="p-8 text-center">
@@ -338,10 +356,32 @@
                                         <p class="text-slate-500 text-sm mt-2">Vui lòng quay lại sau.</p>
                                     </div>
                                 @else
+                                    @if($uniqueCities->count() > 1)
+                                        <!-- City/Province Filter Tabs -->
+                                        <div class="flex items-center gap-2 px-2 pb-3 mb-2 border-b border-slate-700/60 overflow-x-auto custom-scrollbar">
+                                            <span class="text-xs text-slate-400 font-semibold flex items-center gap-1"><i class="fas fa-map-marker-alt text-primary"></i> Khu vực:</span>
+                                            <button type="button" 
+                                                    @click="selectCity('ALL')"
+                                                    class="px-3 py-1 rounded-lg text-xs font-bold transition border"
+                                                    :class="activeCity === 'ALL' ? 'bg-primary text-white border-primary shadow-sm' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'">
+                                                Tất cả ({{ $showtimesByCinema->count() }})
+                                            </button>
+                                            @foreach($uniqueCities as $uCity)
+                                                <button type="button" 
+                                                        @click="selectCity('{{ $uCity }}')"
+                                                        class="px-3 py-1 rounded-lg text-xs font-semibold transition border"
+                                                        :class="activeCity === '{{ $uCity }}' ? 'bg-primary text-white border-primary shadow-sm' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'">
+                                                    {{ $uCity }}
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    @endif
+
                                     <!-- Cinema Tabs Horizon Scroll -->
                                     <div class="flex overflow-x-auto gap-2 p-2 mb-2 custom-scrollbar">
                                         @foreach($showtimesByCinema as $cinemaName => $dates)
-                                            <button @click="activeCinema = '{{ $cinemaName }}'"
+                                            <button x-show="isCinemaVisible('{{ $cinemaName }}')"
+                                                    @click="activeCinema = '{{ $cinemaName }}'"
                                                     class="flex-shrink-0 px-5 py-3 rounded-xl font-bold border transition-all flex items-center gap-2"
                                                     :class="activeCinema === '{{ $cinemaName }}' ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'">
                                                 <i class="fas fa-building" :class="activeCinema === '{{ $cinemaName }}' ? 'text-white' : 'text-slate-500'"></i>

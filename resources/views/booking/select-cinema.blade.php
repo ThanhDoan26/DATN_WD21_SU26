@@ -27,11 +27,57 @@
                 </div>
             </div>
 
-            <!-- Cinemas Grid -->
+            <!-- Filter & Search Bar -->
             @if($cinemas->count() > 0)
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-slate-800/90 backdrop-blur rounded-2xl p-5 mb-8 border border-slate-700 shadow-xl">
+                    <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <!-- City/Province Filter Tabs -->
+                        <div class="w-full md:w-auto flex-1 flex flex-wrap items-center gap-2" id="cityFilterContainer">
+                            <span class="text-sm font-semibold text-slate-400 mr-2 flex items-center gap-1.5">
+                                <i class="fas fa-map-marker-alt text-primary"></i> Khu vực:
+                            </span>
+                            <button type="button" 
+                                    class="city-filter-btn active px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 bg-primary text-white shadow-lg shadow-primary/30 border border-primary"
+                                    data-city="ALL">
+                                Tất cả ({{ $cinemas->count() }})
+                            </button>
+                            @foreach($cities as $city)
+                                @php
+                                    $cityCount = $cinemas->where('city', $city)->count();
+                                @endphp
+                                <button type="button" 
+                                        class="city-filter-btn px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 bg-slate-900/60 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700"
+                                        data-city="{{ $city }}">
+                                    {{ $city }} ({{ $cityCount }})
+                                </button>
+                            @endforeach
+                        </div>
+
+                        <!-- Search Box -->
+                        <div class="w-full md:w-72 relative">
+                            <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" 
+                                   id="cinemaSearchInput" 
+                                   placeholder="Tìm rạp theo tên, địa chỉ..." 
+                                   class="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Filter Summary -->
+                <div class="flex items-center justify-between mb-6 px-1">
+                    <p class="text-slate-400 text-sm" id="filterResultText">
+                        Hiển thị <span class="font-bold text-white" id="visibleCount">{{ $cinemas->count() }}</span> cụm rạp phù hợp
+                    </p>
+                </div>
+
+                <!-- Cinemas Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="cinemasGrid">
                     @foreach($cinemas as $cinema)
-                        <div class="bg-slate-800 rounded-xl overflow-hidden hover:bg-slate-700 transition-all duration-300 cursor-pointer group hover:-translate-y-2 hover:shadow-xl hover:shadow-primary/20 border border-slate-700 hover:border-primary"
+                        <div class="cinema-card bg-slate-800 rounded-xl overflow-hidden hover:bg-slate-700 transition-all duration-300 cursor-pointer group hover:-translate-y-2 hover:shadow-xl hover:shadow-primary/20 border border-slate-700 hover:border-primary"
+                             data-city="{{ $cinema->city }}"
+                             data-name="{{ mb_strtolower($cinema->name, 'UTF-8') }}"
+                             data-address="{{ mb_strtolower($cinema->address, 'UTF-8') }}"
                              onclick="selectCinema({{ $cinema->id }}, '{{ $cinema->name }}')">
                             <div class="p-6">
                                 <!-- Cinema Header -->
@@ -41,20 +87,24 @@
                                     </div>
                                     <div class="flex-1">
                                         <h3 class="text-xl font-bold group-hover:text-primary transition">{{ $cinema->name }}</h3>
-                                        <p class="text-slate-400 text-sm">{{ $cinema->city }}</p>
+                                        <span class="inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-900 text-primary border border-primary/30">
+                                            <i class="fas fa-map-pin text-[10px] mr-1"></i>{{ $cinema->city }}
+                                        </span>
                                     </div>
                                 </div>
 
                                 <!-- Cinema Details -->
                                 <div class="space-y-2 mb-4 text-slate-300 text-sm">
                                     <div class="flex items-center gap-2">
-                                        <i class="fas fa-map-pin text-slate-500 w-4"></i>
-                                        <span>{{ $cinema->address }}</span>
+                                        <i class="fas fa-map-marker-alt text-slate-500 w-4"></i>
+                                        <span class="line-clamp-2">{{ $cinema->address }}</span>
                                     </div>
+                                    @if($cinema->phone)
                                     <div class="flex items-center gap-2">
                                         <i class="fas fa-phone text-slate-500 w-4"></i>
                                         <span>{{ $cinema->phone }}</span>
                                     </div>
+                                    @endif
                                 </div>
 
                                 <!-- Room Count -->
@@ -73,6 +123,16 @@
                         </div>
                     @endforeach
                 </div>
+
+                <!-- No match state -->
+                <div id="noMatchState" class="hidden text-center py-16 bg-slate-800/50 rounded-2xl border border-slate-700/50">
+                    <i class="fas fa-search-location text-slate-500 text-5xl mb-4"></i>
+                    <p class="text-slate-300 text-lg font-semibold mb-2">Không tìm thấy rạp phù hợp tại khu vực này</p>
+                    <p class="text-slate-500 text-sm mb-6">Vui lòng thử chọn tỉnh thành khác hoặc xóa từ khóa tìm kiếm</p>
+                    <button type="button" onclick="resetFilters()" class="inline-flex items-center gap-2 bg-primary hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-xl transition shadow">
+                        <i class="fas fa-undo"></i> Xem tất cả rạp
+                    </button>
+                </div>
             @else
                 <div class="text-center py-20">
                     <i class="fas fa-inbox text-slate-500 text-6xl mb-4"></i>
@@ -90,7 +150,86 @@
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Document ready
+            const cityButtons = document.querySelectorAll('.city-filter-btn');
+            const searchInput = document.getElementById('cinemaSearchInput');
+            const cinemaCards = document.querySelectorAll('.cinema-card');
+            const noMatchState = document.getElementById('noMatchState');
+            const visibleCountEl = document.getElementById('visibleCount');
+
+            let currentCity = 'ALL';
+            let currentKeyword = '';
+
+            function filterCinemas() {
+                let visibleCount = 0;
+
+                cinemaCards.forEach(card => {
+                    const cardCity = card.getAttribute('data-city') || '';
+                    const cardName = card.getAttribute('data-name') || '';
+                    const cardAddress = card.getAttribute('data-address') || '';
+
+                    const matchCity = (currentCity === 'ALL' || cardCity === currentCity || cardCity.includes(currentCity));
+                    const matchSearch = (!currentKeyword || cardName.includes(currentKeyword) || cardAddress.includes(currentKeyword) || cardCity.toLowerCase().includes(currentKeyword));
+
+                    if (matchCity && matchSearch) {
+                        card.style.display = 'block';
+                        visibleCount++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                if (visibleCountEl) {
+                    visibleCountEl.textContent = visibleCount;
+                }
+
+                if (noMatchState) {
+                    if (visibleCount === 0) {
+                        noMatchState.classList.remove('hidden');
+                    } else {
+                        noMatchState.classList.add('hidden');
+                    }
+                }
+            }
+
+            cityButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    cityButtons.forEach(b => {
+                        b.classList.remove('active', 'bg-primary', 'text-white', 'shadow-lg', 'shadow-primary/30', 'border-primary');
+                        b.classList.add('bg-slate-900/60', 'text-slate-300', 'border-slate-700');
+                    });
+
+                    this.classList.add('active', 'bg-primary', 'text-white', 'shadow-lg', 'shadow-primary/30', 'border-primary');
+                    this.classList.remove('bg-slate-900/60', 'text-slate-300', 'border-slate-700');
+
+                    currentCity = this.getAttribute('data-city') || 'ALL';
+                    filterCinemas();
+                });
+            });
+
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    currentKeyword = this.value.trim().toLowerCase();
+                    filterCinemas();
+                });
+            }
+
+            window.resetFilters = function() {
+                currentCity = 'ALL';
+                currentKeyword = '';
+                if (searchInput) searchInput.value = '';
+
+                cityButtons.forEach(b => {
+                    if (b.getAttribute('data-city') === 'ALL') {
+                        b.classList.add('active', 'bg-primary', 'text-white', 'shadow-lg', 'shadow-primary/30', 'border-primary');
+                        b.classList.remove('bg-slate-900/60', 'text-slate-300', 'border-slate-700');
+                    } else {
+                        b.classList.remove('active', 'bg-primary', 'text-white', 'shadow-lg', 'shadow-primary/30', 'border-primary');
+                        b.classList.add('bg-slate-900/60', 'text-slate-300', 'border-slate-700');
+                    }
+                });
+
+                filterCinemas();
+            };
         });
 
         // Step 1: BFCache listener
