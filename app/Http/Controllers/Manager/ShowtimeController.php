@@ -149,9 +149,7 @@ class ShowtimeController extends Controller
             }
         }
 
-        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
-            $validated['status'] = Showtime::STATUS_PENDING;
-        }
+        $validated['status'] = $validated['status'] ?? Showtime::STATUS_SCHEDULED;
 
         // Validate showtime status rules
         (new MovieStatusValidationService())->validateShowtimeStatusRules(null, $validated, $movie);
@@ -300,10 +298,6 @@ class ShowtimeController extends Controller
 
         // Re-validate showtime status rules after computing end_time
         (new MovieStatusValidationService())->validateShowtimeStatusRules($showtime, $validated, $movie);
-
-        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
-            $validated['status'] = Showtime::STATUS_PENDING;
-        }
 
         DB::transaction(function () use ($showtime, $validated) {
             $showtime->update($validated);

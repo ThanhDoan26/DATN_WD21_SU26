@@ -404,10 +404,8 @@ class MovieStatusValidationService
 
     /**
      * Check if a movie is allowed for ticket sales.
-     * Blocks all booking attempts if the movie status is 'SCHEDULED'.
      *
      * @param Showtime|int $showtimeOrId
-     * @throws MovieScheduledException
      */
     public function validateTicketSalesAllowed(Showtime|int $showtimeOrId): void
     {
@@ -418,8 +416,8 @@ class MovieStatusValidationService
             $movie = $showtime ? DB::table('movies')->where('id', $showtime->movie_id)->first() : null;
         }
 
-        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
-            throw new MovieScheduledException('Movie is currently scheduled and not yet open for ticket sales.');
+        if ($movie && $movie->status === Movie::STATUS_ENDED) {
+            throw new MovieEndedException('Phim đã ngưng chiếu, không thể thực hiện giao dịch đặt vé.');
         }
     }
 
@@ -535,19 +533,7 @@ class MovieStatusValidationService
             }
         }
 
-        // 3. Movie Status Constraint: If movie.status === 'SCHEDULED' -> Force PENDING, block SCHEDULED
-        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
-            if (!in_array($newStatus, [Showtime::STATUS_PENDING, Showtime::STATUS_UNPUBLISHED])) {
-                $validator = Validator::make([], []);
-                $validator->errors()->add(
-                    'status',
-                    "Phim đang ở trạng thái 'Lên lịch' (SCHEDULED), suất chiếu bắt buộc phải ở trạng thái 'Chờ/Chưa công bố' (PENDING)."
-                );
-                throw new ValidationException($validator);
-            }
-        }
-
-        // 4. Time-based Rules
+        // 3. Time-based Rules
         if (!empty($data['start_time'])) {
             $startTime = $data['start_time'] instanceof Carbon ? $data['start_time'] : Carbon::parse($data['start_time']);
 

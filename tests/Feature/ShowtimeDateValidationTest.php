@@ -135,10 +135,10 @@ describe('Showtime Date & Time Boundary Validation Tests', function () {
         $response->assertSessionHasNoErrors();
         $response->assertRedirect(route('admin.showtimes.index'));
 
-        // Because movie is SCHEDULED, created showtime status is forced to PENDING
+        // Because status was chosen as SCHEDULED, created showtime status is SCHEDULED
         $created = Showtime::where('movie_id', $movie->id)->first();
         expect($created)->not->toBeNull();
-        expect($created->status)->toBe(Showtime::STATUS_PENDING);
+        expect($created->status)->toBe(Showtime::STATUS_SCHEDULED);
     });
 
     test('admin cannot create showtime before presale_date when presale_date is set', function () {

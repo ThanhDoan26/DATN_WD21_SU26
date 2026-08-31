@@ -323,8 +323,8 @@ class BookingService
                 $isWalkIn = ($extraData['booking_source'] ?? 'online') !== 'online';
 
                 $movieRow = DB::table('movies')->where('id', $showtime->movie_id)->first();
-                if ($movieRow && $movieRow->status === 'SCHEDULED') {
-                    throw new \App\Exceptions\MovieScheduledException("Movie is currently scheduled and not yet open for ticket sales.");
+                if ($movieRow && $movieRow->status === \App\Models\Movie::STATUS_ENDED) {
+                    throw new \App\Exceptions\MovieEndedException("Phim đã ngưng chiếu, không thể thực hiện giao dịch đặt vé.");
                 }
 
                 // Kiểm tra trạng thái và thời gian đặt vé theo quy định
