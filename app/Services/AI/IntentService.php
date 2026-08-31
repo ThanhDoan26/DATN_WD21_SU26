@@ -23,11 +23,11 @@ Dựa vào lịch sử và câu hỏi mới nhất của người dùng, hãy ph
 - ask_movie_recommendation: Gợi ý phim cùng thể loại, phim hot.
 - ask_movie_compare: So sánh phim.
 - ask_movie_post: Hỏi về bài review, bài viết giới thiệu liên quan đến phim.
-- ask_cinemas: Hỏi về thông tin rạp chiếu phim, địa chỉ, số điện thoại rạp.
-- ask_showtimes: Hỏi về lịch chiếu, suất chiếu, phòng chiếu.
+- ask_cinemas: Hỏi về thông tin rạp chiếu phim, địa chỉ, số điện thoại rạp, hoặc khi người dùng hỏi 'có những rạp nào', 'rạp ở đâu'.
+- ask_showtimes: Hỏi về lịch chiếu, suất chiếu, phòng chiếu, giờ chiếu.
 - ask_my_tickets: Hỏi về thông tin vé đã đặt, lịch sử mua vé của chính họ.
 - ask_website: Hỏi về thông tin website, chức năng, đăng nhập, đăng ký.
-- ask_booking_guide: Hỏi về cách đặt vé, hướng dẫn đặt vé.
+- ask_booking_guide: Hỏi về cách đặt vé, hướng dẫn đặt vé, hoặc khi người dùng có ý định muốn đặt vé ('đặt vé cho tôi', 'đặt phim này', 'chọn ghế', 'mua vé').
 - ask_booking_status: Hỏi về trạng thái đơn vé.
 - ask_seat_hold: Hỏi về ghế bị khóa, thời gian giữ ghế.
 - ask_payment: Hỏi về các cổng thanh toán hỗ trợ.
@@ -43,8 +43,8 @@ Dựa vào lịch sử và câu hỏi mới nhất của người dùng, hãy ph
 - general: Giao tiếp thông thường.
 
 QUAN TRỌNG:
-Ngoài 'intent', nếu trong câu hỏi người dùng có nhắc đến tên một bộ phim cụ thể hoặc ngụ ý về một phim dựa trên lịch sử (ví dụ 'phần mới nhất', 'phim đó'), hãy trích xuất thêm 'movie_query'.
-Nếu câu hỏi KHÔNG liên quan đến phim cụ thể (như chào hỏi, hỏi chính sách...), 'movie_query' để null.
+Ngoài 'intent', nếu trong câu hỏi người dùng có nhắc đến tên một bộ phim cụ thể hoặc ngụ ý/lựa chọn một phim dựa trên lịch sử (ví dụ: 'phần mới nhất', 'phim đó', 'cái đầu tiên', 'cái thứ 2', 'phim 1', 'chọn cái số 1'), hãy trích xuất tên phim hoặc cụm từ ngụ ý đó vào 'movie_query'.
+Nếu câu hỏi KHÔNG liên quan đến phim cụ thể (như chào hỏi, hỏi chính sách, hỏi danh sách rạp...), 'movie_query' để null.
 
 Chỉ trả về JSON format CHÍNH XÁC như sau: 
 {

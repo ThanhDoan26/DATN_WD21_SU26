@@ -34,11 +34,28 @@ class KnowledgeService
         $normQuery = \Illuminate\Support\Str::slug($movieQuery, ' ');
         $queryWords = array_diff(explode(' ', $normQuery), ['phim', 'phan', 'moi', 'nhat', 'do', 'nay', 've', 'la', 'ai']);
 
-        // Check for context words
-        if (empty($queryWords) || str_contains($normQuery, 'phan moi nhat') || str_contains($normQuery, 'phim do') || str_contains($normQuery, 'phim nay')) {
-            $movieQuery = $this->resolveContextWithGemini($movieQuery, $history);
-            $normQuery = \Illuminate\Support\Str::slug($movieQuery, ' ');
-            $queryWords = array_diff(explode(' ', $normQuery), ['phim']);
+        // Check for context words or ordinal choices (ví dụ: 'cái đầu tiên', 'cái thứ 2', 'chọn cái 1', 'phần mới nhất', etc.)
+        $isOrdinalOrContext = empty($queryWords) 
+            || str_contains($normQuery, 'phan moi nhat') 
+            || str_contains($normQuery, 'phim do') 
+            || str_contains($normQuery, 'phim nay')
+            || str_contains($normQuery, 'dau tien')
+            || str_contains($normQuery, 'thu nhat')
+            || str_contains($normQuery, 'thu hai')
+            || str_contains($normQuery, 'thu 2')
+            || str_contains($normQuery, 'so 1')
+            || str_contains($normQuery, 'so 2')
+            || str_contains($normQuery, 'cai dau')
+            || str_contains($normQuery, 'cai sau')
+            || str_contains($normQuery, 'chon');
+
+        if ($isOrdinalOrContext) {
+            $resolvedName = $this->resolveContextWithGemini($movieQuery, $history);
+            if (!empty($resolvedName) && $resolvedName !== $movieQuery) {
+                $movieQuery = $resolvedName;
+                $normQuery = \Illuminate\Support\Str::slug($movieQuery, ' ');
+                $queryWords = array_diff(explode(' ', $normQuery), ['phim']);
+            }
         }
 
         // 2. DB Candidate Search
@@ -62,10 +79,11 @@ class KnowledgeService
             $normTitle = \Illuminate\Support\Str::slug($movie->title, ' ');
             $titleWords = explode(' ', $normTitle);
             
-            if (strtolower(trim($movieQuery)) === strtolower(trim($movie->title))) {
-                $score += 200;
+            // Exact match (case insensitive title or normalized slug)
+            if (mb_strtolower(trim($movieQuery), 'UTF-8') === mb_strtolower(trim($movie->title), 'UTF-8')) {
+                $score += 300;
             } elseif ($normQuery === $normTitle) {
-                $score += 150;
+                $score += 250;
             } else {
                 if (str_contains($normTitle, $normQuery) || str_contains($normQuery, $normTitle)) {
                     $score += 80;
@@ -88,7 +106,7 @@ class KnowledgeService
                             if (strlen($mWord) <= 3) continue;
                             
                             $lev = levenshtein($tWord, $mWord);
-                            $maxLev = (strlen($mWord) >= 6) ? 2 : 1; // Khắt khe hơn với từ ngắn
+                            $maxLev = (strlen($mWord) >= 6) ? 2 : 1;
 
                             if ($lev <= $maxLev) {
                                 $score += 15;
@@ -116,9 +134,18 @@ class KnowledgeService
         $topScore = $matchedMovies->first()->relevance_score;
         
         // 4. Resolution Status
+        // Nếu có EXACT MATCH (score >= 200) thì chắc chắn ĐÃ XÁC ĐỊNH (resolved), không coi là ambiguous
+        if ($topScore >= 200) {
+            return [
+                'status' => 'resolved',
+                'movies' => $matchedMovies->take(1),
+                'confidence' => $topScore
+            ];
+        }
+
         if ($topScore >= 80) {
-            // If top 2 are very close, it's ambiguous
-            if ($matchedMovies->count() > 1 && $matchedMovies[1]->relevance_score >= $topScore * 0.8) {
+            // Nếu không có exact match nhưng top 2 điểm sát nhau thì là ambiguous
+            if ($matchedMovies->count() > 1 && $matchedMovies[1]->relevance_score >= $topScore * 0.9) {
                 return [
                     'status' => 'ambiguous',
                     'movies' => $matchedMovies->take(3),
@@ -149,7 +176,11 @@ class KnowledgeService
     {
         if (empty($history)) return $query;
         $historyText = json_encode($history, JSON_UNESCAPED_UNICODE);
-        $system = "Bạn là chuyên gia phân tích ngữ cảnh phim. Dựa vào lịch sử hội thoại: {$historyText}. Người dùng vừa nói: '{$query}'. Hãy cho biết tên phim cụ thể mà họ đang ám chỉ. Chỉ trả về một tên phim duy nhất, không giải thích.";
+        $system = "Bạn là chuyên gia phân tích ngữ cảnh phim. Dựa vào lịch sử hội thoại: {$historyText}. Người dùng vừa nói: '{$query}'.
+Nhiệm vụ:
+1. Nếu người dùng chọn một phim theo thứ tự (ví dụ: 'cái đầu tiên', 'phim thứ nhất', 'cái số 1', 'lấy cái sau', 'chọn phim thứ 2'...), hãy đọc danh sách các phim trong tin nhắn gần nhất của trợ lý và lấy đúng tên bộ phim tương ứng.
+2. Nếu người dùng ngụ ý một phim (ví dụ: 'phần mới nhất', 'phim đó', 'phim này'), hãy tìm tên phim tương ứng trong lịch sử.
+Chỉ trả về MỘT TÊN PHIM DUY NHẤT, không giải thích gì thêm.";
         $response = $this->geminiService->generate($query, $system);
         return trim($response);
     }
@@ -217,15 +248,18 @@ class KnowledgeService
 
         switch ($intent) {
             case 'ask_movies':
+                Showtime::syncAllStatuses();
                 $nowShowing = Movie::where('status', 'NOW_SHOWING')
                     ->with('categories:name')
                     ->get();
                 $comingSoon = Movie::where('status', 'COMING_SOON')
                     ->with('categories:name')
                     ->get();
-                $todayShowtimes = Showtime::upcoming()
+                $todayUpcomingShowtimes = Showtime::where('status', Showtime::STATUS_SCHEDULED)
                     ->whereDate('start_time', today())
+                    ->where('start_time', '>', now())
                     ->with(['movie:id,title', 'room.cinema:id,name'])
+                    ->orderBy('start_time', 'asc')
                     ->get();
 
                 if ($nowShowing->isEmpty() && $comingSoon->isEmpty()) {
@@ -233,6 +267,7 @@ class KnowledgeService
                 }
 
                 $data = [
+                    'thoi_gian_hien_tai' => now()->format('d/m/Y H:i'),
                     'phim_dang_chieu' => $nowShowing->map(function ($m) {
                         return [
                             'ten_phim' => $m->title,
@@ -243,7 +278,7 @@ class KnowledgeService
                             'trang_thai' => 'Đang chiếu'
                         ];
                     }),
-                    'suat_chieu_hom_nay' => $todayShowtimes->map(function ($s) {
+                    'suat_chieu_con_lai_hom_nay' => $todayUpcomingShowtimes->map(function ($s) {
                         return [
                             'phim' => $s->movie->title ?? '',
                             'rap' => $s->room->cinema->name ?? '',
@@ -264,6 +299,7 @@ class KnowledgeService
                 return "Danh sách phim và lịch chiếu: " . json_encode($data, JSON_UNESCAPED_UNICODE);
 
             case 'ask_movie_status':
+                Showtime::syncAllStatuses();
                 if ($movieResolution && $movieResolution['status'] === 'resolved') {
                     $matchedMovies = $movieResolution['movies'];
                     $data = $matchedMovies->map(function ($m) {
@@ -280,12 +316,15 @@ class KnowledgeService
 
                 $nowShowing = Movie::where('status', 'NOW_SHOWING')->with('categories:name')->get();
                 $comingSoon = Movie::where('status', 'COMING_SOON')->with('categories:name')->get();
-                $todayShowtimes = Showtime::upcoming()
+                $todayUpcomingShowtimes = Showtime::where('status', Showtime::STATUS_SCHEDULED)
                     ->whereDate('start_time', today())
+                    ->where('start_time', '>', now())
                     ->with(['movie:id,title', 'room.cinema:id,name'])
+                    ->orderBy('start_time', 'asc')
                     ->get();
 
                 $data = [
+                    'thoi_gian_hien_tai' => now()->format('d/m/Y H:i'),
                     'phim_dang_chieu' => $nowShowing->map(function ($m) {
                         return [
                             'ten_phim' => $m->title,
@@ -294,7 +333,7 @@ class KnowledgeService
                             'trang_thai' => 'Đang chiếu'
                         ];
                     }),
-                    'suat_chieu_hom_nay' => $todayShowtimes->map(function ($s) {
+                    'suat_chieu_con_lai_hom_nay' => $todayUpcomingShowtimes->map(function ($s) {
                         return [
                             'phim' => $s->movie->title ?? '',
                             'rap' => $s->room->cinema->name ?? '',
@@ -369,27 +408,80 @@ class KnowledgeService
                 return "Danh sách hệ thống rạp phim: " . json_encode($cinemas->toArray(), JSON_UNESCAPED_UNICODE);
 
             case 'ask_showtimes':
-                $showtimesQuery = Showtime::upcoming()
-                    ->with(['movie:id,title', 'room:id,name,cinema_id', 'room.cinema:id,name,address']);
-                
-                if ($movieResolution && $movieResolution['status'] === 'resolved') {
-                    $showtimesQuery->whereIn('movie_id', $movieResolution['movies']->pluck('id'));
+                Showtime::syncAllStatuses();
+
+                $movieIdFilter = ($movieResolution && $movieResolution['status'] === 'resolved')
+                    ? $movieResolution['movies']->pluck('id')->toArray()
+                    : [];
+
+                // 1. Suất chiếu sắp tới (start_time > now)
+                $upcomingQuery = Showtime::where('status', Showtime::STATUS_SCHEDULED)
+                    ->where('start_time', '>', now())
+                    ->with(['movie:id,title', 'room:id,name,cinema_id', 'room.cinema:id,name,address'])
+                    ->orderBy('start_time', 'asc');
+
+                if (!empty($movieIdFilter)) {
+                    $upcomingQuery->whereIn('movie_id', $movieIdFilter);
                 }
-                
-                $showtimes = $showtimesQuery->take(15)->get();
-                
-                if ($showtimes->isEmpty()) return "Hiện tại không có suất chiếu nào sắp diễn ra.";
-                $data = $showtimes->map(function ($s) {
-                    return [
-                        'phim' => $s->movie->title ?? '',
-                        'rap' => $s->room->cinema->name ?? '',
-                        'dia_chi' => $s->room->cinema->address ?? '',
-                        'phong' => $s->room->name ?? '',
-                        'thoi_gian_bat_dau' => optional($s->start_time)->format('d/m/Y H:i'),
-                        'tinh_trang' => $s->status === 'SCHEDULED' ? 'Sắp chiếu / Đang mở bán' : ($s->status === 'ONGOING' ? 'Đang chiếu' : $s->status)
-                    ];
-                });
-                return "Lịch chiếu suất chiếu sắp tới: " . json_encode($data->toArray(), JSON_UNESCAPED_UNICODE);
+
+                $upcomingShowtimes = $upcomingQuery->take(15)->get();
+
+                // 2. Suất chiếu hôm nay đã qua giờ / đã kết thúc (start_time <= now)
+                $pastQuery = Showtime::whereDate('start_time', today())
+                    ->where('start_time', '<=', now())
+                    ->with(['movie:id,title', 'room.cinema:id,name'])
+                    ->orderBy('start_time', 'desc');
+
+                if (!empty($movieIdFilter)) {
+                    $pastQuery->whereIn('movie_id', $movieIdFilter);
+                }
+
+                $pastShowtimesToday = $pastQuery->take(10)->get();
+
+                $movieName = (!empty($movieIdFilter) && $movieResolution['movies']->isNotEmpty()) 
+                    ? $movieResolution['movies']->first()->title 
+                    : null;
+
+                if ($upcomingShowtimes->isEmpty()) {
+                    if ($pastShowtimesToday->isNotEmpty()) {
+                        $pastList = $pastShowtimesToday->map(function ($s) {
+                            return ($s->movie->title ?? '') . ' tại ' . ($s->room->cinema->name ?? '') . ' lúc ' . optional($s->start_time)->format('H:i d/m/Y');
+                        })->implode(', ');
+
+                        return "CẢNH BÁO THỜI GIAN VÀ SUẤT CHIẾU: Hiện tại là " . now()->format('H:i d/m/Y') . ". " .
+                            ($movieName ? "Suất chiếu hôm nay của phim '{$movieName}' ({$pastList}) ĐÃ QUA GIỜ CHIẾU / ĐÃ KẾT THÚC." : "Các suất chiếu hôm nay ({$pastList}) ĐÃ QUA GIỜ CHIẾU / ĐÃ KẾT THÚC.") .
+                            " Hiện tại không còn suất chiếu nào sắp diễn ra trong ngày hôm nay. CHỈ THỊ BẮT BUỘC: Hãy thông báo rõ ràng cho khách rằng suất chiếu hôm nay đã qua giờ/đã kết thúc và không thể đặt vé cho suất đó nữa. Hãy gợi ý khách xem lịch chiếu của ngày tiếp theo hoặc chọn phim khác.";
+                    }
+
+                    return ($movieName ? "Phim '{$movieName}'" : "Hệ thống") . " hiện tại không có suất chiếu sắp tới nào.";
+                }
+
+                $data = [
+                    'thoi_gian_hien_tai' => now()->format('d/m/Y H:i'),
+                    'suat_chieu_sap_toi_co_the_dat_ve' => $upcomingShowtimes->map(function ($s) {
+                        return [
+                            'phim' => $s->movie->title ?? '',
+                            'rap' => $s->room->cinema->name ?? '',
+                            'dia_chi' => $s->room->cinema->address ?? '',
+                            'phong' => $s->room->name ?? '',
+                            'thoi_gian_bat_dau' => optional($s->start_time)->format('d/m/Y H:i'),
+                            'tinh_trang' => 'Sắp chiếu / Đang mở bán'
+                        ];
+                    })
+                ];
+
+                if ($pastShowtimesToday->isNotEmpty()) {
+                    $data['suat_chieu_da_qua_gio_hom_nay'] = $pastShowtimesToday->map(function ($s) {
+                        return [
+                            'phim' => $s->movie->title ?? '',
+                            'rap' => $s->room->cinema->name ?? '',
+                            'thoi_gian' => optional($s->start_time)->format('d/m/Y H:i'),
+                            'tinh_trang' => 'ĐÃ QUA GIỜ CHIẾU / ĐÃ KẾT THÚC (KHÔNG THỂ ĐẶT VÉ)'
+                        ];
+                    });
+                }
+
+                return "Lịch chiếu suất chiếu: " . json_encode($data, JSON_UNESCAPED_UNICODE);
 
             case 'ask_my_tickets':
             case 'ask_booking_status':
@@ -460,10 +552,20 @@ class KnowledgeService
                 return "Lịch sử cuộc trò chuyện từ trước đến giờ: " . json_encode($history, JSON_UNESCAPED_UNICODE);
 
             case 'ask_booking_guide':
-                return "Hướng dẫn đặt vé: Bước 1: Chọn phim và suất chiếu. Bước 2: Chọn ghế ngồi. Bước 3: Chọn combo (nếu có). Bước 4: Nhập mã giảm giá và thanh toán. Vé của bạn sẽ có trong mục Vé Của Tôi.";
+                $movieInfo = "";
+                if ($movieResolution && $movieResolution['status'] === 'resolved') {
+                    $m = $movieResolution['movies']->first();
+                    $movieInfo = " cho phim " . ($m->title ?? '');
+                }
+                return "Quy trình khách hàng tự đặt vé trực tuyến trên website MovieGo{$movieInfo}:
+LƯU Ý: Trợ lý AI KHÔNG trực tiếp đặt vé, giữ chỗ ghế hay thanh toán hộ trong khung chat. Để đảm bảo an toàn bảo mật và tự tay chọn vị trí ghế đẹp ưng ý theo sơ đồ trực quan, quý khách tự thao tác đặt vé trên website theo 4 bước:
+- Bước 1: Chọn phim và suất chiếu bạn muốn xem trên website.
+- Bước 2: Chọn rạp và chọn vị trí ghế ngồi trực tiếp trên sơ đồ phòng chiếu.
+- Bước 3: Chọn thêm combo bắp nước và áp dụng mã giảm giá (nếu có).
+- Bước 4: Thanh toán trực tuyến an toàn qua VNPay hoặc Thẻ ATM / Visa. Vé điện tử sẽ được hiển thị ngay sau khi thanh toán thành công và lưu trong mục 'Vé Của Tôi'.";
 
             case 'ask_payment':
-                return "Các cổng thanh toán hiện tại hệ thống hỗ trợ: VNPay và Thẻ ATM / Visa (Stripe).";
+                return "Các cổng thanh toán hỗ trợ trên website MovieGo: VNPay và Thẻ ATM / Visa quốc tế (Stripe). Quý khách thực hiện thanh toán trực tiếp tại bước 4 của quy trình đặt vé trên website. Trợ lý AI không nhận tiền hay cung cấp mã QR chuyển khoản riêng trong khung chat.";
 
             case 'ask_payment_error':
                 return "Quy định thanh toán lỗi: Nếu bị trừ tiền mà chưa có vé, hệ thống sẽ tự động hoàn tiền hoặc bạn có thể liên hệ tổng đài để được hỗ trợ.";
