@@ -17,16 +17,10 @@ return new class extends Migration
                 return in_array('title', $index['columns'] ?? []) && ($index['unique'] ?? false);
             });
 
-            if (!$hasUniqueTitle) {
-                $hasTitleIndex = $indexes->contains(function ($index) {
-                    return $index['name'] === 'movies_title_index' || (in_array('title', $index['columns'] ?? []) && !($index['unique'] ?? false));
-                });
-
-                Schema::table('movies', function (Blueprint $table) use ($hasTitleIndex) {
-                    if ($hasTitleIndex) {
-                        $table->dropIndex('movies_title_index');
-                    }
-                    $table->unique('title');
+            if ($hasUniqueTitle) {
+                Schema::table('movies', function (Blueprint $table) {
+                    $table->dropUnique(['title']);
+                    $table->index('title');
                 });
             }
         }
@@ -37,18 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (Schema::hasTable('movies')) {
-            $indexes = collect(Schema::getIndexes('movies'));
-            $hasUniqueTitle = $indexes->contains(function ($index) {
-                return in_array('title', $index['columns'] ?? []) && ($index['unique'] ?? false);
-            });
-
-            if ($hasUniqueTitle) {
-                Schema::table('movies', function (Blueprint $table) {
-                    $table->dropUnique(['title']);
-                    $table->index('title');
-                });
-            }
-        }
+        // No-op
     }
 };

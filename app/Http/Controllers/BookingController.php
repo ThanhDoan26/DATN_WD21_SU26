@@ -21,8 +21,11 @@ class BookingController extends Controller
     public function selectCinema(Movie $movie): mixed
     {
 
+        $userLocation = session('user_location');
+        $hasLocation = !empty($userLocation) && strtoupper($userLocation) !== 'ALL';
+
         // Lấy danh sách rạp có suất chiếu còn mở bán online (trước giờ chiếu tối thiểu 15 phút)
-        $cinemas = Cinema::whereHas('rooms', function ($query) use ($movie) {
+        $cinemasQuery = Cinema::whereHas('rooms', function ($query) use ($movie) {
             $query->whereHas('showtimes', function ($q) use ($movie) {
                 $q->where('movie_id', $movie->id)
                   ->where('status', Showtime::STATUS_SCHEDULED)
@@ -35,15 +38,23 @@ class BookingController extends Controller
                   ->where('status', Showtime::STATUS_SCHEDULED)
                   ->where('start_time', '>', now()->addMinutes(15));
             });
-        }])
-        ->get();
+        }]);
+
+        if ($hasLocation) {
+            $cinemasQuery->where('city', 'like', '%' . trim($userLocation) . '%');
+        }
+
+        $cinemas = $cinemasQuery->get();
 
         $cities = $cinemas->pluck('city')->filter()->unique()->values();
+        $initialCity = ($hasLocation && $cities->contains($userLocation)) ? $userLocation : 'ALL';
 
         return view('booking.select-cinema', [
             'movie' => $movie,
             'cinemas' => $cinemas,
             'cities' => $cities,
+            'userLocation' => $userLocation,
+            'initialCity' => $initialCity,
         ]);
     }
 

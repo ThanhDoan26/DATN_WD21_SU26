@@ -989,6 +989,7 @@
             const btn = document.getElementById('checkoutButton');
             if (btn) btn.disabled = true;
 
+            window.isNavigatingToCheckout = true;
             document.getElementById('seat-selection-form').submit();
         }
 
@@ -1422,6 +1423,32 @@
             if (event.persisted) {
                 pollBookedSeats();
             }
+        });
+
+        // --- Giải phóng ghế tức thì khi đóng tab / rời trang (Beacon API) ---
+        let beaconSent = false;
+        function sendReleaseSeatsBeacon() {
+            if (beaconSent || window.isNavigatingToCheckout) return;
+
+            const selectedSeatIds = Array.from(selectedSeats);
+            if (selectedSeatIds.length > 0) {
+                let data = new FormData();
+                data.append('showtime_id', showtimeId);
+                data.append('seat_ids', selectedSeatIds.join(','));
+
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon('/api/v1/bookings/release-hold-seats', data);
+                    beaconSent = true;
+                }
+            }
+        }
+
+        window.addEventListener('beforeunload', function (event) {
+            sendReleaseSeatsBeacon();
+        });
+
+        window.addEventListener('pagehide', function (event) {
+            sendReleaseSeatsBeacon();
         });
     </script>
 @endpush

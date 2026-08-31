@@ -361,7 +361,7 @@ it('allows completePayment to succeed when booking status is Pending', function 
     expect($result)->toBeTrue();
 
     $updatedBooking = Booking::find($booking->id);
-    expect($updatedBooking->status)->toBe('Paid')
+    expect($updatedBooking->status)->toBe(\App\Models\Booking::STATUS_PAID)
         ->and($updatedBooking->payment_method)->toBe('MOCK_PAYMENT')
         ->and($updatedBooking->payment_time)->not->toBeNull();
 
@@ -376,7 +376,7 @@ it('allows completePayment to succeed when booking status is PROCESSING', functi
         'user_id' => $data['user']->id,
         'showtime_id' => $data['showtime']->id,
         'total_price' => 100000,
-        'status' => 'PROCESSING',
+        'status' => 'processing',
         'booking_code' => 'BK-PROC-' . uniqid(),
         'booking_time' => now()->subMinutes(1),
     ]);
@@ -396,7 +396,7 @@ it('allows completePayment to succeed when booking status is PROCESSING', functi
     expect($result)->toBeTrue();
 
     $updatedBooking = Booking::find($booking->id);
-    expect($updatedBooking->status)->toBe('Paid')
+    expect($updatedBooking->status)->toBe(\App\Models\Booking::STATUS_PAID)
         ->and($updatedBooking->payment_method)->toBe('VNPAY')
         ->and($updatedBooking->payment_time)->not->toBeNull();
 
@@ -411,7 +411,7 @@ it('throws exception when completePayment is called on an already Paid booking',
         'user_id' => $data['user']->id,
         'showtime_id' => $data['showtime']->id,
         'total_price' => 100000,
-        'status' => 'Paid',
+        'status' => 'paid',
         'booking_code' => 'BK-PAID-' . uniqid(),
         'booking_time' => now()->subMinutes(5),
     ]);
@@ -419,7 +419,7 @@ it('throws exception when completePayment is called on an already Paid booking',
     $bookingService = new \App\Services\BookingService();
 
     expect(fn () => $bookingService->completePayment($booking->id, 'VNPAY', []))
-        ->toThrow(\Exception::class, "Không thể thanh toán booking này. Status: Paid.");
+        ->toThrow(\Exception::class, "Không thể thanh toán booking này. Status: paid.");
 });
 
 it('throws exception when completePayment is called for a non-existent booking', function () {

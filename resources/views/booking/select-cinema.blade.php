@@ -1,6 +1,11 @@
 @extends($layout ?? 'layouts.frontend')
 
 @section('content')
+@php
+    $userLoc = $userLocation ?? session('user_location', 'ALL');
+    $hasCustomLocation = (!empty($userLoc) && strtoupper($userLoc) !== 'ALL');
+    $initialCity = $initialCity ?? (($hasCustomLocation && isset($cities) && $cities->contains($userLoc)) ? $userLoc : 'ALL');
+@endphp
 
     <!-- Page Header -->
     <div class="bg-gradient-to-b from-slate-800 to-slate-900 pt-32 pb-16 px-4">
@@ -36,21 +41,38 @@
                             <span class="text-sm font-semibold text-slate-400 mr-2 flex items-center gap-1.5">
                                 <i class="fas fa-map-marker-alt text-primary"></i> Khu vực:
                             </span>
-                            <button type="button" 
-                                    class="city-filter-btn active px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 bg-primary text-white shadow-lg shadow-primary/30 border border-primary"
-                                    data-city="ALL">
-                                Tất cả ({{ $cinemas->count() }})
-                            </button>
-                            @foreach($cities as $city)
-                                @php
-                                    $cityCount = $cinemas->where('city', $city)->count();
-                                @endphp
+
+                            @if($hasCustomLocation)
+                                {{-- Chỉ hiện mỗi khu vực đã chọn --}}
+                                @foreach($cities as $city)
+                                    @php
+                                        $cityCount = $cinemas->where('city', $city)->count();
+                                    @endphp
+                                    <span class="px-4 py-2 rounded-xl text-sm font-bold bg-primary text-white shadow-lg shadow-primary/30 border border-primary flex items-center gap-2">
+                                        <i class="fas fa-map-pin text-xs"></i> {{ $city }} ({{ $cityCount }})
+                                    </span>
+                                @endforeach
+
+                                <a href="{{ route('location.switch', 'ALL') }}" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition flex items-center gap-1.5 ml-1">
+                                    <i class="fas fa-globe-asia text-slate-400"></i> Xem tất cả khu vực
+                                </a>
+                            @else
                                 <button type="button" 
-                                        class="city-filter-btn px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 bg-slate-900/60 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700"
-                                        data-city="{{ $city }}">
-                                    {{ $city }} ({{ $cityCount }})
+                                        class="city-filter-btn active bg-primary text-white shadow-lg shadow-primary/30 border border-primary px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200"
+                                        data-city="ALL">
+                                    Tất cả ({{ $cinemas->count() }})
                                 </button>
-                            @endforeach
+                                @foreach($cities as $city)
+                                    @php
+                                        $cityCount = $cinemas->where('city', $city)->count();
+                                    @endphp
+                                    <button type="button" 
+                                            class="city-filter-btn bg-slate-900/60 text-slate-300 border border-slate-700 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 hover:bg-slate-700 hover:text-white"
+                                            data-city="{{ $city }}">
+                                        {{ $city }} ({{ $cityCount }})
+                                    </button>
+                                @endforeach
+                            @endif
                         </div>
 
                         <!-- Search Box -->
@@ -134,12 +156,25 @@
                     </button>
                 </div>
             @else
-                <div class="text-center py-20">
-                    <i class="fas fa-inbox text-slate-500 text-6xl mb-4"></i>
-                    <p class="text-slate-400 text-xl mb-6">Không có cụm rạp nào có suất chiếu phim này</p>
-                    <a href="{{ (isset($isWalkIn) && $isWalkIn) ? route('staff.walkin.movies') : route('movies.current') }}" class="inline-block bg-primary hover:bg-red-700 text-white px-6 py-2 rounded-lg transition">
-                        <i class="fas fa-arrow-left mr-2"></i>Quay lại danh sách phim
-                    </a>
+                <div class="text-center py-20 bg-slate-800/40 rounded-2xl border border-slate-700/50 p-8 max-w-xl mx-auto">
+                    <i class="fas fa-search-location text-red-500 text-6xl mb-4"></i>
+                    @if(!empty($userLocation) && strtoupper($userLocation) !== 'ALL')
+                        <h3 class="text-white text-xl font-bold mb-2">Chưa có rạp chiếu tại {{ $userLocation }}</h3>
+                        <p class="text-slate-400 text-sm mb-6">Hiện tại bộ phim <strong>{{ $movie->title }}</strong> chưa có suất chiếu tại khu vực <strong>{{ $userLocation }}</strong>.</p>
+                        <div class="flex flex-wrap justify-center gap-3">
+                            <a href="{{ route('location.switch', 'ALL') }}" class="inline-flex items-center gap-2 bg-primary hover:bg-red-700 text-white font-semibold px-6 py-2.5 rounded-xl transition shadow-lg shadow-primary/30">
+                                <i class="fas fa-globe-asia"></i> Xem rạp Toàn quốc
+                            </a>
+                            <a href="{{ (isset($isWalkIn) && $isWalkIn) ? route('staff.walkin.movies') : route('movies.current') }}" class="inline-flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-5 py-2.5 rounded-xl transition">
+                                <i class="fas fa-arrow-left"></i> Quay lại danh sách phim
+                            </a>
+                        </div>
+                    @else
+                        <p class="text-slate-400 text-xl mb-6">Không có cụm rạp nào có suất chiếu phim này</p>
+                        <a href="{{ (isset($isWalkIn) && $isWalkIn) ? route('staff.walkin.movies') : route('movies.current') }}" class="inline-block bg-primary hover:bg-red-700 text-white px-6 py-2 rounded-lg transition">
+                            <i class="fas fa-arrow-left mr-2"></i>Quay lại danh sách phim
+                        </a>
+                    @endif
                 </div>
             @endif
         </div>
@@ -156,7 +191,7 @@
             const noMatchState = document.getElementById('noMatchState');
             const visibleCountEl = document.getElementById('visibleCount');
 
-            let currentCity = 'ALL';
+            let currentCity = '{{ $initialCity ?? "ALL" }}';
             let currentKeyword = '';
 
             function filterCinemas() {
@@ -189,6 +224,10 @@
                         noMatchState.classList.add('hidden');
                     }
                 }
+            }
+
+            if (currentCity !== 'ALL') {
+                filterCinemas();
             }
 
             cityButtons.forEach(btn => {

@@ -147,7 +147,7 @@ class BookingService
                     DB::table('bookings')
                         ->whereIn('id', $userPendingBookingIds)
                         ->update([
-                            'status' => 'Cancelled',
+                            'status' => \App\Models\Booking::STATUS_CANCELLED,
                             'cancellation_reason' => 'User initiated a new booking request',
                             'cancelled_at' => now(),
                             'updated_at' => now(),
@@ -578,7 +578,7 @@ class BookingService
                     'total_price' => $finalTotalPrice,
                     'coupon_id' => $couponId,
                     'discount_amount' => $discountAmount,
-                    'status' => 'Pending',
+                    'status' => \App\Models\Booking::STATUS_PENDING,
                     'payment_method' => $paymentMethod,
                     'booking_time' => $inheritedBookingTime ?? now(),
                     'is_extended' => $isExtended,
@@ -779,15 +779,15 @@ class BookingService
 
             $expiredBookings = DB::table('bookings')
                 ->where(function($query) use ($expiredAt) {
-                    $query->where('status', 'Pending')
+                    $query->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'Pending', 'pending'])
                           ->where('booking_time', '<', $expiredAt);
                 })
                 ->orWhere(function($query) use ($expiredAt) {
                     // Dọn dẹp cả PROCESSING nhưng cho thêm 15 phút ân hạn (tránh treo ghế vĩnh viễn)
-                    $query->where('status', 'PROCESSING')
+                    $query->whereIn('status', ['PROCESSING', 'processing'])
                           ->where('booking_time', '<', $expiredAt->copy()->subMinutes(15));
                 })
-                ->select('id', 'user_id')
+                ->select('id', 'user_id', 'showtime_id')
                 ->get();
 
             if ($expiredBookings->isEmpty()) {
@@ -800,7 +800,7 @@ class BookingService
             $bookingsWithCoupons = DB::table('bookings')
                 ->whereIn('id', $expiredBookingIds)
                 ->whereNotNull('coupon_id')
-                ->where('status', 'Paid')
+                ->whereIn('status', [\App\Models\Booking::STATUS_PAID, 'Paid', 'paid'])
                 ->get();
 
             foreach ($bookingsWithCoupons as $b) {
@@ -810,7 +810,7 @@ class BookingService
             DB::table('bookings')
                 ->whereIn('id', $expiredBookingIds)
                 ->update([
-                    'status' => 'Cancelled',
+                    'status' => \App\Models\Booking::STATUS_CANCELLED,
                     'cancellation_reason' => 'Payment timeout expired',
                     'cancelled_at' => now(),
                     'updated_at' => now(),
@@ -891,7 +891,7 @@ class BookingService
                 throw new Exception("Booking $bookingId không tồn tại");
             }
 
-            if (!in_array($bookingModel->status, ['Pending', 'PROCESSING'])) {
+            if (!in_array(strtolower($bookingModel->status), [\App\Models\Booking::STATUS_PENDING, 'processing'])) {
                 \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$bookingModel->status}");
                 throw new Exception(
                     "Không thể thanh toán booking này. Status: {$bookingModel->status}. " .
@@ -915,7 +915,7 @@ class BookingService
             }
 
             // Cập nhật booking status sử dụng Eloquent để kích hoạt BookingObserver
-            $bookingModel->status = 'Paid';
+            $bookingModel->status = \App\Models\Booking::STATUS_PAID;
             $bookingModel->payment_method = $paymentMethod;
             $bookingModel->payment_time = now();
             $bookingModel->save();
@@ -1039,7 +1039,7 @@ class BookingService
                 throw new Exception("Booking $bookingId không tồn tại");
             }
 
-            if (!in_array($booking->status, ['Pending', 'PROCESSING', 'Paid'])) {
+            if (!in_array(strtolower($booking->status), [\App\Models\Booking::STATUS_PENDING, 'processing', \App\Models\Booking::STATUS_PAID])) {
                 throw new Exception(
                     "Không thể hủy booking này. Status: {$booking->status}"
                 );
@@ -1054,7 +1054,7 @@ class BookingService
             DB::table('bookings')
                 ->where('id', $bookingId)
                 ->update([
-                    'status' => 'Cancelled',
+                    'status' => \App\Models\Booking::STATUS_CANCELLED,
                     'cancellation_reason' => $reason,
                     'cancelled_at' => now(),
                     'updated_at' => now(),
@@ -1171,7 +1171,7 @@ class BookingService
                 throw new Exception("Booking không tồn tại.");
             }
 
-            if (!in_array($booking->status, ['Pending', 'PROCESSING'])) {
+            if (!in_array(strtolower($booking->status), [\App\Models\Booking::STATUS_PENDING, 'processing'])) {
                 throw new Exception("Không thể cập nhật đơn đặt vé không ở trạng thái chờ thanh toán.");
             }
 
@@ -1240,7 +1240,7 @@ class BookingService
                     throw new Exception("Mã giảm giá không hợp lệ hoặc đã hết hạn.");
                 }
 
-                $validation = $coupon->isValid($subtotal, $booking->user_id);
+                $validation = $coupon->isValid($subtotal, $booking->user_id, $booking->id);
                 if (!$validation['valid']) {
                     throw new Exception($validation['message']);
                 }

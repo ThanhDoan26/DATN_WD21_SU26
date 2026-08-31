@@ -58,12 +58,12 @@ class StoreCinemaRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('cinemas', 'name'),
+                Rule::unique('cinemas', 'name')->whereNull('deleted_at'),
                 function ($attribute, $value, $fail) {
                     $cleanName = preg_replace('/\s+/u', ' ', trim($value));
                     $collapsed = mb_strtolower(preg_replace('/\s+/u', '', $value), 'UTF-8');
 
-                    $exists = Cinema::where(function ($q) use ($cleanName, $collapsed) {
+                    $exists = Cinema::whereNull('deleted_at')->where(function ($q) use ($cleanName, $collapsed) {
                         $q->where('name', $cleanName)
                           ->orWhereRaw("REPLACE(LOWER(name), ' ', '') = ?", [$collapsed]);
                     })->exists();

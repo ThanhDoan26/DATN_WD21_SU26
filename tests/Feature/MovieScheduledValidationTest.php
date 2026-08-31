@@ -320,7 +320,7 @@ describe('Ticket Sales for Scheduled Movie', function () {
 
         $booking = \App\Models\Booking::find($bookingId);
         expect($booking)->not->toBeNull();
-        expect($booking->status)->toBe('Pending');
+        expect($booking->status)->toBe(\App\Models\Booking::STATUS_PENDING);
     });
 
     test('Web Checkout reserve endpoint succeeds for SCHEDULED showtime of scheduled movie', function () {

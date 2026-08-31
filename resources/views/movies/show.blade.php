@@ -329,10 +329,12 @@
 
                             @php
                                 $uniqueCities = collect($cinemaNameToCity ?? [])->values()->filter()->unique()->values();
+                                $userSelectedCity = session('user_location', 'ALL');
+                                $initialCity = (!empty($userSelectedCity) && $userSelectedCity !== 'ALL' && $uniqueCities->contains($userSelectedCity)) ? $userSelectedCity : 'ALL';
                             @endphp
                             <div class="p-2 max-h-[600px] overflow-y-auto custom-scrollbar" 
                                  x-data="{ 
-                                     activeCity: 'ALL',
+                                     activeCity: '{{ $initialCity }}',
                                      activeCinema: '{{ $showtimesByCinema->keys()->first() }}',
                                      cinemaCityMap: {{ json_encode($cinemaNameToCity ?? []) }},
                                      isCinemaVisible(cName) {

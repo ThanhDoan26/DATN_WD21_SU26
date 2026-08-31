@@ -24,8 +24,8 @@ class BookingObserver
     {
         Log::info("BookingObserver: Bắt đầu sự kiện updated cho đơn hàng ID {$booking->id}, Status hiện tại: {$booking->status}");
 
-        // Chỉ gửi email khi thuộc tính status thay đổi và giá trị mới là 'Paid'
-        if ($booking->isDirty('status') && $booking->status === 'Paid') {
+        // Chỉ gửi email khi thuộc tính status thay đổi và giá trị mới là 'paid'
+        if ($booking->isDirty('status') && $booking->isPaid()) {
             
             // 1. Kiểm tra Idempotency mức Database: Nếu đã được gửi email thành công trước đó thì bỏ qua
             if (!empty($booking->ticket_email_sent_at)) {
