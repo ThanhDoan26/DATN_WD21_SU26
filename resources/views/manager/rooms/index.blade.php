@@ -1,15 +1,15 @@
 @extends('layouts.manager')
 
-@section('title', 'Rooms - Admin')
-@section('page_title', 'Rooms Management')
+@section('title', 'Quản lý Phòng Chiếu')
+@section('page_title', 'Quản lý phòng chiếu')
 
 @section('content')
 <!-- Breadcrumb -->
 <div class="breadcrumb-custom">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item active">Rooms</li>
+            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item active">Phòng chiếu</li>
         </ol>
     </nav>
 </div>

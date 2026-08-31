@@ -1,16 +1,16 @@
 @extends('layouts.manager')
 
-@section('title', 'Add Showtime - Admin')
-@section('page_title', 'Thêm Suất Chiếu Mới')
+@section('title', 'Thêm Suất Chiếu Mới')
+@section('page_title', 'Thêm suất chiếu mới')
 
 @section('content')
 <!-- Breadcrumb -->
 <div class="breadcrumb-custom">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('manager.showtimes.index') }}">Showtimes</a></li>
-            <li class="breadcrumb-item active">Create</li>
+            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('manager.showtimes.index') }}">Lịch chiếu</a></li>
+            <li class="breadcrumb-item active">Thêm mới</li>
         </ol>
     </nav>
 </div>
@@ -281,7 +281,7 @@
 @section('extra_css')
 <style>
     .seat-map-wrapper-inner { background: var(--bg-surface); padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; align-items: center; margin: 20px 0; border: 1px solid var(--border-light); overflow-x: auto; }
-    .cinema-screen { width: 80%; max-width: 600px; margin: 0 auto 40px auto; padding: 12px 0; text-align: center; background: linear-gradient(180deg, rgba(147, 51, 234, 0.12) 0%, rgba(147, 51, 234, 0.02) 100%); border-top: 6px solid var(--primary-color); border-radius: 8px 8px 120px 120px; font-size: 0.85rem; font-weight: 700; letter-spacing: 8px; color: var(--primary-color); box-shadow: 0 8px 25px -8px rgba(147, 51, 234, 0.25); text-transform: uppercase; font-family: 'Sora', sans-serif; }
+    .cinema-screen { width: 80%; max-width: 600px; margin: 0 auto 40px auto; padding: 12px 0; text-align: center; background: linear-gradient(180deg, rgba(13, 148, 136, 0.12) 0%, rgba(13, 148, 136, 0.02) 100%); border-top: 6px solid var(--primary-color); border-radius: 8px 8px 120px 120px; font-size: 0.85rem; font-weight: 700; letter-spacing: 8px; color: var(--primary-color); box-shadow: 0 8px 25px -8px rgba(13, 148, 136, 0.25); text-transform: uppercase; font-family: 'Sora', sans-serif; }
     .seat-layout-container { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; min-width: 580px; padding: 10px 0; }
     .seat-row { display: flex; align-items: center; justify-content: center; width: 100%; gap: 8px; }
     .row-label { font-size: 0.85rem; font-weight: 700; color: #94a3b8; width: 30px; user-select: none; }
@@ -298,7 +298,7 @@
     @keyframes pulseSelection { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
     .seat-legend { display: flex; gap: 20px; margin: 10px 0 30px 0; flex-wrap: wrap; justify-content: center; background-color: #f8fafc; padding: 15px 25px; border-radius: 12px; border: 1px solid #e2e8f0; }
     .seat.selected-active { outline: 3px solid var(--primary-color); outline-offset: 2px; animation: pulseSelection 1.5s infinite; }
-    @keyframes pulseSelection { 0% { outline-color: rgba(147, 51, 234, 0.8); } 50% { outline-color: rgba(147, 51, 234, 0.1); } 100% { outline-color: rgba(147, 51, 234, 0.8); } }
+    @keyframes pulseSelection { 0% { outline-color: rgba(13, 148, 136, 0.8); } 50% { outline-color: rgba(13, 148, 136, 0.1); } 100% { outline-color: rgba(13, 148, 136, 0.8); } }
     .seat-legend { display: flex; gap: 20px; margin: 10px 0 30px 0; flex-wrap: wrap; justify-content: center; background-color: var(--bg-base); padding: 15px 25px; border-radius: 12px; border: 1px solid var(--border-light); }
     .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 500; color: #475569; }
     .legend-box { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.65rem; font-weight: 700; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
