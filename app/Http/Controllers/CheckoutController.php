@@ -191,7 +191,7 @@ class CheckoutController extends Controller
 
         $pendingBooking = Booking::where('user_id', \Illuminate\Support\Facades\Auth::id())
             ->where('showtime_id', $showtimeId)
-            ->whereIn('status', ['Pending', 'PROCESSING'])
+            ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'pending', 'Pending', 'processing', 'PROCESSING'])
             ->orderBy('booking_time', 'desc')
             ->first();
 
@@ -386,7 +386,7 @@ class CheckoutController extends Controller
             if ($userId) {
                 $existingBooking = Booking::where('user_id', $userId)
                     ->where('showtime_id', $showtimeId)
-                    ->whereIn('status', ['Pending', 'PROCESSING'])
+                    ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'pending', 'Pending', 'processing', 'PROCESSING'])
                     ->orderBy('booking_time', 'desc')
                     ->first();
             }
@@ -434,8 +434,8 @@ class CheckoutController extends Controller
                 );
             }
 
-            // Chuyển sang trạng thái PROCESSING để ngăn cronjob dọn dẹp
-            Booking::where('id', $bookingId)->update(['status' => 'PROCESSING']);
+            // Chuyển sang trạng thái processing để ngăn cronjob dọn dẹp
+            Booking::where('id', $bookingId)->update(['status' => 'processing']);
 
             $bookingDetails = $bookingService->getBookingDetails($bookingId);
             $holdDurationMs = BookingService::getHoldDuration() * 60 * 1000;

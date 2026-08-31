@@ -962,6 +962,7 @@
                         }
 
                         const bookingId = data.data.booking_id;
+                        window.currentPendingBookingId = bookingId;
 
                         // Đồng hồ đếm ngược đã được khởi tạo lúc load trang.
                         // Không cần set lại để tránh làm reset sai lệch thời gian của server.
@@ -1110,5 +1111,39 @@
                 btn.innerHTML = 'Hủy đặt vé';
             });
         }
+
+        // --- Giải phóng ghế tức thì khi đóng tab / rời trang (Beacon API) ---
+        let beaconSent = false;
+        function sendReleaseSeatsBeacon() {
+            if (beaconSent || window.isConfirmingReservation) return;
+
+            const bookingId = window.currentPendingBookingId || {{ $pendingBooking->id ?? 'null' }};
+            const showtimeId = {{ $showtime->id ?? 'null' }};
+            const seatIds = @json($seatIds ?? []);
+
+            let data = new FormData();
+            if (bookingId) {
+                data.append('booking_id', bookingId);
+            }
+            if (showtimeId) {
+                data.append('showtime_id', showtimeId);
+            }
+            if (Array.isArray(seatIds) && seatIds.length > 0) {
+                data.append('seat_ids', seatIds.join(','));
+            }
+
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon('/api/v1/bookings/release-hold-seats', data);
+                beaconSent = true;
+            }
+        }
+
+        window.addEventListener('beforeunload', function (event) {
+            sendReleaseSeatsBeacon();
+        });
+
+        window.addEventListener('pagehide', function (event) {
+            sendReleaseSeatsBeacon();
+        });
     </script>
 @endpush

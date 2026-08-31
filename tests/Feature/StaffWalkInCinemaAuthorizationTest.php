@@ -184,7 +184,7 @@ it('allows staff of Cinema A to view seat map and reserve for Cinema A showtime'
 
     $createdBooking = Booking::where('showtime_id', $cinemaAData['showtime']->id)->first();
     expect($createdBooking)->not->toBeNull();
-    expect($createdBooking->status)->toBe('Paid');
+    expect($createdBooking->status)->toBe(\App\Models\Booking::STATUS_PAID);
 });
 
 // ── TICKET SEARCH, LOOKUP, PRINT TESTS ────────────────────

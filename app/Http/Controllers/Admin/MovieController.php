@@ -77,12 +77,12 @@ class MovieController extends Controller
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('movies', 'title'),
+                Rule::unique('movies', 'title')->whereNull('deleted_at'),
                 function ($attribute, $value, $fail) {
                     $cleanTitle = preg_replace('/\s+/u', ' ', trim($value));
                     $collapsed = mb_strtolower(preg_replace('/\s+/u', '', $value), 'UTF-8');
 
-                    $exists = Movie::where(function ($q) use ($cleanTitle, $collapsed) {
+                    $exists = Movie::whereNull('deleted_at')->where(function ($q) use ($cleanTitle, $collapsed) {
                         $q->where('title', $cleanTitle)
                           ->orWhereRaw("REPLACE(LOWER(title), ' ', '') = ?", [$collapsed]);
                     })->exists();
@@ -175,12 +175,13 @@ class MovieController extends Controller
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('movies', 'title')->ignore($movie->id),
+                Rule::unique('movies', 'title')->whereNull('deleted_at')->ignore($movie->id),
                 function ($attribute, $value, $fail) use ($movie) {
                     $cleanTitle = preg_replace('/\s+/u', ' ', trim($value));
                     $collapsed = mb_strtolower(preg_replace('/\s+/u', '', $value), 'UTF-8');
 
-                    $exists = Movie::where('id', '!=', $movie->id)
+                    $exists = Movie::whereNull('deleted_at')
+                        ->where('id', '!=', $movie->id)
                         ->where(function ($q) use ($cleanTitle, $collapsed) {
                             $q->where('title', $cleanTitle)
                               ->orWhereRaw("REPLACE(LOWER(title), ' ', '') = ?", [$collapsed]);
@@ -288,6 +289,18 @@ class MovieController extends Controller
     public function restore($id)
     {
         $movie = Movie::onlyTrashed()->findOrFail($id);
+
+        // Kiểm tra trùng tên với phim đang hoạt động (chưa bị xóa mềm)
+        $duplicateExists = Movie::whereNull('deleted_at')
+            ->where('id', '!=', $movie->id)
+            ->whereRaw('LOWER(TRIM(title)) = ?', [strtolower(trim($movie->title))])
+            ->exists();
+
+        if ($duplicateExists) {
+            return redirect()->route('admin.movies.trashed')
+                             ->with('error', 'Khôi phục thất bại! Đã tồn tại phim "' . $movie->title . '" đang hoạt động trên hệ thống. Vui lòng đổi tên hoặc xóa bản ghi hiện tại trước khi khôi phục.');
+        }
+
         $movie->restore();
 
         return redirect()->route('admin.movies.index')

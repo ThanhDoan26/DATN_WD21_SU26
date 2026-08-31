@@ -753,7 +753,11 @@ class FullDemoDataSeeder extends Seeder
 
         $sampleShowtimes = Showtime::with(['room.seats', 'movie'])->take(6)->get();
 
-        $bookingStatuses = ['Paid', 'Paid', 'Paid', 'Paid', 'Paid', 'Paid', 'Paid', 'Paid', 'Pending', 'Pending', 'Cancelled', 'Cancelled'];
+        $bookingStatuses = [
+            Booking::STATUS_PAID, Booking::STATUS_PAID, Booking::STATUS_PAID, Booking::STATUS_PAID,
+            Booking::STATUS_PAID, Booking::STATUS_PAID, Booking::STATUS_PAID, Booking::STATUS_PAID,
+            Booking::STATUS_PENDING, Booking::STATUS_PENDING, Booking::STATUS_CANCELLED, Booking::STATUS_CANCELLED
+        ];
         $createdBookings = [];
 
         foreach ($bookingStatuses as $bIdx => $status) {
@@ -772,13 +776,13 @@ class FullDemoDataSeeder extends Seeder
                 'showtime_id' => $showtime->id,
                 'total_price' => $totalPrice,
                 'status' => $status,
-                'payment_method' => ($status === 'Paid') ? 'VNPAY' : 'COUNTER',
+                'payment_method' => ($status === Booking::STATUS_PAID) ? 'VNPAY' : 'COUNTER',
                 'booking_time' => now()->subHours(rand(1, 48)),
-                'payment_time' => ($status === 'Paid') ? now()->subHours(rand(1, 47)) : null,
-                'cancelled_at' => ($status === 'Cancelled') ? now()->subHours(rand(1, 10)) : null,
-                'cancellation_reason' => ($status === 'Cancelled') ? 'Khách hàng đổi lịch bận đột xuất' : null,
+                'payment_time' => ($status === Booking::STATUS_PAID) ? now()->subHours(rand(1, 47)) : null,
+                'cancelled_at' => ($status === Booking::STATUS_CANCELLED) ? now()->subHours(rand(1, 10)) : null,
+                'cancellation_reason' => ($status === Booking::STATUS_CANCELLED) ? 'Khách hàng đổi lịch bận đột xuất' : null,
                 'booking_code' => $bookingCode,
-                'ticket_token' => ($status === 'Paid') ? (string) Str::uuid() : null,
+                'ticket_token' => ($status === Booking::STATUS_PAID) ? (string) Str::uuid() : null,
                 'notes' => 'Đơn đặt vé trực tuyến website movieGo',
             ]);
 
@@ -787,7 +791,7 @@ class FullDemoDataSeeder extends Seeder
                 'booking_id' => $booking->id,
                 'seat_id' => $seat1->id,
                 'price_at_booking' => 85000,
-                'status' => ($status === 'Paid') ? 'PAID' : 'RESERVED',
+                'status' => ($status === Booking::STATUS_PAID) ? 'PAID' : 'RESERVED',
                 'qr_code' => 'QR_' . strtoupper(Str::random(10)),
             ]);
 
@@ -795,7 +799,7 @@ class FullDemoDataSeeder extends Seeder
                 'booking_id' => $booking->id,
                 'seat_id' => $seat2->id,
                 'price_at_booking' => 85000,
-                'status' => ($status === 'Paid') ? 'PAID' : 'RESERVED',
+                'status' => ($status === Booking::STATUS_PAID) ? 'PAID' : 'RESERVED',
                 'qr_code' => 'QR_' . strtoupper(Str::random(10)),
             ]);
 

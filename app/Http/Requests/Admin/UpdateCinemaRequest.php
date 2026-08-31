@@ -61,12 +61,12 @@ class UpdateCinemaRequest extends FormRequest
                 'required', 
                 'string', 
                 'max:255', 
-                Rule::unique('cinemas', 'name')->ignore($cinemaId),
+                Rule::unique('cinemas', 'name')->whereNull('deleted_at')->ignore($cinemaId),
                 function ($attribute, $value, $fail) use ($cinemaId) {
                     $cleanName = preg_replace('/\s+/u', ' ', trim($value));
                     $collapsed = mb_strtolower(preg_replace('/\s+/u', '', $value), 'UTF-8');
 
-                    $query = Cinema::query();
+                    $query = Cinema::whereNull('deleted_at');
                     if ($cinemaId) {
                         $query->where('id', '!=', $cinemaId);
                     }

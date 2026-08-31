@@ -212,13 +212,13 @@ test('checkout reserve updates existing pending booking instead of creating a ca
     expect($userBookings->count())->toBe(1);
     expect($userBookings->first()->id)->toBe($initialBookingId);
     expect($userBookings->first()->booking_code)->toBe($initialBookingCode);
-    expect($userBookings->first()->status)->toBe('PROCESSING');
+    expect($userBookings->first()->status)->toBe('processing');
 
     // 3. User completes payment
     $bookingService->completePayment($initialBookingId, 'VNPAY');
 
     $finalBooking = Booking::find($initialBookingId);
-    expect($finalBooking->status)->toBe('Paid');
+    expect($finalBooking->status)->toBe(\App\Models\Booking::STATUS_PAID);
 
     // 4. In history, user should see exactly 1 Paid booking, 0 Cancelled bookings
     $historyService = new BookingHistoryService();
@@ -314,7 +314,7 @@ test('checkout init preserves combos when user updates seats', function () {
     $response->assertRedirect(route('checkout', ['showtime_id' => $showtime->id]));
 
     // Check DB has combo recorded
-    $booking = Booking::where('user_id', $user->id)->where('status', 'Pending')->first();
+    $booking = Booking::where('user_id', $user->id)->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'pending'])->first();
     expect($booking)->not->toBeNull();
     $bookingCombos = DB::table('booking_combos')->where('booking_id', $booking->id)->get();
     expect($bookingCombos->count())->toBe(1);
@@ -333,7 +333,7 @@ test('checkout init preserves combos when user updates seats', function () {
     $response2->assertRedirect(route('checkout', ['showtime_id' => $showtime->id]));
 
     // Check new active pending booking still preserved the combos
-    $newPendingBooking = Booking::where('user_id', $user->id)->where('status', 'Pending')->first();
+    $newPendingBooking = Booking::where('user_id', $user->id)->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'pending'])->first();
     expect($newPendingBooking)->not->toBeNull();
     $newBookingCombos = DB::table('booking_combos')->where('booking_id', $newPendingBooking->id)->get();
     expect($newBookingCombos->count())->toBe(1);
