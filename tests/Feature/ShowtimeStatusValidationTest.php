@@ -150,8 +150,8 @@ class ShowtimeStatusValidationTest extends TestCase
         $this->assertTrue(true);
     }
 
-    /** 2. Movie Status Constraint: movie.status === 'SCHEDULED' forces showtime to PENDING and blocks SCHEDULED */
-    public function test_movie_scheduled_forces_pending_and_blocks_scheduled(): void
+    /** 2. Movie Status: movie.status === 'SCHEDULED' allows showtime to be SCHEDULED or PENDING */
+    public function test_movie_scheduled_allows_scheduled_and_pending(): void
     {
         $scheduledMovie = Movie::create([
             'title' => 'Scheduled Movie',
@@ -164,20 +164,15 @@ class ShowtimeStatusValidationTest extends TestCase
             'format' => ['2D'],
         ]);
 
-        // Attempting SCHEDULED status on a SCHEDULED movie -> must fail
-        try {
-            $this->service->validateShowtimeStatusRules(null, [
-                'movie_id' => $scheduledMovie->id,
-                'start_time' => Carbon::now()->addMonth()->addHours(2)->format('Y-m-d H:i:s'),
-                'status' => Showtime::STATUS_SCHEDULED,
-            ], $scheduledMovie);
-            $this->fail('Expected ValidationException when setting SCHEDULED for movie with SCHEDULED status');
-        } catch (ValidationException $e) {
-            $this->assertArrayHasKey('status', $e->errors());
-            $this->assertStringContainsString('PENDING', $e->errors()['status'][0]);
-        }
+        // Setting SCHEDULED status on a SCHEDULED movie -> must pass
+        $this->service->validateShowtimeStatusRules(null, [
+            'movie_id' => $scheduledMovie->id,
+            'start_time' => Carbon::now()->addMonth()->addHours(2)->format('Y-m-d H:i:s'),
+            'status' => Showtime::STATUS_SCHEDULED,
+        ], $scheduledMovie);
+        $this->assertTrue(true);
 
-        // Setting PENDING status -> must pass
+        // Setting PENDING status on a SCHEDULED movie -> must also pass
         $this->service->validateShowtimeStatusRules(null, [
             'movie_id' => $scheduledMovie->id,
             'start_time' => Carbon::now()->addMonth()->addHours(2)->format('Y-m-d H:i:s'),

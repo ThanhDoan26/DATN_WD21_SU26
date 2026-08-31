@@ -41,10 +41,6 @@ class CheckoutController extends Controller
             return redirect()->route('home')->with('error', 'Suất chiếu này đã đóng cổng đặt vé trực tuyến. Vui lòng chọn suất chiếu khác.');
         }
 
-        if ($showtime->movie && $showtime->movie->status === \App\Models\Movie::STATUS_SCHEDULED) {
-            return redirect()->route('home')->with('error', 'Movie is currently scheduled and not yet open for ticket sales.');
-        }
-
         $takenSeatIds = DB::table('booked_seats')
             ->join('bookings', 'booked_seats.booking_id', '=', 'bookings.id')
             ->where('bookings.showtime_id', $showtimeId)
@@ -316,13 +312,6 @@ class CheckoutController extends Controller
 
         if (!$showtime) {
             return response()->json(['success' => false, 'message' => 'Suất chiếu không tồn tại.'], 404);
-        }
-
-        if ($showtime->movie && $showtime->movie->status === Movie::STATUS_SCHEDULED) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Movie is currently scheduled and not yet open for ticket sales.'
-            ], 422);
         }
 
         // 1. Kiểm tra ghế đã có người khác chọn/đặt chưa (Chống trùng ghế giữa 2 người dùng)

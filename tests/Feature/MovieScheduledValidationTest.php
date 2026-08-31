@@ -199,11 +199,11 @@ describe('Scheduled Movie Data Completeness Validation', function () {
 });
 
 /* =========================================================================
- * 2. Showtime Creation for Scheduled Movie Sets Status to PENDING
+ * 2. Showtime Creation for Scheduled Movie Allows SCHEDULED and PENDING
  * ========================================================================= */
 
-describe('Showtime Draft Status for Scheduled Movie', function () {
-    test('creating showtime for scheduled movie automatically sets status to PENDING', function () {
+describe('Showtime Status for Scheduled Movie', function () {
+    test('creating showtime for scheduled movie defaults and saves as SCHEDULED when selected', function () {
         $category = Category::create(['name' => 'Sci-Fi', 'slug' => 'sci-fi-' . uniqid()]);
         $movie = Movie::create([
             'title' => 'Dune Part 3',
@@ -234,18 +234,53 @@ describe('Showtime Draft Status for Scheduled Movie', function () {
 
         $showtime = Showtime::where('movie_id', $movie->id)->first();
         expect($showtime)->not->toBeNull();
+        expect($showtime->status)->toBe(Showtime::STATUS_SCHEDULED);
+        expect($showtime->isOnlineBookable())->toBeTrue();
+        expect($showtime->isWalkInBookable())->toBeTrue();
+    });
+
+    test('admin can optionally choose PENDING status for draft showtime', function () {
+        $category = Category::create(['name' => 'Action', 'slug' => 'action-' . uniqid()]);
+        $movie = Movie::create([
+            'title' => 'Avatar 3 Test',
+            'status' => Movie::STATUS_SCHEDULED,
+            'duration' => 180,
+            'age_rating' => 'T13',
+            'format' => ['2D'],
+            'trailer_url' => 'https://youtube.com/watch?v=test',
+            'poster_url' => 'posters/test.jpg',
+            'release_date' => now()->addDays(20),
+        ]);
+        $movie->categories()->attach($category->id);
+
+        [$cinema, $room, $seat] = createSampleCinemaAndRoom();
+        $admin = getAdminUser();
+
+        $startTime = now()->addDays(21)->setTime(19, 0);
+
+        $response = $this->actingAs($admin)->post(route('admin.showtimes.store'), [
+            'movie_id' => $movie->id,
+            'room_id' => $room->id,
+            'start_time' => $startTime->format('Y-m-d H:i:s'),
+            'status' => Showtime::STATUS_PENDING,
+            'ticket_prices' => [
+                'Regular' => 80000,
+            ],
+        ]);
+
+        $showtime = Showtime::where('movie_id', $movie->id)->first();
+        expect($showtime)->not->toBeNull();
         expect($showtime->status)->toBe(Showtime::STATUS_PENDING);
         expect($showtime->isOnlineBookable())->toBeFalse();
-        expect($showtime->isWalkInBookable())->toBeFalse();
     });
 });
 
 /* =========================================================================
- * 3. Ticket Sales Lock across all channels (Web, POS, BookingService)
+ * 3. Ticket Sales Allowed for SCHEDULED Showtimes of Scheduled Movie
  * ========================================================================= */
 
-describe('Ticket Sales Lock for Scheduled Movie', function () {
-    test('BookingService throws MovieScheduledException when booking scheduled movie', function () {
+describe('Ticket Sales for Scheduled Movie', function () {
+    test('BookingService allows booking when showtime is SCHEDULED', function () {
         $movie = Movie::create([
             'title' => 'Scheduled Movie Test',
             'status' => Movie::STATUS_SCHEDULED,
@@ -260,7 +295,7 @@ describe('Ticket Sales Lock for Scheduled Movie', function () {
             'room_id' => $room->id,
             'start_time' => now()->addDays(11),
             'end_time' => now()->addDays(11)->addHours(2),
-            'status' => Showtime::STATUS_PENDING,
+            'status' => Showtime::STATUS_SCHEDULED,
             'surcharge' => 0,
         ]);
 
@@ -273,7 +308,7 @@ describe('Ticket Sales Lock for Scheduled Movie', function () {
 
         $service = new BookingService();
 
-        expect(fn () => $service->createBooking(
+        $bookingId = $service->createBooking(
             null,
             $showtime->id,
             [$seat->id],
@@ -281,10 +316,14 @@ describe('Ticket Sales Lock for Scheduled Movie', function () {
             null,
             [],
             ['booking_source' => 'online']
-        ))->toThrow(MovieScheduledException::class, 'Movie is currently scheduled and not yet open for ticket sales.');
+        );
+
+        $booking = \App\Models\Booking::find($bookingId);
+        expect($booking)->not->toBeNull();
+        expect($booking->status)->toBe('Pending');
     });
 
-    test('Web Checkout reserve endpoint returns 422 JSON error for scheduled movie', function () {
+    test('Web Checkout reserve endpoint succeeds for SCHEDULED showtime of scheduled movie', function () {
         $movie = Movie::create([
             'title' => 'Scheduled Movie Test 2',
             'status' => Movie::STATUS_SCHEDULED,
@@ -299,8 +338,15 @@ describe('Ticket Sales Lock for Scheduled Movie', function () {
             'room_id' => $room->id,
             'start_time' => now()->addDays(11),
             'end_time' => now()->addDays(11)->addHours(2),
-            'status' => Showtime::STATUS_SCHEDULED, // Even if showtime was forced to SCHEDULED
+            'status' => Showtime::STATUS_SCHEDULED,
             'surcharge' => 0,
+        ]);
+
+        TicketPrice::create([
+            'showtime_id' => $showtime->id,
+            'seat_type' => 'Regular',
+            'price' => 60000,
+            'status' => 'ACTIVE',
         ]);
 
         $user = User::factory()->create(['status' => 'ACTIVE']);
@@ -313,14 +359,13 @@ describe('Ticket Sales Lock for Scheduled Movie', function () {
             'customer_email' => 'a@gmail.com',
         ]);
 
-        $response->assertStatus(422)
+        $response->assertStatus(200)
             ->assertJson([
-                'success' => false,
-                'message' => 'Movie is currently scheduled and not yet open for ticket sales.',
+                'success' => true,
             ]);
     });
 
-    test('Staff POS walk-in reserve endpoint returns 422 JSON error for scheduled movie', function () {
+    test('Staff POS walk-in reserve endpoint succeeds for SCHEDULED showtime', function () {
         $movie = Movie::create([
             'title' => 'Scheduled Movie Test 3',
             'status' => Movie::STATUS_SCHEDULED,
@@ -339,6 +384,13 @@ describe('Ticket Sales Lock for Scheduled Movie', function () {
             'surcharge' => 0,
         ]);
 
+        TicketPrice::create([
+            'showtime_id' => $showtime->id,
+            'seat_type' => 'Regular',
+            'price' => 60000,
+            'status' => 'ACTIVE',
+        ]);
+
         $staff = getStaffUser($cinema);
 
         $response = $this->actingAs($staff)->postJson(route('staff.walkin.reserve'), [
@@ -346,10 +398,9 @@ describe('Ticket Sales Lock for Scheduled Movie', function () {
             'seat_ids' => [$seat->id],
         ]);
 
-        $response->assertStatus(422)
+        $response->assertStatus(200)
             ->assertJson([
-                'success' => false,
-                'message' => 'Movie is currently scheduled and not yet open for ticket sales.',
+                'success' => true,
             ]);
     });
 });

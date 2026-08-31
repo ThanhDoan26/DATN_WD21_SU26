@@ -201,10 +201,6 @@
                                 Chờ/Chưa công bố (PENDING)
                             </option>
                         </select>
-                        <div id="movie_scheduled_status_warning" class="alert alert-warning py-2 px-3 mt-2 small d-none align-items-center gap-2">
-                            <i class="fas fa-info-circle text-warning fs-5"></i>
-                            <div><strong>Phim đang ở trạng thái Lên lịch (SCHEDULED):</strong> Suất chiếu tự động khóa ở trạng thái <strong>Chờ/Chưa công bố (PENDING)</strong>.</div>
-                        </div>
                         @error('status')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -915,34 +911,15 @@
         filterCompatibleRooms();
 
         const statusSelect = document.getElementById('status');
-        const statusWarningEl = document.getElementById('movie_scheduled_status_warning');
 
         function updateStatusOptionsBasedOnMovieAndTime() {
             if (!statusSelect) return;
-
-            const selectedMovieOption = movieSelect.options[movieSelect.selectedIndex];
-            const movieStatus = selectedMovieOption?.dataset?.status || '';
-
-            if (movieStatus === 'SCHEDULED') {
-                statusSelect.value = 'PENDING';
-                Array.from(statusSelect.options).forEach(opt => {
-                    if (opt.value && opt.value !== 'PENDING' && opt.value !== 'UNPUBLISHED' && opt.value !== 'CANCELLED') {
-                        opt.disabled = true;
-                    }
-                });
-                if (statusWarningEl) {
-                    statusWarningEl.classList.remove('d-none');
-                    statusWarningEl.classList.add('d-flex');
-                }
-            } else {
-                if (statusWarningEl) {
-                    statusWarningEl.classList.add('d-none');
-                    statusWarningEl.classList.remove('d-flex');
-                }
-                Array.from(statusSelect.options).forEach(opt => {
-                    opt.disabled = false;
-                });
+            if (!statusSelect.value) {
+                statusSelect.value = 'SCHEDULED';
             }
+            Array.from(statusSelect.options).forEach(opt => {
+                opt.disabled = false;
+            });
         }
 
         function validateStatusWithTimeAndBookings() {

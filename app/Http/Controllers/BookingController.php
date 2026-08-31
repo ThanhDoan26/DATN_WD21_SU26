@@ -20,10 +20,6 @@ class BookingController extends Controller
      */
     public function selectCinema(Movie $movie): mixed
     {
-        if ($movie->status === Movie::STATUS_SCHEDULED) {
-            return redirect()->route('movies.show', $movie->id)
-                ->with('error', 'Movie is currently scheduled and not yet open for ticket sales.');
-        }
 
         // Lấy danh sách rạp có suất chiếu còn mở bán online (trước giờ chiếu tối thiểu 15 phút)
         $cinemas = Cinema::whereHas('rooms', function ($query) use ($movie) {
@@ -56,10 +52,6 @@ class BookingController extends Controller
      */
     public function selectDatesAndShowtimes(Movie $movie, Cinema $cinema): mixed
     {
-        if ($movie->status === Movie::STATUS_SCHEDULED) {
-            return redirect()->route('movies.show', $movie->id)
-                ->with('error', 'Movie is currently scheduled and not yet open for ticket sales.');
-        }
 
         return view('booking.select-dates-and-showtimes', [
             'movie' => $movie,
@@ -82,9 +74,6 @@ class BookingController extends Controller
         }
 
         $movie = Movie::find($movieId);
-        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
-            return response()->json(['data' => [], 'message' => 'Movie is currently scheduled and not yet open for ticket sales.'], 422);
-        }
 
         // Lấy danh sách ngày chiếu theo phim + rạp (chỉ lấy suất mở bán online)
         $dates = Showtime::where('movie_id', $movieId)
@@ -123,9 +112,6 @@ class BookingController extends Controller
         }
 
         $movie = Movie::find($movieId);
-        if ($movie && $movie->status === Movie::STATUS_SCHEDULED) {
-            return response()->json(['data' => [], 'message' => 'Movie is currently scheduled and not yet open for ticket sales.'], 422);
-        }
 
         // Lấy danh sách suất chiếu theo phim + rạp + ngày
         $showtimes = Showtime::where('movie_id', $movieId)
@@ -167,9 +153,6 @@ class BookingController extends Controller
     public function selectSeats(Showtime $showtime)
     {
         $showtime->loadMissing('movie');
-        if ($showtime->movie && $showtime->movie->status === Movie::STATUS_SCHEDULED) {
-            return redirect()->route('home')->with('error', 'Movie is currently scheduled and not yet open for ticket sales.');
-        }
 
         // Kiểm tra suất chiếu có còn được phép đặt vé online không
         if (!$showtime->isOnlineBookable()) {
