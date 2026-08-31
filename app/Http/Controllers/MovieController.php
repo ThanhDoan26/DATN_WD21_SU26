@@ -12,6 +12,9 @@ use App\Services\MovieSearchService;
 use App\Services\MovieDetailService;
 use Illuminate\View\View;
 
+use App\Models\Combo;
+use App\Models\Post;
+
 class MovieController extends Controller
 {
     /**
@@ -72,6 +75,16 @@ class MovieController extends Controller
             ->limit(4)
             ->get();
 
+        // Combos (popcorn & drinks)
+        $combos = Combo::where('status', 'ACTIVE')->get();
+
+        // Latest news/posts
+        $latestPosts = Post::where('status', 'Published')
+            ->with(['category', 'author'])
+            ->orderBy('published_at', 'desc')
+            ->limit(3)
+            ->get();
+
         return view('welcome', [
             'hasSearch' => false,
             'currentMovies' => $currentMovies,
@@ -79,6 +92,8 @@ class MovieController extends Controller
             'featuredMovies' => $featuredMovies,
             'cinemas' => $cinemas,
             'categories' => $categories,
+            'combos' => $combos,
+            'latestPosts' => $latestPosts,
         ]);
     }
 

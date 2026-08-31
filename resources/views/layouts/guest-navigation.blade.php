@@ -26,6 +26,10 @@
                     Phim Sắp Chiếu
                     <span class="absolute -bottom-1 left-0 h-px bg-red-500 transition-all duration-300 {{ request()->routeIs('movies.upcoming') ? 'w-full' : 'w-0 group-hover:w-full' }}"></span>
                 </a>
+                <a href="{{ url('/#combos') }}" class="text-white/70 hover:text-white font-medium transition-colors text-sm tracking-wide relative group">
+                    Combo Bắp Nước
+                    <span class="absolute -bottom-1 left-0 h-px bg-red-500 transition-all duration-300 w-0 group-hover:w-full"></span>
+                </a>
                 <a href="{{ route('posts.index') }}" class="{{ request()->routeIs('posts.*') ? 'text-white font-semibold' : 'text-white/70 hover:text-white font-medium' }} transition-colors text-sm tracking-wide relative group">
                     Tin tức
                     <span class="absolute -bottom-1 left-0 h-px bg-red-500 transition-all duration-300 {{ request()->routeIs('posts.*') ? 'w-full' : 'w-0 group-hover:w-full' }}"></span>
@@ -121,6 +125,7 @@
             ['href' => '/', 'label' => 'Trang chủ'],
             ['href' => route('movies.current'), 'label' => 'Phim Đang Chiếu'],
             ['href' => route('movies.upcoming'), 'label' => 'Phim Sắp Chiếu'],
+            ['href' => url('/#combos'), 'label' => 'Combo Bắp Nước'],
             ['href' => route('posts.index'), 'label' => 'Tin tức'],
         ]; @endphp
 

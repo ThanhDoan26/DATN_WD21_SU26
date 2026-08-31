@@ -345,9 +345,53 @@
             font-size: 1rem;
         }
 
-        .sidebar-menu .collapse a {
-            padding-left: 48px !important;
+        /* Smooth Hoverable & Expandable Dropdown Submenus */
+        .sidebar-menu .has-submenu {
+            position: relative;
+        }
+
+        .sidebar-menu .has-submenu .submenu {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+
+        .sidebar-menu .has-submenu:hover .submenu,
+        .sidebar-menu .has-submenu.open .submenu {
+            max-height: 250px;
+            opacity: 1;
+            padding: 4px 0;
+            margin-top: 4px;
+        }
+
+        .sidebar-menu .has-submenu .submenu-arrow {
+            margin-left: auto;
+            margin-right: 0;
+            font-size: 0.75rem;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-menu .has-submenu:hover .submenu-arrow,
+        .sidebar-menu .has-submenu.open .submenu-arrow {
+            transform: rotate(180deg);
+        }
+
+        .sidebar-menu .has-submenu .submenu a {
+            padding-left: 44px;
             font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .sidebar-menu .has-submenu .submenu a:hover,
+        .sidebar-menu .has-submenu .submenu a.active {
+            color: #ffffff;
+            background-color: rgba(147, 51, 234, 0.2);
         }
 
         /* ========== MAIN CONTENT ========== */
@@ -774,45 +818,50 @@
                     <span>Mã giảm giá</span>
                 </a>
             </li>
-            <li>
-                <a href="#comboSubmenu" data-bs-toggle="collapse" class="@if(request()->routeIs('admin.combos.*') || request()->routeIs('admin.combo-reviews.*')) active @else text-white-50 @endif d-flex justify-content-between align-items-center">
+            <!-- Combo Bắp Nước Submenu -->
+            <li class="has-submenu">
+                <a href="{{ route('admin.combos.index') }}"
+                   class="d-flex justify-content-between align-items-center">
                     <div>
                         <i class="fas fa-utensils"></i>
                         <span>Combo Bắp Nước</span>
                     </div>
-                    <i class="fas fa-chevron-down text-sm" style="font-size: 0.8em"></i>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
                 </a>
-                <ul class="collapse list-unstyled {{ request()->routeIs('admin.combos.*') || request()->routeIs('admin.combo-reviews.*') ? 'show' : '' }}" id="comboSubmenu" style="background: rgba(0,0,0,0.1);">
+                <ul class="submenu">
                     <li>
-                        <a href="{{ route('admin.combos.index') }}" class="@if(request()->routeIs('admin.combos.*')) active @endif" style="padding-left: 50px;">
-                            <i class="fas fa-list me-2" style="font-size: 0.8rem; width: auto;"></i> Danh sách
+                        <a href="{{ route('admin.combos.index') }}" class="@if(request()->routeIs('admin.combos.index') || request()->routeIs('admin.combos.create') || request()->routeIs('admin.combos.edit') || request()->routeIs('admin.combos.show')) active @endif">
+                            <i class="fas fa-list me-2"></i> Danh sách Combo
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('admin.combo-reviews.index') }}" class="@if(request()->routeIs('admin.combo-reviews.*')) active @endif" style="padding-left: 50px;">
-                            <i class="fas fa-star me-2" style="font-size: 0.8rem; width: auto;"></i> Đánh giá
+                        <a href="{{ route('admin.combo-reviews.index') }}" class="@if(request()->routeIs('admin.combo-reviews.*')) active @endif">
+                            <i class="fas fa-star me-2"></i> Đánh giá Combo
                         </a>
                     </li>
                 </ul>
             </li>
-            <li>
-                <a href="#blogSubmenu" data-bs-toggle="collapse" class="@if(request()->routeIs('admin.posts.*') || request()->routeIs('admin.post-categories.*')) active @else text-white-50 @endif d-flex justify-content-between align-items-center">
+
+            <!-- Tin tức Submenu -->
+            <li class="has-submenu">
+                <a href="{{ route('admin.posts.index') }}"
+                   class="d-flex justify-content-between align-items-center">
                     <div>
                         <i class="fas fa-newspaper"></i>
-                        <span class="ms-1">Tin tức</span>
+                        <span>Tin Tức</span>
                     </div>
-                    <i class="fas fa-chevron-down text-sm" style="font-size: 0.8em"></i>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
                 </a>
-                <ul class="collapse list-unstyled {{ request()->routeIs('admin.posts.*') || request()->routeIs('admin.post-categories.*') ? 'show' : '' }}" id="blogSubmenu" style="background: rgba(0,0,0,0.1); margin: 0; padding: 0;">
+                <ul class="submenu">
                     <li>
-                        <a href="{{ route('admin.posts.index') }}" class="@if(request()->routeIs('admin.posts.index') || request()->routeIs('admin.posts.create') || request()->routeIs('admin.posts.edit') || request()->routeIs('admin.posts.show')) active @endif" style="padding-left: 50px;">
-                            <i class="fas fa-list me-2" style="font-size: 0.8rem; width: auto;"></i> Danh sách bài viết
+                        <a href="{{ route('admin.posts.index') }}" class="@if(request()->routeIs('admin.posts.index') || request()->routeIs('admin.posts.create') || request()->routeIs('admin.posts.edit') || request()->routeIs('admin.posts.show')) active @endif">
+                            <i class="fas fa-list me-2"></i> Danh sách bài viết
                         </a>
                     </li>
                     @if(auth()->user()->isAdmin())
                     <li>
-                        <a href="{{ route('admin.post-categories.index') }}" class="@if(request()->routeIs('admin.post-categories.*')) active @endif" style="padding-left: 50px;">
-                            <i class="fas fa-folder me-2" style="font-size: 0.8rem; width: auto;"></i> Danh mục tin tức
+                        <a href="{{ route('admin.post-categories.index') }}" class="@if(request()->routeIs('admin.post-categories.*')) active @endif">
+                            <i class="fas fa-folder me-2"></i> Danh mục tin tức
                         </a>
                     </li>
                     @endif

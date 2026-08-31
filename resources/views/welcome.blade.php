@@ -502,13 +502,139 @@
                     </h2>
                     <p class="text-slate-400 mt-1">Những phim được yêu thích nhất</p>
                 </div>
-                <a href="#" class="hidden md:inline-flex items-center gap-2 text-sm text-red-400 hover:text-red-300 font-medium transition-colors border border-red-500/30 hover:border-red-400/60 px-5 py-2.5 rounded-full hover:bg-red-500/10">
+                <a href="{{ route('movies.current') }}" class="hidden md:inline-flex items-center gap-2 text-sm text-red-400 hover:text-red-300 font-medium transition-colors border border-red-500/30 hover:border-red-400/60 px-5 py-2.5 rounded-full hover:bg-red-500/10">
                     Xem thêm <i class="fas fa-arrow-right text-xs"></i>
                 </a>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 @foreach($featuredMovies as $movie)
                     <x-movie-card :movie="$movie" />
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
+
+    <!-- ===================== COMBO BẮP NƯỚC ===================== -->
+    @if(isset($combos) && $combos->count() > 0)
+    <div class="section-divider"></div>
+    <section id="combos" class="movies-section-mid py-20 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex items-center justify-between mb-12">
+                <div>
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="section-header-line" style="background: linear-gradient(90deg, #f59e0b, transparent);"></div>
+                        <span class="text-amber-400 text-xs uppercase tracking-widest font-medium">Ưu đãi ẩm thực</span>
+                    </div>
+                    <h2 class="text-4xl md:text-5xl font-bold text-white font-bebas tracking-wide flex items-center gap-3">
+                        Combo Bắp Nước
+                        <span class="text-amber-500 text-3xl"><i class="fas fa-popcorn"></i></span>
+                    </h2>
+                    <p class="text-slate-400 mt-1">Tận hưởng hương vị tuyệt vời cùng những bộ phim đỉnh cao</p>
+                </div>
+                <a href="{{ route('movies.current') }}" class="hidden md:inline-flex items-center gap-2 text-sm text-amber-400 hover:text-amber-300 font-medium transition-colors border border-amber-500/30 hover:border-amber-400/60 px-5 py-2.5 rounded-full hover:bg-amber-500/10">
+                    Đặt vé & Chọn combo <i class="fas fa-ticket-alt text-xs"></i>
+                </a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                @foreach($combos as $combo)
+                <div class="group relative bg-slate-900/60 border border-slate-800/80 hover:border-amber-500/50 rounded-3xl p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-amber-500/10 flex flex-col justify-between">
+                    <div>
+                        <div class="w-full h-48 bg-slate-800/80 rounded-2xl overflow-hidden mb-6 border border-slate-700/50 group-hover:border-amber-500/30 transition-colors relative">
+                            @if($combo->image)
+                                <img src="{{ asset('storage/' . $combo->image) }}" alt="{{ $combo->name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            @else
+                                <div class="w-full h-full flex items-center justify-center text-amber-500/60 text-5xl">
+                                    <i class="fas fa-hamburger"></i>
+                                </div>
+                            @endif
+                            <div class="absolute top-3 right-3 bg-amber-500 text-slate-950 font-extrabold text-xs px-3 py-1 rounded-full shadow-lg">
+                                HOT
+                            </div>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2 group-hover:text-amber-400 transition-colors">{{ $combo->name }}</h3>
+                        <p class="text-slate-400 text-sm mb-4 leading-relaxed line-clamp-3">{{ $combo->description }}</p>
+                    </div>
+                    <div class="flex items-center justify-between pt-4 border-t border-slate-800">
+                        <div>
+                            <span class="text-xs text-slate-500 uppercase tracking-wider block">Giá ưu đãi</span>
+                            <span class="text-2xl font-bold text-amber-400">{{ number_format($combo->price, 0, ',', '.') }} đ</span>
+                        </div>
+                        <a href="{{ route('movies.current') }}" class="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-400 group-hover:bg-amber-500 group-hover:text-slate-950 transition-all font-bold">
+                            <i class="fas fa-plus"></i>
+                        </a>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
+
+    <!-- ===================== TIN TỨC & SỰ KIỆN ===================== -->
+    @if(isset($latestPosts) && $latestPosts->count() > 0)
+    <div class="section-divider"></div>
+    <section class="movies-section-dark py-20 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex items-center justify-between mb-12">
+                <div>
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="section-header-line"></div>
+                        <span class="text-red-400 text-xs uppercase tracking-widest font-medium">Cập nhật mới nhất</span>
+                    </div>
+                    <h2 class="text-4xl md:text-5xl font-bold text-white font-bebas tracking-wide flex items-center gap-3">
+                        Tin Tức & Sự Kiện
+                        <span class="text-red-500 text-3xl"><i class="fas fa-newspaper"></i></span>
+                    </h2>
+                    <p class="text-slate-400 mt-1">Thông tin điện ảnh, sự kiện công chiếu và khuyến mãi cực hot</p>
+                </div>
+                <a href="{{ route('posts.index') }}" class="hidden md:inline-flex items-center gap-2 text-sm text-red-400 hover:text-red-300 font-medium transition-colors border border-red-500/30 hover:border-red-400/60 px-5 py-2.5 rounded-full hover:bg-red-500/10">
+                    Tất cả tin tức <i class="fas fa-arrow-right text-xs"></i>
+                </a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                @foreach($latestPosts as $post)
+                <article class="group bg-slate-900/60 border border-slate-800/80 hover:border-red-500/50 rounded-3xl overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-red-500/10 flex flex-col justify-between">
+                    <div>
+                        <div class="w-full h-52 bg-slate-800/80 overflow-hidden relative border-b border-slate-800">
+                            @if($post->image)
+                                <img src="{{ asset('storage/' . $post->image) }}" alt="{{ $post->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            @else
+                                <div class="w-full h-full flex items-center justify-center text-slate-700 text-5xl">
+                                    <i class="fas fa-newspaper"></i>
+                                </div>
+                            @endif
+                            @if($post->category)
+                                <span class="absolute top-4 left-4 bg-red-600/90 text-white font-semibold text-xs px-3 py-1 rounded-full backdrop-blur-md">
+                                    {{ $post->category->name }}
+                                </span>
+                            @endif
+                        </div>
+                        <div class="p-6">
+                            <div class="flex items-center gap-3 text-xs text-slate-400 mb-3">
+                                <span><i class="fas fa-calendar-alt text-red-400 mr-1"></i> {{ $post->published_at ? $post->published_at->format('d/m/Y') : $post->created_at->format('d/m/Y') }}</span>
+                                <span>·</span>
+                                <span><i class="fas fa-eye text-slate-500 mr-1"></i> {{ number_format($post->views) }}</span>
+                            </div>
+                            <h3 class="text-lg font-bold text-white mb-3 group-hover:text-red-400 transition-colors line-clamp-2 leading-snug">
+                                <a href="{{ route('posts.show', $post->slug) }}">
+                                    {{ $post->title }}
+                                </a>
+                            </h3>
+                            <p class="text-slate-400 text-sm line-clamp-3 leading-relaxed">
+                                {{ $post->summary }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="px-6 pb-6 pt-0">
+                        <a href="{{ route('posts.show', $post->slug) }}" class="inline-flex items-center gap-2 text-sm font-semibold text-red-400 hover:text-red-300 group/link">
+                            Đọc chi tiết
+                            <i class="fas fa-arrow-right text-xs group-hover/link:translate-x-1 transition-transform"></i>
+                        </a>
+                    </div>
+                </article>
                 @endforeach
             </div>
         </div>

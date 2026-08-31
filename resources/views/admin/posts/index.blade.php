@@ -109,7 +109,7 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Danh sách Bài viết</h5>
-        @if(auth()->user()->isAdmin())
+        @if(auth()->user()->isAdmin() || auth()->user()->isManager() || auth()->user()->isStaff())
         <div class="d-flex gap-2">
             <a href="{{ route('admin.posts.trashed') }}" class="btn btn-sm btn-secondary fw-bold" title="Xem tin đã xóa">
                 <i class="fas fa-trash-alt me-1"></i> Đã Xóa Tạm
@@ -157,7 +157,7 @@
                         </td>
                         <td>{{ $post->author?->name ?: 'Không rõ' }}</td>
                         <td class="text-center">
-                            @if(auth()->user()->isAdmin())
+                            @if(auth()->user()->isAdmin() || auth()->user()->isManager() || auth()->user()->isStaff())
                                 <form action="{{ route('admin.posts.toggle-status', $post) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('PATCH')
@@ -180,7 +180,7 @@
                             @endif
                         </td>
                         <td class="text-center">
-                            @if(auth()->user()->isAdmin())
+                            @if(auth()->user()->isAdmin() || auth()->user()->isManager() || auth()->user()->isStaff())
                                 <form action="{{ route('admin.posts.toggle-featured', $post) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('PATCH')
@@ -206,7 +206,7 @@
                             <a href="{{ route('admin.posts.show', $post) }}" class="btn btn-sm btn-info" title="Xem chi tiết/Xem trước">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            @if(auth()->user()->isAdmin())
+                            @if(auth()->user()->isAdmin() || auth()->user()->isManager() || auth()->user()->isStaff())
                             <a href="{{ route('admin.posts.edit', $post) }}" class="btn btn-sm btn-primary" title="Sửa">
                                 <i class="fas fa-edit"></i>
                             </a>

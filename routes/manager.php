@@ -32,8 +32,14 @@ Route::middleware(['auth', 'role:MANAGER', 'cinema.assignment'])->prefix('manage
     Route::delete('showtimes/{id}/force-delete', [ShowtimeController::class, 'forceDelete'])->name('showtimes.forceDelete');
     Route::resource('showtimes', ShowtimeController::class);
 
-    // Xem danh sách Combo (Read-only)
-    Route::resource('combos', ComboController::class)->only(['index', 'show']);
+    // Quản lý Combo bắp nước (Manager)
+    Route::patch('combos/{combo}/toggle-status', [\App\Http\Controllers\Admin\ComboController::class, 'toggleStatus'])->name('combos.toggle-status');
+    Route::resource('combos', ComboController::class);
+
+    // Quản lý Bài viết / Tin tức (Manager)
+    Route::patch('posts/{post}/toggle-status', [\App\Http\Controllers\Admin\PostController::class, 'toggleStatus'])->name('posts.toggle-status');
+    Route::patch('posts/{post}/toggle-featured', [\App\Http\Controllers\Admin\PostController::class, 'toggleFeatured'])->name('posts.toggle-featured');
+    Route::resource('posts', \App\Http\Controllers\Admin\PostController::class);
 
     // Xem danh sách Phim (Read-only)
     Route::resource('movies', \App\Http\Controllers\Manager\MovieController::class)->only(['index', 'show']);

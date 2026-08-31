@@ -117,10 +117,6 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
         Route::delete('coupons/{coupon}/force-delete', [CouponController::class, 'forceDelete'])->name('admin.coupons.forceDelete');
         Route::resource('coupons', CouponController::class, ['as' => 'admin']);
 
-        // Combos
-        Route::patch('combos/{combo}/toggle-status', [ComboController::class, 'toggleStatus'])->name('admin.combos.toggle-status');
-        Route::resource('combos', ComboController::class, ['as' => 'admin']);
-
         // Combo Reviews
         Route::get('combo-reviews', [\App\Http\Controllers\Admin\ComboReviewController::class, 'index'])->name('admin.combo-reviews.index');
         Route::get('combo-reviews/{combo}', [\App\Http\Controllers\Admin\ComboReviewController::class, 'show'])->name('admin.combo-reviews.show');
@@ -137,8 +133,17 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
         Route::patch('cinema-reviews/{review}/toggle-status', [\App\Http\Controllers\Admin\CinemaReviewController::class, 'toggleStatus'])->name('admin.cinema-reviews.toggle-status');
         Route::delete('cinema-reviews/{review}', [\App\Http\Controllers\Admin\CinemaReviewController::class, 'destroy'])->name('admin.cinema-reviews.destroy');
 
-        // Post Categories & Post Mutations
+    });
+
+    // Combos & Posts Management dùng chung cho ADMIN, MANAGER và STAFF
+    Route::middleware(['role:ADMIN,MANAGER,STAFF'])->group(function () {
+        // Combos
+        Route::patch('combos/{combo}/toggle-status', [ComboController::class, 'toggleStatus'])->name('admin.combos.toggle-status');
+        Route::resource('combos', ComboController::class, ['as' => 'admin']);
+
+        // Post Categories & Posts
         Route::resource('post-categories', \App\Http\Controllers\Admin\PostCategoryController::class, ['as' => 'admin']);
+        Route::get('posts', [\App\Http\Controllers\Admin\PostController::class, 'index'])->name('admin.posts.index');
         Route::get('posts/create', [\App\Http\Controllers\Admin\PostController::class, 'create'])->name('admin.posts.create');
         Route::post('posts', [\App\Http\Controllers\Admin\PostController::class, 'store'])->name('admin.posts.store');
         Route::get('posts/trashed', [\App\Http\Controllers\Admin\PostController::class, 'trashed'])->name('admin.posts.trashed');
@@ -150,12 +155,6 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
         Route::delete('posts/{id}/force-delete', [\App\Http\Controllers\Admin\PostController::class, 'forceDelete'])->name('admin.posts.forceDelete');
         Route::patch('posts/{post}/toggle-status', [\App\Http\Controllers\Admin\PostController::class, 'toggleStatus'])->name('admin.posts.toggle-status');
         Route::patch('posts/{post}/toggle-featured', [\App\Http\Controllers\Admin\PostController::class, 'toggleFeatured'])->name('admin.posts.toggle-featured');
-
-    });
-
-    // Tin tức / Blog Index dùng chung cho ADMIN và STAFF
-    Route::middleware(['role:ADMIN,STAFF'])->group(function () {
-        Route::get('posts', [\App\Http\Controllers\Admin\PostController::class, 'index'])->name('admin.posts.index');
     });
 
 });
