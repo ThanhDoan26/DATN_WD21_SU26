@@ -1240,7 +1240,7 @@ class BookingService
                     throw new Exception("Mã giảm giá không hợp lệ hoặc đã hết hạn.");
                 }
 
-                $validation = $coupon->isValid($subtotal, $booking->user_id);
+                $validation = $coupon->isValid($subtotal, $booking->user_id, $booking->id);
                 if (!$validation['valid']) {
                     throw new Exception($validation['message']);
                 }

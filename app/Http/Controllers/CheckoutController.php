@@ -258,7 +258,7 @@ class CheckoutController extends Controller
             ->toArray();
 
         $combos = Combo::where('status', 'ACTIVE')->get();
-        $coupons = Coupon::validForCheckout()->orderByAvailabilityAndExpiration()->get();
+        $coupons = Coupon::validForCheckout(\Illuminate\Support\Facades\Auth::id(), $pendingBookingId)->orderByAvailabilityAndExpiration()->get();
 
         $pendingBookingCode = $pendingBooking->booking_code;
 
@@ -524,8 +524,10 @@ class CheckoutController extends Controller
             ], 404);
         }
 
+        $bookingId = $request->input('booking_id') ?? $request->input('pending_booking_id');
+
         // Gọi hàm kiểm tra điều kiện bên trong model Coupon
-        $validation = $coupon->isValid($orderTotal, \Illuminate\Support\Facades\Auth::id());
+        $validation = $coupon->isValid($orderTotal, \Illuminate\Support\Facades\Auth::id(), $bookingId);
 
         if (!$validation['valid']) {
             return response()->json([
