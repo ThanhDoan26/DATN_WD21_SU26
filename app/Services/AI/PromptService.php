@@ -38,6 +38,15 @@ Hãy dựa vào thông tin Database trên để trả lời câu hỏi của ng�
             case 'ask_movie_compare':
                 $behavior = "CHỈ THỊ HÀNH VI: Khi so sánh các phim, hãy phân tích đa chiều một cách khách quan: Thể loại, Thời lượng, Giới hạn tuổi, Điểm số đánh giá. Không thiên vị và không tự bịa thông tin.";
                 break;
+            case 'ask_policy':
+                $behavior = "CHỈ THỊ HÀNH VI: Khách đang hỏi về chính sách/quy định của rạp. Hãy trả lời chi tiết, chuẩn xác, lịch sự và tự nhiên dựa trên thông tin Database:
+- Nếu hỏi về quy định độ tuổi/mang CCCD (ví dụ: học sinh xem phim T18): Nêu rõ nếu khách hàng dưới độ tuổi cho phép thì nhân viên sẽ check Căn cước công dân (CCCD)/giấy tờ tùy thân và rạp sẽ hạn chế/từ chối người dưới độ tuổi cho phép xem những phim đó.
+- Nếu hỏi về mang đồ ăn từ bên ngoài vào: Nêu rõ rạp không cho phép mang đồ ăn/thức uống từ bên ngoài vào, và rạp đã có sẵn các gói combo bắp nước đa dạng thơm ngon xin mời quý khách có thể mua và thưởng thức.
+- Nếu hỏi về đổi/trả vé: Nêu rõ vé đã mua không thể hoàn/hủy/đổi.";
+                break;
+            case 'ask_combo':
+                $behavior = "CHỈ THỊ HÀNH VI: Khách đang hỏi về combo bắp nước hoặc quy định đồ ăn ngoài. Hãy nêu rõ rạp không cho phép mang đồ ăn bên ngoài vào, đồng thời nhiệt tình giới thiệu các combo có sẵn tại rạp để mời quý khách mua và thưởng thức.";
+                break;
         }
 
         if (!empty($behavior)) {

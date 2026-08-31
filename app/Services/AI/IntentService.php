@@ -34,8 +34,8 @@ Dựa vào lịch sử và câu hỏi mới nhất của người dùng, hãy ph
 - ask_payment_error: Hỗ trợ khi thanh toán lỗi.
 - ask_ticket_price: Hỏi về giá vé.
 - ask_coupon: Hỏi về mã giảm giá.
-- ask_combo: Hỏi về combo bắp nước.
-- ask_policy: Hỏi về chính sách hoàn/đổi vé.
+- ask_combo: Hỏi về combo bắp nước, đồ ăn thức uống, hoặc việc mang đồ ăn từ bên ngoài vào rạp.
+- ask_policy: Hỏi về các chính sách, quy định của rạp (hoàn/đổi vé, quy định độ tuổi xem phim, kiểm tra Căn cước công dân/CCCD/giấy tờ tùy thân khi xem phim giới hạn tuổi như T13, T16, T18, quy định cấm mang đồ ăn thức uống bên ngoài vào rạp).
 - ask_user_profile: Hỏi thông tin cá nhân.
 - ask_booking_history: Hỏi về lịch sử mua vé.
 - ask_review_history: Hỏi về lịch sử đánh giá phim.

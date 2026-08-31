@@ -422,7 +422,11 @@ class KnowledgeService
 
             case 'ask_combo':
                 $combos = Combo::where('status', 'ACTIVE')->get(['name', 'price', 'description']);
-                return "Thông tin combo bắp nước: " . json_encode($combos->toArray(), JSON_UNESCAPED_UNICODE);
+                $data = [
+                    'quy_dinh_do_an_ngoai' => 'Rạp KHÔNG CHO PHÉP mang đồ ăn, thức uống từ bên ngoài vào rạp chiếu phim để đảm bảo vệ sinh chung và trải nghiệm của mọi khán giả. Rạp đã có sẵn các combo bắp nước đa dạng, thơm ngon hấp dẫn (bắp rang bơ, nước ngọt, snack...) xin mời quý khách có thể mua và thưởng thức trực tiếp tại quầy hoặc đặt cùng vé trên hệ thống.',
+                    'danh_sach_combo' => $combos->toArray()
+                ];
+                return "Thông tin combo bắp nước và quy định đồ ăn: " . json_encode($data, JSON_UNESCAPED_UNICODE);
 
             case 'ask_user_profile':
                 if (!$user) return "Người dùng chưa đăng nhập.";
@@ -468,14 +472,33 @@ class KnowledgeService
                 return "Giá vé: Giá vé được quy định theo từng loại suất chiếu và từng loại ghế (Thường, VIP, Đôi). Vui lòng chọn phim cụ thể để biết giá chi tiết.";
 
             case 'ask_policy':
-                return "Chính sách: Vé đã mua không thể hoàn hoặc đổi. Vui lòng kiểm tra kỹ thông tin trước khi thanh toán.";
+                return "Chính sách và quy định của rạp chiếu phim MovieGo:
+1. Quy định về Độ tuổi xem phim và Kiểm tra Căn cước công dân (CCCD):
+- Phân loại độ tuổi phim:
+  + P: Phim dành cho mọi lứa tuổi khán giả.
+  + K: Khán giả dưới 13 tuổi có thể xem khi có người giám hộ/người lớn đi cùng.
+  + T13: Phim dành cho khán giả từ đủ 13 tuổi trở lên.
+  + T16: Phim dành cho khán giả từ đủ 16 tuổi trở lên.
+  + T18: Phim dành cho khán giả từ đủ 18 tuổi trở lên (ví dụ: học sinh cấp 3 chưa đủ 18 tuổi sẽ không được xem).
+- Kiểm tra CCCD / Giấy tờ tùy thân: Khi vào xem các phim có giới hạn độ tuổi (như T13, T16, T18), khách hàng vui lòng mang theo Căn cước công dân (CCCD), CMND hoặc giấy tờ tùy thân có ảnh/ngày sinh để nhân viên soát vé kiểm tra độ tuổi.
+- Xử lý đối với khách hàng chưa đủ tuổi: Nếu khách hàng dưới độ tuổi cho phép (hoặc không xuất trình được giấy tờ hợp lệ chứng minh đủ tuổi), nhân viên rạp sẽ kiểm tra căn cước và rạp sẽ kiên quyết hạn chế/từ chối không cho phép người dưới độ tuổi quy định vào xem những phim đó theo đúng quy định pháp luật.
+
+2. Quy định về Đồ ăn, Thức uống từ bên ngoài:
+- Rạp KHÔNG CHO PHÉP mang đồ ăn, thức uống từ bên ngoài vào rạp chiếu phim nhằm đảm bảo vệ sinh chung, an toàn thực phẩm và giữ gìn không gian xem phim cho tất cả mọi người.
+- Rạp đã có sẵn quầy Bắp Nước với nhiều gói Combo phong phú, thơm ngon và hấp dẫn (bắp rang bơ các vị phô mai, caramel, nước ngọt, snack...), xin mời quý khách có thể mua trực tiếp tại quầy hoặc đặt mua kèm vé trực tuyến trên website để thưởng thức.
+
+3. Chính sách Vé và Hoàn/Đổi vé:
+- Vé đã mua và thanh toán thành công KHÔNG hỗ trợ hoàn tiền, hủy hoặc đổi sang suất chiếu khác. Quý khách vui lòng kiểm tra kỹ thông tin suất chiếu và ghế ngồi trước khi thanh toán.";
 
             case 'ask_website':
                 return "Thông tin website: Bạn có thể đặt vé phim, xem lịch chiếu, đánh giá phim, mua combo bắp nước, xem bài viết giới thiệu phim trên trang web của chúng tôi.";
 
             case 'general':
             default:
-                return "Không có dữ liệu đặc biệt nào cần lấy. Hãy trả lời bình thường.";
+                return "Không có dữ liệu đặc biệt nào cần lấy. Hãy trả lời bình thường và lịch sự.
+Lưu ý các quy định cơ bản của rạp nếu người dùng đề cập:
+- Độ tuổi & CCCD: Các phim giới hạn tuổi (T13, T16, T18) yêu cầu khách hàng đủ tuổi. Nhân viên rạp sẽ check Căn cước công dân/giấy tờ tùy thân và rạp sẽ hạn chế/từ chối người dưới độ tuổi cho phép xem những phim đó.
+- Đồ ăn ngoài & Combo: Rạp không cho phép mang đồ ăn, thức uống từ bên ngoài vào. Rạp đã có sẵn các combo bắp nước đa dạng, thơm ngon để quý khách mua và thưởng thức.";
         }
     }
 }
