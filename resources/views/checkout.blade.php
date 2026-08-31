@@ -93,14 +93,6 @@
 @section('content')
 
     <div class="max-w-6xl mx-auto px-4 pt-32 pb-20">
-        <!-- Navigation -->
-        <div class="flex items-center gap-4 mb-6">
-            <a href="{{ route('home') }}" 
-               class="text-slate-300 hover:text-white flex items-center gap-2 transition-colors px-4 py-2 bg-slate-800/50 rounded-lg backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50">
-                <i class="fas fa-home"></i> Trang chủ
-            </a>
-        </div>
-
         <div class="mb-10 text-center">
             <h1 class="text-4xl font-bold text-white mb-2"><i class="fas fa-ticket-alt text-primary mr-3"></i>Thanh Toán Vé</h1>
             <p class="text-slate-400">Hoàn tất các bước cuối cùng để thưởng thức bộ phim của bạn.</p>

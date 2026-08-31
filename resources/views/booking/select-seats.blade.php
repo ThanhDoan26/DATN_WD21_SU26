@@ -372,18 +372,6 @@
     <!-- Page Header -->
     <div class="bg-gradient-to-b from-slate-800 to-slate-900 pt-32 pb-16 px-4">
         <div class="max-w-7xl mx-auto">
-            <!-- Navigation -->
-            <div class="flex items-center gap-4 mb-6">
-                <a href="{{ route('booking.select-dates-showtimes', ['movie' => $showtime->movie_id, 'cinema' => $showtime->room->cinema_id]) }}" 
-                   class="text-slate-300 hover:text-white flex items-center gap-2 transition-colors px-4 py-2 bg-slate-800/50 rounded-lg backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50">
-                    <i class="fas fa-arrow-left"></i> Quay lại
-                </a>
-                <a href="{{ route('home') }}" 
-                   class="text-slate-300 hover:text-white flex items-center gap-2 transition-colors px-4 py-2 bg-slate-800/50 rounded-lg backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50">
-                    <i class="fas fa-home"></i> Trang chủ
-                </a>
-            </div>
-
             <div class="flex items-center gap-4 mb-4">
                 <i class="fas fa-chair text-primary text-4xl"></i>
                 <h1 class="text-5xl md:text-6xl font-bold">Chọn Ghế</h1>
@@ -549,9 +537,9 @@
                 <button type="button" onclick="handleCancelClick()" id="btnCancelAction" class="bg-slate-700 hover:bg-red-600 text-white font-medium py-3 px-6 rounded-lg transition whitespace-nowrap text-center border border-slate-600">
                     Hủy đặt vé
                 </button>
-                <a href="{{ route('booking.select-dates-showtimes', ['movie' => $showtime->movie_id, 'cinema' => $showtime->room->cinema_id]) }}" class="bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-lg transition whitespace-nowrap text-center">
+                <button type="button" onclick="handleBackToMovieClick()" id="btnBackAction" class="bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-lg transition whitespace-nowrap text-center border border-slate-600">
                     Quay lại
-                </a>
+                </button>
                 <button type="button"
                         onclick="proceedToCheckout()"
                         id="checkoutButton"
@@ -593,19 +581,40 @@
         </div>
     </div>
 
+    {{-- ======== BACK CONFIRMATION MODAL ======== --}}
+    <div id="backConfirmModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div style="background: #1e293b; padding: 2rem; border-radius: 1rem; max-width: 450px; width: 90%; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+            <div style="font-size: 3rem; color: #f59e0b; text-align: center; margin-bottom: 1rem;">
+                <i class="fas fa-undo-alt"></i>
+            </div>
+            <h3 style="color: white; font-size: 1.25rem; font-weight: bold; text-align: center; margin-bottom: 1rem;">Đổi suất chiếu khác?</h3>
+            <p id="backConfirmModalText" style="color: #94a3b8; text-align: center; margin-bottom: 2rem; line-height: 1.6;">
+                Bạn có muốn đổi suất chiếu khác? Ghế đang chọn sẽ bị hủy giữ.
+            </p>
+            <div style="display: flex; gap: 1rem;">
+                <button type="button" onclick="document.getElementById('backConfirmModal').style.display='none'" style="flex: 1; padding: 0.75rem; background: #334155; color: white; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s;">
+                    Ở lại
+                </button>
+                <button type="button" onclick="confirmBackToMovie()" id="btnConfirmBack" style="flex: 1; padding: 0.75rem; background: #f59e0b; color: white; border-radius: 0.5rem; font-weight: bold; transition: background 0.2s;">
+                    Đồng ý
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- ======== CANCEL CONFIRMATION MODAL ======== --}}
     <div id="cancelModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div style="background: #1e293b; padding: 2rem; border-radius: 1rem; max-width: 400px; width: 90%; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+        <div style="background: #1e293b; padding: 2rem; border-radius: 1rem; max-width: 450px; width: 90%; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
             <div style="font-size: 3rem; color: #ef4444; text-align: center; margin-bottom: 1rem;">
                 <i class="fas fa-exclamation-triangle"></i>
             </div>
             <h3 style="color: white; font-size: 1.25rem; font-weight: bold; text-align: center; margin-bottom: 1rem;">Xác nhận hủy đặt vé</h3>
-            <p style="color: #94a3b8; text-align: center; margin-bottom: 2rem;">
-                Bạn có chắc muốn hủy lượt đặt vé này không? Các ghế bạn đang giữ sẽ được nhả lại cho hệ thống.
+            <p style="color: #94a3b8; text-align: center; margin-bottom: 2rem; line-height: 1.6;">
+                Bạn có chắc muốn hủy lượt đặt vé này không? Toàn bộ ghế bạn đang giữ sẽ được nhả lại cho hệ thống và quay về Trang chủ.
             </p>
             <div style="display: flex; gap: 1rem;">
                 <button type="button" onclick="document.getElementById('cancelModal').style.display='none'" style="flex: 1; padding: 0.75rem; background: #334155; color: white; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s;">
-                    Đóng
+                    Ở lại
                 </button>
                 <button type="button" onclick="confirmCancelBooking()" id="btnConfirmCancel" style="flex: 1; padding: 0.75rem; background: #ef4444; color: white; border-radius: 0.5rem; font-weight: bold; transition: background 0.2s;">
                     Hủy đặt vé
@@ -700,20 +709,47 @@
         }
 
         function handleCancelClick() {
+            const selectedSeatCodes = Array.from(selectedSeats).map(id => {
+                const btn = document.querySelector(`[data-seat-id="${id}"]`);
+                return btn ? btn.getAttribute('data-seat-code') : id;
+            }).filter(Boolean);
+
             const serverHasPendingSeats = @json(!empty($myPendingSeats));
             const hasActiveBooking = (serverExpiresAt && parseInt(serverExpiresAt, 10) > Date.now()) || serverHasPendingSeats;
 
-            if (hasActiveBooking) {
+            if (selectedSeatCodes.length > 0 || hasActiveBooking) {
                 openCancelModal();
-            } else if (selectedSeats.size > 0) {
-                if (confirm("Bạn có chắc muốn hủy đặt vé và quay lại trang chi tiết phim không?")) {
-                    selectedSeats.clear();
-                    sessionStorage.removeItem(STORAGE_KEY);
-                    sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
-                    sessionStorage.removeItem('selectedCombos_showtime_' + showtimeId);
-                    window.location.href = "{{ route('movies.show', $showtime->movie_id) }}";
-                }
             } else {
+                sessionStorage.removeItem(STORAGE_KEY);
+                sessionStorage.removeItem('booking_expires_at');
+                sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
+                sessionStorage.removeItem('selectedCombos_showtime_' + showtimeId);
+                window.location.href = "{{ route('home') }}";
+            }
+        }
+
+        function handleBackToMovieClick() {
+            const selectedSeatCodes = Array.from(selectedSeats).map(id => {
+                const btn = document.querySelector(`[data-seat-id="${id}"]`);
+                return btn ? btn.getAttribute('data-seat-code') : id;
+            }).filter(Boolean);
+
+            const serverHasPendingSeats = @json(!empty($myPendingSeats));
+            const hasActiveBooking = (serverExpiresAt && parseInt(serverExpiresAt, 10) > Date.now()) || serverHasPendingSeats;
+
+            if (selectedSeatCodes.length > 0 || hasActiveBooking) {
+                const seatListStr = selectedSeatCodes.length > 0 ? selectedSeatCodes.join(', ') : 'đang chọn';
+                const modalText = document.getElementById('backConfirmModalText');
+                if (modalText) {
+                    modalText.innerHTML = `Bạn có muốn đổi suất chiếu khác? Ghế <strong>${seatListStr}</strong> sẽ bị hủy giữ.`;
+                }
+                const modal = document.getElementById('backConfirmModal');
+                if (modal) modal.style.display = 'flex';
+            } else {
+                sessionStorage.removeItem(STORAGE_KEY);
+                sessionStorage.removeItem('booking_expires_at');
+                sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
+                sessionStorage.removeItem('selectedCombos_showtime_' + showtimeId);
                 window.location.href = "{{ route('movies.show', $showtime->movie_id) }}";
             }
         }
@@ -1171,11 +1207,42 @@
             setInterval(tick, 1000);
         }
 
-        // --- Xử lý Explicit Cancel ---
+        // --- Xử lý Quay lại trang chi tiết phim & Hủy giữ ghế ---
+        function confirmBackToMovie() {
+            const btn = document.getElementById('btnConfirmBack');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+            }
+
+            fetch("{{ route('api.booking.cancel-explicit') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                },
+                body: JSON.stringify({
+                    showtime_id: showtimeId
+                })
+            })
+            .then(res => res.json())
+            .catch(err => console.error(err))
+            .finally(() => {
+                sessionStorage.removeItem(STORAGE_KEY);
+                sessionStorage.removeItem('booking_expires_at');
+                sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
+                sessionStorage.removeItem('selectedCombos_showtime_' + showtimeId);
+                window.location.href = "{{ route('movies.show', $showtime->movie_id) }}";
+            });
+        }
+
+        // --- Xử lý Hủy đặt vé & Về trang chủ ---
         function confirmCancelBooking() {
             const btn = document.getElementById('btnConfirmCancel');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang hủy...';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang hủy...';
+            }
             
             fetch("{{ route('api.booking.cancel-explicit') }}", {
                 method: "POST",
@@ -1188,26 +1255,13 @@
                 })
             })
             .then(res => res.json())
-            .then(data => {
-                if(data.success) {
-                    sessionStorage.removeItem(STORAGE_KEY);
-                    sessionStorage.removeItem('booking_expires_at');
-                    sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
-                    sessionStorage.removeItem('selectedCombos_showtime_' + showtimeId);
-                    window.location.href = data.redirect_url || "{{ route('movies.show', $showtime->movie_id) }}";
-                } else {
-                    window.showToast(data.error || "Có lỗi xảy ra khi hủy vé.", 'error');
-                    closeCancelModal();
-                    btn.disabled = false;
-                    btn.innerHTML = 'Hủy đặt vé';
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                window.showToast("Lỗi kết nối.", 'error');
-                document.getElementById('cancelModal').style.display='none';
-                btn.disabled = false;
-                btn.innerHTML = 'Hủy đặt vé';
+            .catch(err => console.error(err))
+            .finally(() => {
+                sessionStorage.removeItem(STORAGE_KEY);
+                sessionStorage.removeItem('booking_expires_at');
+                sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
+                sessionStorage.removeItem('selectedCombos_showtime_' + showtimeId);
+                window.location.href = "{{ route('home') }}";
             });
         }
 
