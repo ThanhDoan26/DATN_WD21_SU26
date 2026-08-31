@@ -2,6 +2,11 @@
 
 use App\Models\Coupon;
 use App\Models\User;
+use App\Models\Movie;
+use App\Models\Cinema;
+use App\Models\Room;
+use App\Models\Showtime;
+use App\Models\Booking;
 use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {

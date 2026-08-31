@@ -110,7 +110,8 @@ class BookingHistoryService
                 'showtime.movie',
                 'showtime.room.cinema',
                 'bookedSeats.seat',
-                'combos.comboReviews' // Eager load combos and their reviews
+                'combos.comboReviews',
+                'coupon'
             ])
             ->first();
     }

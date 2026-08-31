@@ -164,6 +164,18 @@
                         @endif
 
                         <div class="mt-10 p-6 bg-slate-900/30 rounded-2xl border border-dashed border-slate-700">
+                             @if($booking->coupon || $booking->coupon_id)
+                                 <div class="mb-4 pb-4 border-b border-slate-800/80 space-y-2">
+                                     <div class="flex justify-between items-center text-sm">
+                                         <span class="text-slate-400 font-semibold">Mã giảm giá:</span>
+                                         <span class="text-white font-bold tracking-wider">{{ $booking->coupon ? $booking->coupon->code : ('Mã #' . $booking->coupon_id) }}</span>
+                                     </div>
+                                     <div class="flex justify-between items-center text-sm">
+                                         <span class="text-slate-400 font-semibold">Giảm giá:</span>
+                                         <span class="text-emerald-400 font-bold">-{{ number_format($booking->discount_amount ?? 0) }}đ</span>
+                                     </div>
+                                 </div>
+                             @endif
                              <div class="flex justify-between items-end">
                                 <div>
                                     <p class="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Tổng cộng đã thanh toán</p>
