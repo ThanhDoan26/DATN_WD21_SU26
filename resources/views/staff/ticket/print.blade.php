@@ -148,7 +148,7 @@
             width: 100% !important;
             max-width: 100% !important;
             min-width: 0 !important;
-            padding: 12px 14px 16px 14px;
+            padding: 10px 10px 14px 10px;
             background-color: #ffffff;
             color: #000000;
             overflow: hidden !important;
@@ -157,31 +157,31 @@
         /* Đường nét đứt chuẩn máy in nhiệt */
         .dashed-line {
             border-top: 1.5px dashed #333333;
-            margin: 6px 0 7px 0;
+            margin: 5px 0 6px 0;
             width: 100%;
         }
 
         /* Header Tên rạp / Địa chỉ */
         .ticket-header {
             text-align: center;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
             width: 100%;
             overflow: hidden;
         }
         .cinema-name {
-            font-size: 13px;
+            font-size: 11.5px;
             font-weight: 800;
             text-transform: uppercase;
-            line-height: 1.25;
-            margin-bottom: 3px;
+            line-height: 1.2;
+            margin-bottom: 2px;
             color: #000;
             word-break: break-word;
         }
         .cinema-address {
-            font-size: 10.5px;
+            font-size: 9.5px;
             color: #222222;
-            line-height: 1.25;
-            padding: 0 4px;
+            line-height: 1.2;
+            padding: 0 2px;
             word-break: break-word;
         }
 
@@ -191,19 +191,19 @@
             text-align: center;
         }
         .ticket-title-main {
-            font-size: 17.5px;
+            font-size: 15.5px;
             font-weight: 900;
             text-align: center;
-            letter-spacing: 0.8px;
-            margin: 4px 0 5px 0;
+            letter-spacing: 0.6px;
+            margin: 3px 0 4px 0;
             color: #000;
         }
         .ticket-title-combo {
-            font-size: 16px;
+            font-size: 14.5px;
             font-weight: 900;
             text-align: center;
             letter-spacing: 0.5px;
-            margin: 4px 0 5px 0;
+            margin: 3px 0 4px 0;
             color: #0b4ea2;
         }
 
@@ -211,7 +211,7 @@
             display: flex;
             flex-direction: column;
             gap: 2px;
-            font-size: 10.5px;
+            font-size: 9.5px;
             color: #111;
         }
         .meta-code-row {
@@ -234,13 +234,13 @@
             width: 100%;
         }
         .showtime-datetime {
-            font-size: 14px;
+            font-size: 12.5px;
             font-weight: 800;
             color: #000;
             line-height: 1.2;
         }
         .movie-title-text {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 900;
             color: #000000;
             line-height: 1.25;
@@ -253,20 +253,20 @@
             align-items: baseline;
         }
         .movie-type-text {
-            font-size: 12.5px;
+            font-size: 11px;
             font-weight: 700;
             color: #111;
             white-space: nowrap;
         }
         .movie-price-text {
-            font-size: 13.5px;
+            font-size: 12px;
             font-weight: 800;
             color: #000;
             text-align: right;
             white-space: nowrap;
         }
         .vat-note-text {
-            font-size: 10px;
+            font-size: 9px;
             font-style: italic;
             color: #333333;
             text-align: right;
@@ -278,28 +278,34 @@
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            padding: 3px 0;
-            gap: 8px;
+            padding: 2px 0;
+            gap: 4px;
             width: 100%;
         }
-        .seat-block, .room-block {
+        .seat-block {
             display: flex;
             align-items: baseline;
-            gap: 5px;
+            gap: 4px;
             white-space: nowrap;
+            flex-shrink: 0;
         }
         .room-block {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
             justify-content: flex-end;
             text-align: right;
+            min-width: 0;
         }
         .seat-room-label {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             color: #333;
             white-space: nowrap;
+            flex-shrink: 0;
         }
         .seat-room-value {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 900;
             color: #000000;
             letter-spacing: -0.2px;
@@ -313,17 +319,17 @@
             width: 100%;
         }
         .age-rating-text {
-            font-size: 11.5px;
+            font-size: 10px;
             font-weight: 800;
             text-align: center;
             color: #111;
-            margin: 4px 0 5px 0;
+            margin: 3px 0 4px 0;
             line-height: 1.2;
         }
         .transaction-row {
             display: flex;
             justify-content: space-between;
-            font-size: 10.5px;
+            font-size: 9px;
             color: #222;
             margin-bottom: 2px;
             white-space: nowrap;
@@ -331,7 +337,7 @@
 
         /* ================= VÉ 2: COMBO / BẮP NƯỚC ================= */
         .combo-ref-section {
-            font-size: 10.5px;
+            font-size: 9.5px;
             color: #222;
             margin-bottom: 3px;
             width: 100%;
@@ -354,7 +360,7 @@
             width: 100%;
         }
         .combo-items-header {
-            font-size: 11.5px;
+            font-size: 10.5px;
             font-weight: 900;
             text-transform: uppercase;
             text-align: center;
@@ -366,7 +372,7 @@
             justify-content: space-between;
             align-items: flex-start;
             margin-bottom: 4px;
-            font-size: 11px;
+            font-size: 10px;
             width: 100%;
         }
         .combo-item-name {
@@ -376,7 +382,7 @@
             word-break: break-word;
         }
         .combo-item-desc {
-            font-size: 9.5px;
+            font-size: 9px;
             color: #555;
             font-style: italic;
         }
@@ -389,7 +395,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 12.5px;
+            font-size: 11px;
             font-weight: 900;
             margin-top: 5px;
             padding-top: 4px;
@@ -400,24 +406,24 @@
         .combo-status-box {
             border: 2px dashed #000;
             background: #f8fafc;
-            padding: 5px 8px;
+            padding: 4px 6px;
             text-align: center;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 900;
             letter-spacing: 0.5px;
-            margin: 6px 0;
+            margin: 5px 0;
             border-radius: 4px;
             white-space: nowrap;
         }
 
         .combo-notice-text {
-            font-size: 10px;
+            font-size: 9px;
             font-style: italic;
             text-align: center;
             color: #222;
             line-height: 1.3;
-            padding: 0 4px;
-            margin: 4px 0;
+            padding: 0 2px;
+            margin: 3px 0;
             word-break: break-word;
         }
 
@@ -429,31 +435,31 @@
             overflow: hidden;
         }
         .thank-you-title {
-            font-size: 11.5px;
+            font-size: 10.5px;
             font-weight: 800;
             color: #000;
             margin-bottom: 2px;
         }
         .event-hotline-note {
-            font-size: 9.5px;
+            font-size: 8.5px;
             font-style: italic;
             color: #333;
             line-height: 1.25;
-            padding: 0 4px;
+            padding: 0 2px;
             word-break: break-word;
         }
         .brand-slogan {
-            font-size: 11px;
+            font-size: 9.5px;
             font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.2px;
             color: #000;
-            margin-top: 4px;
+            margin-top: 3px;
             margin-bottom: 2px;
             word-break: break-word;
         }
         .brand-contact-links {
-            font-size: 9.5px;
+            font-size: 9px;
             color: #222;
             word-break: break-word;
         }
@@ -461,7 +467,7 @@
         /* Khu vực mã vạch & số mã vạch ở dưới cùng */
         .barcode-section {
             text-align: center;
-            margin-top: 6px;
+            margin-top: 5px;
             padding-bottom: 4px;
             width: 100%;
             overflow: hidden;
@@ -478,16 +484,16 @@
         .barcode-svg-wrapper svg {
             max-width: 100% !important;
             width: auto !important;
-            height: 42px !important;
+            height: 38px !important;
             display: block;
         }
         .barcode-number-text {
-            font-size: 13px;
+            font-size: 11.5px;
             font-weight: 800;
-            letter-spacing: 0.8px;
+            letter-spacing: 0.6px;
             font-family: 'Roboto Mono', 'Courier New', monospace;
             color: #000;
-            margin-top: 3px;
+            margin-top: 2px;
             text-align: center;
             word-break: break-all;
             max-width: 100%;
