@@ -107,6 +107,13 @@ class Movie extends Model
         }
     }
 
+    /**
+     * Mutator: Ensure title is always trimmed and multiple spaces collapsed.
+     */
+    public function setTitleAttribute($value): void
+    {
+        $this->attributes['title'] = is_string($value) ? preg_replace('/\s+/u', ' ', trim($value)) : $value;
+    }
 
     public function showtimes(): HasMany
     {

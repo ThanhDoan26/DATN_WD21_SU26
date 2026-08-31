@@ -7,6 +7,7 @@ use App\Models\Movie;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class MovieController extends Controller
 {
@@ -58,6 +59,12 @@ class MovieController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('title') && is_string($request->title)) {
+            $request->merge([
+                'title' => preg_replace('/\s+/u', ' ', trim($request->title)),
+            ]);
+        }
+
         $validationService = new \App\Services\MovieStatusValidationService();
         if ($request->input('status') === Movie::STATUS_SCHEDULED) {
             $validationService->validateScheduledMetadata($request->all());
@@ -66,7 +73,25 @@ class MovieController extends Controller
         }
 
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
+            'title' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('movies', 'title'),
+                function ($attribute, $value, $fail) {
+                    $cleanTitle = preg_replace('/\s+/u', ' ', trim($value));
+                    $collapsed = mb_strtolower(preg_replace('/\s+/u', '', $value), 'UTF-8');
+
+                    $exists = Movie::where(function ($q) use ($cleanTitle, $collapsed) {
+                        $q->where('title', $cleanTitle)
+                          ->orWhereRaw("REPLACE(LOWER(title), ' ', '') = ?", [$collapsed]);
+                    })->exists();
+
+                    if ($exists) {
+                        $fail('Bộ phim này đã tồn tại trên hệ thống, vui lòng kiểm tra lại!');
+                    }
+                },
+            ],
             'description' => 'nullable|string',
             'director' => 'nullable|string|max:255',
             'cast' => 'nullable|string',
@@ -85,7 +110,7 @@ class MovieController extends Controller
             'categories.*' => 'exists:categories,id',
         ], [
             'title.required' => 'Tên phim là bắt buộc',
-            'title.unique' => 'Phim này đã tồn tại',
+            'title.unique' => 'Bộ phim này đã tồn tại trên hệ thống, vui lòng kiểm tra lại!',
             'duration.required' => 'Thời lượng phim là bắt buộc',
             'duration.integer' => 'Thời lượng phải là số',
             'duration.min' => 'Thời lượng tối thiểu 1 phút',
@@ -136,11 +161,36 @@ class MovieController extends Controller
 
     public function update(Request $request, Movie $movie)
     {
+        if ($request->has('title') && is_string($request->title)) {
+            $request->merge([
+                'title' => preg_replace('/\s+/u', ' ', trim($request->title)),
+            ]);
+        }
+
         $validationService = new \App\Services\MovieStatusValidationService();
         $validationService->validateMovieUpdate($movie, $request->all());
 
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
+            'title' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('movies', 'title')->ignore($movie->id),
+                function ($attribute, $value, $fail) use ($movie) {
+                    $cleanTitle = preg_replace('/\s+/u', ' ', trim($value));
+                    $collapsed = mb_strtolower(preg_replace('/\s+/u', '', $value), 'UTF-8');
+
+                    $exists = Movie::where('id', '!=', $movie->id)
+                        ->where(function ($q) use ($cleanTitle, $collapsed) {
+                            $q->where('title', $cleanTitle)
+                              ->orWhereRaw("REPLACE(LOWER(title), ' ', '') = ?", [$collapsed]);
+                        })->exists();
+
+                    if ($exists) {
+                        $fail('Bộ phim này đã tồn tại trên hệ thống, vui lòng kiểm tra lại!');
+                    }
+                },
+            ],
             'description' => 'nullable|string',
             'director' => 'nullable|string|max:255',
             'cast' => 'nullable|string',
@@ -159,7 +209,7 @@ class MovieController extends Controller
             'categories.*' => 'exists:categories,id',
         ], [
             'title.required' => 'Tên phim là bắt buộc',
-            'title.unique' => 'Phim này đã tồn tại',
+            'title.unique' => 'Bộ phim này đã tồn tại trên hệ thống, vui lòng kiểm tra lại!',
             'duration.required' => 'Thời lượng phim là bắt buộc',
             'status.required' => 'Trạng thái là bắt buộc',
             'status.in' => 'Trạng thái không hợp lệ',
