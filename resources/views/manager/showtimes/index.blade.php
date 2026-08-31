@@ -97,13 +97,19 @@
                         <td>{{ $showtime->start_time->format('d/m/Y H:i') }} - {{ $showtime->end_time->format('H:i') }}</td>
                         <td>
                             @if($showtime->status === \App\Models\Showtime::STATUS_SCHEDULED)
-                                <span class="badge bg-info">SCHEDULED</span>
+                                <span class="badge bg-info">Lên lịch (SCHEDULED)</span>
                             @elseif($showtime->status === \App\Models\Showtime::STATUS_ONGOING)
-                                <span class="badge bg-success">ONGOING</span>
+                                <span class="badge bg-success">Đang chiếu (ONGOING)</span>
                             @elseif($showtime->status === \App\Models\Showtime::STATUS_COMPLETED)
-                                <span class="badge bg-secondary">COMPLETED</span>
+                                <span class="badge bg-secondary">Đã chiếu (FINISHED)</span>
+                            @elseif($showtime->status === \App\Models\Showtime::STATUS_PENDING)
+                                <span class="badge bg-warning text-dark">Chờ công bố (PENDING)</span>
+                            @elseif($showtime->status === \App\Models\Showtime::STATUS_UNPUBLISHED)
+                                <span class="badge bg-secondary">Chưa công bố</span>
+                            @elseif($showtime->status === \App\Models\Showtime::STATUS_CANCELLED)
+                                <span class="badge bg-danger">Đã hủy (CANCELLED)</span>
                             @else
-                                <span class="badge bg-danger">CANCELLED</span>
+                                <span class="badge bg-secondary">{{ $showtime->status }}</span>
                             @endif
                         </td>
                         <td>

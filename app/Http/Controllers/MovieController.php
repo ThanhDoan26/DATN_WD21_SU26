@@ -65,7 +65,8 @@ class MovieController extends Controller
         // Featured movies (all non-ended movies)
         $featuredMovies = Movie::whereIn('status', ['NOW_SHOWING', 'PRE_ORDER', 'COMING_SOON', 'SCHEDULED'])
             ->with(['showtimes' => function ($query) {
-                $query->where('start_time', '>=', now())
+                $query->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+                      ->where('start_time', '>=', now())
                       ->orderBy('start_time');
             }, 'categories'])
             ->orderBy('created_at', 'desc')
