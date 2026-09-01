@@ -100,10 +100,10 @@
                         <select class="form-select @error('status') is-invalid @enderror"
                                 id="status" name="status" required>
                             <option value="">-- Chọn Trạng thái --</option>
-                            <option value="Pending" {{ old('status', $booking->status) === 'Pending' ? 'selected' : '' }}>Chờ Xử Lý</option>
-                            <option value="Paid" {{ old('status', $booking->status) === 'Paid' ? 'selected' : '' }}>Đã Thanh Toán</option>
-                            <option value="Used" {{ old('status', $booking->status) === 'Used' ? 'selected' : '' }}>Đã Sử Dụng</option>
-                            <option value="Cancelled" {{ old('status', $booking->status) === 'Cancelled' ? 'selected' : '' }}>Đã Hủy</option>
+                            <option value="pending" {{ old('status', $booking->status) === 'pending' ? 'selected' : '' }}>Chờ Xử Lý</option>
+                            <option value="paid" {{ old('status', $booking->status) === 'paid' ? 'selected' : '' }}>Đã Thanh Toán</option>
+                            <option value="used" {{ old('status', $booking->status) === 'used' ? 'selected' : '' }}>Đã Sử Dụng</option>
+                            <option value="cancelled" {{ old('status', $booking->status) === 'cancelled' ? 'selected' : '' }}>Đã Hủy</option>
                         </select>
                         @error('status')
                             <div class="invalid-feedback">{{ $message }}</div>

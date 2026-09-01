@@ -852,15 +852,6 @@
                     <span>Tạo vé tại quầy</span>
                 </a>
             </li>
-<<<<<<< HEAD
-            <li>
-                <a href="{{ route('staff.coupons.index') }}"
-                   class="@if(request()->routeIs('staff.coupons.*')) active @endif">
-                    <i class="fas fa-tags"></i>
-                    <span>Mã giảm giá</span>
-                </a>
-=======
-
             {{-- Voucher group --}}
             <li class="sidebar-group">
                 <button type="button" class="sidebar-group-toggle @if(request()->routeIs('staff.coupon*', 'staff.coupons*')) active open @endif"
@@ -889,7 +880,6 @@
                         </a>
                     </li>
                 </ul>
->>>>>>> origin/daohung
             </li>
         </ul>
     </aside>

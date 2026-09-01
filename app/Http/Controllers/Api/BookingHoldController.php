@@ -90,4 +90,88 @@ class BookingHoldController extends Controller
             'cancelled_bookings_count' => $cancelledCount,
         ]);
     }
+
+    /**
+     * API khôi phục chi tiết booking khi F5 hoặc mở lại trang Checkout
+     * Endpoint: GET /api/v1/bookings/{id}
+     */
+    public function getBookingDetails(Request $request, $id)
+    {
+        $userId = auth()->id();
+        $booking = Booking::with([
+            'showtime.movie',
+            'showtime.room.cinema',
+            'bookedSeats.seat',
+            'combos',
+            'coupon'
+        ])->find($id);
+
+        if (!$booking) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn đặt vé.'], 404);
+        }
+
+        if ($userId && $booking->user_id && $booking->user_id != $userId) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền truy cập đơn đặt vé này.'], 403);
+        }
+
+        $holdDuration = BookingService::getHoldDuration();
+        $bookingTime = \Carbon\Carbon::parse($booking->booking_time);
+        $expiresAt = $bookingTime->copy()->addMinutes($holdDuration);
+        $expiresAtMs = $expiresAt->timestamp * 1000;
+        $remainingSeconds = max(0, $expiresAt->timestamp - now()->timestamp);
+        $isExpired = now()->gt($expiresAt) || in_array(strtolower($booking->status), [Booking::STATUS_EXPIRED, Booking::STATUS_CANCELLED]);
+
+        $seats = $booking->bookedSeats->map(function ($bs) use ($booking) {
+            $basePrice = (float) $bs->price_at_booking;
+            $surcharge = (float) ($booking->showtime?->surcharge ?? 0);
+            return [
+                'id' => $bs->seat_id,
+                'code' => $bs->seat ? ($bs->seat->row_name . $bs->seat->seat_number) : 'Ghế ' . $bs->seat_id,
+                'type' => $bs->seat?->seat_type ?? 'Regular',
+                'base_price' => $basePrice,
+                'surcharge' => $surcharge,
+                'final_price' => $basePrice + $surcharge,
+            ];
+        });
+
+        $combos = $booking->combos->map(function ($c) {
+            return [
+                'id' => $c->id,
+                'name' => $c->name,
+                'price' => (float) $c->price,
+                'qty' => (int) ($c->pivot->quantity ?? 0),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'booking_id' => $booking->id,
+                'booking_code' => $booking->booking_code,
+                'showtime_id' => $booking->showtime_id,
+                'status' => $booking->status,
+                'booking_time' => $bookingTime->toIso8601String(),
+                'timeout_minutes' => $holdDuration,
+                'expires_at_ms' => $expiresAtMs,
+                'remaining_seconds' => $remainingSeconds,
+                'is_expired' => $isExpired,
+                'total_price' => (float) $booking->total_price,
+                'discount_amount' => (float) ($booking->discount_amount ?? 0),
+                'coupon_code' => $booking->coupon?->code ?? null,
+                'seats' => $seats,
+                'combos' => $combos,
+                'movie' => [
+                    'title' => $booking->showtime?->movie?->title,
+                    'poster_url' => $booking->showtime?->movie?->poster_url,
+                ],
+                'cinema' => [
+                    'name' => $booking->showtime?->room?->cinema?->name,
+                ],
+                'room' => [
+                    'name' => $booking->showtime?->room?->name,
+                ],
+                'start_time' => $booking->showtime?->start_time?->format('d/m/Y H:i'),
+            ]
+        ]);
+    }
 }

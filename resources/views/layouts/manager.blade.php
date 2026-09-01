@@ -866,15 +866,6 @@
                     <span>Phim</span>
                 </a>
             </li>
-<<<<<<< HEAD
-            <li>
-                <a href="{{ route('manager.coupons.index') }}"
-                   class="@if(request()->routeIs('manager.coupons.*')) active @endif">
-                    <i class="fas fa-tags"></i>
-                    <span>Mã giảm giá</span>
-                </a>
-=======
-
             {{-- Voucher group --}}
             <li class="sidebar-group">
                 <button type="button" class="sidebar-group-toggle @if(request()->routeIs('manager.coupon*', 'manager.coupons*')) active open @endif"
@@ -908,7 +899,6 @@
                         </a>
                     </li>
                 </ul>
->>>>>>> origin/daohung
             </li>
         </ul>
     </aside>
