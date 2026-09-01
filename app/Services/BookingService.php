@@ -51,7 +51,7 @@ class BookingService
         
         return \App\Models\Booking::with(['showtime.movie', 'bookedSeats.seat'])
             ->where('user_id', $userId)
-            ->whereIn('status', ['Pending', 'PROCESSING'])
+            ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
             ->where('booking_time', '>=', now()->subMinutes(self::getHoldDuration()))
             ->first();
     }
@@ -116,7 +116,7 @@ class BookingService
                 $userPendingBookings = DB::table('bookings')
                     ->where('user_id', $userId)
                     ->where('showtime_id', $showtimeId)
-                    ->whereIn('status', ['Pending', 'PROCESSING'])
+                    ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
                     ->select('id', 'booking_time', 'is_extended')
                     ->get();
                 
@@ -133,7 +133,7 @@ class BookingService
                     $bookingsWithCoupons = DB::table('bookings')
                         ->whereIn('id', $userPendingBookingIds)
                         ->whereNotNull('coupon_id')
-                        ->where('status', 'Paid')
+                        ->where('status', \App\Models\Booking::STATUS_PAID)
                         ->get();
 
                     foreach ($bookingsWithCoupons as $b) {
@@ -978,13 +978,13 @@ class BookingService
                 // 4. Calculate Live Analytics & Broadcast LiveRevenueUpdated to Admin/Manager
                 $cinemaId = $booking->showtime?->room?->cinema_id ?? 1;
                 $totalToday = (float) \App\Models\Booking::whereDate('payment_time', today())
-                    ->whereIn('status', ['Paid', 'Used'])
+                    ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
                     ->whereHas('showtime.room', function($q) use ($cinemaId) {
                         $q->where('cinema_id', $cinemaId);
                     })->sum('total_price');
 
                 $bookingsTodayCount = \App\Models\Booking::whereDate('payment_time', today())
-                    ->whereIn('status', ['Paid', 'Used'])
+                    ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
                     ->whereHas('showtime.room', function($q) use ($cinemaId) {
                         $q->where('cinema_id', $cinemaId);
                     })->count();

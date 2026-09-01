@@ -62,8 +62,8 @@ class UserController extends AdminController
         $user->load(['role', 'cinema', 'bookings.showtime.movie', 'reviews']);
 
         $totalBookings  = $user->bookings()->count();
-        $paidBookings   = $user->bookings()->where('status', 'PAID')->count();
-        $totalSpent     = $user->bookings()->where('status', 'PAID')->sum('total_price');
+        $paidBookings   = $user->bookings()->where('status', \App\Models\Booking::STATUS_PAID)->count();
+        $totalSpent     = $user->bookings()->where('status', \App\Models\Booking::STATUS_PAID)->sum('total_price');
         $totalReviews   = $user->reviews()->count();
         $recentBookings = $user->bookings()
                                ->with('showtime.movie')

@@ -516,8 +516,8 @@ class MovieStatusValidationService
         if ($showtime) {
             $hasBookings = $showtime->bookings()
                 ->where(function ($q) {
-                    $q->whereIn('status', ['Paid', 'SUCCESS', 'Pending', 'Used'])
-                      ->orWhere('status', '!=', 'Cancelled');
+                    $q->whereIn('status', [\App\Models\Booking::STATUS_PAID, 'success', \App\Models\Booking::STATUS_PENDING, \App\Models\Booking::STATUS_USED])
+                      ->orWhere('status', '!=', \App\Models\Booking::STATUS_CANCELLED);
                 })
                 ->exists();
 

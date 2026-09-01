@@ -102,11 +102,11 @@ class WalkInBookingController extends Controller
         (new BookingService())->cleanupExpiredPendingBookings();
 
         $bookedSeats = $showtime->bookings()
-            ->where('status', '!=', 'Cancelled')
+            ->where('status', '!=', \App\Models\Booking::STATUS_CANCELLED)
             ->where(function ($query) {
-                $query->whereIn('status', ['Paid', 'Used'])
+                $query->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
                     ->orWhere(function ($pendingQuery) {
-                        $pendingQuery->whereIn('status', ['Pending', 'PROCESSING'])
+                        $pendingQuery->whereIn('status', [\App\Models\Booking::STATUS_PENDING, \App\Models\Booking::STATUS_PROCESSING])
                             ->where('booking_time', '>=', now()->subMinutes(BookingService::getHoldDuration()));
                     });
             })
@@ -182,7 +182,7 @@ class WalkInBookingController extends Controller
                     ->whereNull('user_id')
                     ->where('booking_source', 'walk_in')
                     ->where('showtime_id', $showtimeId)
-                    ->whereIn('status', ['Pending', 'PROCESSING'])
+                    ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
                     ->first()
                 : null;
             $staffBookingSeatIds = $staffBooking?->bookedSeats()->pluck('seat_id')->sort()->values()->all() ?? [];
@@ -338,14 +338,14 @@ class WalkInBookingController extends Controller
             ? Booking::where('id', $bookingId)
                 ->whereNull('user_id')
                 ->where('booking_source', 'walk_in')
-                ->whereIn('status', ['Pending', 'PROCESSING'])
+                ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
                 ->first()
             : null;
 
         if ($booking) {
             $seatIds = $booking->bookedSeats()->pluck('seat_id')->all();
             $booking->update([
-                'status' => 'Cancelled',
+                'status' => \App\Models\Booking::STATUS_CANCELLED,
                 'cancellation_reason' => 'Staff left checkout before payment',
                 'cancelled_at' => now(),
             ]);
@@ -455,7 +455,7 @@ class WalkInBookingController extends Controller
                 ->whereNull('user_id')
                 ->where('booking_source', 'walk_in')
                 ->where('showtime_id', $showtimeId)
-                ->where('status', 'Pending')
+                ->where('status', \App\Models\Booking::STATUS_PENDING)
                 ->first();
 
             if ($heldBooking) {

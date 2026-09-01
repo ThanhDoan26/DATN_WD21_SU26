@@ -57,7 +57,7 @@ class CouponDiscountService
             $hasUsedQuery = \Illuminate\Support\Facades\DB::table('bookings')
                 ->where('user_id', $userId)
                 ->where('coupon_id', $coupon->id)
-                ->whereIn('status', ['Pending', 'PROCESSING', 'Paid', 'Used']);
+                ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing', \App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED]);
 
             if ($ignoreBookingId) {
                 $hasUsedQuery->where('id', '!=', $ignoreBookingId);

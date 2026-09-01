@@ -90,7 +90,7 @@ class CheckoutController extends Controller
             if ($userId) {
                 $existingPending = Booking::where('user_id', $userId)
                     ->where('showtime_id', $showtimeId)
-                    ->whereIn('status', ['Pending', 'PROCESSING'])
+                    ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
                     ->orderBy('booking_time', 'desc')
                     ->first();
 
@@ -123,7 +123,7 @@ class CheckoutController extends Controller
             if (empty($existingCombos) && $userId) {
                 $existingPending = Booking::where('user_id', $userId)
                     ->where('showtime_id', $showtimeId)
-                    ->whereIn('status', ['Pending', 'PROCESSING'])
+                    ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
                     ->first();
 
                 if ($existingPending) {
@@ -631,7 +631,7 @@ class CheckoutController extends Controller
 
         $booking = Booking::where('id', $request->booking_id)
             ->where('user_id', Auth::id())
-            ->where('status', 'Pending')
+            ->where('status', \App\Models\Booking::STATUS_PENDING)
             ->first();
 
         if ($booking) {

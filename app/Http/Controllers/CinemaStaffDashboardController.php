@@ -54,13 +54,13 @@ class CinemaStaffDashboardController extends Controller
         // Booking mới hôm nay
         $bookingsToday = (clone $baseBookingQuery)
             ->whereDate('created_at', today())
-            ->whereIn('status', ['Paid', 'Used'])
+            ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
             ->count();
 
         // Doanh thu hôm nay
         $revenueToday = (clone $baseBookingQuery)
             ->whereDate('payment_time', today())
-            ->whereIn('status', ['Paid', 'Used'])
+            ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
             ->sum('total_price');
 
         // ── Biểu đồ doanh thu 7 ngày ───────────────────────────────
@@ -69,7 +69,7 @@ class CinemaStaffDashboardController extends Controller
             $date = today()->subDays($i);
             $dayRevenue = (clone $baseBookingQuery)
                 ->whereDate('payment_time', $date)
-                ->whereIn('status', ['Paid', 'Used'])
+                ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
                 ->sum('total_price');
             $revenueChart[] = [
                 'date'    => $date->format('d/m'),

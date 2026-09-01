@@ -15,14 +15,16 @@ use Illuminate\Support\Str;
  */
 class Booking extends Model
 {
-    public const STATUS_PENDING   = 'pending';
-    public const STATUS_PAID      = 'paid';
-    public const STATUS_CANCELLED = 'cancelled';
-    public const STATUS_EXPIRED   = 'expired';
-    public const STATUS_USED      = 'used';
+    public const STATUS_PENDING    = 'pending';
+    public const STATUS_PAID       = 'paid';
+    public const STATUS_CANCELLED  = 'cancelled';
+    public const STATUS_EXPIRED    = 'expired';
+    public const STATUS_USED       = 'used';
+    public const STATUS_PROCESSING = 'processing';
 
     public const STATUSES = [
         self::STATUS_PENDING,
+        self::STATUS_PROCESSING,
         self::STATUS_PAID,
         self::STATUS_CANCELLED,
         self::STATUS_EXPIRED,
