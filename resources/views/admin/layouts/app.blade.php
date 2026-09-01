@@ -350,6 +350,19 @@
             font-size: 0.85rem;
         }
 
+        /* Fix xung đột .collapse giữa Bootstrap và Tailwind */
+        .sidebar-menu .collapse {
+            visibility: visible !important;
+        }
+
+        .sidebar-menu .collapse:not(.show) {
+            display: none;
+        }
+
+        .sidebar-menu .collapse.show {
+            display: block;
+        }
+
         /* ========== MAIN CONTENT ========== */
         .main-content {
             margin-left: var(--sidebar-width);
