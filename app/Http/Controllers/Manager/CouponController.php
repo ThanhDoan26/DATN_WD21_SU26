@@ -14,7 +14,13 @@ class CouponController extends Controller
      */
     public function index(Request $request)
     {
+<<<<<<< HEAD
         $query = Coupon::query();
+=======
+        $query = Coupon::where(function ($q) {
+            $q->whereNull('end_date')->orWhere('end_date', '>=', now());
+        });
+>>>>>>> origin/daohung
 
         if ($request->filled('code')) {
             $query->where('code', 'like', '%' . $request->code . '%');
@@ -24,6 +30,7 @@ class CouponController extends Controller
             $query->where('status', $request->status);
         }
 
+<<<<<<< HEAD
         $coupons = $query->orderByAvailabilityAndExpiration()->paginate(15)->withQueryString();
 
         return view('manager.coupons.index', compact('coupons'));
@@ -31,11 +38,24 @@ class CouponController extends Controller
 
     /**
      * Form tạo mới mã giảm giá
+=======
+        $coupons = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
+
+        return view('manager.coupon.index', compact('coupons'));
+    }
+
+    /**
+     * Form tạo mã giảm giá mới
+>>>>>>> origin/daohung
      */
     public function create()
     {
         $autoCode = 'CP' . strtoupper(Str::random(8));
+<<<<<<< HEAD
         return view('manager.coupons.create', compact('autoCode'));
+=======
+        return view('manager.coupon.create', compact('autoCode'));
+>>>>>>> origin/daohung
     }
 
     /**
@@ -43,6 +63,7 @@ class CouponController extends Controller
      */
     public function store(Request $request)
     {
+<<<<<<< HEAD
         $validated = $request->validate([
             'code' => 'required|string|unique:coupons,code|max:255',
             'type' => 'required|in:percent,fixed',
@@ -53,11 +74,27 @@ class CouponController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'status' => 'required|in:ACTIVE,INACTIVE',
+=======
+        $request->validate([
+            'code'                => 'required|string|unique:coupons,code|max:255',
+            'type'                => 'required|in:percent,fixed',
+            'value'               => 'required|numeric|min:0' . ($request->type === 'percent' ? '|max:100' : ''),
+            'min_order_value'     => 'nullable|numeric|min:0',
+            'max_discount_amount' => 'nullable|numeric|min:0',
+            'quantity'            => 'required|integer|min:0',
+            'start_date'          => 'required|date',
+            'end_date'            => 'required|date|after:start_date',
+            'status'              => 'required|in:ACTIVE,INACTIVE',
+>>>>>>> origin/daohung
         ], [
             'end_date.after' => 'Thời gian kết thúc phải diễn ra sau thời gian bắt đầu.',
         ]);
 
+<<<<<<< HEAD
         Coupon::create($validated);
+=======
+        Coupon::create($request->all());
+>>>>>>> origin/daohung
 
         return redirect()->route('manager.coupons.index')->with('success', 'Tạo mã giảm giá thành công!');
     }
@@ -68,7 +105,11 @@ class CouponController extends Controller
     public function edit(string $id)
     {
         $coupon = Coupon::findOrFail($id);
+<<<<<<< HEAD
         return view('manager.coupons.edit', compact('coupon'));
+=======
+        return view('manager.coupon.edit', compact('coupon'));
+>>>>>>> origin/daohung
     }
 
     /**
@@ -78,6 +119,7 @@ class CouponController extends Controller
     {
         $coupon = Coupon::findOrFail($id);
 
+<<<<<<< HEAD
         $validated = $request->validate([
             'code' => 'required|string|max:255|unique:coupons,code,' . $coupon->id,
             'type' => 'required|in:percent,fixed',
@@ -94,18 +136,40 @@ class CouponController extends Controller
         ]);
 
         $coupon->update($validated);
+=======
+        $request->validate([
+            'code'                => 'required|string|max:255|unique:coupons,code,' . $coupon->id,
+            'type'                => 'required|in:percent,fixed',
+            'value'               => 'required|numeric|min:0' . ($request->type === 'percent' ? '|max:100' : ''),
+            'min_order_value'     => 'nullable|numeric|min:0',
+            'max_discount_amount' => 'nullable|numeric|min:0',
+            'quantity'            => 'required|integer|min:0',
+            'start_date'          => 'required|date',
+            'end_date'            => 'required|date|after:start_date',
+            'status'              => 'required|in:ACTIVE,INACTIVE',
+        ], [
+            'end_date.after' => 'Thời gian kết thúc phải diễn ra sau thời gian bắt đầu.',
+        ]);
+
+        $coupon->update($request->all());
+>>>>>>> origin/daohung
 
         return redirect()->route('manager.coupons.index')->with('success', 'Cập nhật mã giảm giá thành công!');
     }
 
     /**
+<<<<<<< HEAD
      * Xóa tạm mã giảm giá (chuyển vào thùng rác)
+=======
+     * Xoá mềm mã giảm giá
+>>>>>>> origin/daohung
      */
     public function destroy(string $id)
     {
         $coupon = Coupon::findOrFail($id);
         $coupon->delete();
 
+<<<<<<< HEAD
         return redirect()->route('manager.coupons.index')->with('success', 'Xóa mã giảm giá thành công! Mã đã được chuyển vào thùng rác.');
     }
 
@@ -115,11 +179,23 @@ class CouponController extends Controller
     public function trashed(Request $request)
     {
         $query = Coupon::onlyTrashed();
+=======
+        return redirect()->route('manager.coupons.index')->with('success', 'Đã xoá mã giảm giá. Mã được chuyển vào danh sách hết hạn (nếu có).');
+    }
+
+    /**
+     * Danh sách mã hết hạn (thay thế thùng rác)
+     */
+    public function expired(Request $request)
+    {
+        $query = Coupon::where('end_date', '<', now());
+>>>>>>> origin/daohung
 
         if ($request->filled('code')) {
             $query->where('code', 'like', '%' . $request->code . '%');
         }
 
+<<<<<<< HEAD
         $coupons = $query->orderBy('deleted_at', 'desc')->paginate(15)->withQueryString();
 
         return view('manager.coupons.trashed', compact('coupons'));
@@ -150,5 +226,10 @@ class CouponController extends Controller
         $coupon->forceDelete();
 
         return redirect()->route('manager.coupons.trashed')->with('success', 'Xóa vĩnh viễn mã giảm giá thành công!');
+=======
+        $coupons = $query->orderBy('end_date', 'desc')->paginate(15)->withQueryString();
+
+        return view('manager.coupon.expired', compact('coupons'));
+>>>>>>> origin/daohung
     }
 }

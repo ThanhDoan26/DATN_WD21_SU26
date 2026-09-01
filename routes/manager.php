@@ -38,6 +38,23 @@ Route::middleware(['auth', 'role:MANAGER', 'cinema.assignment'])->prefix('manage
     // Xem danh sách Phim (Read-only)
     Route::resource('movies', \App\Http\Controllers\Manager\MovieController::class)->only(['index', 'show']);
 
+<<<<<<< HEAD
     // Xem chi tiết Đơn hàng / Vé đặt (Manager)
     Route::get('bookings/{booking}', [\App\Http\Controllers\Admin\BookingController::class, 'show'])->name('bookings.show');
+=======
+    // Quản lý phiếu giảm giá
+    Route::get('/coupons/expired', [\App\Http\Controllers\Manager\CouponController::class, 'expired'])->name('coupon.expired');
+    Route::resource('coupons', \App\Http\Controllers\Manager\CouponController::class)->names([
+        'index'   => 'coupons.index',
+        'create'  => 'coupons.create',
+        'store'   => 'coupons.store',
+        'edit'    => 'coupons.edit',
+        'update'  => 'coupons.update',
+        'destroy' => 'coupons.destroy',
+    ])->except(['show']);
+
+    // Kiểm tra phiếu giảm giá
+    Route::get('/coupon-check', [\App\Http\Controllers\Manager\CouponCheckController::class, 'index'])->name('coupon.check');
+    Route::post('/coupon-check', [\App\Http\Controllers\Manager\CouponCheckController::class, 'check'])->name('coupon.check.post');
+>>>>>>> origin/daohung
 });
