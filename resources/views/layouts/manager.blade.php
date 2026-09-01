@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Manager Dashboard') - Cinema Booking System</title>
-    
+
     <script>
-        (function() {
+        (function () {
             const savedTheme = localStorage.getItem('admin_theme') || 'light';
             if (savedTheme === 'dark') {
                 document.documentElement.classList.add('dark-theme');
@@ -20,23 +21,46 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome (jsDelivr + cdnjs fallback) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Google Fonts Inter & Sora -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
         /* FontAwesome Fix for Icon Display */
-        .fa, .fas, .far, .fal, .fad, .fab, [class*=" fa-"], [class^="fa-"] {
+        .fa,
+        .fas,
+        .far,
+        .fal,
+        .fad,
+        .fab,
+        [class*=" fa-"],
+        [class^="fa-"] {
             font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", "FontAwesome" !important;
             font-style: normal !important;
         }
-        .far, .fa-regular { font-weight: 400 !important; }
-        .fas, .fa-solid { font-weight: 900 !important; }
-        .fab, .fa-brands { font-family: "Font Awesome 6 Brands" !important; font-weight: 400 !important; }
+
+        .far,
+        .fa-regular {
+            font-weight: 400 !important;
+        }
+
+        .fas,
+        .fa-solid {
+            font-weight: 900 !important;
+        }
+
+        .fab,
+        .fa-brands {
+            font-family: "Font Awesome 6 Brands" !important;
+            font-weight: 400 !important;
+        }
 
         :root {
             --primary-color: #0d9488;
@@ -71,8 +95,9 @@
             justify-content: center;
             cursor: pointer;
             transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         }
+
         .theme-toggle-btn:hover {
             transform: scale(1.12) rotate(15deg);
             box-shadow: 0 6px 16px rgba(13, 148, 136, 0.25);
@@ -80,23 +105,34 @@
         }
 
         /* Light Mode High-Contrast & Font Clarity Overrides */
-        label, .form-label {
+        label,
+        .form-label {
             color: #1e293b !important;
             font-weight: 600 !important;
             letter-spacing: -0.01em;
         }
 
-        .form-control, .form-select, input, select, textarea {
+        .form-control,
+        .form-select,
+        input,
+        select,
+        textarea {
             color: #0f172a !important;
             font-weight: 500;
             border-color: #cbd5e1;
         }
 
-        .form-control::placeholder, .form-select::placeholder, input::placeholder {
+        .form-control::placeholder,
+        .form-select::placeholder,
+        input::placeholder {
             color: #64748b !important;
         }
 
-        input:disabled, select:disabled, .form-control:disabled, .form-select:disabled, [readonly] {
+        input:disabled,
+        select:disabled,
+        .form-control:disabled,
+        .form-select:disabled,
+        [readonly] {
             color: #334155 !important;
             background-color: #f1f5f9 !important;
             opacity: 1 !important;
@@ -104,7 +140,11 @@
             border-color: #e2e8f0 !important;
         }
 
-        .text-muted, small, .form-text, .form-hint, .card-subtitle {
+        .text-muted,
+        small,
+        .form-text,
+        .form-hint,
+        .card-subtitle {
             color: #475569 !important;
         }
 
@@ -199,7 +239,12 @@
         }
 
         html.dark-theme strong,
-        html.dark-theme h1, html.dark-theme h2, html.dark-theme h3, html.dark-theme h4, html.dark-theme h5, html.dark-theme h6 {
+        html.dark-theme h1,
+        html.dark-theme h2,
+        html.dark-theme h3,
+        html.dark-theme h4,
+        html.dark-theme h5,
+        html.dark-theme h6 {
             color: #f3f4f6 !important;
         }
 
@@ -233,12 +278,15 @@
         .text-primary {
             color: var(--primary-color) !important;
         }
+
         .bg-primary {
             background-color: var(--primary-color) !important;
         }
+
         .border-primary {
             border-color: var(--primary-color) !important;
         }
+
         .badge.bg-primary {
             background-color: var(--primary-color) !important;
             color: #ffffff !important;
@@ -453,6 +501,7 @@
                 opacity: 0;
                 transform: translateY(8px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -470,9 +519,15 @@
             .content {
                 animation: pageFadeInReduced 0.1s linear forwards;
             }
+
             @keyframes pageFadeInReduced {
-                from { opacity: 0; }
-                to { opacity: 1; }
+                from {
+                    opacity: 0;
+                }
+
+                to {
+                    opacity: 1;
+                }
             }
         }
 
@@ -598,7 +653,7 @@
             padding: 20px;
             border-radius: 12px;
             border: 1px solid var(--border-light);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             text-align: center;
             margin-bottom: 20px;
         }
@@ -626,7 +681,8 @@
             transition: all 0.2s ease;
         }
 
-        .btn-primary:hover, .btn-primary:focus {
+        .btn-primary:hover,
+        .btn-primary:focus {
             background-color: var(--primary-hover);
             border-color: var(--primary-hover);
             box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
@@ -640,7 +696,8 @@
         }
 
         /* Forms & Inputs */
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             border-radius: 8px;
             border: 1px solid var(--border-light);
             padding: 10px 14px;
@@ -649,7 +706,8 @@
             color: var(--text-ink);
         }
 
-        .form-control:focus, .form-select:focus {
+        .form-control:focus,
+        .form-select:focus {
             border-color: var(--primary-color);
             box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.12);
             outline: 0;
@@ -707,27 +765,35 @@
             cursor: pointer;
             transition: all 0.25s ease;
         }
+
         .sidebar-group-toggle:hover,
         .sidebar-group-toggle.open {
             background-color: rgba(45, 212, 191, 0.1);
             color: #ffffff;
             opacity: 1;
         }
+
         .sidebar-group-toggle.active {
             background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%);
             color: #ffffff;
             opacity: 1;
             box-shadow: 0 4px 14px rgba(13, 148, 136, 0.4);
         }
-        .sidebar-group-toggle.active i { color: #ffffff; }
+
+        .sidebar-group-toggle.active i {
+            color: #ffffff;
+        }
+
         .sidebar-chevron {
             font-size: 0.7rem;
             opacity: 0.7;
             transition: transform 0.25s ease;
         }
+
         .sidebar-group-toggle.open .sidebar-chevron {
             transform: rotate(180deg);
         }
+
         .sidebar-submenu {
             list-style: none;
             padding: 4px 0 4px 14px;
@@ -739,11 +805,16 @@
             transition: max-height 0.3s ease, opacity 0.25s ease;
             opacity: 0;
         }
+
         .sidebar-submenu.expanded {
             max-height: 300px;
             opacity: 1;
         }
-        .sidebar-submenu li { margin-bottom: 2px; }
+
+        .sidebar-submenu li {
+            margin-bottom: 2px;
+        }
+
         .sidebar-submenu a {
             display: flex;
             align-items: center;
@@ -757,18 +828,25 @@
             text-decoration: none;
             transition: all 0.2s;
         }
+
         .sidebar-submenu a:hover {
             background: rgba(45, 212, 191, 0.12);
             color: #fff;
             opacity: 1;
         }
+
         .sidebar-submenu a.active {
             background: rgba(45, 212, 191, 0.2);
             color: #ccfbf1;
             font-weight: 700;
             opacity: 1;
         }
-        .sidebar-submenu a i { font-size: 0.8rem; width: 14px; text-align: center; }
+
+        .sidebar-submenu a i {
+            font-size: 0.8rem;
+            width: 14px;
+            text-align: center;
+        }
 
         /* Scrollbar */
         .sidebar::-webkit-scrollbar {
@@ -793,11 +871,13 @@
             font-weight: 500;
             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         }
+
         .alert-success {
             background-color: #ecfdf5;
             border-color: #a7f3d0;
             color: #065f46;
         }
+
         .alert-danger {
             background-color: #fef2f2;
             border-color: #fca5a5;
@@ -807,6 +887,7 @@
 
     @yield('extra_css')
 </head>
+
 <body>
     <!-- SIDEBAR -->
     <aside class="sidebar">
@@ -817,7 +898,9 @@
                 <span class="manager-badge">MANAGER</span>
                 <p>{{ Auth::user()->cinema?->name ?? 'Quản lý rạp' }}</p>
             </div>
-            <div class="cinema-info-tag mt-2 d-flex align-items-center text-truncate" style="color: #99f6e4; font-size: 0.78rem; font-weight: 500;" title="{{ Auth::user()->cinema->name ?? 'Chưa phân công rạp' }}">
+            <div class="cinema-info-tag mt-2 d-flex align-items-center text-truncate"
+                style="color: #99f6e4; font-size: 0.78rem; font-weight: 500;"
+                title="{{ Auth::user()->cinema->name ?? 'Chưa phân công rạp' }}">
                 <i class="fas fa-building me-1 text-info"></i>
                 <span class="text-truncate">{{ Auth::user()->cinema->name ?? 'Chưa phân công rạp' }}</span>
             </div>
@@ -833,35 +916,35 @@
             </li>
             <li>
                 <a href="{{ route('manager.dashboard') }}"
-                   class="@if(request()->routeIs('manager.dashboard')) active @endif">
+                    class="@if(request()->routeIs('manager.dashboard')) active @endif">
                     <i class="fas fa-tachometer-alt"></i>
                     <span>Bảng điều khiển</span>
                 </a>
             </li>
             <li>
                 <a href="{{ route('manager.rooms.index') }}"
-                   class="@if(request()->routeIs('manager.rooms.*')) active @endif">
+                    class="@if(request()->routeIs('manager.rooms.*')) active @endif">
                     <i class="fas fa-door-open"></i>
                     <span>Phòng chiếu</span>
                 </a>
             </li>
             <li>
                 <a href="{{ route('manager.showtimes.index') }}"
-                   class="@if(request()->routeIs('manager.showtimes.*')) active @endif">
+                    class="@if(request()->routeIs('manager.showtimes.*')) active @endif">
                     <i class="fas fa-calendar-alt"></i>
                     <span>Lịch chiếu</span>
                 </a>
             </li>
             <li>
                 <a href="{{ route('manager.combos.index') }}"
-                   class="@if(request()->routeIs('manager.combos.*')) active @endif">
+                    class="@if(request()->routeIs('manager.combos.*')) active @endif">
                     <i class="fas fa-utensils"></i>
                     <span>Combo Bắp Nước</span>
                 </a>
             </li>
             <li>
                 <a href="{{ route('manager.movies.index') }}"
-                   class="@if(request()->routeIs('manager.movies.*')) active @endif">
+                    class="@if(request()->routeIs('manager.movies.*')) active @endif">
                     <i class="fas fa-video"></i>
                     <span>Phim</span>
                 </a>
@@ -909,17 +992,22 @@
         <div class="topbar">
             <h5>@yield('page_title', 'Bảng điều khiển')</h5>
             <div class="topbar-right d-flex align-items-center">
-                <button type="button" class="theme-toggle-btn me-3" id="themeToggleBtn" onclick="toggleAdminTheme()" title="Chuyển đổi Chế độ Sáng / Tối">
+                <button type="button" class="theme-toggle-btn me-3" id="themeToggleBtn" onclick="toggleAdminTheme()"
+                    title="Chuyển đổi Chế độ Sáng / Tối">
                     <i class="fas fa-moon" id="themeToggleIcon"></i>
                 </button>
                 <div class="dropdown">
-                    <div class="user-info dropdown-toggle" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
+                    <div class="user-info dropdown-toggle" id="userDropdown" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false" style="cursor: pointer;">
                         <div class="text-end me-1">
                             <div class="d-flex align-items-center justify-content-end gap-1 mb-1">
-                                <span class="badge" style="background: rgba(13, 148, 136, 0.15); color: #0d9488; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">MANAGER</span>
+                                <span class="badge"
+                                    style="background: rgba(13, 148, 136, 0.15); color: #0d9488; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">MANAGER</span>
                             </div>
-                            <strong style="color: var(--text-ink); font-size: 0.88rem;">{{ Auth::user()->name ?? 'Manager' }}</strong>
-                            <div class="small text-muted d-flex align-items-center justify-content-end" style="font-size: 0.73rem;">
+                            <strong
+                                style="color: var(--text-ink); font-size: 0.88rem;">{{ Auth::user()->name ?? 'Manager' }}</strong>
+                            <div class="small text-muted d-flex align-items-center justify-content-end"
+                                style="font-size: 0.73rem;">
                                 <i class="fas fa-building me-1 text-info" style="font-size: 0.7rem;"></i>
                                 <span>{{ Auth::user()->cinema->name ?? 'Chưa gán rạp' }}</span>
                             </div>
@@ -934,7 +1022,9 @@
                                 <i class="fas fa-user-circle me-2 text-primary"></i> Hồ sơ cá nhân
                             </a>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
                         <li>
                             <form method="POST" action="{{ route('logout') }}" class="m-0">
                                 @csrf
@@ -991,7 +1081,7 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const isDark = document.documentElement.classList.contains('dark-theme');
             updateThemeIcon(isDark);
         });
@@ -1005,4 +1095,5 @@
     @stack('scripts')
     @yield('extra_js')
 </body>
+
 </html>
