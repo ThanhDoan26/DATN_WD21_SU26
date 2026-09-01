@@ -34,11 +34,28 @@ class KnowledgeService
         $normQuery = \Illuminate\Support\Str::slug($movieQuery, ' ');
         $queryWords = array_diff(explode(' ', $normQuery), ['phim', 'phan', 'moi', 'nhat', 'do', 'nay', 've', 'la', 'ai']);
 
-        // Check for context words
-        if (empty($queryWords) || str_contains($normQuery, 'phan moi nhat') || str_contains($normQuery, 'phim do') || str_contains($normQuery, 'phim nay')) {
-            $movieQuery = $this->resolveContextWithGemini($movieQuery, $history);
-            $normQuery = \Illuminate\Support\Str::slug($movieQuery, ' ');
-            $queryWords = array_diff(explode(' ', $normQuery), ['phim']);
+        // Check for context words or ordinal choices (ví dụ: 'cái đầu tiên', 'cái thứ 2', 'chọn cái 1', 'phần mới nhất', etc.)
+        $isOrdinalOrContext = empty($queryWords) 
+            || str_contains($normQuery, 'phan moi nhat') 
+            || str_contains($normQuery, 'phim do') 
+            || str_contains($normQuery, 'phim nay')
+            || str_contains($normQuery, 'dau tien')
+            || str_contains($normQuery, 'thu nhat')
+            || str_contains($normQuery, 'thu hai')
+            || str_contains($normQuery, 'thu 2')
+            || str_contains($normQuery, 'so 1')
+            || str_contains($normQuery, 'so 2')
+            || str_contains($normQuery, 'cai dau')
+            || str_contains($normQuery, 'cai sau')
+            || str_contains($normQuery, 'chon');
+
+        if ($isOrdinalOrContext) {
+            $resolvedName = $this->resolveContextWithGemini($movieQuery, $history);
+            if (!empty($resolvedName) && $resolvedName !== $movieQuery) {
+                $movieQuery = $resolvedName;
+                $normQuery = \Illuminate\Support\Str::slug($movieQuery, ' ');
+                $queryWords = array_diff(explode(' ', $normQuery), ['phim']);
+            }
         }
 
         // 2. DB Candidate Search
@@ -62,10 +79,11 @@ class KnowledgeService
             $normTitle = \Illuminate\Support\Str::slug($movie->title, ' ');
             $titleWords = explode(' ', $normTitle);
             
-            if (strtolower(trim($movieQuery)) === strtolower(trim($movie->title))) {
-                $score += 200;
+            // Exact match (case insensitive title or normalized slug)
+            if (mb_strtolower(trim($movieQuery), 'UTF-8') === mb_strtolower(trim($movie->title), 'UTF-8')) {
+                $score += 300;
             } elseif ($normQuery === $normTitle) {
-                $score += 150;
+                $score += 250;
             } else {
                 if (str_contains($normTitle, $normQuery) || str_contains($normQuery, $normTitle)) {
                     $score += 80;
@@ -88,7 +106,7 @@ class KnowledgeService
                             if (strlen($mWord) <= 3) continue;
                             
                             $lev = levenshtein($tWord, $mWord);
-                            $maxLev = (strlen($mWord) >= 6) ? 2 : 1; // Khắt khe hơn với từ ngắn
+                            $maxLev = (strlen($mWord) >= 6) ? 2 : 1;
 
                             if ($lev <= $maxLev) {
                                 $score += 15;
@@ -116,9 +134,18 @@ class KnowledgeService
         $topScore = $matchedMovies->first()->relevance_score;
         
         // 4. Resolution Status
+        // Nếu có EXACT MATCH (score >= 200) thì chắc chắn ĐÃ XÁC ĐỊNH (resolved), không coi là ambiguous
+        if ($topScore >= 200) {
+            return [
+                'status' => 'resolved',
+                'movies' => $matchedMovies->take(1),
+                'confidence' => $topScore
+            ];
+        }
+
         if ($topScore >= 80) {
-            // If top 2 are very close, it's ambiguous
-            if ($matchedMovies->count() > 1 && $matchedMovies[1]->relevance_score >= $topScore * 0.8) {
+            // Nếu không có exact match nhưng top 2 điểm sát nhau thì là ambiguous
+            if ($matchedMovies->count() > 1 && $matchedMovies[1]->relevance_score >= $topScore * 0.9) {
                 return [
                     'status' => 'ambiguous',
                     'movies' => $matchedMovies->take(3),
@@ -149,7 +176,11 @@ class KnowledgeService
     {
         if (empty($history)) return $query;
         $historyText = json_encode($history, JSON_UNESCAPED_UNICODE);
-        $system = "Bạn là chuyên gia phân tích ngữ cảnh phim. Dựa vào lịch sử hội thoại: {$historyText}. Người dùng vừa nói: '{$query}'. Hãy cho biết tên phim cụ thể mà họ đang ám chỉ. Chỉ trả về một tên phim duy nhất, không giải thích.";
+        $system = "Bạn là chuyên gia phân tích ngữ cảnh phim. Dựa vào lịch sử hội thoại: {$historyText}. Người dùng vừa nói: '{$query}'.
+Nhiệm vụ:
+1. Nếu người dùng chọn một phim theo thứ tự (ví dụ: 'cái đầu tiên', 'phim thứ nhất', 'cái số 1', 'lấy cái sau', 'chọn phim thứ 2'...), hãy đọc danh sách các phim trong tin nhắn gần nhất của trợ lý và lấy đúng tên bộ phim tương ứng.
+2. Nếu người dùng ngụ ý một phim (ví dụ: 'phần mới nhất', 'phim đó', 'phim này'), hãy tìm tên phim tương ứng trong lịch sử.
+Chỉ trả về MỘT TÊN PHIM DUY NHẤT, không giải thích gì thêm.";
         $response = $this->geminiService->generate($query, $system);
         return trim($response);
     }
@@ -217,15 +248,18 @@ class KnowledgeService
 
         switch ($intent) {
             case 'ask_movies':
+                Showtime::syncAllStatuses();
                 $nowShowing = Movie::where('status', 'NOW_SHOWING')
                     ->with('categories:name')
                     ->get();
                 $comingSoon = Movie::where('status', 'COMING_SOON')
                     ->with('categories:name')
                     ->get();
-                $todayShowtimes = Showtime::upcoming()
+                $todayUpcomingShowtimes = Showtime::where('status', Showtime::STATUS_SCHEDULED)
                     ->whereDate('start_time', today())
+                    ->where('start_time', '>', now())
                     ->with(['movie:id,title', 'room.cinema:id,name'])
+                    ->orderBy('start_time', 'asc')
                     ->get();
 
                 if ($nowShowing->isEmpty() && $comingSoon->isEmpty()) {
@@ -233,6 +267,7 @@ class KnowledgeService
                 }
 
                 $data = [
+                    'thoi_gian_hien_tai' => now()->format('d/m/Y H:i'),
                     'phim_dang_chieu' => $nowShowing->map(function ($m) {
                         return [
                             'ten_phim' => $m->title,
@@ -243,7 +278,7 @@ class KnowledgeService
                             'trang_thai' => 'Đang chiếu'
                         ];
                     }),
-                    'suat_chieu_hom_nay' => $todayShowtimes->map(function ($s) {
+                    'suat_chieu_con_lai_hom_nay' => $todayUpcomingShowtimes->map(function ($s) {
                         return [
                             'phim' => $s->movie->title ?? '',
                             'rap' => $s->room->cinema->name ?? '',
@@ -264,6 +299,7 @@ class KnowledgeService
                 return "Danh sách phim và lịch chiếu: " . json_encode($data, JSON_UNESCAPED_UNICODE);
 
             case 'ask_movie_status':
+                Showtime::syncAllStatuses();
                 if ($movieResolution && $movieResolution['status'] === 'resolved') {
                     $matchedMovies = $movieResolution['movies'];
                     $data = $matchedMovies->map(function ($m) {
@@ -280,12 +316,15 @@ class KnowledgeService
 
                 $nowShowing = Movie::where('status', 'NOW_SHOWING')->with('categories:name')->get();
                 $comingSoon = Movie::where('status', 'COMING_SOON')->with('categories:name')->get();
-                $todayShowtimes = Showtime::upcoming()
+                $todayUpcomingShowtimes = Showtime::where('status', Showtime::STATUS_SCHEDULED)
                     ->whereDate('start_time', today())
+                    ->where('start_time', '>', now())
                     ->with(['movie:id,title', 'room.cinema:id,name'])
+                    ->orderBy('start_time', 'asc')
                     ->get();
 
                 $data = [
+                    'thoi_gian_hien_tai' => now()->format('d/m/Y H:i'),
                     'phim_dang_chieu' => $nowShowing->map(function ($m) {
                         return [
                             'ten_phim' => $m->title,
@@ -294,7 +333,7 @@ class KnowledgeService
                             'trang_thai' => 'Đang chiếu'
                         ];
                     }),
-                    'suat_chieu_hom_nay' => $todayShowtimes->map(function ($s) {
+                    'suat_chieu_con_lai_hom_nay' => $todayUpcomingShowtimes->map(function ($s) {
                         return [
                             'phim' => $s->movie->title ?? '',
                             'rap' => $s->room->cinema->name ?? '',
@@ -369,27 +408,80 @@ class KnowledgeService
                 return "Danh sách hệ thống rạp phim: " . json_encode($cinemas->toArray(), JSON_UNESCAPED_UNICODE);
 
             case 'ask_showtimes':
-                $showtimesQuery = Showtime::upcoming()
-                    ->with(['movie:id,title', 'room:id,name,cinema_id', 'room.cinema:id,name,address']);
-                
-                if ($movieResolution && $movieResolution['status'] === 'resolved') {
-                    $showtimesQuery->whereIn('movie_id', $movieResolution['movies']->pluck('id'));
+                Showtime::syncAllStatuses();
+
+                $movieIdFilter = ($movieResolution && $movieResolution['status'] === 'resolved')
+                    ? $movieResolution['movies']->pluck('id')->toArray()
+                    : [];
+
+                // 1. Suất chiếu sắp tới (start_time > now)
+                $upcomingQuery = Showtime::where('status', Showtime::STATUS_SCHEDULED)
+                    ->where('start_time', '>', now())
+                    ->with(['movie:id,title', 'room:id,name,cinema_id', 'room.cinema:id,name,address'])
+                    ->orderBy('start_time', 'asc');
+
+                if (!empty($movieIdFilter)) {
+                    $upcomingQuery->whereIn('movie_id', $movieIdFilter);
                 }
-                
-                $showtimes = $showtimesQuery->take(15)->get();
-                
-                if ($showtimes->isEmpty()) return "Hiện tại không có suất chiếu nào sắp diễn ra.";
-                $data = $showtimes->map(function ($s) {
-                    return [
-                        'phim' => $s->movie->title ?? '',
-                        'rap' => $s->room->cinema->name ?? '',
-                        'dia_chi' => $s->room->cinema->address ?? '',
-                        'phong' => $s->room->name ?? '',
-                        'thoi_gian_bat_dau' => optional($s->start_time)->format('d/m/Y H:i'),
-                        'tinh_trang' => $s->status === 'SCHEDULED' ? 'Sắp chiếu / Đang mở bán' : ($s->status === 'ONGOING' ? 'Đang chiếu' : $s->status)
-                    ];
-                });
-                return "Lịch chiếu suất chiếu sắp tới: " . json_encode($data->toArray(), JSON_UNESCAPED_UNICODE);
+
+                $upcomingShowtimes = $upcomingQuery->take(15)->get();
+
+                // 2. Suất chiếu hôm nay đã qua giờ / đã kết thúc (start_time <= now)
+                $pastQuery = Showtime::whereDate('start_time', today())
+                    ->where('start_time', '<=', now())
+                    ->with(['movie:id,title', 'room.cinema:id,name'])
+                    ->orderBy('start_time', 'desc');
+
+                if (!empty($movieIdFilter)) {
+                    $pastQuery->whereIn('movie_id', $movieIdFilter);
+                }
+
+                $pastShowtimesToday = $pastQuery->take(10)->get();
+
+                $movieName = (!empty($movieIdFilter) && $movieResolution['movies']->isNotEmpty()) 
+                    ? $movieResolution['movies']->first()->title 
+                    : null;
+
+                if ($upcomingShowtimes->isEmpty()) {
+                    if ($pastShowtimesToday->isNotEmpty()) {
+                        $pastList = $pastShowtimesToday->map(function ($s) {
+                            return ($s->movie->title ?? '') . ' tại ' . ($s->room->cinema->name ?? '') . ' lúc ' . optional($s->start_time)->format('H:i d/m/Y');
+                        })->implode(', ');
+
+                        return "CẢNH BÁO THỜI GIAN VÀ SUẤT CHIẾU: Hiện tại là " . now()->format('H:i d/m/Y') . ". " .
+                            ($movieName ? "Suất chiếu hôm nay của phim '{$movieName}' ({$pastList}) ĐÃ QUA GIỜ CHIẾU / ĐÃ KẾT THÚC." : "Các suất chiếu hôm nay ({$pastList}) ĐÃ QUA GIỜ CHIẾU / ĐÃ KẾT THÚC.") .
+                            " Hiện tại không còn suất chiếu nào sắp diễn ra trong ngày hôm nay. CHỈ THỊ BẮT BUỘC: Hãy thông báo rõ ràng cho khách rằng suất chiếu hôm nay đã qua giờ/đã kết thúc và không thể đặt vé cho suất đó nữa. Hãy gợi ý khách xem lịch chiếu của ngày tiếp theo hoặc chọn phim khác.";
+                    }
+
+                    return ($movieName ? "Phim '{$movieName}'" : "Hệ thống") . " hiện tại không có suất chiếu sắp tới nào.";
+                }
+
+                $data = [
+                    'thoi_gian_hien_tai' => now()->format('d/m/Y H:i'),
+                    'suat_chieu_sap_toi_co_the_dat_ve' => $upcomingShowtimes->map(function ($s) {
+                        return [
+                            'phim' => $s->movie->title ?? '',
+                            'rap' => $s->room->cinema->name ?? '',
+                            'dia_chi' => $s->room->cinema->address ?? '',
+                            'phong' => $s->room->name ?? '',
+                            'thoi_gian_bat_dau' => optional($s->start_time)->format('d/m/Y H:i'),
+                            'tinh_trang' => 'Sắp chiếu / Đang mở bán'
+                        ];
+                    })
+                ];
+
+                if ($pastShowtimesToday->isNotEmpty()) {
+                    $data['suat_chieu_da_qua_gio_hom_nay'] = $pastShowtimesToday->map(function ($s) {
+                        return [
+                            'phim' => $s->movie->title ?? '',
+                            'rap' => $s->room->cinema->name ?? '',
+                            'thoi_gian' => optional($s->start_time)->format('d/m/Y H:i'),
+                            'tinh_trang' => 'ĐÃ QUA GIỜ CHIẾU / ĐÃ KẾT THÚC (KHÔNG THỂ ĐẶT VÉ)'
+                        ];
+                    });
+                }
+
+                return "Lịch chiếu suất chiếu: " . json_encode($data, JSON_UNESCAPED_UNICODE);
 
             case 'ask_my_tickets':
             case 'ask_booking_status':
@@ -422,7 +514,11 @@ class KnowledgeService
 
             case 'ask_combo':
                 $combos = Combo::where('status', 'ACTIVE')->get(['name', 'price', 'description']);
-                return "Thông tin combo bắp nước: " . json_encode($combos->toArray(), JSON_UNESCAPED_UNICODE);
+                $data = [
+                    'quy_dinh_do_an_ngoai' => 'Rạp KHÔNG CHO PHÉP mang đồ ăn, thức uống từ bên ngoài vào rạp chiếu phim để đảm bảo vệ sinh chung và trải nghiệm của mọi khán giả. Rạp đã có sẵn các combo bắp nước đa dạng, thơm ngon hấp dẫn (bắp rang bơ, nước ngọt, snack...) xin mời quý khách có thể mua và thưởng thức trực tiếp tại quầy hoặc đặt cùng vé trên hệ thống.',
+                    'danh_sach_combo' => $combos->toArray()
+                ];
+                return "Thông tin combo bắp nước và quy định đồ ăn: " . json_encode($data, JSON_UNESCAPED_UNICODE);
 
             case 'ask_user_profile':
                 if (!$user) return "Người dùng chưa đăng nhập.";
@@ -456,10 +552,20 @@ class KnowledgeService
                 return "Lịch sử cuộc trò chuyện từ trước đến giờ: " . json_encode($history, JSON_UNESCAPED_UNICODE);
 
             case 'ask_booking_guide':
-                return "Hướng dẫn đặt vé: Bước 1: Chọn phim và suất chiếu. Bước 2: Chọn ghế ngồi. Bước 3: Chọn combo (nếu có). Bước 4: Nhập mã giảm giá và thanh toán. Vé của bạn sẽ có trong mục Vé Của Tôi.";
+                $movieInfo = "";
+                if ($movieResolution && $movieResolution['status'] === 'resolved') {
+                    $m = $movieResolution['movies']->first();
+                    $movieInfo = " cho phim " . ($m->title ?? '');
+                }
+                return "Quy trình khách hàng tự đặt vé trực tuyến trên website MovieGo{$movieInfo}:
+LƯU Ý: Trợ lý AI KHÔNG trực tiếp đặt vé, giữ chỗ ghế hay thanh toán hộ trong khung chat. Để đảm bảo an toàn bảo mật và tự tay chọn vị trí ghế đẹp ưng ý theo sơ đồ trực quan, quý khách tự thao tác đặt vé trên website theo 4 bước:
+- Bước 1: Chọn phim và suất chiếu bạn muốn xem trên website.
+- Bước 2: Chọn rạp và chọn vị trí ghế ngồi trực tiếp trên sơ đồ phòng chiếu.
+- Bước 3: Chọn thêm combo bắp nước và áp dụng mã giảm giá (nếu có).
+- Bước 4: Thanh toán trực tuyến an toàn qua VNPay hoặc Thẻ ATM / Visa. Vé điện tử sẽ được hiển thị ngay sau khi thanh toán thành công và lưu trong mục 'Vé Của Tôi'.";
 
             case 'ask_payment':
-                return "Các cổng thanh toán hiện tại hệ thống hỗ trợ: VNPay và Thẻ ATM / Visa (Stripe).";
+                return "Các cổng thanh toán hỗ trợ trên website MovieGo: VNPay và Thẻ ATM / Visa quốc tế (Stripe). Quý khách thực hiện thanh toán trực tiếp tại bước 4 của quy trình đặt vé trên website. Trợ lý AI không nhận tiền hay cung cấp mã QR chuyển khoản riêng trong khung chat.";
 
             case 'ask_payment_error':
                 return "Quy định thanh toán lỗi: Nếu bị trừ tiền mà chưa có vé, hệ thống sẽ tự động hoàn tiền hoặc bạn có thể liên hệ tổng đài để được hỗ trợ.";
@@ -468,14 +574,33 @@ class KnowledgeService
                 return "Giá vé: Giá vé được quy định theo từng loại suất chiếu và từng loại ghế (Thường, VIP, Đôi). Vui lòng chọn phim cụ thể để biết giá chi tiết.";
 
             case 'ask_policy':
-                return "Chính sách: Vé đã mua không thể hoàn hoặc đổi. Vui lòng kiểm tra kỹ thông tin trước khi thanh toán.";
+                return "Chính sách và quy định của rạp chiếu phim MovieGo:
+1. Quy định về Độ tuổi xem phim và Kiểm tra Căn cước công dân (CCCD):
+- Phân loại độ tuổi phim:
+  + P: Phim dành cho mọi lứa tuổi khán giả.
+  + K: Khán giả dưới 13 tuổi có thể xem khi có người giám hộ/người lớn đi cùng.
+  + T13: Phim dành cho khán giả từ đủ 13 tuổi trở lên.
+  + T16: Phim dành cho khán giả từ đủ 16 tuổi trở lên.
+  + T18: Phim dành cho khán giả từ đủ 18 tuổi trở lên (ví dụ: học sinh cấp 3 chưa đủ 18 tuổi sẽ không được xem).
+- Kiểm tra CCCD / Giấy tờ tùy thân: Khi vào xem các phim có giới hạn độ tuổi (như T13, T16, T18), khách hàng vui lòng mang theo Căn cước công dân (CCCD), CMND hoặc giấy tờ tùy thân có ảnh/ngày sinh để nhân viên soát vé kiểm tra độ tuổi.
+- Xử lý đối với khách hàng chưa đủ tuổi: Nếu khách hàng dưới độ tuổi cho phép (hoặc không xuất trình được giấy tờ hợp lệ chứng minh đủ tuổi), nhân viên rạp sẽ kiểm tra căn cước và rạp sẽ kiên quyết hạn chế/từ chối không cho phép người dưới độ tuổi quy định vào xem những phim đó theo đúng quy định pháp luật.
+
+2. Quy định về Đồ ăn, Thức uống từ bên ngoài:
+- Rạp KHÔNG CHO PHÉP mang đồ ăn, thức uống từ bên ngoài vào rạp chiếu phim nhằm đảm bảo vệ sinh chung, an toàn thực phẩm và giữ gìn không gian xem phim cho tất cả mọi người.
+- Rạp đã có sẵn quầy Bắp Nước với nhiều gói Combo phong phú, thơm ngon và hấp dẫn (bắp rang bơ các vị phô mai, caramel, nước ngọt, snack...), xin mời quý khách có thể mua trực tiếp tại quầy hoặc đặt mua kèm vé trực tuyến trên website để thưởng thức.
+
+3. Chính sách Vé và Hoàn/Đổi vé:
+- Vé đã mua và thanh toán thành công KHÔNG hỗ trợ hoàn tiền, hủy hoặc đổi sang suất chiếu khác. Quý khách vui lòng kiểm tra kỹ thông tin suất chiếu và ghế ngồi trước khi thanh toán.";
 
             case 'ask_website':
                 return "Thông tin website: Bạn có thể đặt vé phim, xem lịch chiếu, đánh giá phim, mua combo bắp nước, xem bài viết giới thiệu phim trên trang web của chúng tôi.";
 
             case 'general':
             default:
-                return "Không có dữ liệu đặc biệt nào cần lấy. Hãy trả lời bình thường.";
+                return "Không có dữ liệu đặc biệt nào cần lấy. Hãy trả lời bình thường và lịch sự.
+Lưu ý các quy định cơ bản của rạp nếu người dùng đề cập:
+- Độ tuổi & CCCD: Các phim giới hạn tuổi (T13, T16, T18) yêu cầu khách hàng đủ tuổi. Nhân viên rạp sẽ check Căn cước công dân/giấy tờ tùy thân và rạp sẽ hạn chế/từ chối người dưới độ tuổi cho phép xem những phim đó.
+- Đồ ăn ngoài & Combo: Rạp không cho phép mang đồ ăn, thức uống từ bên ngoài vào. Rạp đã có sẵn các combo bắp nước đa dạng, thơm ngon để quý khách mua và thưởng thức.";
         }
     }
 }
