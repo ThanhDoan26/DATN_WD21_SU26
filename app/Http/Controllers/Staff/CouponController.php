@@ -5,21 +5,11 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use App\Models\Coupon;
 use Illuminate\Http\Request;
-<<<<<<< HEAD
-=======
 use Illuminate\Support\Str;
->>>>>>> origin/daohung
 
 class CouponController extends Controller
 {
     /**
-<<<<<<< HEAD
-     * Tra cứu & Xem danh sách mã giảm giá cho Staff
-     */
-    public function index(Request $request)
-    {
-        $query = Coupon::query();
-=======
      * Danh sách mã giảm giá
      */
     public function index(Request $request)
@@ -27,7 +17,6 @@ class CouponController extends Controller
         $query = Coupon::where(function ($q) {
             $q->whereNull('end_date')->orWhere('end_date', '>=', now());
         });
->>>>>>> origin/daohung
 
         if ($request->filled('code')) {
             $query->where('code', 'like', '%' . $request->code . '%');
@@ -37,11 +26,6 @@ class CouponController extends Controller
             $query->where('status', $request->status);
         }
 
-<<<<<<< HEAD
-        $coupons = $query->orderByAvailabilityAndExpiration()->paginate(12)->withQueryString();
-
-        return view('staff.coupons.index', compact('coupons'));
-=======
         $coupons = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
 
         return view('staff.coupon.index', compact('coupons'));
@@ -140,6 +124,5 @@ class CouponController extends Controller
         $coupons = $query->orderBy('end_date', 'desc')->paginate(15)->withQueryString();
 
         return view('staff.coupon.expired', compact('coupons'));
->>>>>>> origin/daohung
     }
 }

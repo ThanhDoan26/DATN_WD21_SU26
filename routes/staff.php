@@ -6,10 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 
 use App\Http\Controllers\CinemaStaffDashboardController;
-<<<<<<< HEAD
-=======
 use App\Http\Controllers\Staff\CouponCheckController;
->>>>>>> origin/daohung
 use App\Http\Controllers\Staff\CouponController;
 
 Route::middleware(['auth', 'role:STAFF', 'cinema.assignment'])->prefix('staff')->name('staff.')->group(function () {
