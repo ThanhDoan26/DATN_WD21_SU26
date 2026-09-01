@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 class CouponController extends Controller
 {
     /**
-     * Danh sách mã giảm giá
+     * Danh sách mã giảm giá (chưa hết hạn)
      */
     public function index(Request $request)
     {
@@ -45,7 +45,7 @@ class CouponController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'code'                => 'required|string|unique:coupons,code|max:255',
             'type'                => 'required|in:percent,fixed',
             'value'               => 'required|numeric|min:0' . ($request->type === 'percent' ? '|max:100' : ''),
@@ -59,7 +59,7 @@ class CouponController extends Controller
             'end_date.after' => 'Thời gian kết thúc phải diễn ra sau thời gian bắt đầu.',
         ]);
 
-        Coupon::create($request->all());
+        Coupon::create($validated);
 
         return redirect()->route('manager.coupons.index')->with('success', 'Tạo mã giảm giá thành công!');
     }
@@ -80,21 +80,22 @@ class CouponController extends Controller
     {
         $coupon = Coupon::findOrFail($id);
 
-        $request->validate([
+        $validated = $request->validate([
             'code'                => 'required|string|max:255|unique:coupons,code,' . $coupon->id,
             'type'                => 'required|in:percent,fixed',
             'value'               => 'required|numeric|min:0' . ($request->type === 'percent' ? '|max:100' : ''),
             'min_order_value'     => 'nullable|numeric|min:0',
             'max_discount_amount' => 'nullable|numeric|min:0',
-            'quantity'            => 'required|integer|min:0',
+            'quantity'            => 'required|integer|min:' . ($coupon->used_count ?? 0),
             'start_date'          => 'required|date',
             'end_date'            => 'required|date|after:start_date',
             'status'              => 'required|in:ACTIVE,INACTIVE',
         ], [
             'end_date.after' => 'Thời gian kết thúc phải diễn ra sau thời gian bắt đầu.',
+            'quantity.min'   => 'Số lượng mã phát hành không được nhỏ hơn số lượt đã sử dụng (' . ($coupon->used_count ?? 0) . ' lượt).',
         ]);
 
-        $coupon->update($request->all());
+        $coupon->update($validated);
 
         return redirect()->route('manager.coupons.index')->with('success', 'Cập nhật mã giảm giá thành công!');
     }
@@ -107,11 +108,11 @@ class CouponController extends Controller
         $coupon = Coupon::findOrFail($id);
         $coupon->delete();
 
-        return redirect()->route('manager.coupons.index')->with('success', 'Đã xoá mã giảm giá. Mã được chuyển vào danh sách hết hạn (nếu có).');
+        return redirect()->route('manager.coupons.index')->with('success', 'Đã xoá mã giảm giá thành công!');
     }
 
     /**
-     * Danh sách mã hết hạn (thay thế thùng rác)
+     * Danh sách mã hết hạn
      */
     public function expired(Request $request)
     {

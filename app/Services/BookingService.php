@@ -99,6 +99,7 @@ class BookingService
 
             $inheritedBookingTime = null;
             $isExtended = false;
+            $existingPendingBooking = null;
 
             try {
                 // 1. Tự động dọn dẹp các booking quá hạn trước khi kiểm tra
@@ -113,21 +114,28 @@ class BookingService
 
                 // 3. Hủy các booking Pending cũ của chính user này đối với suất chiếu này để giải phóng ghế
                 if ($userId) {
-                $userPendingBookings = DB::table('bookings')
-                    ->where('user_id', $userId)
-                    ->where('showtime_id', $showtimeId)
-                    ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
-                    ->select('id', 'booking_time', 'is_extended')
-                    ->get();
-                
-                $userPendingBookingIds = $userPendingBookings->pluck('id')->toArray();
+                    $existingPendingBooking = DB::table('bookings')
+                        ->where('user_id', $userId)
+                        ->where('showtime_id', $showtimeId)
+                        ->whereIn(DB::raw('LOWER(status)'), [\App\Models\Booking::STATUS_PENDING, 'processing'])
+                        ->orderBy('booking_time', 'asc')
+                        ->first();
 
-                if (!empty($userPendingBookingIds)) {
-                    $oldestBooking = $userPendingBookings->sortBy('booking_time')->first();
-                    if ($oldestBooking) {
-                        $inheritedBookingTime = \Carbon\Carbon::parse($oldestBooking->booking_time);
-                        $isExtended = (bool) $oldestBooking->is_extended;
-                    }
+                    $userPendingBookings = DB::table('bookings')
+                        ->where('user_id', $userId)
+                        ->where('showtime_id', $showtimeId)
+                        ->whereIn(DB::raw('LOWER(status)'), [\App\Models\Booking::STATUS_PENDING, 'processing'])
+                        ->select('id', 'booking_time', 'is_extended')
+                        ->get();
+                    
+                    $userPendingBookingIds = $userPendingBookings->pluck('id')->toArray();
+
+                    if (!empty($userPendingBookingIds)) {
+                        $oldestBooking = $userPendingBookings->sortBy('booking_time')->first();
+                        if ($oldestBooking) {
+                            $inheritedBookingTime = \Carbon\Carbon::parse($oldestBooking->booking_time);
+                            $isExtended = (bool) $oldestBooking->is_extended;
+                        }
 
                     // Chỉ hoàn lại lượt dùng mã giảm giá nếu đơn bị hủy trước đó ĐÃ THANH TOÁN (status = Paid)
                     $bookingsWithCoupons = DB::table('bookings')
@@ -242,6 +250,23 @@ class BookingService
                     );
                     
                     if (!$locked) {
+                        // Kiểm tra nếu khóa này thuộc về chính user hiện tại (đang cập nhật đơn pending của chính mình)
+                        $currentLock = \Illuminate\Support\Facades\Redis::get($lockKey);
+                        if ($currentLock) {
+                            $lockData = json_decode($currentLock, true);
+                            if ($userId && isset($lockData['user_id']) && (int) $lockData['user_id'] === (int) $userId) {
+                                \Illuminate\Support\Facades\Redis::set(
+                                    $lockKey,
+                                    json_encode(['user_id' => $userId, 'status' => 'Pending']),
+                                    'EX',
+                                    600
+                                );
+                                $locked = true;
+                            }
+                        }
+                    }
+
+                    if (!$locked) {
                         // Release previously acquired locks in this batch
                         foreach ($locks as $acquiredKey) {
                             try { \Illuminate\Support\Facades\Redis::del($acquiredKey); } catch (\Throwable $t) {}
@@ -304,7 +329,7 @@ class BookingService
             }
 
             // ── Bước 3: Cập nhật giữ ghế (Thực thi an toàn) ──────────────
-            $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData, $inheritedBookingTime, $isExtended) {
+            $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData, $inheritedBookingTime, $isExtended, $existingPendingBooking) {
 
                 // ================================================================
                 // Step 1: Lấy thông tin suất chiếu trước (🔒 lockForUpdate)

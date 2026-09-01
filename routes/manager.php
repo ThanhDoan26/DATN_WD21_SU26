@@ -12,12 +12,6 @@ use App\Http\Controllers\Manager\CouponController;
 Route::middleware(['auth', 'role:MANAGER', 'cinema.assignment'])->prefix('manager')->name('manager.')->group(function () {
     Route::get('/dashboard', [CinemaManagerDashboardController::class, 'index'])->name('dashboard');
 
-    // Quản lý Mã giảm giá (Manager)
-    Route::get('coupons/trashed', [CouponController::class, 'trashed'])->name('coupons.trashed');
-    Route::post('coupons/{id}/restore', [CouponController::class, 'restore'])->name('coupons.restore');
-    Route::delete('coupons/{id}/force-delete', [CouponController::class, 'forceDelete'])->name('coupons.forceDelete');
-    Route::resource('coupons', CouponController::class);
-
     // Quản lý Phòng chiếu (Manager)
     Route::get('rooms/trashed', [RoomController::class, 'trashed'])->name('rooms.trashed');
     Route::post('rooms/{id}/restore', [RoomController::class, 'restore'])->name('rooms.restore');
@@ -40,6 +34,7 @@ Route::middleware(['auth', 'role:MANAGER', 'cinema.assignment'])->prefix('manage
 
     // Xem chi tiết Đơn hàng / Vé đặt (Manager)
     Route::get('bookings/{booking}', [\App\Http\Controllers\Admin\BookingController::class, 'show'])->name('bookings.show');
+
     // Quản lý phiếu giảm giá
     Route::get('/coupons/expired', [\App\Http\Controllers\Manager\CouponController::class, 'expired'])->name('coupon.expired');
     Route::resource('coupons', \App\Http\Controllers\Manager\CouponController::class)->names([

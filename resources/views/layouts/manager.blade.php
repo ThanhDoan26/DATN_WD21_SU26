@@ -949,50 +949,40 @@
                     <span>Phim</span>
                 </a>
             </li>
-            <<<<<<< HEAD <li>
-                <a href="{{ route('manager.coupons.index') }}"
-                    class="@if(request()->routeIs('manager.coupons.*')) active @endif">
-                    <i class="fas fa-tags"></i>
-                    <span>Mã giảm giá</span>
-                </a>
-                =======
-
-                {{-- Voucher group --}}
-                <li class="sidebar-group">
-                    <button type="button"
-                        class="sidebar-group-toggle @if(request()->routeIs('manager.coupon*', 'manager.coupons*')) active open @endif"
+            {{-- Voucher group --}}
+            <li class="sidebar-group">
+                <button type="button" class="sidebar-group-toggle @if(request()->routeIs('manager.coupon*', 'manager.coupons*')) active open @endif"
                         onclick="toggleSidebarGroup(this)">
-                        <span><i class="fas fa-tag"></i><span class="ms-3">Quản lý Voucher</span></span>
-                        <i class="fas fa-chevron-down sidebar-chevron"></i>
-                    </button>
-                    <ul
-                        class="sidebar-submenu @if(request()->routeIs('manager.coupon*', 'manager.coupons*')) expanded @endif">
-                        <li>
-                            <a href="{{ route('manager.coupons.index') }}"
-                                class="@if(request()->routeIs('manager.coupons.index') || request()->routeIs('manager.coupons.edit') || request()->routeIs('manager.coupons.show')) active @endif">
-                                <i class="fas fa-list-ul"></i>Danh sách mã
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('manager.coupons.create') }}"
-                                class="@if(request()->routeIs('manager.coupons.create')) active @endif">
-                                <i class="fas fa-plus"></i>Thêm mã mới
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('manager.coupon.check') }}"
-                                class="@if(request()->routeIs('manager.coupon.check*')) active @endif">
-                                <i class="fas fa-search"></i>Kiểm tra nhanh
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('manager.coupon.expired') }}"
-                                class="@if(request()->routeIs('manager.coupon.expired')) active @endif">
-                                <i class="fas fa-history"></i>Mã hết hạn
-                            </a>
-                        </li>
-                    </ul>
-                </li>
+                    <span><i class="fas fa-tag"></i><span class="ms-3">Quản lý Voucher</span></span>
+                    <i class="fas fa-chevron-down sidebar-chevron"></i>
+                </button>
+                <ul class="sidebar-submenu @if(request()->routeIs('manager.coupon*', 'manager.coupons*')) expanded @endif">
+                    <li>
+                        <a href="{{ route('manager.coupons.index') }}"
+                           class="@if(request()->routeIs('manager.coupons.index') || request()->routeIs('manager.coupons.edit') || request()->routeIs('manager.coupons.show')) active @endif">
+                            <i class="fas fa-list-ul"></i>Danh sách mã
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('manager.coupons.create') }}"
+                           class="@if(request()->routeIs('manager.coupons.create')) active @endif">
+                            <i class="fas fa-plus"></i>Thêm mã mới
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('manager.coupon.check') }}"
+                           class="@if(request()->routeIs('manager.coupon.check*')) active @endif">
+                            <i class="fas fa-search"></i>Kiểm tra nhanh
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('manager.coupon.expired') }}"
+                           class="@if(request()->routeIs('manager.coupon.expired')) active @endif">
+                            <i class="fas fa-history"></i>Mã hết hạn
+                        </a>
+                    </li>
+                </ul>
+            </li>
         </ul>
     </aside>
 

@@ -178,9 +178,9 @@ class BookingController extends Controller
 
         // Lấy thông tin ghế và những ghế đã đặt (chỉ lấy ghế chưa hủy và chưa hết hạn)
         $activeBookings = $showtime->bookings()
-            ->where('status', '!=', 'Cancelled')
+            ->whereNotIn('status', [\App\Models\Booking::STATUS_CANCELLED, \App\Models\Booking::STATUS_EXPIRED, 'cancelled', 'expired'])
             ->where(function ($q) {
-                $q->whereNotIn('status', ['Pending', 'PROCESSING'])
+                $q->whereNotIn('status', [\App\Models\Booking::STATUS_PENDING, \App\Models\Booking::STATUS_PROCESSING, 'pending', 'processing', 'Pending', 'PROCESSING'])
                   ->orWhere('booking_time', '>=', now()->subMinutes(config('booking.seat_hold.duration_minutes', 10)));
             })
             ->with('bookedSeats')
@@ -192,7 +192,8 @@ class BookingController extends Controller
 
         foreach ($activeBookings as $booking) {
             $seatIds = $booking->bookedSeats->pluck('seat_id')->toArray();
-            if ($userId && in_array($booking->status, ['Pending', 'PROCESSING']) && $booking->user_id == $userId) {
+            $statusLower = strtolower((string) $booking->status);
+            if ($userId && in_array($statusLower, [\App\Models\Booking::STATUS_PENDING, \App\Models\Booking::STATUS_PROCESSING, 'pending', 'processing']) && (int) $booking->user_id === (int) $userId) {
                 $myPendingSeats = array_merge($myPendingSeats, $seatIds);
             } else {
                 $bookedSeats = array_merge($bookedSeats, $seatIds);
@@ -206,12 +207,16 @@ class BookingController extends Controller
         if ($userId && !empty($myPendingSeats)) {
             $myPendingBooking = \App\Models\Booking::where('user_id', $userId)
                 ->where('showtime_id', $showtime->id)
-                ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
+                ->whereIn(DB::raw('LOWER(status)'), [\App\Models\Booking::STATUS_PENDING, \App\Models\Booking::STATUS_PROCESSING, 'pending', 'processing'])
                 ->orderBy('booking_time', 'desc')
                 ->first();
 
-            if ($myPendingBooking) {
-                $expiresAtMs = ($myPendingBooking->booking_time->timestamp + \App\Services\BookingService::getHoldDuration() * 60) * 1000;
+            if ($myPendingBooking && $myPendingBooking->booking_time) {
+                $holdDuration = \App\Services\BookingService::getHoldDuration();
+                $expiresAt = \Carbon\Carbon::parse($myPendingBooking->booking_time)->addMinutes($holdDuration);
+                if (now()->lt($expiresAt)) {
+                    $expiresAtMs = $expiresAt->timestamp * 1000;
+                }
             }
         }
 

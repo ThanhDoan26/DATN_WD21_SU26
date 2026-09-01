@@ -125,14 +125,14 @@ class BookingController extends AdminController
             'user_id' => 'nullable|exists:users,id',
             'showtime_id' => 'required|exists:showtimes,id',
             'total_price' => 'required|numeric|min:0',
-            'status' => 'required|in:Pending,Paid,Cancelled,Used',
+            'status' => 'required|in:pending,paid,cancelled,used',
             'payment_method' => 'nullable|string|max:100',
             'booking_code' => 'required|string|max:50|unique:bookings,booking_code',
             'notes' => 'nullable|string|max:500',
         ]);
 
         $validated['booking_time'] = now();
-        if ($validated['status'] === 'Paid') {
+        if ($validated['status'] === Booking::STATUS_PAID) {
             $validated['payment_time'] = now();
         }
 
@@ -179,26 +179,26 @@ class BookingController extends AdminController
             'user_id' => 'nullable|exists:users,id',
             'showtime_id' => 'required|exists:showtimes,id',
             'total_price' => 'required|numeric|min:0',
-            'status' => 'required|in:Pending,Paid,Cancelled,Used',
+            'status' => 'required|in:pending,paid,cancelled,used',
             'payment_method' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:500',
             'cancellation_reason' => 'nullable|string|max:500',
         ]);
 
         DB::transaction(function () use ($booking, $validated) {
-            $oldStatus = $booking->status;
+            $oldStatus = $booking->status; // already lowercase via accessor
             $newStatus = $validated['status'];
 
-            if ($newStatus === 'Paid' && $oldStatus !== 'Paid') {
+            if ($newStatus === Booking::STATUS_PAID && $oldStatus !== Booking::STATUS_PAID) {
                 $validated['payment_time'] = now();
                 $booking->bookedSeats()->update(['status' => 'CONFIRMED']);
             }
 
-            if ($newStatus === 'Cancelled' && $oldStatus !== 'Cancelled') {
+            if ($newStatus === Booking::STATUS_CANCELLED && $oldStatus !== Booking::STATUS_CANCELLED) {
                 $validated['cancelled_at'] = now();
 
                 // Hoàn lại lượt dùng mã giảm giá nếu có
-                if ($booking->coupon_id && in_array($oldStatus, ['Paid', 'Pending', 'SUCCESS'])) {
+                if ($booking->coupon_id && in_array($oldStatus, [Booking::STATUS_PAID, Booking::STATUS_PENDING])) {
                     $booking->coupon()->decrement('used_count');
                 }
 
@@ -218,13 +218,13 @@ class BookingController extends AdminController
      */
     public function destroy(Booking $booking)
     {
-        if (in_array($booking->status, ['Paid', 'Used', 'SUCCESS'])) {
+        if (in_array($booking->status, [Booking::STATUS_PAID, Booking::STATUS_USED])) {
             return redirect()->route('admin.bookings.index')
                 ->with('error', 'Không thể xóa đơn hàng đã thanh toán hoặc đã sử dụng để bảo toàn dữ liệu tài chính và báo cáo doanh thu. Vui lòng chuyển trạng thái sang "Cancelled" nếu cần hủy đơn.');
         }
 
         DB::transaction(function () use ($booking) {
-            if ($booking->coupon_id && in_array($booking->status, ['Paid', 'Pending', 'SUCCESS'])) {
+            if ($booking->coupon_id && in_array($booking->status, [Booking::STATUS_PAID, Booking::STATUS_PENDING])) {
                 $booking->coupon()->decrement('used_count');
             }
 

@@ -16,9 +16,6 @@ Route::middleware(['auth', 'role:STAFF', 'cinema.assignment'])->prefix('staff')-
     Route::post('/ticket-checkin', [CinemaStaffDashboardController::class, 'checkIn'])->name('ticket.checkin');
     Route::get('/ticket-print/{type}/{id}', [CinemaStaffDashboardController::class, 'printTicket'])->name('ticket.print');
 
-    // Tra cứu Mã giảm giá (Staff)
-    Route::get('/coupons', [CouponController::class, 'index'])->name('coupons.index');
-
     // Walk-in Booking
     Route::get('/walk-in/movies', [\App\Http\Controllers\Staff\WalkInBookingController::class, 'movies'])->name('walkin.movies');
     Route::get('/walk-in/movie/{movie}/dates', [\App\Http\Controllers\Staff\WalkInBookingController::class, 'selectDatesAndShowtimes'])->name('walkin.dates');

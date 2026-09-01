@@ -21,7 +21,7 @@ class ComboReviewController extends Controller
             ->with('combos') // Ensure combos relationship is loaded
             ->firstOrFail();
 
-        if ($booking->status !== 'Paid') {
+        if (!$booking->isPaid()) {
             return back()->with('error', 'Bạn chỉ có thể đánh giá combo khi đơn hàng đã thanh toán thành công.');
         }
 

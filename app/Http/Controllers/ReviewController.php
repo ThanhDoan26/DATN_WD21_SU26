@@ -41,9 +41,9 @@ class ReviewController extends Controller
             ->where('bookings.user_id', $userId)
             ->where('showtimes.movie_id', $movieId)
             ->where(function ($q) {
-                $q->where('bookings.status', 'Used')
+                $q->where('bookings.status', 'used')
                   ->orWhere(function ($q2) {
-                      $q2->where('bookings.status', 'Paid')
+                      $q2->where('bookings.status', 'paid')
                          ->where('showtimes.start_time', '<', now());
                   });
             })
@@ -82,9 +82,9 @@ class ReviewController extends Controller
                     ->where('bookings.user_id', $userId)
                     ->where('showtimes.movie_id', $movieId)
                     ->where(function ($q) {
-                        $q->where('bookings.status', 'Used')
+                        $q->where('bookings.status', 'used')
                           ->orWhere(function ($q2) {
-                              $q2->where('bookings.status', 'Paid')
+                              $q2->where('bookings.status', 'paid')
                                  ->where('showtimes.start_time', '<', now());
                           });
                     })
@@ -173,9 +173,9 @@ class ReviewController extends Controller
                     ->where('bookings.user_id', $userId)
                     ->where('showtimes.movie_id', $movieId)
                     ->where(function ($q) {
-                        $q->where('bookings.status', 'Used')
+                        $q->where('bookings.status', 'used')
                           ->orWhere(function ($q2) {
-                              $q2->where('bookings.status', 'Paid')
+                              $q2->where('bookings.status', 'paid')
                                  ->where('showtimes.start_time', '<', now());
                           });
                     })
