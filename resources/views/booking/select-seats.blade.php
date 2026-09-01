@@ -661,10 +661,23 @@
             try {
                 const resumeKey = 'resume_seats_showtime_' + showtimeId;
                 const isResuming = sessionStorage.getItem(resumeKey) === '1' || new URLSearchParams(window.location.search).has('resume_seats');
-                const serverHasPendingSeats = @json(!empty($myPendingSeats));
+                const myPendingSeatIds = @json($myPendingSeats ?? []);
+                const serverHasPendingSeats = Array.isArray(myPendingSeatIds) && myPendingSeatIds.length > 0;
                 const stored = sessionStorage.getItem(STORAGE_KEY);
 
                 // 1. Phục hồi các ghế đang giữ (Pending) từ Database do PHP render sẵn
+                if (serverHasPendingSeats) {
+                    myPendingSeatIds.forEach(id => {
+                        selectedSeats.add(parseInt(id));
+                        const button = document.querySelector(`[data-seat-id="${id}"]`);
+                        if (button) {
+                            button.classList.remove('booked');
+                            button.classList.add('selected');
+                            button.disabled = false;
+                        }
+                    });
+                }
+
                 document.querySelectorAll('.seat.selected').forEach(button => {
                     const seatId = parseInt(button.getAttribute('data-seat-id'));
                     if (!isNaN(seatId)) {
@@ -677,9 +690,11 @@
                     const ids = JSON.parse(stored);
                     ids.forEach(id => {
                         const button = document.querySelector(`[data-seat-id="${id}"]`);
-                        if (button && !button.disabled && !button.classList.contains('booked') && !button.classList.contains('broken')) {
+                        if (button && !button.classList.contains('broken')) {
                             selectedSeats.add(id);
+                            button.classList.remove('booked');
                             button.classList.add('selected');
+                            button.disabled = false;
                         }
                     });
                 }
@@ -992,14 +1007,6 @@
             window.isNavigatingToCheckout = true;
             document.getElementById('seat-selection-form').submit();
         }
-
-        // --- Xử lý thông báo lỗi từ session ---
-        @if(session('error'))
-            window.showToast("{{ session('error') }}", 'error');
-        @endif
-        @if(session('success'))
-            window.showToast("{{ session('success') }}", 'success');
-        @endif
 
         // --- Unit Tests cho Boundary Exception ---
         function runSeatValidationTests() {
@@ -1423,32 +1430,6 @@
             if (event.persisted) {
                 pollBookedSeats();
             }
-        });
-
-        // --- Giải phóng ghế tức thì khi đóng tab / rời trang (Beacon API) ---
-        let beaconSent = false;
-        function sendReleaseSeatsBeacon() {
-            if (beaconSent || window.isNavigatingToCheckout) return;
-
-            const selectedSeatIds = Array.from(selectedSeats);
-            if (selectedSeatIds.length > 0) {
-                let data = new FormData();
-                data.append('showtime_id', showtimeId);
-                data.append('seat_ids', selectedSeatIds.join(','));
-
-                if (navigator.sendBeacon) {
-                    navigator.sendBeacon('/api/v1/bookings/release-hold-seats', data);
-                    beaconSent = true;
-                }
-            }
-        }
-
-        window.addEventListener('beforeunload', function (event) {
-            sendReleaseSeatsBeacon();
-        });
-
-        window.addEventListener('pagehide', function (event) {
-            sendReleaseSeatsBeacon();
         });
     </script>
 @endpush

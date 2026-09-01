@@ -1094,56 +1094,12 @@
             })
             .then(res => res.json())
             .then(data => {
-                if(data.success) {
-                    window.location.href = data.redirect_url || "{{ route('movies.show', $showtime->movie_id) }}";
-                } else {
-                    window.showToast(data.error || "Có lỗi xảy ra khi hủy vé.", 'error');
-                    closeCancelModal();
-                    btn.disabled = false;
-                    btn.innerHTML = 'Hủy đặt vé';
-                }
+                window.location.href = data.redirect_url || "{{ route('home') }}";
             })
             .catch(err => {
                 console.error(err);
-                window.showToast("Lỗi kết nối.", 'error');
-                closeCancelModal();
-                btn.disabled = false;
-                btn.innerHTML = 'Hủy đặt vé';
+                window.location.href = "{{ route('home') }}";
             });
         }
-
-        // --- Giải phóng ghế tức thì khi đóng tab / rời trang (Beacon API) ---
-        let beaconSent = false;
-        function sendReleaseSeatsBeacon() {
-            if (beaconSent || window.isConfirmingReservation) return;
-
-            const bookingId = window.currentPendingBookingId || {{ $pendingBooking->id ?? 'null' }};
-            const showtimeId = {{ $showtime->id ?? 'null' }};
-            const seatIds = @json($seatIds ?? []);
-
-            let data = new FormData();
-            if (bookingId) {
-                data.append('booking_id', bookingId);
-            }
-            if (showtimeId) {
-                data.append('showtime_id', showtimeId);
-            }
-            if (Array.isArray(seatIds) && seatIds.length > 0) {
-                data.append('seat_ids', seatIds.join(','));
-            }
-
-            if (navigator.sendBeacon) {
-                navigator.sendBeacon('/api/v1/bookings/release-hold-seats', data);
-                beaconSent = true;
-            }
-        }
-
-        window.addEventListener('beforeunload', function (event) {
-            sendReleaseSeatsBeacon();
-        });
-
-        window.addEventListener('pagehide', function (event) {
-            sendReleaseSeatsBeacon();
-        });
     </script>
 @endpush
