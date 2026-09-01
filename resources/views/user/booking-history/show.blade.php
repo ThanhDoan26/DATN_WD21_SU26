@@ -31,20 +31,30 @@
         
         <div class="bg-slate-800 rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-slate-700/50">
             <!-- Movie Banner Header -->
-            <div class="relative h-48 md:h-64 overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" alt="Ticket Background" class="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-700" />
+            <div class="relative min-h-[13rem] md:min-h-[16rem] overflow-hidden flex flex-col justify-end">
+                <img src="https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" alt="Ticket Background" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-700" />
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-800 via-slate-800/60 to-transparent"></div>
                 
-                <div class="absolute bottom-6 left-8 right-8 flex justify-between items-end">
-                    <div>
-                        <span class="inline-block py-1 px-3 rounded-full bg-primary text-white text-[10px] font-bold uppercase tracking-wider mb-2">Vé xem phim</span>
-                        <h3 class="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter">{{ $booking->showtime->movie->title }}</h3>
-                        <p class="text-slate-300 font-medium mt-1">
-                            <i class="fas fa-map-marker-alt text-primary mr-2"></i>{{ $booking->showtime->room->cinema->name }}
-                        </p>
+                <div class="relative z-10 p-6 md:p-8 flex justify-between items-end gap-4">
+                    <div class="max-w-xl">
+                        <span class="inline-block py-1 px-3 rounded-full bg-primary text-white text-[10px] font-bold uppercase tracking-wider mb-2 shadow-sm">Vé xem phim</span>
+                        <h3 class="text-2xl sm:text-3xl md:text-4xl font-black text-white uppercase tracking-tighter leading-tight">{{ $booking->showtime->movie->title }}</h3>
+                        
+                        <div class="mt-2.5 space-y-1">
+                            <p class="text-white font-bold text-sm sm:text-base flex items-center gap-2">
+                                <i class="fas fa-film text-primary text-sm flex-shrink-0"></i>
+                                <span>{{ $booking->showtime->room->cinema->name }}</span>
+                            </p>
+                            @if(!empty($booking->showtime->room->cinema->address))
+                                <p class="text-slate-300 text-xs sm:text-sm flex items-start gap-2 font-normal leading-relaxed">
+                                    <i class="fas fa-map-marker-alt text-primary text-xs mt-0.5 flex-shrink-0"></i>
+                                    <span class="text-slate-300/90">{{ $booking->showtime->room->cinema->address }}</span>
+                                </p>
+                            @endif
+                        </div>
                     </div>
-                    <div class="text-right hidden sm:block">
-                        <p class="text-slate-500 text-xs font-bold uppercase tracking-widest">Mã đặt vé</p>
+                    <div class="text-right hidden sm:block flex-shrink-0">
+                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Mã đặt vé</p>
                         <p class="text-2xl font-mono text-primary font-black">#{{ $booking->booking_code }}</p>
                     </div>
                 </div>
@@ -154,6 +164,18 @@
                         @endif
 
                         <div class="mt-10 p-6 bg-slate-900/30 rounded-2xl border border-dashed border-slate-700">
+                             @if($booking->coupon || $booking->coupon_id)
+                                 <div class="mb-4 pb-4 border-b border-slate-800/80 space-y-2">
+                                     <div class="flex justify-between items-center text-sm">
+                                         <span class="text-slate-400 font-semibold">Mã giảm giá:</span>
+                                         <span class="text-white font-bold tracking-wider">{{ $booking->coupon ? $booking->coupon->code : ('Mã #' . $booking->coupon_id) }}</span>
+                                     </div>
+                                     <div class="flex justify-between items-center text-sm">
+                                         <span class="text-slate-400 font-semibold">Giảm giá:</span>
+                                         <span class="text-emerald-400 font-bold">-{{ number_format($booking->discount_amount ?? 0) }}đ</span>
+                                     </div>
+                                 </div>
+                             @endif
                              <div class="flex justify-between items-end">
                                 <div>
                                     <p class="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Tổng cộng đã thanh toán</p>

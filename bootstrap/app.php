@@ -25,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'cancel-explicit',
             'api/booking/cancel-explicit',
+            'api/v1/bookings/release-hold-seats',
+            'api/bookings/release-hold-seats',
         ]);
 
         $middleware->web(append: [

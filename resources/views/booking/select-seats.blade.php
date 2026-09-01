@@ -217,6 +217,18 @@
             100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
 
+        @keyframes seatConflictShake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
+
+        .seat.seat-conflict-flash {
+            animation: seatConflictShake 0.4s ease-in-out 3;
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 14px rgba(239, 68, 68, 0.9) !important;
+        }
+
         /* Legend */
         .seat-legend {
             display: flex;
@@ -360,18 +372,6 @@
     <!-- Page Header -->
     <div class="bg-gradient-to-b from-slate-800 to-slate-900 pt-32 pb-16 px-4">
         <div class="max-w-7xl mx-auto">
-            <!-- Navigation -->
-            <div class="flex items-center gap-4 mb-6">
-                <a href="{{ route('booking.select-dates-showtimes', ['movie' => $showtime->movie_id, 'cinema' => $showtime->room->cinema_id]) }}" 
-                   class="text-slate-300 hover:text-white flex items-center gap-2 transition-colors px-4 py-2 bg-slate-800/50 rounded-lg backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50">
-                    <i class="fas fa-arrow-left"></i> Quay lại
-                </a>
-                <a href="{{ route('home') }}" 
-                   class="text-slate-300 hover:text-white flex items-center gap-2 transition-colors px-4 py-2 bg-slate-800/50 rounded-lg backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50">
-                    <i class="fas fa-home"></i> Trang chủ
-                </a>
-            </div>
-
             <div class="flex items-center gap-4 mb-4">
                 <i class="fas fa-chair text-primary text-4xl"></i>
                 <h1 class="text-5xl md:text-6xl font-bold">Chọn Ghế</h1>
@@ -515,6 +515,7 @@
         @csrf
         <input type="hidden" name="showtime_id" id="form_showtime_id" value="{{ $showtime->id }}" />
         <input type="hidden" name="seat_ids" id="form_seat_ids" value="" />
+        <input type="hidden" name="combos" id="form_combos" value="" />
         
         <div class="max-w-7xl mx-auto px-4 py-4 md:py-6 flex flex-col md:flex-row items-center justify-between gap-6">
             <!-- Selected Seats -->
@@ -536,9 +537,9 @@
                 <button type="button" onclick="handleCancelClick()" id="btnCancelAction" class="bg-slate-700 hover:bg-red-600 text-white font-medium py-3 px-6 rounded-lg transition whitespace-nowrap text-center border border-slate-600">
                     Hủy đặt vé
                 </button>
-                <a href="{{ route('booking.select-dates-showtimes', ['movie' => $showtime->movie_id, 'cinema' => $showtime->room->cinema_id]) }}" class="bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-lg transition whitespace-nowrap text-center">
+                <button type="button" onclick="handleBackToMovieClick()" id="btnBackAction" class="bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-lg transition whitespace-nowrap text-center border border-slate-600">
                     Quay lại
-                </a>
+                </button>
                 <button type="button"
                         onclick="proceedToCheckout()"
                         id="checkoutButton"
@@ -580,19 +581,40 @@
         </div>
     </div>
 
+    {{-- ======== BACK CONFIRMATION MODAL ======== --}}
+    <div id="backConfirmModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div style="background: #1e293b; padding: 2rem; border-radius: 1rem; max-width: 450px; width: 90%; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+            <div style="font-size: 3rem; color: #f59e0b; text-align: center; margin-bottom: 1rem;">
+                <i class="fas fa-undo-alt"></i>
+            </div>
+            <h3 style="color: white; font-size: 1.25rem; font-weight: bold; text-align: center; margin-bottom: 1rem;">Đổi suất chiếu khác?</h3>
+            <p id="backConfirmModalText" style="color: #94a3b8; text-align: center; margin-bottom: 2rem; line-height: 1.6;">
+                Bạn có muốn đổi suất chiếu khác? Ghế đang chọn sẽ bị hủy giữ.
+            </p>
+            <div style="display: flex; gap: 1rem;">
+                <button type="button" onclick="document.getElementById('backConfirmModal').style.display='none'" style="flex: 1; padding: 0.75rem; background: #334155; color: white; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s;">
+                    Ở lại
+                </button>
+                <button type="button" onclick="confirmBackToMovie()" id="btnConfirmBack" style="flex: 1; padding: 0.75rem; background: #f59e0b; color: white; border-radius: 0.5rem; font-weight: bold; transition: background 0.2s;">
+                    Đồng ý
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- ======== CANCEL CONFIRMATION MODAL ======== --}}
     <div id="cancelModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div style="background: #1e293b; padding: 2rem; border-radius: 1rem; max-width: 400px; width: 90%; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+        <div style="background: #1e293b; padding: 2rem; border-radius: 1rem; max-width: 450px; width: 90%; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
             <div style="font-size: 3rem; color: #ef4444; text-align: center; margin-bottom: 1rem;">
                 <i class="fas fa-exclamation-triangle"></i>
             </div>
             <h3 style="color: white; font-size: 1.25rem; font-weight: bold; text-align: center; margin-bottom: 1rem;">Xác nhận hủy đặt vé</h3>
-            <p style="color: #94a3b8; text-align: center; margin-bottom: 2rem;">
-                Bạn có chắc muốn hủy lượt đặt vé này không? Các ghế bạn đang giữ sẽ được nhả lại cho hệ thống.
+            <p style="color: #94a3b8; text-align: center; margin-bottom: 2rem; line-height: 1.6;">
+                Bạn có chắc muốn hủy lượt đặt vé này không? Toàn bộ ghế bạn đang giữ sẽ được nhả lại cho hệ thống và quay về Trang chủ.
             </p>
             <div style="display: flex; gap: 1rem;">
                 <button type="button" onclick="document.getElementById('cancelModal').style.display='none'" style="flex: 1; padding: 0.75rem; background: #334155; color: white; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s;">
-                    Đóng
+                    Ở lại
                 </button>
                 <button type="button" onclick="confirmCancelBooking()" id="btnConfirmCancel" style="flex: 1; padding: 0.75rem; background: #ef4444; color: white; border-radius: 0.5rem; font-weight: bold; transition: background 0.2s;">
                     Hủy đặt vé
@@ -687,19 +709,47 @@
         }
 
         function handleCancelClick() {
+            const selectedSeatCodes = Array.from(selectedSeats).map(id => {
+                const btn = document.querySelector(`[data-seat-id="${id}"]`);
+                return btn ? btn.getAttribute('data-seat-code') : id;
+            }).filter(Boolean);
+
             const serverHasPendingSeats = @json(!empty($myPendingSeats));
             const hasActiveBooking = (serverExpiresAt && parseInt(serverExpiresAt, 10) > Date.now()) || serverHasPendingSeats;
 
-            if (hasActiveBooking) {
+            if (selectedSeatCodes.length > 0 || hasActiveBooking) {
                 openCancelModal();
-            } else if (selectedSeats.size > 0) {
-                if (confirm("Bạn có chắc muốn hủy đặt vé và quay lại trang chi tiết phim không?")) {
-                    selectedSeats.clear();
-                    sessionStorage.removeItem(STORAGE_KEY);
-                    sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
-                    window.location.href = "{{ route('movies.show', $showtime->movie_id) }}";
-                }
             } else {
+                sessionStorage.removeItem(STORAGE_KEY);
+                sessionStorage.removeItem('booking_expires_at');
+                sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
+                sessionStorage.removeItem('selectedCombos_showtime_' + showtimeId);
+                window.location.href = "{{ route('home') }}";
+            }
+        }
+
+        function handleBackToMovieClick() {
+            const selectedSeatCodes = Array.from(selectedSeats).map(id => {
+                const btn = document.querySelector(`[data-seat-id="${id}"]`);
+                return btn ? btn.getAttribute('data-seat-code') : id;
+            }).filter(Boolean);
+
+            const serverHasPendingSeats = @json(!empty($myPendingSeats));
+            const hasActiveBooking = (serverExpiresAt && parseInt(serverExpiresAt, 10) > Date.now()) || serverHasPendingSeats;
+
+            if (selectedSeatCodes.length > 0 || hasActiveBooking) {
+                const seatListStr = selectedSeatCodes.length > 0 ? selectedSeatCodes.join(', ') : 'đang chọn';
+                const modalText = document.getElementById('backConfirmModalText');
+                if (modalText) {
+                    modalText.innerHTML = `Bạn có muốn đổi suất chiếu khác? Ghế <strong>${seatListStr}</strong> sẽ bị hủy giữ.`;
+                }
+                const modal = document.getElementById('backConfirmModal');
+                if (modal) modal.style.display = 'flex';
+            } else {
+                sessionStorage.removeItem(STORAGE_KEY);
+                sessionStorage.removeItem('booking_expires_at');
+                sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
+                sessionStorage.removeItem('selectedCombos_showtime_' + showtimeId);
                 window.location.href = "{{ route('movies.show', $showtime->movie_id) }}";
             }
         }
@@ -720,7 +770,7 @@
                 button.classList.remove('selected');
             } else {
                 if (selectedSeats.size >= MAX_TICKETS_PER_BOOKING) {
-                    alert('Bạn chỉ được đặt tối đa ' + MAX_TICKETS_PER_BOOKING + ' ghế cho mỗi đơn hàng.');
+                    window.showToast('Bạn chỉ được đặt tối đa ' + MAX_TICKETS_PER_BOOKING + ' ghế cho mỗi đơn hàng.', 'error');
                     return;
                 }
 
@@ -765,62 +815,71 @@
         }
 
         function validateSeatSelection() {
-            let result = { isValid: true, bypassRule: null };
+            const ALLOW_BOUNDARY_ORPHAN = @json(config('booking.seat_hold.allow_boundary_orphan_seat', false));
+            let result = { isValid: true };
+            const seatRows = document.querySelectorAll('.row-seats');
             
-            const rows = document.querySelectorAll('.row-seats');
-            for (let r = 0; r < rows.length; r++) {
-                const rowElement = rows[r];
-                const seats = Array.from(rowElement.querySelectorAll('.seat'));
+            for (let row of seatRows) {
+                const seats = Array.from(row.children).filter(el => el.classList.contains('seat'));
                 const totalSeats = seats.length;
                 
                 let emptyBlocks = [];
                 let currentEmptyBlock = [];
                 
-                seats.forEach((seat, index) => {
-                    let isBookedOrBroken = seat.classList.contains('booked') || seat.classList.contains('broken') || seat.disabled;
-                    let isSelected = seat.classList.contains('selected');
-                    let isAvailableEmpty = !isBookedOrBroken && !isSelected;
+                for (let i = 0; i < totalSeats; i++) {
+                    const el = seats[i];
+                    const isTaken = el.classList.contains('booked') || el.classList.contains('holding') || el.classList.contains('broken');
+                    const isSelected = el.classList.contains('selected');
                     
-                    if (isAvailableEmpty) {
-                        currentEmptyBlock.push(index);
+                    if (!isTaken && !isSelected) {
+                        currentEmptyBlock.push(i);
                     } else {
                         if (currentEmptyBlock.length > 0) {
                             emptyBlocks.push(currentEmptyBlock);
                             currentEmptyBlock = [];
                         }
                     }
-                });
+                }
                 
                 if (currentEmptyBlock.length > 0) {
                     emptyBlocks.push(currentEmptyBlock);
                 }
                 
-                // Check each empty block for gap = 1
-                for (let i = 0; i < emptyBlocks.length; i++) {
-                    const block = emptyBlocks[i];
+                for (let block of emptyBlocks) {
                     if (block.length === 1) {
-                        let emptyIndex = block[0];
+                        const emptyIndex = block[0];
+                        const isLeftSelected = (emptyIndex > 0) && seats[emptyIndex - 1].classList.contains('selected');
+                        const isRightSelected = (emptyIndex < totalSeats - 1) && seats[emptyIndex + 1].classList.contains('selected');
                         
-                        let leftAdjacent = (emptyIndex > 0) ? seats[emptyIndex - 1] : null;
-                        let rightAdjacent = (emptyIndex < totalSeats - 1) ? seats[emptyIndex + 1] : null;
-                        
-                        let isLeftSelected = leftAdjacent && leftAdjacent.classList.contains('selected');
-                        let isRightSelected = rightAdjacent && rightAdjacent.classList.contains('selected');
-                        
-                        // We only care if this single empty seat is adjacent to at least one selected seat
                         if (isLeftSelected || isRightSelected) {
-                            let isAbsoluteStart = (emptyIndex === 0);
-                            let isAbsoluteEnd = (emptyIndex === totalSeats - 1);
+                            const isAbsoluteStart = (emptyIndex === 0);
+                            const isAbsoluteEnd = (emptyIndex === totalSeats - 1);
                             
-                            if (isAbsoluteStart || isAbsoluteEnd) {
-                                // Boundary Exception applies
-                                result.bypassRule = 'BOUNDARY_EXCEPTION';
+                            if (isAbsoluteStart) {
+                                if (!ALLOW_BOUNDARY_ORPHAN) {
+                                    return {
+                                        isValid: false,
+                                        errorCode: 'SINGLE_SEAT_AT_START',
+                                        message: 'Bạn không thể bỏ trống 1 ghế ở đầu dãy.'
+                                    };
+                                } else {
+                                    result.bypassRule = 'BOUNDARY_EXCEPTION';
+                                }
+                            } else if (isAbsoluteEnd) {
+                                if (!ALLOW_BOUNDARY_ORPHAN) {
+                                    return {
+                                        isValid: false,
+                                        errorCode: 'SINGLE_SEAT_AT_END',
+                                        message: 'Bạn không thể bỏ trống 1 ghế ở cuối dãy.'
+                                    };
+                                } else {
+                                    result.bypassRule = 'BOUNDARY_EXCEPTION';
+                                }
                             } else {
-                                // REJECTED: Single seat in the middle
                                 return { 
                                     isValid: false, 
                                     errorCode: 'SINGLE_SEAT_IN_MIDDLE', 
-                                    message: 'Không thể bỏ trống 1 ghế ở giữa. Vui lòng chọn ghế sát mép hoặc chọn liên tiếp.' 
+                                    message: 'Bạn không thể bỏ trống 1 ghế ở giữa.' 
                                 };
                             }
                         }
@@ -862,13 +921,56 @@
             return response;
         }
 
-        function proceedToCheckout(e) {
+        async function ensureSelectedSeatsAvailable() {
+            if (selectedSeats.size === 0) return true;
+
+            try {
+                const response = await fetch(`/api/booking/showtime/${showtimeId}/booked-seats`);
+                const data = await response.json();
+                const bookedIds = new Set(data?.bookedSeats || []);
+                const conflictIds = Array.from(selectedSeats).filter(id => bookedIds.has(id));
+
+                if (conflictIds.length === 0) {
+                    return true;
+                }
+
+                conflictIds.forEach(id => {
+                    const button = document.querySelector(`[data-seat-id="${id}"]`);
+                    if (button) {
+                        button.classList.add('booked');
+                        button.classList.remove('selected');
+                        button.disabled = true;
+                        button.title = 'Ghế đã có người đặt hoặc đang được giữ';
+                    }
+                    selectedSeats.delete(id);
+                });
+
+                const conflictCodes = conflictIds.map(id => {
+                    const button = document.querySelector(`[data-seat-id="${id}"]`);
+                    return button ? button.getAttribute('data-seat-code') : `ghế ${id}`;
+                }).join(', ');
+
+                window.showToast(`Ghế ${conflictCodes} đã được khách chọn và đã có người đặt/giữ. Vui lòng chọn ghế khác.`, 'error');
+                updateSummary();
+                return false;
+            } catch (error) {
+                console.error('Seat availability check failed:', error);
+                return true;
+            }
+        }
+
+        async function proceedToCheckout(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
             if (selectedSeats.size === 0) return;
 
             const validation = validateSeatSelection();
             if (!validation.isValid) {
-                alert(validation.message || "Ghế không hợp lệ.");
+                window.showToast(validation.message || "Ghế không hợp lệ.", 'error');
+                return;
+            }
+
+            const isAvailable = await ensureSelectedSeatsAvailable();
+            if (!isAvailable) {
                 return;
             }
 
@@ -878,15 +980,25 @@
             const seatIds = Array.from(selectedSeats).join(',');
             document.getElementById('form_seat_ids').value = seatIds;
 
+            const combosKey = 'selectedCombos_showtime_' + showtimeId;
+            const storedCombos = sessionStorage.getItem(combosKey);
+            if (storedCombos) {
+                document.getElementById('form_combos').value = storedCombos;
+            }
+
             const btn = document.getElementById('checkoutButton');
             if (btn) btn.disabled = true;
 
+            window.isNavigatingToCheckout = true;
             document.getElementById('seat-selection-form').submit();
         }
 
         // --- Xử lý thông báo lỗi từ session ---
         @if(session('error'))
-            alert("{{ session('error') }}");
+            window.showToast("{{ session('error') }}", 'error');
+        @endif
+        @if(session('success'))
+            window.showToast("{{ session('success') }}", 'success');
         @endif
 
         // --- Unit Tests cho Boundary Exception ---
@@ -919,20 +1031,20 @@
                 // Scenario A1 (Boundary Left): 5 seats [1,2,3,4,5], user selects [2,3,4,5] -> indices [1,2,3,4]
                 mockRows = [createMockRow(5, [1, 2, 3, 4])];
                 let resA1 = validateSeatSelection();
-                console.assert(resA1.isValid === true && resA1.bypassRule === 'BOUNDARY_EXCEPTION', "Test A1 Failed");
-                if (resA1.isValid) console.log("Scenario A1 Passed");
+                console.assert(resA1.isValid === false && resA1.errorCode === 'SINGLE_SEAT_AT_START', "Test A1 Failed");
+                if (!resA1.isValid) console.log("Scenario A1 (Head Blocked) Passed");
 
                 // Scenario A2 (Boundary Right): 5 seats [1,2,3,4,5], user selects [1,2,3,4] -> indices [0,1,2,3]
                 mockRows = [createMockRow(5, [0, 1, 2, 3])];
                 let resA2 = validateSeatSelection();
-                console.assert(resA2.isValid === true && resA2.bypassRule === 'BOUNDARY_EXCEPTION', "Test A2 Failed");
-                if (resA2.isValid) console.log("Scenario A2 Passed");
+                console.assert(resA2.isValid === false && resA2.errorCode === 'SINGLE_SEAT_AT_END', "Test A2 Failed");
+                if (!resA2.isValid) console.log("Scenario A2 (End Blocked) Passed");
 
                 // Scenario B1 (Middle Gap): 5 seats [1,2,3,4,5], user selects [1,2,4,5] -> indices [0,1,3,4], empty [2]
                 mockRows = [createMockRow(5, [0, 1, 3, 4])];
                 let resB1 = validateSeatSelection();
                 console.assert(resB1.isValid === false && resB1.errorCode === 'SINGLE_SEAT_IN_MIDDLE', "Test B1 Failed");
-                if (!resB1.isValid) console.log("Scenario B1 Passed");
+                if (!resB1.isValid) console.log("Scenario B1 (Middle Blocked) Passed");
                 
                 // Scenario C1 (Trapped next to booked): 5 seats, index 4 booked, user selects 0,1,2. Empty at 3.
                 let mockRowC1 = createMockRow(5, [0, 1, 2]);
@@ -961,6 +1073,7 @@
                     if (data && (data.bookedSeats !== undefined || data.myPendingSeats !== undefined)) {
                         const bookedSeatIds = data.bookedSeats || [];
                         const myPendingSeatIds = data.myPendingSeats || [];
+                        const conflictSeatCodes = [];
                         
                         document.querySelectorAll('.seat').forEach(button => {
                             const seatId = parseInt(button.getAttribute('data-seat-id'));
@@ -970,19 +1083,30 @@
                             const shouldBeBooked = bookedSeatIds.includes(seatId);
                             const isMyPendingOnServer = myPendingSeatIds.includes(seatId);
 
-                            if (shouldBeBooked && !isCurrentlyBooked) {
-                                // Ghế vừa bị đặt thành công -> Khóa ghế
-                                button.classList.add('booked');
-                                button.classList.remove('selected');
-                                button.disabled = true;
-                                button.title = "Ghế đã được đặt";
-                                
-                                if (selectedSeats.has(seatId)) {
+                            if (shouldBeBooked) {
+                                if (!isCurrentlyBooked) {
+                                    button.classList.add('booked');
+                                    button.classList.remove('selected');
+                                    button.disabled = true;
+                                    button.title = "Ghế đã có người đặt hoặc đang được giữ";
+                                }
+
+                                if (selectedSeats.has(seatId) && !isMyPendingOnServer) {
                                     selectedSeats.delete(seatId);
+                                    button.classList.remove('selected');
+                                    button.classList.add('booked');
+                                    button.disabled = true;
+                                    const seatCode = button.getAttribute('data-seat-code') || seatId;
+                                    conflictSeatCodes.push(seatCode);
+
+                                    button.classList.add('seat-conflict-flash');
+                                    setTimeout(() => {
+                                        button.classList.remove('seat-conflict-flash');
+                                    }, 1500);
                                 }
                             } else if (!shouldBeBooked) {
                                 if (isCurrentlyBooked) {
-                                    button.classList.remove('booked');
+                                    button.classList.remove('booked', 'seat-conflict-flash');
                                     button.disabled = false;
                                     button.title = button.getAttribute('data-seat-code');
                                     const seatType = button.getAttribute('data-seat-type');
@@ -1001,6 +1125,11 @@
                                 }
                             }
                         });
+
+                        if (conflictSeatCodes.length > 0) {
+                            const seatListStr = conflictSeatCodes.join(', ');
+                            window.showToast(`⚠️ Ghế ${seatListStr} đã được người khác đặt/giữ. Hệ thống đã tự động bỏ chọn các ghế này, vui lòng chọn ghế khác.`, 'error');
+                        }
 
                         updateSummary();
                     }
@@ -1079,11 +1208,42 @@
             setInterval(tick, 1000);
         }
 
-        // --- Xử lý Explicit Cancel ---
+        // --- Xử lý Quay lại trang chi tiết phim & Hủy giữ ghế ---
+        function confirmBackToMovie() {
+            const btn = document.getElementById('btnConfirmBack');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+            }
+
+            fetch("{{ route('api.booking.cancel-explicit') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                },
+                body: JSON.stringify({
+                    showtime_id: showtimeId
+                })
+            })
+            .then(res => res.json())
+            .catch(err => console.error(err))
+            .finally(() => {
+                sessionStorage.removeItem(STORAGE_KEY);
+                sessionStorage.removeItem('booking_expires_at');
+                sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
+                sessionStorage.removeItem('selectedCombos_showtime_' + showtimeId);
+                window.location.href = "{{ route('movies.show', $showtime->movie_id) }}";
+            });
+        }
+
+        // --- Xử lý Hủy đặt vé & Về trang chủ ---
         function confirmCancelBooking() {
             const btn = document.getElementById('btnConfirmCancel');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang hủy...';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang hủy...';
+            }
             
             fetch("{{ route('api.booking.cancel-explicit') }}", {
                 method: "POST",
@@ -1096,25 +1256,13 @@
                 })
             })
             .then(res => res.json())
-            .then(data => {
-                if(data.success) {
-                    sessionStorage.removeItem(STORAGE_KEY);
-                    sessionStorage.removeItem('booking_expires_at');
-                    sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
-                    window.location.href = data.redirect_url || "{{ route('movies.show', $showtime->movie_id) }}";
-                } else {
-                    alert(data.error || "Có lỗi xảy ra khi hủy vé.");
-                    closeCancelModal();
-                    btn.disabled = false;
-                    btn.innerHTML = 'Hủy đặt vé';
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert("Lỗi kết nối.");
-                document.getElementById('cancelModal').style.display='none';
-                btn.disabled = false;
-                btn.innerHTML = 'Hủy đặt vé';
+            .catch(err => console.error(err))
+            .finally(() => {
+                sessionStorage.removeItem(STORAGE_KEY);
+                sessionStorage.removeItem('booking_expires_at');
+                sessionStorage.removeItem('resume_seats_showtime_' + showtimeId);
+                sessionStorage.removeItem('selectedCombos_showtime_' + showtimeId);
+                window.location.href = "{{ route('home') }}";
             });
         }
 
@@ -1140,7 +1288,7 @@
                     sessionStorage.removeItem('booking_expires_at');
                     window.location.reload();
                 } else {
-                    alert(data.error || "Có lỗi xảy ra khi hủy vé.");
+                    window.showToast(data.error || "Có lỗi xảy ra khi hủy vé.", 'error');
                     document.getElementById('resumeBookingModal').style.display='none';
                     btn.disabled = false;
                     btn.innerHTML = 'Đặt lại từ đầu';
@@ -1148,7 +1296,7 @@
             })
             .catch(err => {
                 console.error(err);
-                alert("Lỗi kết nối.");
+                window.showToast("Lỗi kết nối.", 'error');
                 document.getElementById('resumeBookingModal').style.display='none';
                 btn.disabled = false;
                 btn.innerHTML = 'Đặt lại từ đầu';
@@ -1217,25 +1365,38 @@
         function handleRealtimeSeatUpdate(e) {
             if (!e || !e.seatIds) return;
             const currentUserId = {{ auth()->id() ?? 0 }};
-            const isOtherUser = e.userId && currentUserId && parseInt(e.userId) !== parseInt(currentUserId);
+            const isOtherUser = !e.userId || !currentUserId || parseInt(e.userId) !== parseInt(currentUserId);
+            const statusUpper = e.status ? String(e.status).toUpperCase() : '';
+            const isLockedStatus = ['PAID', 'PENDING', 'HOLD', 'BOOKED'].includes(statusUpper);
+
+            const conflictSeatCodes = [];
 
             e.seatIds.forEach(seatId => {
                 const button = document.querySelector(`.seat[data-seat-id="${seatId}"]`);
                 if (!button) return;
 
-                if (e.status === 'PAID' || e.status === 'PENDING' || e.status === 'HOLD') {
-                    // Lock seat if it belongs to another user or is not part of this session's active draft
-                    if (isOtherUser || !selectedSeats.has(seatId)) {
+                if (isLockedStatus) {
+                    const wasSelected = selectedSeats.has(seatId);
+                    
+                    if (wasSelected && isOtherUser) {
+                        selectedSeats.delete(seatId);
+                        const seatCode = button.getAttribute('data-seat-code') || seatId;
+                        conflictSeatCodes.push(seatCode);
+
+                        button.classList.add('seat-conflict-flash');
+                        setTimeout(() => {
+                            button.classList.remove('seat-conflict-flash');
+                        }, 1500);
+                    }
+
+                    if (isOtherUser || !wasSelected) {
                         button.classList.add('booked');
                         button.classList.remove('selected');
                         button.disabled = true;
-                        button.title = e.status === 'PAID' ? "Ghế đã bán" : "Ghế đang được người khác giữ";
-                        if (selectedSeats.has(seatId)) {
-                            selectedSeats.delete(seatId);
-                        }
+                        button.title = statusUpper === 'PAID' ? "Ghế đã bán" : "Ghế đang được người khác giữ";
                     }
-                } else if (e.status === 'AVAILABLE') {
-                    button.classList.remove('booked');
+                } else if (statusUpper === 'AVAILABLE') {
+                    button.classList.remove('booked', 'seat-conflict-flash');
                     button.disabled = false;
                     button.title = button.getAttribute('data-seat-code');
                     const seatType = button.getAttribute('data-seat-type');
@@ -1249,6 +1410,11 @@
                 }
             });
 
+            if (conflictSeatCodes.length > 0) {
+                const seatListStr = conflictSeatCodes.join(', ');
+                window.showToast(`⚠️ Ghế ${seatListStr} đã được người khác đặt/giữ. Hệ thống đã tự động bỏ chọn các ghế này, vui lòng chọn ghế khác.`, 'error');
+            }
+
             updateSummary();
         }
 
@@ -1257,6 +1423,32 @@
             if (event.persisted) {
                 pollBookedSeats();
             }
+        });
+
+        // --- Giải phóng ghế tức thì khi đóng tab / rời trang (Beacon API) ---
+        let beaconSent = false;
+        function sendReleaseSeatsBeacon() {
+            if (beaconSent || window.isNavigatingToCheckout) return;
+
+            const selectedSeatIds = Array.from(selectedSeats);
+            if (selectedSeatIds.length > 0) {
+                let data = new FormData();
+                data.append('showtime_id', showtimeId);
+                data.append('seat_ids', selectedSeatIds.join(','));
+
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon('/api/v1/bookings/release-hold-seats', data);
+                    beaconSent = true;
+                }
+            }
+        }
+
+        window.addEventListener('beforeunload', function (event) {
+            sendReleaseSeatsBeacon();
+        });
+
+        window.addEventListener('pagehide', function (event) {
+            sendReleaseSeatsBeacon();
         });
     </script>
 @endpush

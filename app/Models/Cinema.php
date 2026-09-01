@@ -16,6 +16,22 @@ class Cinema extends Model
     use SoftDeletes;
     protected $fillable = ['name', 'address', 'city', 'phone', 'email', 'status'];
 
+    /**
+     * Mutator to sanitize and normalize cinema name
+     */
+    public function setNameAttribute($value): void
+    {
+        $this->attributes['name'] = is_string($value) ? preg_replace('/\s+/', ' ', trim($value)) : $value;
+    }
+
+    /**
+     * Mutator to sanitize and normalize cinema address
+     */
+    public function setAddressAttribute($value): void
+    {
+        $this->attributes['address'] = is_string($value) ? preg_replace('/\s+/', ' ', trim($value)) : $value;
+    }
+
     public function rooms(): HasMany
     {
         return $this->hasMany(Room::class);

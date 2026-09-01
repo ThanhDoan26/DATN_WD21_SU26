@@ -1,15 +1,26 @@
 @extends('layouts.manager')
 
+<<<<<<< HEAD
 @section('title', 'Quản Lý Phòng Chiếu')
 @section('page_title', 'Danh Sách Phòng Chiếu')
+=======
+@section('title', 'Quản lý Phòng Chiếu')
+@section('page_title', 'Quản lý phòng chiếu')
+>>>>>>> 2e6e9fcd4a23f590b539732e4f8a628303f608df
 
 @section('content')
 <!-- Breadcrumb -->
 <div class="breadcrumb-custom mb-3">
     <nav aria-label="breadcrumb">
+<<<<<<< HEAD
         <ol class="breadcrumb mb-0 small">
             <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}" class="text-decoration-none text-muted fw-semibold">Dashboard</a></li>
             <li class="breadcrumb-item active text-emerald font-sora fw-bold">Phòng Chiếu</li>
+=======
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item active">Phòng chiếu</li>
+>>>>>>> 2e6e9fcd4a23f590b539732e4f8a628303f608df
         </ol>
     </nav>
 </div>

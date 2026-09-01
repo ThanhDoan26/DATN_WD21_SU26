@@ -5,6 +5,28 @@
 
 @section('content')
 
+<!-- WELCOME & MANAGED CINEMA BANNER -->
+<div class="card border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #0f172a 0%, #111827 100%); border-radius: 16px;">
+    <div class="card-body p-4 text-white d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="avatar-box rounded-circle text-white fw-bold d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 1.2rem; background: linear-gradient(135deg, #0d9488 0%, #06b6d4 100%);">
+                {{ strtoupper(substr(Auth::user()->name ?? 'M', 0, 1)) }}
+            </div>
+            <div>
+                <h5 class="fw-bold mb-1 text-white">Xin chào, {{ Auth::user()->name }} 👋</h5>
+                <p class="mb-0 text-white-50 small">Báo cáo & số liệu hoạt động của rạp do bạn quản lý.</p>
+            </div>
+        </div>
+        <div class="bg-white bg-opacity-10 px-3 py-2 rounded-3 border border-white border-opacity-10 d-flex align-items-center gap-2">
+            <i class="fas fa-building text-info fs-5"></i>
+            <div>
+                <div class="text-white-50 text-uppercase fw-semibold" style="font-size: 0.68rem; letter-spacing: 0.5px;">Rạp đang quản lý</div>
+                <strong class="text-info fw-bold">{{ Auth::user()->cinema->name ?? 'Chưa phân công rạp' }}</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Statistics Cards -->
 <div class="row g-3 mb-4">
     <div class="col-12 col-sm-6 col-md-4 col-lg-2">
@@ -71,7 +93,7 @@
 <!-- Quick Filters Group -->
 <div class="row mb-3">
     <div class="col-12">
-        <div class="d-flex flex-wrap gap-2 align-items-center bg-white p-3 rounded-3 shadow-sm border border-light">
+        <div class="d-flex flex-wrap gap-2 align-items-center p-3 rounded-3 shadow-sm border quick-filter-wrapper" style="background-color: var(--bg-surface); border-color: var(--border-light) !important;">
             <span class="text-muted fw-bold me-2"><i class="fas fa-bolt text-warning"></i> Lọc nhanh:</span>
             <button type="button" class="btn btn-sm btn-outline-secondary quick-filter-btn" data-type="today">Hôm nay</button>
             <button type="button" class="btn btn-sm btn-outline-secondary quick-filter-btn" data-type="yesterday">Hôm qua</button>
@@ -358,8 +380,8 @@
         transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease, border-color 0.3s ease !important;
     }
     .modern-card:hover {
-        border-color: rgba(147, 51, 234, 0.2) !important;
-        box-shadow: 0 20px 40px -10px rgba(147, 51, 234, 0.1) !important;
+        border-color: rgba(13, 148, 136, 0.2) !important;
+        box-shadow: 0 20px 40px -10px rgba(13, 148, 136, 0.1) !important;
     }
 
     /* Budget Usage Interactive Items & Glow Tooltip States */
@@ -370,11 +392,11 @@
         transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     .budget-interactive-item:hover {
-        background-color: rgba(147, 51, 234, 0.05);
+        background-color: rgba(13, 148, 136, 0.05);
         transform: translateX(4px);
     }
     .budget-interactive-item:hover .progress-bar {
-        box-shadow: 0 0 14px rgba(147, 51, 234, 0.6);
+        box-shadow: 0 0 14px rgba(13, 148, 136, 0.6);
         filter: brightness(1.1);
     }
 
@@ -404,7 +426,7 @@
     }
     .smart-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(147, 51, 234, 0.2);
+        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
     }
 
     /* Pulse Glow for Low Stock Alert */
@@ -455,7 +477,7 @@
     .filter-card .form-select:focus, .filter-card .form-control:focus {
         border-color: var(--primary-color) !important;
         background-color: #fff;
-        box-shadow: 0 0 0 4px rgba(147, 51, 234, 0.12) !important;
+        box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.12) !important;
     }
 
     /* Quick Filter Buttons */
@@ -475,13 +497,13 @@
         border-color: var(--primary-color) !important;
         color: var(--primary-color) !important;
         transform: translateY(-1px);
-        box-shadow: 0 4px 6px rgba(147, 51, 234, 0.08);
+        box-shadow: 0 4px 6px rgba(13, 148, 136, 0.08);
     }
     .quick-filter-btn.active {
         background-color: var(--primary-color) !important;
         border-color: var(--primary-color) !important;
         color: #ffffff !important;
-        box-shadow: 0 4px 8px rgba(147, 51, 234, 0.2) !important;
+        box-shadow: 0 4px 8px rgba(13, 148, 136, 0.2) !important;
     }
 
     /* Stat Cards */
@@ -990,8 +1012,8 @@
         const data7Days = chartDatasets['7days'];
         const chartCtx = ctx.getContext('2d');
         const gradient = chartCtx.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, 'rgba(147, 51, 234, 0.35)');
-        gradient.addColorStop(1, 'rgba(147, 51, 234, 0.0)');
+        gradient.addColorStop(0, 'rgba(13, 148, 136, 0.35)');
+        gradient.addColorStop(1, 'rgba(13, 148, 136, 0.0)');
 
         salesChart = new Chart(ctx, {
             type: 'line',
@@ -1000,17 +1022,17 @@
                 datasets: [{
                     label: 'Doanh thu (VNĐ)',
                     data: data7Days.revenue,
-                    borderColor: '#9333ea',
+                    borderColor: '#0d9488',
                     borderWidth: 3,
                     backgroundColor: gradient,
                     fill: true,
                     tension: 0.4,
                     pointRadius: 5,
-                    pointBackgroundColor: '#9333ea',
+                    pointBackgroundColor: '#0d9488',
                     pointBorderColor: '#ffffff',
                     pointBorderWidth: 2,
                     pointHoverRadius: 9,
-                    pointHoverBackgroundColor: '#9333ea',
+                    pointHoverBackgroundColor: '#0d9488',
                     pointHoverBorderColor: '#ffffff',
                     pointHoverBorderWidth: 3,
                 }]

@@ -51,7 +51,7 @@ class BookingService
         
         return \App\Models\Booking::with(['showtime.movie', 'bookedSeats.seat'])
             ->where('user_id', $userId)
-            ->whereIn('status', ['Pending', 'PROCESSING'])
+            ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
             ->where('booking_time', '>=', now()->subMinutes(self::getHoldDuration()))
             ->first();
     }
@@ -82,6 +82,8 @@ class BookingService
         }
 
         try {
+            (new \App\Services\MovieStatusValidationService())->validateTicketSalesAllowed($showtimeId);
+
             if (empty($selectedSeatIds)) {
                 throw new Exception('Vui lòng chọn ít nhất 1 ghế');
             }
@@ -114,7 +116,7 @@ class BookingService
                 $userPendingBookings = DB::table('bookings')
                     ->where('user_id', $userId)
                     ->where('showtime_id', $showtimeId)
-                    ->whereIn('status', ['Pending', 'PROCESSING'])
+                    ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
                     ->select('id', 'booking_time', 'is_extended')
                     ->get();
                 
@@ -127,10 +129,11 @@ class BookingService
                         $isExtended = (bool) $oldestBooking->is_extended;
                     }
 
-                    // Hoàn lại lượt dùng mã giảm giá nếu có
+                    // Chỉ hoàn lại lượt dùng mã giảm giá nếu đơn bị hủy trước đó ĐÃ THANH TOÁN (status = Paid)
                     $bookingsWithCoupons = DB::table('bookings')
                         ->whereIn('id', $userPendingBookingIds)
                         ->whereNotNull('coupon_id')
+                        ->where('status', \App\Models\Booking::STATUS_PAID)
                         ->get();
 
                     foreach ($bookingsWithCoupons as $b) {
@@ -144,7 +147,7 @@ class BookingService
                     DB::table('bookings')
                         ->whereIn('id', $userPendingBookingIds)
                         ->update([
-                            'status' => 'Cancelled',
+                            'status' => \App\Models\Booking::STATUS_CANCELLED,
                             'cancellation_reason' => 'User initiated a new booking request',
                             'cancelled_at' => now(),
                             'updated_at' => now(),
@@ -162,12 +165,16 @@ class BookingService
                             'updated_at' => now(),
                         ]);
 
-                    // Release Redis locks & broadcast AVAILABLE for seats no longer selected
-                    $releasedSeatIds = array_diff($oldSeatIds, $selectedSeatIds);
-                    foreach ($releasedSeatIds as $oldSeatId) {
+                    // Release Redis locks for all old seats of the user's cancelled pending booking
+                    foreach ($oldSeatIds as $oldSeatId) {
                         try {
                             \Illuminate\Support\Facades\Redis::del("seat_lock:showtime_{$showtimeId}:seat_{$oldSeatId}");
                         } catch (\Throwable $t) {}
+                    }
+
+                    // Release Redis locks & broadcast AVAILABLE for seats no longer selected
+                    $releasedSeatIds = array_diff($oldSeatIds, $selectedSeatIds);
+                    foreach ($releasedSeatIds as $oldSeatId) {
                         if ($userId) {
                             \Illuminate\Support\Facades\Cache::put(
                                 "cooldown_user_{$userId}_showtime_{$showtimeId}_seat_{$oldSeatId}",
@@ -300,7 +307,65 @@ class BookingService
             $bookingId = DB::transaction(function () use ($userId, $showtimeId, $selectedSeatIds, $paymentMethod, $couponCode, $combos, $extraData, $inheritedBookingTime, $isExtended) {
 
                 // ================================================================
-                // Step 1: Lock các hàng ghế (chỉ 1 request được giữ lock)
+                // Step 1: Lấy thông tin suất chiếu trước (🔒 lockForUpdate)
+                // ================================================================
+                $showtime = DB::table('showtimes')
+                    ->where('id', $showtimeId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$showtime) {
+                    throw new Exception("Suất chiếu $showtimeId không tồn tại");
+                }
+
+                $startTime = \Carbon\Carbon::parse($showtime->start_time);
+                $endTime = $showtime->end_time ? \Carbon\Carbon::parse($showtime->end_time) : null;
+                $isWalkIn = ($extraData['booking_source'] ?? 'online') !== 'online';
+
+                $movieRow = DB::table('movies')->where('id', $showtime->movie_id)->first();
+                if ($movieRow && $movieRow->status === \App\Models\Movie::STATUS_ENDED) {
+                    throw new \App\Exceptions\MovieEndedException("Phim đã ngưng chiếu, không thể thực hiện giao dịch đặt vé.");
+                }
+
+                // Kiểm tra trạng thái và thời gian đặt vé theo quy định
+                if ($showtime->status === 'CANCELLED') {
+                    throw new Exception("Suất chiếu này đã bị hủy, không thể đặt vé.");
+                }
+
+                if ($isWalkIn) {
+                    // Tại quầy: Cho phép trong 30 phút đầu kể từ khi bắt đầu chiếu (và chưa kết thúc)
+                    if ($endTime && now()->gte($endTime)) {
+                        throw new Exception("Suất chiếu này đã kết thúc, không thể xuất vé.");
+                    }
+                    if (now()->gt($startTime->copy()->addMinutes(30))) {
+                        throw new Exception("Suất chiếu đã bắt đầu quá 30 phút, hệ thống đã khóa bán vé.");
+                    }
+                } else {
+                    // Trực tuyến (Online): Khóa trước giờ chiếu 15 phút
+                    if ($showtime->status !== 'SCHEDULED') {
+                        throw new Exception("Suất chiếu này không còn mở bán trực tuyến.");
+                    }
+                    if (now()->addMinutes(15)->gte($startTime)) {
+                        throw new Exception("Suất chiếu này đã đóng cổng đặt vé trực tuyến (cần đặt trước giờ chiếu tối thiểu 15 phút). Vui lòng mua vé trực tiếp tại quầy hoặc chọn suất chiếu khác.");
+                    }
+                }
+
+                // ================================================================
+                // Step 2: Lấy thông tin ghế thuộc đúng room_id của showtime (🔒 lockForUpdate)
+                // ================================================================
+                $selectedSeats = DB::table('seats')
+                    ->whereIn('id', $selectedSeatIds)
+                    ->where('room_id', $showtime->room_id)
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+
+                if ($selectedSeats->count() !== count($selectedSeatIds)) {
+                    throw new Exception('Một hoặc nhiều ghế không tồn tại hoặc không thuộc phòng chiếu của suất chiếu này');
+                }
+
+                // ================================================================
+                // Step 3: Lock các hàng ghế (chỉ 1 request được giữ lock)
                 // ================================================================
                 // 🔒 SELECT FOR UPDATE - lock các hàng trong booked_seats
                 // Các request khác phải đợi cho đến khi transaction này commit/rollback
@@ -319,9 +384,7 @@ class BookingService
                     ->select('booked_seats.seat_id', 'booked_seats.status')
                     ->get();
 
-                // ================================================================
-                // Step 2: Kiểm tra xem ghế đã bị đặt hay chưa
-                // ================================================================
+                // Kiểm tra xem ghế đã bị đặt hay chưa
                 if ($lockedBookedSeats->count() > 0) {
                     // Lấy danh sách ghế đã đặt dưới dạng Seat Code (ví dụ: A5, B6)
                     $bookedSeatIds = $lockedBookedSeats->pluck('seat_id')->toArray();
@@ -457,10 +520,13 @@ class BookingService
 
                 $comboDetails = [];
                 if (!empty($combos)) {
+                    if (is_string($combos)) {
+                        $combos = json_decode($combos, true) ?: [];
+                    }
                     $comboIds = array_keys($combos);
                     $dbCombos = DB::table('combos')->whereIn('id', $comboIds)->get()->keyBy('id');
                     foreach ($combos as $comboId => $comboData) {
-                        $qty = (int) ($comboData['qty'] ?? 0);
+                        $qty = is_array($comboData) ? (int) ($comboData['qty'] ?? $comboData['quantity'] ?? 0) : (int) $comboData;
                         if ($qty > 0) {
                             if (!isset($dbCombos[$comboId])) {
                                 throw new Exception("Combo không tồn tại");
@@ -496,8 +562,7 @@ class BookingService
                     $discountAmount = $coupon->calculateDiscount($totalPrice);
                     $couponId = $coupon->id;
 
-                    // Tăng lượt sử dụng
-                    $coupon->increment('used_count');
+                    // Lưu ý: Lượt sử dụng (used_count) sẽ chỉ tăng khi thanh toán thành công (completePayment)
                 }
 
                 $finalTotalPrice = max(0, $totalPrice - $discountAmount);
@@ -513,7 +578,7 @@ class BookingService
                     'total_price' => $finalTotalPrice,
                     'coupon_id' => $couponId,
                     'discount_amount' => $discountAmount,
-                    'status' => 'Pending',
+                    'status' => \App\Models\Booking::STATUS_PENDING,
                     'payment_method' => $paymentMethod,
                     'booking_time' => $inheritedBookingTime ?? now(),
                     'is_extended' => $isExtended,
@@ -714,15 +779,15 @@ class BookingService
 
             $expiredBookings = DB::table('bookings')
                 ->where(function($query) use ($expiredAt) {
-                    $query->where('status', 'Pending')
+                    $query->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'Pending', 'pending'])
                           ->where('booking_time', '<', $expiredAt);
                 })
                 ->orWhere(function($query) use ($expiredAt) {
                     // Dọn dẹp cả PROCESSING nhưng cho thêm 15 phút ân hạn (tránh treo ghế vĩnh viễn)
-                    $query->where('status', 'PROCESSING')
+                    $query->whereIn('status', ['PROCESSING', 'processing'])
                           ->where('booking_time', '<', $expiredAt->copy()->subMinutes(15));
                 })
-                ->select('id', 'user_id')
+                ->select('id', 'user_id', 'showtime_id')
                 ->get();
 
             if ($expiredBookings->isEmpty()) {
@@ -731,10 +796,11 @@ class BookingService
             
             $expiredBookingIds = $expiredBookings->pluck('id')->toArray();
 
-            // Hoàn lại lượt dùng mã giảm giá
+            // Chỉ hoàn lại lượt dùng mã giảm giá nếu đơn quá hạn trước đó ĐÃ THANH TOÁN
             $bookingsWithCoupons = DB::table('bookings')
                 ->whereIn('id', $expiredBookingIds)
                 ->whereNotNull('coupon_id')
+                ->whereIn('status', [\App\Models\Booking::STATUS_PAID, 'Paid', 'paid'])
                 ->get();
 
             foreach ($bookingsWithCoupons as $b) {
@@ -744,7 +810,7 @@ class BookingService
             DB::table('bookings')
                 ->whereIn('id', $expiredBookingIds)
                 ->update([
-                    'status' => 'Cancelled',
+                    'status' => \App\Models\Booking::STATUS_CANCELLED,
                     'cancellation_reason' => 'Payment timeout expired',
                     'cancelled_at' => now(),
                     'updated_at' => now(),
@@ -825,7 +891,7 @@ class BookingService
                 throw new Exception("Booking $bookingId không tồn tại");
             }
 
-            if (!in_array($bookingModel->status, ['Pending', 'PROCESSING'])) {
+            if (!in_array(strtolower($bookingModel->status), [\App\Models\Booking::STATUS_PENDING, 'processing'])) {
                 \Illuminate\Support\Facades\Log::warning("BookingService::completePayment - Booking $bookingId không thể thanh toán. Status: {$bookingModel->status}");
                 throw new Exception(
                     "Không thể thanh toán booking này. Status: {$bookingModel->status}. " .
@@ -849,10 +915,17 @@ class BookingService
             }
 
             // Cập nhật booking status sử dụng Eloquent để kích hoạt BookingObserver
-            $bookingModel->status = 'Paid';
+            $bookingModel->status = \App\Models\Booking::STATUS_PAID;
             $bookingModel->payment_method = $paymentMethod;
             $bookingModel->payment_time = now();
             $bookingModel->save();
+
+            // Tăng lượt sử dụng coupon CHÍNH THỨC khi thanh toán thành công
+            if ($bookingModel->coupon_id) {
+                DB::table('coupons')
+                    ->where('id', $bookingModel->coupon_id)
+                    ->increment('used_count');
+            }
 
             // Cập nhật status các vé
             DB::table('booked_seats')
@@ -905,13 +978,13 @@ class BookingService
                 // 4. Calculate Live Analytics & Broadcast LiveRevenueUpdated to Admin/Manager
                 $cinemaId = $booking->showtime?->room?->cinema_id ?? 1;
                 $totalToday = (float) \App\Models\Booking::whereDate('payment_time', today())
-                    ->whereIn('status', ['Paid', 'Used'])
+                    ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
                     ->whereHas('showtime.room', function($q) use ($cinemaId) {
                         $q->where('cinema_id', $cinemaId);
                     })->sum('total_price');
 
                 $bookingsTodayCount = \App\Models\Booking::whereDate('payment_time', today())
-                    ->whereIn('status', ['Paid', 'Used'])
+                    ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
                     ->whereHas('showtime.room', function($q) use ($cinemaId) {
                         $q->where('cinema_id', $cinemaId);
                     })->count();
@@ -966,7 +1039,7 @@ class BookingService
                 throw new Exception("Booking $bookingId không tồn tại");
             }
 
-            if (!in_array($booking->status, ['Pending', 'PROCESSING', 'Paid'])) {
+            if (!in_array(strtolower($booking->status), [\App\Models\Booking::STATUS_PENDING, 'processing', \App\Models\Booking::STATUS_PAID])) {
                 throw new Exception(
                     "Không thể hủy booking này. Status: {$booking->status}"
                 );
@@ -981,7 +1054,7 @@ class BookingService
             DB::table('bookings')
                 ->where('id', $bookingId)
                 ->update([
-                    'status' => 'Cancelled',
+                    'status' => \App\Models\Booking::STATUS_CANCELLED,
                     'cancellation_reason' => $reason,
                     'cancelled_at' => now(),
                     'updated_at' => now(),
@@ -1088,16 +1161,17 @@ class BookingService
         int $bookingId,
         ?string $paymentMethod = null,
         ?string $couponCode = null,
-        array $combos = []
+        array $combos = [],
+        array $extraData = []
     ): \App\Models\Booking {
-        return DB::transaction(function () use ($bookingId, $paymentMethod, $couponCode, $combos) {
+        return DB::transaction(function () use ($bookingId, $paymentMethod, $couponCode, $combos, $extraData) {
             $booking = \App\Models\Booking::with('bookedSeats')->where('id', $bookingId)->lockForUpdate()->first();
 
             if (!$booking) {
                 throw new Exception("Booking không tồn tại.");
             }
 
-            if ($booking->status !== 'Pending') {
+            if (!in_array(strtolower($booking->status), [\App\Models\Booking::STATUS_PENDING, 'processing'])) {
                 throw new Exception("Không thể cập nhật đơn đặt vé không ở trạng thái chờ thanh toán.");
             }
 
@@ -1115,6 +1189,9 @@ class BookingService
             $comboDetails = [];
 
             if (!empty($combos)) {
+                if (is_string($combos)) {
+                    $combos = json_decode($combos, true) ?: [];
+                }
                 $comboIds = array_keys($combos);
                 $dbCombos = DB::table('combos')
                     ->whereIn('id', $comboIds)
@@ -1122,7 +1199,7 @@ class BookingService
                     ->keyBy('id');
 
                 foreach ($combos as $comboId => $comboData) {
-                    $qty = (int) ($comboData['qty'] ?? 0);
+                    $qty = is_array($comboData) ? (int) ($comboData['qty'] ?? $comboData['quantity'] ?? 0) : (int) $comboData;
                     if ($qty > 0) {
                         if (!isset($dbCombos[$comboId])) {
                             throw new Exception("Combo không tồn tại.");
@@ -1163,7 +1240,7 @@ class BookingService
                     throw new Exception("Mã giảm giá không hợp lệ hoặc đã hết hạn.");
                 }
 
-                $validation = $coupon->isValid($subtotal, $booking->user_id);
+                $validation = $coupon->isValid($subtotal, $booking->user_id, $booking->id);
                 if (!$validation['valid']) {
                     throw new Exception($validation['message']);
                 }
@@ -1171,24 +1248,12 @@ class BookingService
                 $discountAmount = $coupon->calculateDiscount($subtotal);
                 $couponId = $coupon->id;
 
-                // Nếu đổi mã coupon mới hoặc trước đó chưa dùng mã này
-                if ($booking->coupon_id !== $couponId) {
-                    if ($booking->coupon_id) {
-                        DB::table('coupons')
-                            ->where('id', $booking->coupon_id)
-                            ->where('used_count', '>', 0)
-                            ->decrement('used_count');
-                    }
-                    $coupon->increment('used_count');
-                }
+                // Ghi nhận coupon_id mới cho đơn hàng (used_count sẽ được tăng khi completePayment)
+                $booking->coupon_id = $couponId;
             } else {
                 // Hủy mã giảm giá nếu trước đó có áp dụng mà giờ bỏ
-                if ($booking->coupon_id) {
-                    DB::table('coupons')
-                        ->where('id', $booking->coupon_id)
-                        ->where('used_count', '>', 0)
-                        ->decrement('used_count');
-                }
+                $booking->coupon_id = null;
+                $discountAmount = 0;
             }
 
             $finalTotalPrice = max(0, $subtotal - $discountAmount);
@@ -1199,6 +1264,15 @@ class BookingService
             $booking->discount_amount = $discountAmount;
             if ($paymentMethod) {
                 $booking->payment_method = $paymentMethod;
+            }
+            if (!empty($extraData['customer_name'])) {
+                $booking->customer_name = $extraData['customer_name'];
+            }
+            if (!empty($extraData['customer_phone'])) {
+                $booking->customer_phone = $extraData['customer_phone'];
+            }
+            if (!empty($extraData['customer_email'])) {
+                $booking->customer_email = $extraData['customer_email'];
             }
             $booking->save();
 

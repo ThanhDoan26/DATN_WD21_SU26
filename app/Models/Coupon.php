@@ -34,10 +34,13 @@ class Coupon extends Model
     /**
      * Scope lọc danh sách Coupon hợp lệ cho khách hàng tại màn hình Checkout ngay tại Query CSDL
      */
-    public function scopeValidForCheckout($query)
+    /**
+     * Scope lọc danh sách Coupon hợp lệ cho khách hàng tại màn hình Checkout ngay tại Query CSDL
+     */
+    public function scopeValidForCheckout($query, $userId = null, $ignoreBookingId = null)
     {
         $now = now();
-        return $query->where('status', 'ACTIVE')
+        $query->where('status', 'ACTIVE')
             ->where(function ($q) use ($now) {
                 $q->whereNull('start_date')
                   ->orWhere('start_date', '<=', $now);
@@ -51,6 +54,25 @@ class Coupon extends Model
                   ->orWhereNull('quantity')
                   ->orWhereColumn('used_count', '<', 'quantity');
             });
+
+        if ($userId) {
+            $usedCouponQuery = \Illuminate\Support\Facades\DB::table('bookings')
+                ->where('user_id', $userId)
+                ->whereNotNull('coupon_id')
+                ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing', \App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED]);
+
+            if ($ignoreBookingId) {
+                $usedCouponQuery->where('id', '!=', $ignoreBookingId);
+            }
+
+            $usedCouponIds = $usedCouponQuery->pluck('coupon_id')->toArray();
+
+            if (!empty($usedCouponIds)) {
+                $query->whereNotIn('id', $usedCouponIds);
+            }
+        }
+
+        return $query;
     }
 
     /**
@@ -66,17 +88,18 @@ class Coupon extends Model
      *
      * @param float $orderTotal Giá trị đơn hàng tạm tính
      * @param int|null $userId ID của người dùng (tùy chọn)
+     * @param int|null $ignoreBookingId ID của booking đang được cập nhật (tùy chọn)
      * @return array ['valid' => bool, 'message' => string]
      */
-    public function isValid($orderTotal, $userId = null)
+    public function isValid($orderTotal, $userId = null, $ignoreBookingId = null)
     {
         if ($this->status !== 'ACTIVE') {
-            return ['valid' => false, 'message' => 'Mã giảm giá cảu bạn không thể hoạt động hoặc có thể bị khoá'];
+            return ['valid' => false, 'message' => 'Mã giảm giá của bạn hiện không hoạt động hoặc có thể bị khóa.'];
         }
 
         $now = now();
         if ($this->start_date && $now->lt($this->start_date)) {
-            return ['valid' => false, 'message' => 'Mã giam giá của bạn vẫn chưa đến thời gian sử dụng!'];
+            return ['valid' => false, 'message' => 'Mã giảm giá của bạn chưa đến thời gian sử dụng!'];
         }
 
         if ($this->end_date && $now->gt($this->end_date)) {
@@ -88,23 +111,26 @@ class Coupon extends Model
         }
 
         if ($orderTotal < $this->min_order_value) {
-            return ['valid' => false, 'message' => 'Gia trị đơn hàng cảu bạn chưa đạt mức tối thiểu (' . number_format($this->min_order_value, 0, ',', '.') . ' VNĐ) để sử dụng mã này.'];
+            return ['valid' => false, 'message' => 'Giá trị đơn hàng của bạn chưa đạt mức tối thiểu (' . number_format($this->min_order_value, 0, ',', '.') . ' VNĐ) để sử dụng mã này.'];
         }
 
-        // Kiểm tra xem User này đã sử dụng mã này chưa (nếu có truyền userId)
+        // Kiểm tra xem User này đã sử dụng mã này cho các booking hợp lệ chưa (status != Cancelled)
         if ($userId) {
-            $hasUsed = \Illuminate\Support\Facades\DB::table('bookings')
+            $hasUsedQuery = \Illuminate\Support\Facades\DB::table('bookings')
                 ->where('user_id', $userId)
                 ->where('coupon_id', $this->id)
-                ->whereIn('status', ['Pending', 'Paid', 'Used'])
-                ->exists();
+                ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing', \App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED]);
 
-            if ($hasUsed) {
+            if ($ignoreBookingId) {
+                $hasUsedQuery->where('id', '!=', $ignoreBookingId);
+            }
+
+            if ($hasUsedQuery->exists()) {
                 return ['valid' => false, 'message' => 'Bạn đã sử dụng hoặc đang chờ thanh toán với mã giảm giá này.'];
             }
         }
 
-        return ['valid' => true, 'message' => 'Mã giảm của bạn hợp lệ!'];
+        return ['valid' => true, 'message' => 'Mã giảm giá hợp lệ!'];
     }
 
     /**
@@ -148,5 +174,30 @@ class Coupon extends Model
                 $q->where('quantity', '<=', 0)
                   ->orWhereColumn('used_count', '<', 'quantity');
             });
+    }
+
+    /**
+     * Scope sắp xếp thứ tự danh sách Coupon:
+     * 1. Ưu tiên mã hợp lệ & còn hoạt động (ACTIVE, chưa hết hạn, còn lượt) lên TRÊN CÙNG (0).
+     * 2. Mã đã hết hạn, bị khóa (INACTIVE) hoặc hết số lượng bị đẩy xuống DƯỚI (1).
+     * 3. Thứ tự phụ: Ngày hết hạn (end_date) tăng dần ASC (sắp hết hạn đứng trước, NULL đứng sau).
+     * 4. Id giảm dần DESC làm fallback.
+     */
+    public function scopeOrderByAvailabilityAndExpiration($query)
+    {
+        $now = now()->toDateTimeString();
+
+        return $query->orderByRaw("
+            CASE 
+                WHEN status = 'ACTIVE' 
+                     AND (end_date IS NULL OR end_date >= ?) 
+                     AND (quantity = 0 OR quantity IS NULL OR used_count < quantity) 
+                THEN 0 
+                ELSE 1 
+            END ASC
+        ", [$now])
+        ->orderByRaw("CASE WHEN end_date IS NULL THEN 1 ELSE 0 END ASC")
+        ->orderBy('end_date', 'asc')
+        ->orderBy('id', 'desc');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Combo;
 use App\Models\Coupon;
+use App\Models\Movie;
 use App\Models\Seat;
 use App\Models\Showtime;
 use App\Models\TicketPrice;
@@ -12,8 +13,7 @@ use App\Services\BookingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\TicketConfirmationMail;
+use Illuminate\Support\Facades\DB;
 
 class CheckoutController extends Controller
 {
@@ -36,9 +36,36 @@ class CheckoutController extends Controller
             $seatIds = [];
         }
 
-        $showtime = \App\Models\Showtime::find($showtimeId);
+        $showtime = \App\Models\Showtime::with('movie')->find($showtimeId);
         if (!$showtime || !$showtime->isOnlineBookable()) {
             return redirect()->route('home')->with('error', 'Suất chiếu này đã đóng cổng đặt vé trực tuyến. Vui lòng chọn suất chiếu khác.');
+        }
+
+        $takenSeatIds = DB::table('booked_seats')
+            ->join('bookings', 'booked_seats.booking_id', '=', 'bookings.id')
+            ->where('bookings.showtime_id', $showtimeId)
+            ->whereIn('booked_seats.seat_id', $seatIds)
+            ->where('booked_seats.status', '!=', 'CANCELLED')
+            ->where('bookings.status', '!=', 'Cancelled')
+            ->where(function ($q) {
+                $q->whereNotIn('bookings.status', ['Pending', 'PROCESSING'])
+                    ->orWhere('bookings.booking_time', '>=', now()->subMinutes(config('booking.seat_hold.duration_minutes', 10)));
+            })
+            ->where(function ($q) use ($userId) {
+                $q->whereNull('bookings.user_id')
+                    ->orWhere('bookings.user_id', '!=', $userId);
+            })
+            ->distinct()
+            ->pluck('booked_seats.seat_id')
+            ->toArray();
+
+        if (!empty($takenSeatIds)) {
+            $seatCodes = Seat::whereIn('id', $takenSeatIds)
+                ->get()
+                ->map(fn($seat) => $seat->getSeatCode())
+                ->implode(', ');
+
+            return back()->with('error', 'Ghế ' . $seatCodes . ' đã được khách chọn và đã có người đặt/giữ. Vui lòng chọn ghế khác.');
         }
 
         // 1. Rate Limit: 3 lần thay đổi / 5 phút (Áp dụng cả User và Khách vãng lai qua IP)
@@ -58,12 +85,45 @@ class CheckoutController extends Controller
         }
 
         try {
-            // Lấy lại danh sách Combo đã chọn từ đơn giữ ghế cũ của suất chiếu này (nếu có)
-            $existingCombos = [];
+            // Nếu user đang có đơn Pending cho cùng suất chiếu và cùng ghế, không tạo booking mới nữa
+            // => tránh case click liên tục "Tiếp tục" vẫn vào được checkout dù đơn đang chờ thanh toán.
             if ($userId) {
                 $existingPending = Booking::where('user_id', $userId)
                     ->where('showtime_id', $showtimeId)
-                    ->whereIn('status', ['Pending', 'PROCESSING'])
+                    ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
+                    ->orderBy('booking_time', 'desc')
+                    ->first();
+
+                if ($existingPending) {
+                    $existingSeatIds = $existingPending->bookedSeats()->pluck('seat_id')->sort()->values()->all();
+                    $requestedSeatIds = collect($seatIds)->unique()->sort()->values()->all();
+
+                    if ($existingSeatIds === $requestedSeatIds) {
+                        return redirect()->route('checkout', ['showtime_id' => $showtimeId])
+                            ->with('info', 'Bạn đang có đơn vé chờ thanh toán cho suất chiếu này. Vui lòng tiếp tục thanh toán.');
+                    }
+                }
+            }
+
+            // Lấy lại danh sách Combo đã chọn từ request (sessionStorage) hoặc từ đơn giữ ghế cũ của suất chiếu này (nếu có)
+            $existingCombos = [];
+
+            $combosInput = $request->input('combos');
+            if (!empty($combosInput)) {
+                if (is_string($combosInput)) {
+                    $decoded = json_decode($combosInput, true);
+                    if (is_array($decoded)) {
+                        $existingCombos = $decoded;
+                    }
+                } elseif (is_array($combosInput)) {
+                    $existingCombos = $combosInput;
+                }
+            }
+
+            if (empty($existingCombos) && $userId) {
+                $existingPending = Booking::where('user_id', $userId)
+                    ->where('showtime_id', $showtimeId)
+                    ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
                     ->first();
 
                 if ($existingPending) {
@@ -131,7 +191,7 @@ class CheckoutController extends Controller
 
         $pendingBooking = Booking::where('user_id', \Illuminate\Support\Facades\Auth::id())
             ->where('showtime_id', $showtimeId)
-            ->whereIn('status', ['Pending', 'PROCESSING'])
+            ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'pending', 'Pending', 'processing', 'PROCESSING'])
             ->orderBy('booking_time', 'desc')
             ->first();
 
@@ -194,7 +254,7 @@ class CheckoutController extends Controller
             ->toArray();
 
         $combos = Combo::where('status', 'ACTIVE')->get();
-        $coupons = Coupon::validForCheckout()->get();
+        $coupons = Coupon::validForCheckout(\Illuminate\Support\Facades\Auth::id(), $pendingBookingId)->orderByAvailabilityAndExpiration()->get();
 
         $pendingBookingCode = $pendingBooking->booking_code;
 
@@ -247,19 +307,64 @@ class CheckoutController extends Controller
             return response()->json(['success' => false, 'message' => "Bạn chỉ được đặt tối đa {$maxSeatsPerBooking} ghế cho mỗi đơn hàng."], 422);
         }
 
+        $showtimeId = (int) $request->input('showtime_id');
+        $showtime = Showtime::with('movie')->find($showtimeId);
+
+        if (!$showtime) {
+            return response()->json(['success' => false, 'message' => 'Suất chiếu không tồn tại.'], 404);
+        }
+
+        // 1. Kiểm tra ghế đã có người khác chọn/đặt chưa (Chống trùng ghế giữa 2 người dùng)
+        $takenSeatIds = DB::table('booked_seats')
+            ->join('bookings', 'booked_seats.booking_id', '=', 'bookings.id')
+            ->where('bookings.showtime_id', $showtimeId)
+            ->whereIn('booked_seats.seat_id', $seatIds)
+            ->where('booked_seats.status', '!=', 'CANCELLED')
+            ->where('bookings.status', '!=', 'Cancelled')
+            ->where(function ($q) {
+                $q->whereNotIn('bookings.status', ['Pending', 'PROCESSING'])
+                    ->orWhere('bookings.booking_time', '>=', now()->subMinutes(config('booking.seat_hold.duration_minutes', 10)));
+            })
+            ->where(function ($q) {
+                $q->whereNull('bookings.user_id')
+                    ->orWhere('bookings.user_id', '!=', Auth::id());
+            })
+            ->distinct()
+            ->pluck('booked_seats.seat_id')
+            ->toArray();
+
+        if (!empty($takenSeatIds)) {
+            $seatCodes = Seat::whereIn('id', $takenSeatIds)->get()->map(fn($seat) => $seat->getSeatCode())->implode(', ');
+            return response()->json([
+                'success' => false,
+                'message' => 'Ghế ' . $seatCodes . ' đã được khách chọn và đã có người đặt/giữ. Vui lòng chọn ghế khác.'
+            ], 409);
+        }
+
+        // Chặn ghế hỏng hoặc đã đặt (phòng trường hợp hack request)
+        $invalidSeats = Seat::whereIn('id', $seatIds)
+            ->whereIn('status', [Seat::STATUS_BROKEN, Seat::STATUS_BOOKED])
+            ->get();
+
+        if ($invalidSeats->isNotEmpty()) {
+            $codes = $invalidSeats->map(fn($s) => $s->getSeatCode())->implode(', ');
+            return response()->json([
+                'success' => false,
+                'message' => 'Các ghế sau không khả dụng: ' . $codes
+            ], 422);
+        }
+
         try {
             $bookingService = new BookingService();
-            $showtimeId = (int) $request->input('showtime_id');
-            $showtime = Showtime::find($showtimeId);
 
-            if (!$showtime || !$showtime->isOnlineBookable()) {
+            if (!$showtime->isOnlineBookable()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Suất chiếu này đã đóng cổng đặt vé trực tuyến (cần đặt trước giờ chiếu tối thiểu 15 phút). Vui lòng mua vé trực tiếp tại quầy hoặc chọn suất chiếu khác.'
                 ], 422);
             }
 
-            // Chặn ghế hỏng, ghế đã đặt hoặc ghế không thuộc phòng chiếu này
+            // 2. Chặn ghế hỏng, ghế đã đặt hoặc ghế không thuộc phòng chiếu này (Bảo mật & Tránh hack request)
             $invalidSeats = Seat::whereIn('id', $seatIds)
                 ->where(function ($q) use ($showtime) {
                     $q->where('room_id', '!=', $showtime->room_id)
@@ -275,17 +380,62 @@ class CheckoutController extends Controller
                 ], 422);
             }
 
-            $bookingId = $bookingService->createBooking(
-                Auth::id(),
-                $showtimeId,
-                $seatIds,
-                $request->input('payment_method', 'ONLINE'),
-                $request->input('coupon_code'),
-                $request->input('combos', [])
-            );
+            $userId = Auth::id();
+            $existingBooking = null;
 
-            // Chuyển sang trạng thái PROCESSING để ngăn cronjob dọn dẹp
-            Booking::where('id', $bookingId)->update(['status' => 'PROCESSING']);
+            if ($userId) {
+                $existingBooking = Booking::where('user_id', $userId)
+                    ->where('showtime_id', $showtimeId)
+                    ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'pending', 'Pending', 'processing', 'PROCESSING'])
+                    ->orderBy('booking_time', 'desc')
+                    ->first();
+            }
+
+            $existingSeatIds = $existingBooking ? $existingBooking->bookedSeats()->pluck('seat_id')->map(fn($id) => (int)$id)->toArray() : [];
+            sort($existingSeatIds);
+            $checkSeatIds = array_values($seatIds);
+            sort($checkSeatIds);
+
+            $extraData = [
+                'booking_source' => 'online',
+                'customer_name' => $request->input('customer_name'),
+                'customer_phone' => $request->input('customer_phone'),
+                'customer_email' => $request->input('customer_email'),
+            ];
+
+            if ($existingBooking && $existingSeatIds === $checkSeatIds) {
+                // Kiểm tra thời gian giữ ghế còn hiệu lực không
+                $holdDuration = BookingService::getHoldDuration();
+                $expiresAt = \Carbon\Carbon::parse($existingBooking->booking_time)->addMinutes($holdDuration);
+                if (now()->gt($expiresAt)) {
+                    throw new \Exception("Thời gian giữ ghế của bạn đã hết. Vui lòng chọn lại ghế.");
+                }
+
+                // Cập nhật booking hiện tại (không tạo booking mới để tránh trùng lặp/hủy đơn cũ)
+                $updatedBooking = $bookingService->updatePendingBooking(
+                    $existingBooking->id,
+                    $request->input('payment_method', 'ONLINE'),
+                    $request->input('coupon_code'),
+                    $request->input('combos', []),
+                    $extraData
+                );
+
+                $bookingId = $updatedBooking->id;
+            } else {
+                // Nếu chưa có hoặc ghế đã thay đổi, tạo booking mới
+                $bookingId = $bookingService->createBooking(
+                    $userId,
+                    $showtimeId,
+                    $seatIds,
+                    $request->input('payment_method', 'ONLINE'),
+                    $request->input('coupon_code'),
+                    $request->input('combos', []),
+                    $extraData
+                );
+            }
+
+            // Chuyển sang trạng thái processing để ngăn cronjob dọn dẹp
+            Booking::where('id', $bookingId)->update(['status' => 'processing']);
 
             $bookingDetails = $bookingService->getBookingDetails($bookingId);
             $holdDurationMs = BookingService::getHoldDuration() * 60 * 1000;
@@ -308,10 +458,12 @@ class CheckoutController extends Controller
         } catch (\Throwable $e) {
             Log::error('Checkout reserve failed: ' . $e->getMessage());
 
+            $code = ($e instanceof \App\Exceptions\MovieScheduledException || $e->getMessage() === 'Movie is currently scheduled and not yet open for ticket sales.') ? 422 : 400;
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-            ], 400);
+            ], $code);
         }
     }
 
@@ -342,13 +494,15 @@ class CheckoutController extends Controller
 
     public function applyCoupon(Request $request)
     {
-        $request->validate([
-            'code' => 'required|string',
-            'order_total' => 'required|numeric|min:0'
-        ]);
+        $code = trim($request->input('code') ?? $request->input('coupon_code') ?? '');
+        $orderTotal = floatval($request->input('order_total') ?? $request->input('subtotal') ?? 0);
 
-        $code = trim($request->code);
-        $orderTotal = floatval($request->order_total);
+        if (empty($code)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vui lòng cung cấp mã giảm giá.'
+            ], 422);
+        }
 
         $coupon = Coupon::where('code', $code)->first();
 
@@ -359,8 +513,10 @@ class CheckoutController extends Controller
             ], 404);
         }
 
+        $bookingId = $request->input('booking_id') ?? $request->input('pending_booking_id');
+
         // Gọi hàm kiểm tra điều kiện bên trong model Coupon
-        $validation = $coupon->isValid($orderTotal, \Illuminate\Support\Facades\Auth::id());
+        $validation = $coupon->isValid($orderTotal, \Illuminate\Support\Facades\Auth::id(), $bookingId);
 
         if (!$validation['valid']) {
             return response()->json([
@@ -375,6 +531,8 @@ class CheckoutController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Áp dụng mã giảm giá thành công!',
+            'discount_amount' => $discountAmount,
+            'final_total' => max(0, $orderTotal - $discountAmount),
             'data' => [
                 'coupon_id' => $coupon->id,
                 'code' => $coupon->code,
@@ -454,36 +612,8 @@ class CheckoutController extends Controller
             // Đánh dấu thanh toán thành công (BookingObserver sẽ tự động kích hoạt gửi TicketConfirmationMail bất đồng bộ qua Queue)
             $bookingService->completePayment($booking->id, $booking->payment_method ?? 'MOCK_PAYMENT');
             
-            // Lấy thông tin chi tiết để gửi email
-            $bookingDetails = $bookingService->getBookingDetails($booking->id);
-            $showtime = Showtime::with(['movie', 'room.cinema'])->find($booking->showtime_id);
-            
-            // Gửi email xác nhận
-            $email = $booking->customer_email ?? $booking->user?->email;
-            $mailSent = false;
-
-            if ($email) {
-                try {
-                    \Illuminate\Support\Facades\Log::info("CheckoutController: Đang gọi Mail::to()->send() gửi cho " . $email);
-                    Mail::to($email)->send(new TicketConfirmationMail($bookingDetails, $showtime));
-                    $mailSent = true;
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error("CheckoutController: Lỗi khi gọi Mail::to()->send() cho " . $email . ". Lỗi: " . $e->getMessage(), [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'trace' => $e->getTraceAsString(),
-                    ]);
-                }
-            } else {
-                \Illuminate\Support\Facades\Log::warning("CheckoutController: TicketConfirmationMail KHÔNG được gọi do không tìm thấy email.");
-            }
-            
-            if ($mailSent) {
-                return redirect()->route('booking.history.show', ['bookingCode' => $booking->booking_code])
-                                 ->with('success', 'Thanh toán thành công. Email xác nhận đã được gửi đến bạn.');
-            }
             return redirect()->route('booking.history.show', ['bookingCode' => $booking->booking_code])
-                             ->with('warning', 'Thanh toán thành công nhưng gửi email xác nhận thất bại. Vui lòng kiểm tra lại email hoặc liên hệ hỗ trợ.');
+                             ->with('success', 'Thanh toán thành công. Vé của bạn đã được xuất và email xác nhận sẽ được gửi đến bạn.');
         } catch (\Exception $e) {
             Log::error('Mock payment failed: ' . $e->getMessage());
             if ($request->wantsJson() || $request->ajax()) {
@@ -501,7 +631,7 @@ class CheckoutController extends Controller
 
         $booking = Booking::where('id', $request->booking_id)
             ->where('user_id', Auth::id())
-            ->where('status', 'Pending')
+            ->where('status', \App\Models\Booking::STATUS_PENDING)
             ->first();
 
         if ($booking) {
@@ -515,6 +645,6 @@ class CheckoutController extends Controller
             }
         }
         
-        return response()->json(['success' => false, 'message' => 'Not found or not pending'], 404);
+        return response()->json(['success' => false, 'message' => 'Đơn đặt vé không tồn tại hoặc không ở trạng thái chờ thanh toán.'], 404);
     }
 }

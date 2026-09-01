@@ -1,97 +1,187 @@
 @extends('layouts.staff')
 
-@section('page_title', 'Tạo Vé Tại Quầy - Chọn Suất Chiếu')
+@section('title', 'Chọn Suất Chiếu: ' . $movie->title)
+@section('page_title', 'Chọn Suất Chiếu (POS)')
+
+@section('extra_css')
+<style>
+    .pos-movie-hero {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 16px;
+        padding: 20px 24px;
+        color: #ffffff;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .hero-poster {
+        width: 100px;
+        height: 145px;
+        border-radius: 12px;
+        object-fit: cover;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+    .hero-title {
+        font-family: 'Sora', sans-serif;
+        font-size: 22px;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+    
+    .pos-date-card {
+        background: var(--bg-surface, #ffffff);
+        border: 2px solid var(--border-light, #e2e8f0);
+        border-radius: 14px;
+        padding: 14px 18px;
+        text-align: center;
+        min-width: 110px;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        user-select: none;
+    }
+    .pos-date-card:hover {
+        border-color: #f59e0b;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 16px rgba(245, 158, 11, 0.15);
+    }
+    .pos-date-card.active {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        border-color: #d97706;
+        color: #ffffff !important;
+        box-shadow: 0 8px 20px rgba(217, 119, 6, 0.35);
+        transform: translateY(-4px);
+    }
+    .pos-date-card.active .text-muted {
+        color: rgba(255, 255, 255, 0.85) !important;
+    }
+    
+    .showtime-card-pos {
+        background: var(--bg-surface, #ffffff);
+        border: 1.5px solid var(--border-light, #e2e8f0);
+        border-radius: 14px;
+        padding: 18px;
+        transition: all 0.25s ease;
+        height: 100%;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .showtime-card-pos:hover:not(.disabled) {
+        border-color: #10b981;
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(16, 185, 129, 0.18);
+    }
+    .showtime-card-pos.disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: #f1f5f9;
+    }
+    .showtime-time-lg {
+        font-family: 'Sora', sans-serif;
+        font-size: 26px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    .dark-theme .showtime-time-lg {
+        color: #f8fafc;
+    }
+    .room-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 6px;
+        text-transform: uppercase;
+    }
+</style>
+@endsection
 
 @section('content')
-<div class="container-fluid px-0">
-    <!-- Action Top Bar -->
-    <div class="d-flex align-items-center justify-content-between mb-4 bg-surface p-3 rounded-4 shadow-sm border border-light">
-        <div class="d-flex align-items-center gap-3">
-            <a href="{{ route('staff.walkin.movies') }}" class="btn btn-outline-secondary rounded-pill px-4 font-sora fw-bold shadow-sm">
-                <i class="fas fa-arrow-left me-2"></i>Chọn Phim Khác
-            </a>
-            <div>
-                <h4 class="mb-0 fw-extrabold text-ink font-sora"><i class="fas fa-ticket-alt text-amber me-2"></i>Bán Vé Tại Quầy POS</h4>
-                <small class="text-muted">Chọn ngày chiếu và suất chiếu để mở sơ đồ ghế</small>
-            </div>
+<div class="container-fluid p-4">
+    <!-- Header Navigation -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <a href="{{ route('staff.walkin.movies') }}" class="btn btn-outline-secondary px-3 py-2 rounded-3 fw-bold">
+            <i class="fas fa-arrow-left me-2"></i>Chọn Phim Khác
+        </a>
+        <div class="text-muted small">
+            <i class="fas fa-map-marker-alt text-warning me-1"></i> Rạp: <strong class="text-dark">{{ $cinema->name }}</strong>
         </div>
-        <span class="badge bg-amber text-dark px-3 py-2 rounded-pill font-sora fw-bold">
-            <i class="fas fa-building me-1"></i> {{ $cinema->name }}
-        </span>
     </div>
 
-    <!-- Movie Summary Card -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #fff;">
-        <div class="card-body p-4 d-flex align-items-center flex-wrap gap-4">
-            @if($movie->poster)
-                <img src="{{ asset('storage/' . $movie->poster) }}" alt="{{ $movie->title }}" class="rounded-3 shadow" style="width: 75px; height: 105px; object-fit: cover;">
+    <!-- Movie Hero Info Card -->
+    <div class="pos-movie-hero">
+        <div class="d-flex align-items-center gap-4 flex-wrap flex-md-nowrap">
+            @if($movie->poster_url)
+                <img src="{{ str_starts_with($movie->poster_url, 'http') ? $movie->poster_url : asset('storage/' . $movie->poster_url) }}" 
+                     alt="{{ $movie->title }}" class="hero-poster">
             @else
-                <div class="rounded-3 shadow bg-amber text-dark d-flex align-items-center justify-content-center fw-bold fs-2" style="width: 75px; height: 105px;">
-                    <i class="fas fa-film"></i>
+                <div class="hero-poster bg-secondary d-flex align-items-center justify-content-center text-white">
+                    <i class="fas fa-film fa-2x opacity-50"></i>
                 </div>
             @endif
 
             <div class="flex-grow-1">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <span class="badge bg-amber text-dark font-sora fw-bold px-2 py-1">POS WALK-IN</span>
-                    <span class="text-muted small"><i class="fas fa-clock me-1 text-amber"></i>{{ $movie->duration ?? 120 }} phút</span>
-                    @if($movie->age_rating)
-                        <span class="badge bg-danger fw-bold">{{ $movie->age_rating }}</span>
-                    @endif
+                <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                    @php
+                        $age = $movie->age_rating ?? 'P';
+                        $ageClass = match($age) {
+                            'P', 'K', 'G' => 'bg-success',
+                            'T13', '13+', 'PG' => 'bg-warning text-dark',
+                            'T16', '16+' => 'bg-orange text-white',
+                            'T18', '18+', 'R' => 'bg-danger text-white',
+                            default => 'bg-secondary'
+                        };
+                    @endphp
+                    <span class="badge {{ $ageClass }} fw-bold px-2 py-1">{{ $movie->age_rating ?? 'P' }}</span>
+                    <span class="text-slate-300 small"><i class="fas fa-clock text-warning me-1"></i>{{ $movie->duration }} phút</span>
+                    <span class="text-slate-300 small">&bull; {{ $movie->language ?? 'Tiếng Việt' }}</span>
                 </div>
-                <h3 class="fw-extrabold font-sora text-white mb-1">{{ $movie->title }}</h3>
-                <p class="text-muted mb-0 small">
-                    <i class="fas fa-video me-1 text-amber"></i> Đạo diễn: {{ $movie->director ?? 'N/A' }} | 
-                    <i class="fas fa-tags me-1 text-amber"></i> Thể loại: {{ $movie->genre ?? 'Chiếu rạp' }}
+                <h3 class="hero-title">{{ $movie->title }}</h3>
+                <p class="text-slate-300 small mb-0 opacity-80">
+                    <i class="fas fa-video text-warning me-1"></i> Đạo diễn: {{ $movie->director ?? 'Đang cập nhật' }} &bull; Diễn viên: {{ $movie->cast ?? 'Đang cập nhật' }}
                 </p>
             </div>
         </div>
     </div>
 
     <!-- Step 1: Select Date -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: var(--bg-surface);">
-        <div class="card-body p-4">
-            <h5 class="fw-extrabold font-sora text-ink mb-3 d-flex align-items-center">
-                <span class="badge bg-amber text-dark rounded-circle me-2 d-inline-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">1</span>
-                Chọn Ngày Chiếu
-            </h5>
-            <div id="datesContainer" class="d-flex flex-wrap gap-3">
-                <div class="text-center w-100 py-4">
-                    <div class="spinner-border text-amber" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="mt-2 text-muted small font-sora">Đang tải lịch chiếu khả dụng...</p>
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center text-dark">
+            <span class="badge bg-warning text-dark rounded-circle me-2 d-inline-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">1</span>
+            Chọn Ngày Chiếu
+        </h5>
+        
+        <div id="datesContainer" class="d-flex flex-wrap gap-3">
+            <div class="text-center w-100 py-4">
+                <div class="spinner-border text-warning" role="status">
+                    <span class="visually-hidden">Loading...</span>
                 </div>
+                <p class="mt-2 text-muted small">Đang tải danh sách ngày chiếu...</p>
             </div>
         </div>
     </div>
 
     <!-- Step 2: Select Showtime -->
-    <div id="showtimeSection" class="d-none">
-        <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: var(--bg-surface);">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-center justify-content-between mb-4 border-bottom border-light pb-3">
-                    <h5 class="fw-extrabold font-sora text-ink mb-0 d-flex align-items-center">
-                        <span class="badge bg-amber text-dark rounded-circle me-2 d-inline-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">2</span>
-                        Chọn Giờ Chiếu
-                    </h5>
-                    <span id="selectedDateDisplay" class="badge bg-light text-ink border px-3 py-2 rounded-pill font-sora fw-bold"></span>
-                </div>
+    <div id="showtimeSection" class="card border-0 shadow-sm rounded-4 p-4 d-none">
+        <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2 pb-3 border-bottom">
+            <h5 class="fw-bold mb-0 d-flex align-items-center text-dark">
+                <span class="badge bg-success text-white rounded-circle me-2 d-inline-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">2</span>
+                Chọn Giờ Chiếu & Phòng Chiếu
+            </h5>
+            <span id="selectedDateDisplay" class="badge bg-light text-dark fs-6 px-3 py-2 border"></span>
+        </div>
 
-                <div id="showtimesContainer" class="row g-3">
-                    <!-- Showtimes will be loaded here dynamically -->
-                </div>
-            </div>
+        <div id="showtimesContainer" class="row g-3">
+            <!-- Showtimes will be rendered here -->
         </div>
     </div>
 
-    <!-- No Showtimes Message -->
-    <div id="noShowtimesMessage" class="d-none card border-0 shadow-sm rounded-4 text-center py-5" style="background: var(--bg-surface);">
-        <div class="card-body">
-            <i class="fas fa-calendar-times text-muted opacity-50 mb-3" style="font-size: 3.5rem;"></i>
-            <h5 class="text-muted font-sora fw-bold">Không có suất chiếu nào khả dụng cho ngày này</h5>
-            <p class="text-muted small">Vui lòng chọn một ngày chiếu khác ở danh sách trên</p>
-        </div>
+    <!-- No Showtimes State -->
+    <div id="noShowtimesMessage" class="d-none text-center py-5 card border-0 shadow-sm rounded-4">
+        <i class="fas fa-calendar-times text-warning fa-3x mb-3 opacity-75"></i>
+        <h5 class="fw-bold mb-1">Không có suất chiếu cho ngày này</h5>
+        <p class="text-muted small">Vui lòng chọn ngày chiếu khác để tiếp tục đặt vé.</p>
     </div>
 </div>
 @endsection
@@ -116,15 +206,15 @@
             if (result.data && result.data.length > 0) {
                 displayDates(result.data);
                 // Auto-select first date
-                if (result.data[0]) {
-                    const firstBtn = document.querySelector('.date-pos-pill');
-                    if (firstBtn) firstBtn.click();
+                const firstBtn = document.querySelector('.pos-date-card');
+                if (firstBtn) {
+                    firstBtn.click();
                 }
             } else {
                 document.getElementById('datesContainer').innerHTML = `
                     <div class="text-center w-100 py-4">
-                        <i class="fas fa-calendar-times text-muted fa-3x mb-3 opacity-50"></i>
-                        <p class="text-muted font-sora">Hiện tại chưa có lịch chiếu cho phim này.</p>
+                        <i class="fas fa-calendar-times text-muted fa-2x mb-2"></i>
+                        <p class="text-muted">Không có ngày chiếu khả dụng.</p>
                     </div>
                 `;
             }
@@ -138,56 +228,52 @@
 
     function displayDates(dates) {
         const container = document.getElementById('datesContainer');
+        const todayStr = new Date().toISOString().split('T')[0];
+
         container.innerHTML = dates.map(date => {
             const dateObj = new Date(date);
             const dayName = dateObj.toLocaleDateString('vi-VN', { weekday: 'short' });
             const dayNum = String(dateObj.getDate()).padStart(2, '0');
             const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const isToday = date === todayStr;
 
             return `
-                <button type="button" onclick="selectDate('${date}', this)" 
-                        class="btn date-pos-pill d-flex flex-column align-items-center justify-content-center p-2 rounded-3 border shadow-sm transition-all" 
-                        style="width: 110px; height: 68px; border-color: var(--border-light); background: var(--bg-surface);">
-                    <span class="day-label text-uppercase fw-bold text-muted" style="font-size: 0.72rem; letter-spacing: 0.5px;">${dayName}</span>
-                    <span class="date-label fw-extrabold font-sora text-amber fs-4" style="line-height: 1.1;">${dayNum}/${month}</span>
-                </button>
+                <div onclick="selectDate('${date}', this)" class="pos-date-card">
+                    <div class="text-uppercase small fw-bold text-muted mb-1">${isToday ? '★ Hôm nay' : dayName}</div>
+                    <div class="fs-4 fw-bold font-sora">${dayNum}/${month}</div>
+                </div>
             `;
         }).join('');
     }
 
-    function selectDate(date, button) {
+    function selectDate(date, element) {
         selectedDate = date;
 
-        document.querySelectorAll('.date-pos-pill').forEach(el => {
-            el.style.background = 'var(--bg-surface)';
-            el.style.borderColor = 'var(--border-light)';
-            el.classList.remove('shadow-lg', 'active-pill');
-            
-            const dayLabel = el.querySelector('.day-label');
-            const dateLabel = el.querySelector('.date-label');
-            if (dayLabel) dayLabel.style.color = 'var(--text-muted)';
-            if (dateLabel) dateLabel.style.color = '#d97706';
-        });
-        
-        button.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
-        button.style.borderColor = '#f59e0b';
-        button.classList.add('shadow-lg', 'active-pill');
-
-        const dayLabel = button.querySelector('.day-label');
-        const dateLabel = button.querySelector('.date-label');
-        if (dayLabel) dayLabel.style.color = 'rgba(255,255,255,0.85)';
-        if (dateLabel) dateLabel.style.color = '#ffffff';
+        document.querySelectorAll('.pos-date-card').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
 
         loadShowtimes(date);
     }
 
     async function loadShowtimes(date) {
+        const container = document.getElementById('showtimesContainer');
+        container.innerHTML = `
+            <div class="text-center w-100 py-4">
+                <div class="spinner-border text-success" role="status"></div>
+                <p class="mt-2 text-muted small">Đang tải danh sách suất chiếu...</p>
+            </div>
+        `;
+        document.getElementById('showtimeSection').classList.remove('d-none');
+        document.getElementById('noShowtimesMessage').classList.add('d-none');
+
         try {
             const response = await fetch(`/api/booking/showtimes?movie_id=${movieId}&cinema_id=${cinemaId}&date=${date}`);
             const result = await response.json();
 
             const dateObj = new Date(date);
-            document.getElementById('selectedDateDisplay').textContent = dateObj.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+            document.getElementById('selectedDateDisplay').innerHTML = `
+                <i class="fas fa-calendar-check text-success me-2"></i> ${dateObj.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+            `;
 
             if (result.data && result.data.length > 0) {
                 displayShowtimes(result.data);
@@ -198,38 +284,39 @@
                 document.getElementById('noShowtimesMessage').classList.remove('d-none');
             }
         } catch (error) {
-            console.error('Error loading showtimes:', error);
+            console.error('Error:', error);
+            container.innerHTML = `<div class="alert alert-danger">Lỗi khi tải suất chiếu.</div>`;
         }
     }
 
     function displayShowtimes(showtimes) {
         const container = document.getElementById('showtimesContainer');
         container.innerHTML = showtimes.map(showtime => {
-            const isDisabled = showtime.available_seats <= 0;
-            const seatColorClass = showtime.available_seats > 20 ? 'bg-success-subtle text-success border-success-subtle' : (showtime.available_seats > 0 ? 'bg-warning-subtle text-warning border-warning-subtle' : 'bg-danger-subtle text-danger border-danger-subtle');
+            const isSoldOut = showtime.available_seats <= 0;
+            const isFewSeats = showtime.available_seats > 0 && showtime.available_seats <= 10;
             
             return `
                 <div class="col-xl-3 col-lg-4 col-md-6">
-                    <div onclick="${isDisabled ? '' : `proceedToSeats(${showtime.id})`}"
-                         class="showtime-card p-3 rounded-4 border shadow-sm transition-all text-start position-relative ${isDisabled ? 'disabled-card' : 'cursor-pointer'}"
-                         style="background: var(--bg-surface); border-color: var(--border-light);">
-                        
+                    <div onclick="${isSoldOut ? '' : `proceedToSeats(${showtime.id})`}" 
+                         class="showtime-card-pos ${isSoldOut ? 'disabled' : ''}">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-extrabold fs-2 font-sora text-ink">${showtime.time}</span>
-                            <span class="badge bg-amber text-dark font-sora fw-bold px-2 py-1">${showtime.room_format || '2D'}</span>
+                            <span class="showtime-time-lg">${showtime.time}</span>
+                            <span class="badge ${showtime.room_format === 'IMAX' ? 'bg-danger' : (showtime.room_format === '3D' ? 'bg-primary' : 'bg-secondary')} room-badge">
+                                ${showtime.room_format}
+                            </span>
                         </div>
-
-                        <div class="d-flex justify-content-between align-items-center small text-muted mb-3">
-                            <span><i class="fas fa-door-open text-amber me-1"></i>${showtime.room_name}</span>
-                            <span class="badge ${seatColorClass} border px-2 py-1 rounded-pill fw-bold">
-                                <i class="fas fa-chair me-1"></i>${showtime.available_seats} ghế
+                        
+                        <div class="d-flex justify-content-between align-items-center py-2 border-top border-bottom my-2 text-muted small">
+                            <span><i class="fas fa-door-open me-1 text-primary"></i> ${showtime.room_name}</span>
+                            <span class="fw-bold ${isSoldOut ? 'text-danger' : (isFewSeats ? 'text-warning' : 'text-success')}">
+                                <i class="fas fa-chair me-1"></i> ${isSoldOut ? 'Hết vé' : `${showtime.available_seats} ghế trống`}
                             </span>
                         </div>
 
-                        <div class="pt-2 border-top border-light d-flex justify-content-between align-items-center font-sora fw-bold small text-amber">
-                            <span>${isDisabled ? 'Hết ghế khả dụng' : 'Chọn sơ đồ ghế'}</span>
-                            <i class="fas ${isDisabled ? 'fa-ban text-muted' : 'fa-arrow-right'}"></i>
-                        </div>
+                        <button class="btn btn-sm ${isSoldOut ? 'btn-secondary disabled' : 'btn-success'} w-100 fw-bold py-2 rounded-3 mt-2" 
+                                ${isSoldOut ? 'disabled' : ''}>
+                            ${isSoldOut ? 'Đã Hết Chỗ' : 'Chọn Ghế Ngay &rarr;'}
+                        </button>
                     </div>
                 </div>
             `;

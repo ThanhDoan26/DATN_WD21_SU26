@@ -93,14 +93,6 @@
 @section('content')
 
     <div class="max-w-6xl mx-auto px-4 pt-32 pb-20">
-        <!-- Navigation -->
-        <div class="flex items-center gap-4 mb-6">
-            <a href="{{ route('home') }}" 
-               class="text-slate-300 hover:text-white flex items-center gap-2 transition-colors px-4 py-2 bg-slate-800/50 rounded-lg backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50">
-                <i class="fas fa-home"></i> Trang chủ
-            </a>
-        </div>
-
         <div class="mb-10 text-center">
             <h1 class="text-4xl font-bold text-white mb-2"><i class="fas fa-ticket-alt text-primary mr-3"></i>Thanh Toán Vé</h1>
             <p class="text-slate-400">Hoàn tất các bước cuối cùng để thưởng thức bộ phim của bạn.</p>
@@ -482,13 +474,22 @@
 
 @push('scripts')
     <script>
-        // Save current seat IDs to sessionStorage before navigating back
+        // Save current seat IDs and combos to sessionStorage before navigating back
         function saveSeatsBeforeBack() {
             const showtimeId = @json($showtimeId ?? '');
             const seatIds = @json($seatIds ?? []);
             if (showtimeId && seatIds && seatIds.length > 0) {
                 sessionStorage.setItem('resume_seats_showtime_' + showtimeId, '1');
                 sessionStorage.setItem('selectedSeats_showtime_' + showtimeId, JSON.stringify(seatIds));
+            }
+            if (showtimeId && typeof selectedCombos === 'object') {
+                const combosToSave = {};
+                Object.keys(selectedCombos).forEach(id => {
+                    if (selectedCombos[id] && selectedCombos[id].qty > 0) {
+                        combosToSave[id] = { qty: selectedCombos[id].qty };
+                    }
+                });
+                sessionStorage.setItem('selectedCombos_showtime_' + showtimeId, JSON.stringify(combosToSave));
             }
         }
 
@@ -628,6 +629,7 @@
                         console.log("Timer expired!");
                         clearInterval(countdownInterval);
                         sessionStorage.removeItem('booking_expires_at');
+                        sessionStorage.removeItem('selectedCombos_showtime_' + {{ $showtime->id }});
                         if (timerBar) timerBar.style.display = 'none';
                         if (expiredOverlay) expiredOverlay.classList.add('active');
 
@@ -696,8 +698,37 @@
 
             const selectedCombos = {};
             const savedCombosData = @json($savedCombos ?? []);
-            Object.keys(savedCombosData).forEach(id => {
-                const qty = parseInt(savedCombosData[id]);
+
+            function saveCombosToStorage() {
+                if (showtimeId && typeof selectedCombos === 'object') {
+                    const combosToSave = {};
+                    Object.keys(selectedCombos).forEach(id => {
+                        if (selectedCombos[id] && selectedCombos[id].qty > 0) {
+                            combosToSave[id] = { qty: selectedCombos[id].qty };
+                        }
+                    });
+                    sessionStorage.setItem('selectedCombos_showtime_' + showtimeId, JSON.stringify(combosToSave));
+                }
+            }
+
+            let storedCombos = {};
+            try {
+                const storedCombosJson = sessionStorage.getItem('selectedCombos_showtime_' + showtimeId);
+                if (storedCombosJson) {
+                    storedCombos = JSON.parse(storedCombosJson);
+                }
+            } catch (e) {}
+
+            const allComboIds = Array.from(new Set([...Object.keys(savedCombosData), ...Object.keys(storedCombos)]));
+
+            allComboIds.forEach(id => {
+                let qty = 0;
+                if (storedCombos[id] !== undefined) {
+                    qty = parseInt(storedCombos[id]?.qty ?? storedCombos[id] ?? 0);
+                } else if (savedCombosData[id] !== undefined) {
+                    qty = parseInt(savedCombosData[id]?.qty ?? savedCombosData[id] ?? 0);
+                }
+
                 if (qty > 0) {
                     const span = document.querySelector(`.combo-quantity[data-id="${id}"]`);
                     if (span) {
@@ -826,6 +857,7 @@
                         span.textContent = qty;
                         selectedCombos[id].qty = qty;
                         updateOrderSummary();
+                        saveCombosToStorage();
                     }
                 });
             });
@@ -847,6 +879,7 @@
                     }
                     selectedCombos[id].qty = qty;
                     updateOrderSummary();
+                    saveCombosToStorage();
                 });
             });
 
@@ -863,7 +896,7 @@
                     e.preventDefault();
 
                     if (!showtimeId || !seatIds) {
-                        alert('Vui lòng chọn ghế trước khi thanh toán');
+                        window.showToast('Vui lòng chọn ghế trước khi thanh toán', 'error');
                         window.location.href = '/';
                         return;
                     }
@@ -929,6 +962,7 @@
                         }
 
                         const bookingId = data.data.booking_id;
+                        window.currentPendingBookingId = bookingId;
 
                         // Đồng hồ đếm ngược đã được khởi tạo lúc load trang.
                         // Không cần set lại để tránh làm reset sai lệch thời gian của server.
@@ -981,7 +1015,7 @@
                         confirmReservationButton.innerHTML = '<span>Thanh toán ngay</span><i class="fas fa-arrow-right ml-2"></i>';
 
                         console.error('Error:', error);
-                        alert('❌ Lỗi: ' + error.message);
+                        window.showToast(error.message, 'error');
                     });
                 });
             }
@@ -1046,6 +1080,7 @@
             sessionStorage.removeItem(storageKey);
             sessionStorage.removeItem('booking_expires_at');
             sessionStorage.removeItem('resume_seats_showtime_' + {{ $showtime->id }});
+            sessionStorage.removeItem('selectedCombos_showtime_' + {{ $showtime->id }});
 
             fetch("{{ route('api.booking.cancel-explicit') }}", {
                 method: "POST",
@@ -1062,7 +1097,7 @@
                 if(data.success) {
                     window.location.href = data.redirect_url || "{{ route('movies.show', $showtime->movie_id) }}";
                 } else {
-                    alert(data.error || "Có lỗi xảy ra khi hủy vé.");
+                    window.showToast(data.error || "Có lỗi xảy ra khi hủy vé.", 'error');
                     closeCancelModal();
                     btn.disabled = false;
                     btn.innerHTML = 'Hủy đặt vé';
@@ -1070,11 +1105,45 @@
             })
             .catch(err => {
                 console.error(err);
-                alert("Lỗi kết nối.");
+                window.showToast("Lỗi kết nối.", 'error');
                 closeCancelModal();
                 btn.disabled = false;
                 btn.innerHTML = 'Hủy đặt vé';
             });
         }
+
+        // --- Giải phóng ghế tức thì khi đóng tab / rời trang (Beacon API) ---
+        let beaconSent = false;
+        function sendReleaseSeatsBeacon() {
+            if (beaconSent || window.isConfirmingReservation) return;
+
+            const bookingId = window.currentPendingBookingId || {{ $pendingBooking->id ?? 'null' }};
+            const showtimeId = {{ $showtime->id ?? 'null' }};
+            const seatIds = @json($seatIds ?? []);
+
+            let data = new FormData();
+            if (bookingId) {
+                data.append('booking_id', bookingId);
+            }
+            if (showtimeId) {
+                data.append('showtime_id', showtimeId);
+            }
+            if (Array.isArray(seatIds) && seatIds.length > 0) {
+                data.append('seat_ids', seatIds.join(','));
+            }
+
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon('/api/v1/bookings/release-hold-seats', data);
+                beaconSent = true;
+            }
+        }
+
+        window.addEventListener('beforeunload', function (event) {
+            sendReleaseSeatsBeacon();
+        });
+
+        window.addEventListener('pagehide', function (event) {
+            sendReleaseSeatsBeacon();
+        });
     </script>
 @endpush

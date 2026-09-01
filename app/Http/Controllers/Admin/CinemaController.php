@@ -53,7 +53,8 @@ class CinemaController extends AdminController
      */
     public function create()
     {
-        return view('admin.cinemas.create');
+        $provinces = config('provinces', []);
+        return view('admin.cinemas.create', compact('provinces'));
     }
 
     /**
@@ -81,7 +82,8 @@ class CinemaController extends AdminController
      */
     public function edit(Cinema $cinema)
     {
-        return view('admin.cinemas.edit', compact('cinema'));
+        $provinces = config('provinces', []);
+        return view('admin.cinemas.edit', compact('cinema', 'provinces'));
     }
 
     /**
@@ -128,6 +130,21 @@ class CinemaController extends AdminController
     {
         try {
             $cinema = Cinema::withTrashed()->findOrFail($id);
+
+            // Kiểm tra trùng tên với rạp đang hoạt động (chưa bị xóa mềm)
+            $duplicateExists = Cinema::whereNull('deleted_at')
+                ->where('id', '!=', $cinema->id)
+                ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim($cinema->name))])
+                ->exists();
+
+            if ($duplicateExists) {
+                $errorMessage = 'Khôi phục thất bại! Đã tồn tại rạp "' . $cinema->name . '" đang hoạt động trên hệ thống. Vui lòng đổi tên hoặc xóa bản ghi hiện tại trước khi khôi phục.';
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $errorMessage], 422);
+                }
+                return redirect()->route('admin.cinemas.index')->with('error', $errorMessage);
+            }
+
             $cinema->restore();
 
             if ($request->wantsJson()) {

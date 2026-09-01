@@ -25,7 +25,7 @@ class AdminMiddleware
 
         // Check if user has admin role
         if (!auth()->user()->isAdmin()) {
-            abort(403, 'Unauthorized access. Admin role required.');
+            abort(403, 'Bạn không có quyền truy cập. Yêu cầu quyền Quản trị viên (Admin).');
         }
 
         return $next($request);

@@ -20,11 +20,11 @@ class MovieDetailService
         // 1. Fetch movie with categories to avoid N+1
         $movie = Movie::with('categories')->findOrFail($id);
 
-        // 2. Lấy danh sách suất chiếu của phim (chỉ lấy suất SCHEDULED và còn hạn đặt online trước 15 phút)
+        // 2. Lấy danh sách suất chiếu của phim (lấy suất SCHEDULED và ONGOING còn hạn)
         // Group by Cinema then by Date
         $showtimes = Showtime::where('movie_id', $id)
-            ->where('status', Showtime::STATUS_SCHEDULED)
-            ->where('start_time', '>', now()->addMinutes(15))
+            ->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
+            ->where('start_time', '>', now()->subMinutes(15))
             ->with(['room.cinema'])
             ->orderBy('start_time', 'asc')
             ->get();
@@ -37,12 +37,14 @@ class MovieDetailService
             });
         });
 
-        // Prepare mapping cinemaName => cinemaId for fetching cinema reviews
+        // Prepare mapping cinemaName => cinemaId & cinemaCity for filtering
         $cinemaNameToId = [];
+        $cinemaNameToCity = [];
         foreach ($showtimesByCinema as $cinemaName => $group) {
             $first = $group->flatten()->first();
             if ($first && $first->room && $first->room->cinema) {
                 $cinemaNameToId[$cinemaName] = $first->room->cinema->id;
+                $cinemaNameToCity[$cinemaName] = $first->room->cinema->city ?? 'Khác';
             }
         }
 
@@ -109,7 +111,7 @@ class MovieDetailService
             
             // Check if they can review (booking paid/used and showtime ended)
             $canReview = \App\Models\Booking::where('user_id', $userId)
-                ->whereIn('status', ['Paid', 'Used'])
+                ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
                 ->whereHas('showtime', function ($query) use ($id) {
                     $query->where('movie_id', $id)
                         ->where('end_time', '<=', now());
@@ -117,7 +119,7 @@ class MovieDetailService
 
             // Fetch combos purchased during this movie's bookings
             $bookingsWithCombos = \App\Models\Booking::where('user_id', $userId)
-                ->whereIn('status', ['Paid', 'Used'])
+                ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
                 ->whereHas('showtime', function ($query) use ($id) {
                     $query->where('movie_id', $id);
                 })
@@ -162,6 +164,7 @@ class MovieDetailService
             'purchasedCombos' => $purchasedCombos,
             'comboReviews' => $comboReviews,
             'cinemaReviewsByName' => $cinemaReviewsByName,
+            'cinemaNameToCity' => $cinemaNameToCity,
         ];
     }
 }

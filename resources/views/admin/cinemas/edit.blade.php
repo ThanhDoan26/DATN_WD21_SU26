@@ -35,7 +35,11 @@
                     <div class="mb-3">
                         <label for="name" class="form-label">Tên Rạp *</label>
                         <input type="text" class="form-control @error('name') is-invalid @enderror"
-                               id="name" name="name" value="{{ old('name', $cinema->name) }}" required>
+                               id="name" name="name" value="{{ old('name', $cinema->name) }}" 
+                               placeholder="Ví dụ: CGV Sư Vạn Hạnh - TP. Hồ Chí Minh" required>
+                        <div class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i> Quy tắc đặt tên chuẩn: <code>[Tên Thương Hiệu] + [Tên TTTM/Địa danh] + [Tỉnh/Thành]</code> (Ví dụ: <em>CGV Sư Vạn Hạnh - TP. Hồ Chí Minh</em>).
+                        </div>
                         @error('name')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -68,20 +72,18 @@
 
             <div class="row">
                 <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="city" class="form-label">Thành phố *</label>
-                        <input type="text" class="form-control @error('city') is-invalid @enderror"
-                               id="city" name="city" value="{{ old('city', $cinema->city) }}" required>
-                        @error('city')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+                    <x-province-select 
+                        :provinces="$provinces" 
+                        :selected="old('city', $cinema->city)" 
+                        name="city" 
+                        label="Tỉnh / Thành phố" 
+                        id="cinema-edit-city" />
                 </div>
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label for="phone" class="form-label">Hotline</label>
                         <input type="text" class="form-control @error('phone') is-invalid @enderror"
-                               id="phone" name="phone" value="{{ old('phone', $cinema->phone) }}">
+                                id="phone" name="phone" value="{{ old('phone', $cinema->phone) }}">
                         @error('phone')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror

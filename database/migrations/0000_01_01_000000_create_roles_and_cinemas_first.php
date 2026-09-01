@@ -19,7 +19,7 @@ return new class extends Migration
         // Tạo cinemas trước users table
         Schema::create('cinemas', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
+            $table->string('name');
             $table->string('address');
             $table->string('city');
             $table->string('phone')->nullable();
@@ -27,6 +27,7 @@ return new class extends Migration
             $table->string('status')->default('ACTIVE');
             $table->timestamps();
 
+            $table->index('name');
             $table->index('city');
             $table->index('status');
         });

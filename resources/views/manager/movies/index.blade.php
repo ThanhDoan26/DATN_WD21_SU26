@@ -4,57 +4,46 @@
 @section('page_title', 'Danh Sách Phim Chiếu Rạp')
 
 @section('content')
-<!-- Breadcrumb -->
-<div class="breadcrumb-custom mb-3">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0 small">
-            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}" class="text-decoration-none text-muted fw-semibold">Dashboard</a></li>
-            <li class="breadcrumb-item active text-emerald font-sora fw-bold">Danh Sách Phim</li>
-        </ol>
-    </nav>
-</div>
-
-<!-- Page Title & Header Actions -->
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
-    <div>
-        <h2 class="fw-extrabold text-ink font-sora mb-1 fs-3"><i class="fas fa-film text-emerald me-2"></i>Danh Sách Phim Chiếu Rạp</h2>
-        <p class="text-muted small mb-0">Theo dõi thông tin và thời lượng tất cả các phim thuộc hệ thống</p>
-    </div>
-</div>
-
-<!-- Search & Filter Card -->
-<div class="card border-0 shadow-sm rounded-4 mb-4" style="background: var(--bg-surface);">
-    <div class="card-body p-4">
-        <form action="{{ route('manager.movies.index') }}" method="GET" class="row g-3 align-items-end">
-            <div class="col-12 col-md-4">
-                <label class="form-label font-sora fw-bold small text-muted">Tìm kiếm phim</label>
-                <div class="input-group">
-                    <span class="input-group-text border-end-0 bg-transparent text-muted"><i class="fas fa-search"></i></span>
-                    <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Nhập tên phim cần tìm..." value="{{ request('search') }}">
-                </div>
-            </div>
-            <div class="col-12 col-md-3">
-                <label class="form-label font-sora fw-bold small text-muted">Thể loại</label>
-                <select name="category_id" class="form-select font-sora fw-semibold">
-                    <option value="">-- Tất cả thể loại --</option>
-                    @foreach($categories as $category)
-                        <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
-                            {{ $category->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-12 col-md-3">
-                <label class="form-label font-sora fw-bold small text-muted">Trạng thái chiếu</label>
-                <select name="status" class="form-select font-sora fw-semibold">
-                    <option value="">-- Tất cả trạng thái --</option>
-                    <option value="COMING_SOON" {{ request('status') == 'COMING_SOON' ? 'selected' : '' }}>Sắp chiếu</option>
-                    <option value="NOW_SHOWING" {{ request('status') == 'NOW_SHOWING' ? 'selected' : '' }}>Đang chiếu</option>
-                    <option value="ENDED" {{ request('status') == 'ENDED' ? 'selected' : '' }}>Ngưng chiếu</option>
-                </select>
-            </div>
-            <div class="col-12 col-md-2">
-                <button type="submit" class="btn btn-emerald font-sora fw-bold w-100"><i class="fas fa-filter me-1"></i> Lọc kết quả</button>
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                <form action="{{ route('manager.movies.index') }}" method="GET" class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label text-muted fw-semibold mb-1">Tìm kiếm</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" name="search" class="form-control border-start-0 bg-light" placeholder="Nhập tên phim..." value="{{ request('search') }}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-muted fw-semibold mb-1">Loại phim / Thể loại</label>
+                        <select name="category_id" class="form-select bg-light">
+                            <option value="">Tất cả loại phim</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
+                                    {{ $category->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-muted fw-semibold mb-1">Trạng thái</label>
+                        <select name="status" class="form-select bg-light">
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="SCHEDULED" {{ request('status') == 'SCHEDULED' ? 'selected' : '' }}>Lên lịch</option>
+                            <option value="PRE_ORDER" {{ request('status') == 'PRE_ORDER' ? 'selected' : '' }}>Mở bán sớm</option>
+                            <option value="COMING_SOON" {{ request('status') == 'COMING_SOON' ? 'selected' : '' }}>Sắp chiếu</option>
+                            <option value="NOW_SHOWING" {{ request('status') == 'NOW_SHOWING' ? 'selected' : '' }}>Đang chiếu</option>
+                            <option value="ENDED" {{ request('status') == 'ENDED' ? 'selected' : '' }}>Ngưng chiếu</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100 fw-semibold shadow-sm">
+                            Lọc kết quả
+                        </button>
+                    </div>
+                </form>
             </div>
         </form>
     </div>
@@ -111,43 +100,34 @@
                             @foreach($movie->categories as $cat)
                                 <span class="badge bg-light text-muted border px-2 py-1 font-sora fw-semibold">{{ $cat->name }}</span>
                             @endforeach
-                        </div>
-                    </td>
-                    <td>
-                        @php
-                            $fmtList = is_array($movie->format) ? $movie->format : (is_string($movie->format) ? explode(',', $movie->format) : ['2D']);
-                        @endphp
-                        <div class="d-flex flex-wrap gap-1">
-                            @foreach($fmtList as $fmt)
-                                @php
-                                    $fmtStr = trim(strtoupper($fmt));
-                                    $badgeClass = str_contains($fmtStr, 'IMAX') ? 'badge-format-imax' : (str_contains($fmtStr, '3D') ? 'badge-format-3d' : 'badge-format-2d');
-                                @endphp
-                                <span class="{{ $badgeClass }}">{{ $fmtStr }}</span>
-                            @endforeach
-                        </div>
-                    </td>
-                    <td>
-                        <span class="font-sora fw-bold text-ink"><i class="fas fa-clock text-amber me-1"></i>{{ $movie->duration }}</span> <small class="text-muted">phút</small>
-                    </td>
-                    <td>
-                        @if($movie->status == 'COMING_SOON')
-                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1 rounded-pill font-sora fw-bold">
-                                <i class="fas fa-hourglass-start me-1"></i>Sắp chiếu
-                            </span>
-                        @elseif($movie->status == 'NOW_SHOWING')
-                            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill font-sora fw-bold">
-                                <i class="fas fa-play-circle me-1"></i>Đang chiếu
-                            </span>
-                        @else
-                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1 rounded-pill font-sora fw-bold">
-                                <i class="fas fa-stop-circle me-1"></i>Ngưng chiếu
-                            </span>
-                        @endif
-                    </td>
-                    <td class="pe-4 text-end">
-                        <div class="btn-action-group">
-                            <a href="{{ route('manager.movies.show', $movie) }}" class="btn-action btn-action-view" title="Xem Chi Tiết Phim">
+                        </td>
+                        <td>
+                            @if(is_array($movie->format) && count($movie->format) > 0)
+                                @foreach($movie->format as $fmt)
+                                    <span class="badge bg-info text-dark fw-bold mb-1 d-inline-block">{{ $fmt }}</span>
+                                @endforeach
+                            @elseif(is_string($movie->format) && $movie->format !== '')
+                                <span class="badge bg-info text-dark fw-bold mb-1 d-inline-block">{{ $movie->format }}</span>
+                            @else
+                                <span class="text-muted" style="font-size:12px;">--</span>
+                            @endif
+                        </td>
+                        <td>{{ $movie->getDurationFormatted() }}</td>
+                        <td>
+                            @if($movie->status == 'SCHEDULED')
+                                <span class="badge bg-primary">Lên lịch</span>
+                            @elseif($movie->status == 'PRE_ORDER')
+                                <span class="badge bg-info text-dark">Mở bán sớm</span>
+                            @elseif($movie->status == 'COMING_SOON')
+                                <span class="badge bg-warning text-dark">Sắp chiếu</span>
+                            @elseif($movie->status == 'NOW_SHOWING')
+                                <span class="badge bg-success">Đang chiếu</span>
+                            @else
+                                <span class="badge bg-danger">Ngưng chiếu</span>
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            <a href="{{ route('manager.movies.show', $movie) }}" class="btn btn-sm btn-info" title="Xem chi tiết">
                                 <i class="fas fa-eye"></i>
                             </a>
                         </div>

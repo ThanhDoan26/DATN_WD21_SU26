@@ -18,10 +18,14 @@ class BookingController extends Controller
      * Bước 1: Chọn cụm rạp
      * Hiển thị danh sách rạp có suất chiếu của phim được chọn
      */
-    public function selectCinema(Movie $movie): View
+    public function selectCinema(Movie $movie): mixed
     {
+
+        $userLocation = session('user_location');
+        $hasLocation = !empty($userLocation) && strtoupper($userLocation) !== 'ALL';
+
         // Lấy danh sách rạp có suất chiếu còn mở bán online (trước giờ chiếu tối thiểu 15 phút)
-        $cinemas = Cinema::whereHas('rooms', function ($query) use ($movie) {
+        $cinemasQuery = Cinema::whereHas('rooms', function ($query) use ($movie) {
             $query->whereHas('showtimes', function ($q) use ($movie) {
                 $q->where('movie_id', $movie->id)
                   ->where('status', Showtime::STATUS_SCHEDULED)
@@ -34,20 +38,32 @@ class BookingController extends Controller
                   ->where('status', Showtime::STATUS_SCHEDULED)
                   ->where('start_time', '>', now()->addMinutes(15));
             });
-        }])
-        ->get();
+        }]);
+
+        if ($hasLocation) {
+            $cinemasQuery->where('city', 'like', '%' . trim($userLocation) . '%');
+        }
+
+        $cinemas = $cinemasQuery->get();
+
+        $cities = $cinemas->pluck('city')->filter()->unique()->values();
+        $initialCity = ($hasLocation && $cities->contains($userLocation)) ? $userLocation : 'ALL';
 
         return view('booking.select-cinema', [
             'movie' => $movie,
             'cinemas' => $cinemas,
+            'cities' => $cities,
+            'userLocation' => $userLocation,
+            'initialCity' => $initialCity,
         ]);
     }
 
     /**
      * Bước 2 & 3: Chọn ngày và suất chiếu
      */
-    public function selectDatesAndShowtimes(Movie $movie, Cinema $cinema): View
+    public function selectDatesAndShowtimes(Movie $movie, Cinema $cinema): mixed
     {
+
         return view('booking.select-dates-and-showtimes', [
             'movie' => $movie,
             'cinema' => $cinema,
@@ -67,6 +83,8 @@ class BookingController extends Controller
         if (!$movieId || !$cinemaId) {
             return response()->json(['error' => 'Missing parameters'], 400);
         }
+
+        $movie = Movie::find($movieId);
 
         // Lấy danh sách ngày chiếu theo phim + rạp (chỉ lấy suất mở bán online)
         $dates = Showtime::where('movie_id', $movieId)
@@ -103,6 +121,8 @@ class BookingController extends Controller
         if (!$movieId || !$cinemaId || !$date) {
             return response()->json(['error' => 'Missing parameters'], 400);
         }
+
+        $movie = Movie::find($movieId);
 
         // Lấy danh sách suất chiếu theo phim + rạp + ngày
         $showtimes = Showtime::where('movie_id', $movieId)
@@ -143,6 +163,8 @@ class BookingController extends Controller
      */
     public function selectSeats(Showtime $showtime)
     {
+        $showtime->loadMissing('movie');
+
         // Kiểm tra suất chiếu có còn được phép đặt vé online không
         if (!$showtime->isOnlineBookable()) {
             return redirect()->route('home')->with('error', 'Suất chiếu này đã đóng cổng đặt vé trực tuyến (cần đặt trước giờ chiếu tối thiểu 15 phút). Vui lòng mua vé tại quầy hoặc chọn suất chiếu khác.');
@@ -184,7 +206,7 @@ class BookingController extends Controller
         if ($userId && !empty($myPendingSeats)) {
             $myPendingBooking = \App\Models\Booking::where('user_id', $userId)
                 ->where('showtime_id', $showtime->id)
-                ->whereIn('status', ['Pending', 'PROCESSING'])
+                ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
                 ->orderBy('booking_time', 'desc')
                 ->first();
 
@@ -232,9 +254,9 @@ class BookingController extends Controller
                     ->from('bookings')
                     ->where('showtime_id', $showtimeId)
                     ->where(function ($q) {
-                        $q->where('status', 'Paid')
+                        $q->where('status', \App\Models\Booking::STATUS_PAID)
                           ->orWhere(function ($q2) {
-                              $q2->where('status', 'Pending')
+                              $q2->where('status', \App\Models\Booking::STATUS_PENDING)
                                  ->where('booking_time', '>=', now()->subMinutes(config('booking.seat_hold.duration_minutes', 10)));
                           });
                     });
@@ -256,8 +278,8 @@ class BookingController extends Controller
 
         // 1. Fetch Paid seats from Database
         $paidBookings = $showtime->bookings()
-            ->whereIn('status', ['Paid', 'Used'])
-            ->with('bookedSeats')
+            ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
+            ->with(['bookedSeats' => fn ($query) => $query->where('status', '!=', 'CANCELLED')])
             ->get();
             
         foreach ($paidBookings as $booking) {
@@ -289,7 +311,7 @@ class BookingController extends Controller
             $pendingBookings = $showtime->bookings()
                 ->whereIn('status', ['Pending', 'PROCESSING'])
                 ->where('booking_time', '>=', now()->subMinutes(\App\Services\BookingService::getHoldDuration()))
-                ->with('bookedSeats')
+                ->with(['bookedSeats' => fn ($query) => $query->where('status', '!=', 'CANCELLED')])
                 ->get();
 
             foreach ($pendingBookings as $booking) {
@@ -322,7 +344,12 @@ class BookingController extends Controller
         ]);
 
         $userId = Auth::id();
-        $query = \App\Models\Booking::whereIn('status', ['Pending', 'PROCESSING']);
+        if (!$userId) {
+            return response()->json(['error' => 'Bạn chưa đăng nhập.'], 401);
+        }
+
+        $query = \App\Models\Booking::where('user_id', $userId)
+            ->where('status', \App\Models\Booking::STATUS_PENDING);
 
         if ($request->booking_id) {
             $query->where('id', $request->booking_id);

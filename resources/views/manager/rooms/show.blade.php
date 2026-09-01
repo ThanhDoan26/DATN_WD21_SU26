@@ -1,12 +1,12 @@
 @extends('layouts.manager')
 
-@section('title', 'Room Details - Admin')
-@section('page_title', 'Room Details')
+@section('title', 'Chi tiết Phòng Chiếu: #' . $room->id)
+@section('page_title', 'Chi tiết phòng chiếu')
 
 @section('extra_css')
 <style>
     .seat-map-wrapper { background: var(--bg-surface); padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; align-items: center; margin: 20px 0; border: 1px solid var(--border-light); overflow-x: auto; }
-    .cinema-screen { width: 80%; max-width: 600px; margin: 0 auto 40px auto; padding: 12px 0; text-align: center; background: linear-gradient(180deg, rgba(147, 51, 234, 0.12) 0%, rgba(147, 51, 234, 0.02) 100%); border-top: 6px solid var(--primary-color); border-radius: 8px 8px 120px 120px; font-size: 0.85rem; font-weight: 700; letter-spacing: 8px; color: var(--primary-color); box-shadow: 0 8px 25px -8px rgba(147, 51, 234, 0.25); text-transform: uppercase; font-family: 'Sora', sans-serif; }
+    .cinema-screen { width: 80%; max-width: 600px; margin: 0 auto 40px auto; padding: 12px 0; text-align: center; background: linear-gradient(180deg, rgba(13, 148, 136, 0.12) 0%, rgba(13, 148, 136, 0.02) 100%); border-top: 6px solid var(--primary-color); border-radius: 8px 8px 120px 120px; font-size: 0.85rem; font-weight: 700; letter-spacing: 8px; color: var(--primary-color); box-shadow: 0 8px 25px -8px rgba(13, 148, 136, 0.25); text-transform: uppercase; font-family: 'Sora', sans-serif; }
     .seat-layout-container { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; min-width: 580px; padding: 10px 0; }
     .seat-row { display: flex; align-items: center; justify-content: center; width: 100%; gap: 8px; }
     .row-label { font-size: 0.85rem; font-weight: 700; color: #94a3b8; width: 30px; user-select: none; }
@@ -22,7 +22,7 @@
     .seat.selected-active { background-color: #22c55e !important; border-color: #16a34a !important; color: #ffffff !important; outline: none !important; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.4); animation: pulseSelection 1.5s infinite; }
     @keyframes pulseSelection { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
     .seat.selected-active { outline: 3px solid var(--primary-color); outline-offset: 2px; animation: pulseSelection 1.5s infinite; }
-    @keyframes pulseSelection { 0% { outline-color: rgba(147, 51, 234, 0.8); } 50% { outline-color: rgba(147, 51, 234, 0.1); } 100% { outline-color: rgba(147, 51, 234, 0.8); } }
+    @keyframes pulseSelection { 0% { outline-color: rgba(13, 148, 136, 0.8); } 50% { outline-color: rgba(13, 148, 136, 0.1); } 100% { outline-color: rgba(13, 148, 136, 0.8); } }
 
     .seat-legend { display: flex; gap: 20px; margin: 10px 0 30px 0; flex-wrap: wrap; justify-content: center; background-color: #f8fafc; padding: 15px 25px; border-radius: 12px; border: 1px solid #e2e8f0; }
     .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 500; color: #475569; }
@@ -49,9 +49,9 @@
 <div class="breadcrumb-custom">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('manager.rooms.index') }}">Rooms</a></li>
-            <li class="breadcrumb-item active">Details</li>
+            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('manager.rooms.index') }}">Phòng chiếu</a></li>
+            <li class="breadcrumb-item active">Chi tiết</li>
         </ol>
     </nav>
 </div>
@@ -147,8 +147,7 @@
                     @endphp
                     <div class="stat-number text-warning">{{ $activeShowtimes }}</div>
                     <div class="stat-label">Suất Chiếu Hợp Lệ</div>
-                    <!-- Assuming showtimes.index takes room_id in future implementation -->
-                    <a href="{{ route('admin.showtimes.index') }}?room_id={{ $room->id }}" class="btn btn-sm btn-outline-warning mt-2">Xem Chi Tiết</a>
+                    <a href="{{ route('manager.showtimes.index', ['room_id' => $room->id]) }}" class="btn btn-sm btn-outline-warning mt-2">Xem Chi Tiết</a>
                 </div>
             </div>
         </div>
@@ -168,7 +167,7 @@
                         <strong>Không thể xóa phòng</strong> - Phòng đang có <strong>{{ $activeShowtimes }} suất chiếu</strong> hợp lệ.
                         Vui lòng xóa hoặc hủy tất cả suất chiếu trước khi xóa phòng này.
                     </div>
-                    <a href="{{ route('admin.showtimes.index') }}?room_id={{ $room->id }}" class="btn btn-warning w-100">
+                    <a href="{{ route('manager.showtimes.index', ['room_id' => $room->id]) }}" class="btn btn-warning w-100">
                         <i class="fas fa-film"></i> Quản Lý Suất Chiếu
                     </a>
                 @else

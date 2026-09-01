@@ -1,15 +1,15 @@
 @extends('layouts.manager')
 
-@section('title', 'Quản Lý Suất Chiếu')
-@section('page_title', 'Danh Sách Suất Chiếu')
+@section('title', 'Quản lý Lịch Chiếu')
+@section('page_title', 'Quản lý lịch chiếu')
 
 @section('content')
 <!-- Breadcrumb -->
 <div class="breadcrumb-custom mb-3">
     <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0 small">
-            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}" class="text-decoration-none text-muted fw-semibold">Dashboard</a></li>
-            <li class="breadcrumb-item active text-emerald font-sora fw-bold">Suất Chiếu</li>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}">Bảng điều khiển</a></li>
+            <li class="breadcrumb-item active">Lịch chiếu</li>
         </ol>
     </nav>
 </div>
@@ -102,8 +102,21 @@
                     <tr>
                         <td class="ps-4 font-sora fw-bold text-muted">#{{ $showtimes->firstItem() + $loop->index }}</td>
                         <td>
-                            <div class="font-sora fw-extrabold text-ink fs-6 mb-1">{{ $showtime->movie->title }}</div>
-                            <small class="text-muted font-sora"><i class="fas fa-clock text-amber me-1"></i>{{ $showtime->movie->duration }} phút</small>
+                            @if($showtime->status === \App\Models\Showtime::STATUS_SCHEDULED)
+                                <span class="badge bg-info">Lên lịch (SCHEDULED)</span>
+                            @elseif($showtime->status === \App\Models\Showtime::STATUS_ONGOING)
+                                <span class="badge bg-success">Đang chiếu (ONGOING)</span>
+                            @elseif($showtime->status === \App\Models\Showtime::STATUS_COMPLETED)
+                                <span class="badge bg-secondary">Đã chiếu (FINISHED)</span>
+                            @elseif($showtime->status === \App\Models\Showtime::STATUS_PENDING)
+                                <span class="badge bg-warning text-dark">Chờ công bố (PENDING)</span>
+                            @elseif($showtime->status === \App\Models\Showtime::STATUS_UNPUBLISHED)
+                                <span class="badge bg-secondary">Chưa công bố</span>
+                            @elseif($showtime->status === \App\Models\Showtime::STATUS_CANCELLED)
+                                <span class="badge bg-danger">Đã hủy (CANCELLED)</span>
+                            @else
+                                <span class="badge bg-secondary">{{ $showtime->status }}</span>
+                            @endif
                         </td>
                         <td>
                             <span class="badge bg-info-subtle text-info border border-info-subtle px-3 py-1 rounded-pill font-sora fw-bold">

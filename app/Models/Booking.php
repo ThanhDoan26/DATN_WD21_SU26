@@ -5,15 +5,40 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * Booking Model
  * ========================================
  * Đơn hàng mua vé
- * Status: Pending, Paid, Cancelled, Used
+ * Status: pending, paid, cancelled, expired, used
  */
 class Booking extends Model
 {
+    public const STATUS_PENDING    = 'pending';
+    public const STATUS_PAID       = 'paid';
+    public const STATUS_CANCELLED  = 'cancelled';
+    public const STATUS_EXPIRED    = 'expired';
+    public const STATUS_USED       = 'used';
+    public const STATUS_PROCESSING = 'processing';
+
+    public const STATUSES = [
+        self::STATUS_PENDING,
+        self::STATUS_PROCESSING,
+        self::STATUS_PAID,
+        self::STATUS_CANCELLED,
+        self::STATUS_EXPIRED,
+        self::STATUS_USED,
+    ];
+
+    public const STATUS_LABELS = [
+        self::STATUS_PENDING   => 'Chờ thanh toán',
+        self::STATUS_PAID      => 'Đã thanh toán',
+        self::STATUS_CANCELLED => 'Đã hủy',
+        self::STATUS_EXPIRED   => 'Hết hạn',
+        self::STATUS_USED      => 'Đã sử dụng',
+    ];
+
     protected $fillable = [
         'user_id',
         'showtime_id',
@@ -26,33 +51,56 @@ class Booking extends Model
         'cancellation_reason',
         'booking_code',
         'ticket_token',
+        'ticket_email_sent_at',
         'notes',
     ];
 
     protected static function booted()
     {
         static::creating(function ($booking) {
-            if ($booking->status === 'Paid' && empty($booking->ticket_token)) {
-                $booking->ticket_token = (string) \Illuminate\Support\Str::uuid();
+            if ($booking->isPaid() && empty($booking->ticket_token)) {
+                $booking->ticket_token = (string) Str::uuid();
             }
         });
 
         static::updating(function ($booking) {
-            if ($booking->status === 'Paid' && empty($booking->ticket_token)) {
-                $booking->ticket_token = (string) \Illuminate\Support\Str::uuid();
+            if ($booking->isPaid() && empty($booking->ticket_token)) {
+                $booking->ticket_token = (string) Str::uuid();
             }
         });
+    }
+
+    /**
+     * Mutator: Luôn chuẩn hóa trạng thái về chữ thường (lowercase)
+     */
+    public function setStatusAttribute($value): void
+    {
+        $this->attributes['status'] = is_string($value) ? strtolower(trim($value)) : $value;
+    }
+
+    /**
+     * Accessor: Luôn trả về trạng thái dạng chữ thường (lowercase)
+     */
+    public function getStatusAttribute($value): ?string
+    {
+        return is_string($value) ? strtolower(trim($value)) : $value;
     }
 
     protected $casts = [
         'booking_time' => 'datetime',
         'payment_time' => 'datetime',
         'cancelled_at' => 'datetime',
+        'ticket_email_sent_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class)->withTrashed();
     }
 
     public function showtime(): BelongsTo
@@ -80,7 +128,15 @@ class Booking extends Model
      */
     public function isPaid(): bool
     {
-        return $this->status === 'Paid';
+        return strtolower($this->status ?? '') === self::STATUS_PAID;
+    }
+
+    /**
+     * Helper: Kiểm tra booking đang chờ thanh toán
+     */
+    public function isPending(): bool
+    {
+        return strtolower($this->status ?? '') === self::STATUS_PENDING;
     }
 
     /**
@@ -88,7 +144,32 @@ class Booking extends Model
      */
     public function isCancelled(): bool
     {
-        return $this->status === 'Cancelled';
+        return strtolower($this->status ?? '') === self::STATUS_CANCELLED;
+    }
+
+    /**
+     * Helper: Kiểm tra booking đã hết hạn
+     */
+    public function isExpired(): bool
+    {
+        return strtolower($this->status ?? '') === self::STATUS_EXPIRED;
+    }
+
+    /**
+     * Helper: Kiểm tra booking đã sử dụng vé
+     */
+    public function isUsed(): bool
+    {
+        return strtolower($this->status ?? '') === self::STATUS_USED;
+    }
+
+    /**
+     * Helper: Lấy nhãn tiếng Việt của trạng thái
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        $st = strtolower($this->status ?? '');
+        return self::STATUS_LABELS[$st] ?? ucfirst($st);
     }
 
     /**
