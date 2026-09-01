@@ -689,6 +689,87 @@
             }
         }
 
+        /* ── Sidebar Group (submenu) ── */
+        .sidebar-group-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 12px 16px;
+            color: #99f6e4;
+            opacity: 0.85;
+            background: transparent;
+            border: none;
+            border-radius: 10px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .sidebar-group-toggle:hover,
+        .sidebar-group-toggle.open {
+            background-color: rgba(45, 212, 191, 0.1);
+            color: #ffffff;
+            opacity: 1;
+        }
+        .sidebar-group-toggle.active {
+            background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%);
+            color: #ffffff;
+            opacity: 1;
+            box-shadow: 0 4px 14px rgba(13, 148, 136, 0.4);
+        }
+        .sidebar-group-toggle.active i { color: #ffffff; }
+        .sidebar-chevron {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            transition: transform 0.25s ease;
+        }
+        .sidebar-group-toggle.open .sidebar-chevron {
+            transform: rotate(180deg);
+        }
+        .sidebar-submenu {
+            list-style: none;
+            padding: 4px 0 4px 14px;
+            margin: 2px 0 4px;
+            border-left: 2px solid rgba(45, 212, 191, 0.25);
+            margin-left: 28px;
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.3s ease, opacity 0.25s ease;
+            opacity: 0;
+        }
+        .sidebar-submenu.expanded {
+            max-height: 300px;
+            opacity: 1;
+        }
+        .sidebar-submenu li { margin-bottom: 2px; }
+        .sidebar-submenu a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            color: #ccfbf1;
+            opacity: 0.85;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .sidebar-submenu a:hover {
+            background: rgba(45, 212, 191, 0.12);
+            color: #fff;
+            opacity: 1;
+        }
+        .sidebar-submenu a.active {
+            background: rgba(45, 212, 191, 0.2);
+            color: #ccfbf1;
+            font-weight: 700;
+            opacity: 1;
+        }
+        .sidebar-submenu a i { font-size: 0.8rem; width: 14px; text-align: center; }
+
         /* Scrollbar */
         .sidebar::-webkit-scrollbar {
             width: 5px;
@@ -785,12 +866,49 @@
                     <span>Phim</span>
                 </a>
             </li>
+<<<<<<< HEAD
             <li>
                 <a href="{{ route('manager.coupons.index') }}"
                    class="@if(request()->routeIs('manager.coupons.*')) active @endif">
                     <i class="fas fa-tags"></i>
                     <span>Mã giảm giá</span>
                 </a>
+=======
+
+            {{-- Voucher group --}}
+            <li class="sidebar-group">
+                <button type="button" class="sidebar-group-toggle @if(request()->routeIs('manager.coupon*', 'manager.coupons*')) active open @endif"
+                        onclick="toggleSidebarGroup(this)">
+                    <span><i class="fas fa-tag"></i><span class="ms-3">Quản lý Voucher</span></span>
+                    <i class="fas fa-chevron-down sidebar-chevron"></i>
+                </button>
+                <ul class="sidebar-submenu @if(request()->routeIs('manager.coupon*', 'manager.coupons*')) expanded @endif">
+                    <li>
+                        <a href="{{ route('manager.coupons.index') }}"
+                           class="@if(request()->routeIs('manager.coupons.index') || request()->routeIs('manager.coupons.edit') || request()->routeIs('manager.coupons.show')) active @endif">
+                            <i class="fas fa-list-ul"></i>Danh sách mã
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('manager.coupons.create') }}"
+                           class="@if(request()->routeIs('manager.coupons.create')) active @endif">
+                            <i class="fas fa-plus"></i>Thêm mã mới
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('manager.coupon.check') }}"
+                           class="@if(request()->routeIs('manager.coupon.check*')) active @endif">
+                            <i class="fas fa-search"></i>Kiểm tra nhanh
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('manager.coupon.expired') }}"
+                           class="@if(request()->routeIs('manager.coupon.expired')) active @endif">
+                            <i class="fas fa-history"></i>Mã hết hạn
+                        </a>
+                    </li>
+                </ul>
+>>>>>>> origin/daohung
             </li>
         </ul>
     </aside>
@@ -887,6 +1005,12 @@
             const isDark = document.documentElement.classList.contains('dark-theme');
             updateThemeIcon(isDark);
         });
+
+        function toggleSidebarGroup(btn) {
+            const isOpen = btn.classList.toggle('open');
+            const submenu = btn.nextElementSibling;
+            submenu.classList.toggle('expanded', isOpen);
+        }
     </script>
     @stack('scripts')
     @yield('extra_js')

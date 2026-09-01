@@ -54,12 +54,24 @@ class ComboController extends Controller
                     return $query->where('status', 'ACTIVE');
                 }),
             ],
-            'price' => 'required|numeric|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'description' => 'nullable|string',
-            'status' => 'required|in:ACTIVE,INACTIVE',
+            'price'       => 'required|numeric|min:0',
+            'image'       => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'description' => 'nullable|string|max:2000',
+            'status'      => 'required|in:ACTIVE,INACTIVE',
         ], [
-            'name.unique' => 'Tên combo này đang trùng với một combo khác đang hoạt động.',
+            'name.required'  => 'Vui lòng nhập tên combo.',
+            'name.string'    => 'Tên combo phải là chuỗi ký tự.',
+            'name.max'       => 'Tên combo không được vượt quá 255 ký tự.',
+            'name.unique'    => 'Tên combo này đã tồn tại trong danh sách đang hoạt động.',
+            'price.required' => 'Vui lòng nhập giá combo.',
+            'price.numeric'  => 'Giá combo phải là số.',
+            'price.min'      => 'Giá combo không được nhỏ hơn 0.',
+            'image.image'    => 'Tệp tải lên phải là hình ảnh.',
+            'image.mimes'    => 'Hình ảnh phải có định dạng: JPG, PNG, GIF.',
+            'image.max'      => 'Kích thước hình ảnh không được vượt quá 2MB.',
+            'description.max'=> 'Mô tả không được vượt quá 2000 ký tự.',
+            'status.required'=> 'Vui lòng chọn trạng thái.',
+            'status.in'      => 'Trạng thái không hợp lệ. Chỉ chấp nhận: Đang bán hoặc Ngừng bán.',
         ]);
 
         $data = $request->except('image');
@@ -104,12 +116,24 @@ class ComboController extends Controller
                     return $query->where('status', 'ACTIVE');
                 })->ignore($combo->id),
             ],
-            'price' => 'required|numeric|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'description' => 'nullable|string',
-            'status' => 'required|in:ACTIVE,INACTIVE',
+            'price'       => 'required|numeric|min:0',
+            'image'       => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'description' => 'nullable|string|max:2000',
+            'status'      => 'required|in:ACTIVE,INACTIVE',
         ], [
-            'name.unique' => 'Tên combo này đang trùng với một combo khác đang hoạt động.',
+            'name.required'  => 'Vui lòng nhập tên combo.',
+            'name.string'    => 'Tên combo phải là chuỗi ký tự.',
+            'name.max'       => 'Tên combo không được vượt quá 255 ký tự.',
+            'name.unique'    => 'Tên combo này đã tồn tại trong danh sách đang hoạt động.',
+            'price.required' => 'Vui lòng nhập giá combo.',
+            'price.numeric'  => 'Giá combo phải là số.',
+            'price.min'      => 'Giá combo không được nhỏ hơn 0.',
+            'image.image'    => 'Tệp tải lên phải là hình ảnh.',
+            'image.mimes'    => 'Hình ảnh phải có định dạng: JPG, PNG, GIF.',
+            'image.max'      => 'Kích thước hình ảnh không được vượt quá 2MB.',
+            'description.max'=> 'Mô tả không được vượt quá 2000 ký tự.',
+            'status.required'=> 'Vui lòng chọn trạng thái.',
+            'status.in'      => 'Trạng thái không hợp lệ. Chỉ chấp nhận: Đang bán hoặc Ngừng bán.',
         ]);
 
         $data = $request->except('image');
