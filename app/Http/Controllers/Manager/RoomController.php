@@ -325,7 +325,7 @@ class RoomController extends Controller
 
         $hasFutureBookings = \App\Models\Booking::whereHas('showtime', function($q) use ($room) {
             $q->where('room_id', $room->id)->where('start_time', '>', now());
-        })->whereIn('status', ['Paid', 'SUCCESS', 'Pending'])->exists();
+        })->whereIn('status', [\App\Models\Booking::STATUS_PAID, 'success', \App\Models\Booking::STATUS_PENDING])->exists();
 
         if ($hasFutureBookings) {
             return redirect()->route('manager.rooms.index')

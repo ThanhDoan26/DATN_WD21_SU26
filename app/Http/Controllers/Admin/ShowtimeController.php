@@ -385,8 +385,8 @@ class ShowtimeController extends AdminController
     {
         $hasBookings = $showtime->bookings()
             ->where(function ($q) {
-                $q->whereIn('status', ['Paid', 'SUCCESS', 'Used'])
-                  ->orWhere('status', 'Pending');
+                $q->whereIn('status', [\App\Models\Booking::STATUS_PAID, 'success', \App\Models\Booking::STATUS_USED])
+                  ->orWhere('status', \App\Models\Booking::STATUS_PENDING);
             })
             ->exists();
 

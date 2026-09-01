@@ -59,7 +59,7 @@ class Coupon extends Model
             $usedCouponQuery = \Illuminate\Support\Facades\DB::table('bookings')
                 ->where('user_id', $userId)
                 ->whereNotNull('coupon_id')
-                ->whereIn('status', ['Pending', 'PROCESSING', 'Paid', 'Used']);
+                ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing', \App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED]);
 
             if ($ignoreBookingId) {
                 $usedCouponQuery->where('id', '!=', $ignoreBookingId);
@@ -119,7 +119,7 @@ class Coupon extends Model
             $hasUsedQuery = \Illuminate\Support\Facades\DB::table('bookings')
                 ->where('user_id', $userId)
                 ->where('coupon_id', $this->id)
-                ->whereIn('status', ['Pending', 'PROCESSING', 'Paid', 'Used']);
+                ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing', \App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED]);
 
             if ($ignoreBookingId) {
                 $hasUsedQuery->where('id', '!=', $ignoreBookingId);

@@ -64,10 +64,10 @@ class BookingController extends AdminController
         // Get status counts for filter buttons
         $statusCounts = [
             'all' => Booking::count(),
-            'Paid' => Booking::where('status', 'Paid')->count(),
-            'Pending' => Booking::where('status', 'Pending')->count(),
-            'Used' => Booking::where('status', 'Used')->count(),
-            'Cancelled' => Booking::where('status', 'Cancelled')->count(),
+            'paid' => Booking::where('status', Booking::STATUS_PAID)->count(),
+            'pending' => Booking::where('status', Booking::STATUS_PENDING)->count(),
+            'used' => Booking::where('status', Booking::STATUS_USED)->count(),
+            'cancelled' => Booking::where('status', Booking::STATUS_CANCELLED)->count(),
         ];
 
         // Get distinct payment methods

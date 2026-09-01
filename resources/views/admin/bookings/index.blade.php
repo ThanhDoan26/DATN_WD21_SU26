@@ -50,21 +50,21 @@
                        class="btn btn-sm {{ !$filters['status'] ? 'btn-primary' : 'btn-outline-primary' }}">
                         <i class="fas fa-list"></i> Tất Cả <span class="badge bg-secondary">{{ $statusCounts['all'] }}</span>
                     </a>
-                    <a href="{{ route('admin.bookings.index', array_merge(request()->except('status'), ['status' => 'Paid'])) }}"
-                       class="btn btn-sm {{ $filters['status'] === 'Paid' ? 'btn-success' : 'btn-outline-success' }}">
-                        <i class="fas fa-check-circle"></i> Đã Thanh Toán <span class="badge bg-secondary">{{ $statusCounts['Paid'] }}</span>
+                    <a href="{{ route('admin.bookings.index', array_merge(request()->except('status'), ['status' => 'paid'])) }}"
+                       class="btn btn-sm {{ $filters['status'] === 'paid' ? 'btn-success' : 'btn-outline-success' }}">
+                        <i class="fas fa-check-circle"></i> Đã Thanh Toán <span class="badge bg-secondary">{{ $statusCounts['paid'] }}</span>
                     </a>
-                    <a href="{{ route('admin.bookings.index', array_merge(request()->except('status'), ['status' => 'Pending'])) }}"
-                       class="btn btn-sm {{ $filters['status'] === 'Pending' ? 'btn-warning' : 'btn-outline-warning' }}">
-                        <i class="fas fa-clock"></i> Chờ Xử Lý <span class="badge bg-secondary">{{ $statusCounts['Pending'] }}</span>
+                    <a href="{{ route('admin.bookings.index', array_merge(request()->except('status'), ['status' => 'pending'])) }}"
+                       class="btn btn-sm {{ $filters['status'] === 'pending' ? 'btn-warning' : 'btn-outline-warning' }}">
+                        <i class="fas fa-clock"></i> Chờ Xử Lý <span class="badge bg-secondary">{{ $statusCounts['pending'] }}</span>
                     </a>
-                    <a href="{{ route('admin.bookings.index', array_merge(request()->except('status'), ['status' => 'Used'])) }}"
-                       class="btn btn-sm {{ $filters['status'] === 'Used' ? 'btn-info' : 'btn-outline-info' }}">
-                        <i class="fas fa-check"></i> Đã Sử Dụng <span class="badge bg-secondary">{{ $statusCounts['Used'] }}</span>
+                    <a href="{{ route('admin.bookings.index', array_merge(request()->except('status'), ['status' => 'used'])) }}"
+                       class="btn btn-sm {{ $filters['status'] === 'used' ? 'btn-info' : 'btn-outline-info' }}">
+                        <i class="fas fa-check"></i> Đã Sử Dụng <span class="badge bg-secondary">{{ $statusCounts['used'] }}</span>
                     </a>
-                    <a href="{{ route('admin.bookings.index', array_merge(request()->except('status'), ['status' => 'Cancelled'])) }}"
-                       class="btn btn-sm {{ $filters['status'] === 'Cancelled' ? 'btn-danger' : 'btn-outline-danger' }}">
-                        <i class="fas fa-times-circle"></i> Đã Hủy <span class="badge bg-secondary">{{ $statusCounts['Cancelled'] }}</span>
+                    <a href="{{ route('admin.bookings.index', array_merge(request()->except('status'), ['status' => 'cancelled'])) }}"
+                       class="btn btn-sm {{ $filters['status'] === 'cancelled' ? 'btn-danger' : 'btn-outline-danger' }}">
+                        <i class="fas fa-times-circle"></i> Đã Hủy <span class="badge bg-secondary">{{ $statusCounts['cancelled'] }}</span>
                     </a>
                 </div>
             </div>
@@ -237,14 +237,18 @@
                         <strong>{{ number_format($booking->total_price, 0, ',', '.') }}đ</strong>
                     </td>
                     <td>
-                        @if($booking->status === 'Paid')
+                        @if($booking->status === 'paid')
                             <span class="badge bg-success"><i class="fas fa-check-circle"></i> Đã Thanh Toán</span>
-                        @elseif($booking->status === 'Pending')
+                        @elseif($booking->status === 'pending')
                             <span class="badge bg-warning"><i class="fas fa-clock"></i> Chờ Xử Lý</span>
-                        @elseif($booking->status === 'Used')
+                        @elseif($booking->status === 'used')
                             <span class="badge bg-info"><i class="fas fa-check"></i> Đã Sử Dụng</span>
-                        @elseif($booking->status === 'Cancelled')
+                        @elseif($booking->status === 'cancelled')
                             <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Đã Hủy</span>
+                        @elseif($booking->status === 'expired')
+                            <span class="badge bg-secondary"><i class="fas fa-hourglass-end"></i> Hết Hạn</span>
+                        @else
+                            <span class="badge bg-light text-dark">{{ ucfirst($booking->status) }}</span>
                         @endif
                     </td>
                     <td>

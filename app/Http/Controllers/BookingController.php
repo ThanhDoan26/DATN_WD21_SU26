@@ -206,7 +206,7 @@ class BookingController extends Controller
         if ($userId && !empty($myPendingSeats)) {
             $myPendingBooking = \App\Models\Booking::where('user_id', $userId)
                 ->where('showtime_id', $showtime->id)
-                ->whereIn('status', ['Pending', 'PROCESSING'])
+                ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing'])
                 ->orderBy('booking_time', 'desc')
                 ->first();
 
@@ -254,9 +254,9 @@ class BookingController extends Controller
                     ->from('bookings')
                     ->where('showtime_id', $showtimeId)
                     ->where(function ($q) {
-                        $q->where('status', 'Paid')
+                        $q->where('status', \App\Models\Booking::STATUS_PAID)
                           ->orWhere(function ($q2) {
-                              $q2->where('status', 'Pending')
+                              $q2->where('status', \App\Models\Booking::STATUS_PENDING)
                                  ->where('booking_time', '>=', now()->subMinutes(config('booking.seat_hold.duration_minutes', 10)));
                           });
                     });
@@ -278,7 +278,7 @@ class BookingController extends Controller
 
         // 1. Fetch Paid seats from Database
         $paidBookings = $showtime->bookings()
-            ->whereIn('status', ['Paid', 'Used'])
+            ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
             ->with(['bookedSeats' => fn ($query) => $query->where('status', '!=', 'CANCELLED')])
             ->get();
             
@@ -349,7 +349,7 @@ class BookingController extends Controller
         }
 
         $query = \App\Models\Booking::where('user_id', $userId)
-            ->where('status', 'Pending');
+            ->where('status', \App\Models\Booking::STATUS_PENDING);
 
         if ($request->booking_id) {
             $query->where('id', $request->booking_id);

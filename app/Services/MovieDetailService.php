@@ -111,7 +111,7 @@ class MovieDetailService
             
             // Check if they can review (booking paid/used and showtime ended)
             $canReview = \App\Models\Booking::where('user_id', $userId)
-                ->whereIn('status', ['Paid', 'Used'])
+                ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
                 ->whereHas('showtime', function ($query) use ($id) {
                     $query->where('movie_id', $id)
                         ->where('end_time', '<=', now());
@@ -119,7 +119,7 @@ class MovieDetailService
 
             // Fetch combos purchased during this movie's bookings
             $bookingsWithCombos = \App\Models\Booking::where('user_id', $userId)
-                ->whereIn('status', ['Paid', 'Used'])
+                ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
                 ->whereHas('showtime', function ($query) use ($id) {
                     $query->where('movie_id', $id);
                 })
