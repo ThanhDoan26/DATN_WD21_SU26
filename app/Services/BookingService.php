@@ -393,9 +393,57 @@ class BookingService
                     );
                 }
 
+
                 // ================================================================
-                // Step 4: Lấy giá vé từ ticket_prices
+                // Step 3 & 4: Lấy thông tin suất chiếu + validate ghế thuộc đúng phòng chiếu
                 // ================================================================
+                $showtime = DB::table('showtimes')
+                    ->where('id', $showtimeId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$showtime) {
+                    throw new Exception("Suất chiếu $showtimeId không tồn tại");
+                }
+
+                $selectedSeats = DB::table('seats')
+                    ->whereIn('id', $selectedSeatIds)
+                    ->where('room_id', $showtime->room_id) // 🔒 Enforce seats belong to showtime's room
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+
+                if ($selectedSeats->count() !== count($selectedSeatIds)) {
+                    throw new Exception('Một hoặc nhiều ghế được chọn không thuộc về phòng chiếu của suất chiếu này.');
+                }
+
+                $startTime = \Carbon\Carbon::parse($showtime->start_time);
+                $endTime = $showtime->end_time ? \Carbon\Carbon::parse($showtime->end_time) : null;
+                $isWalkIn = ($extraData['booking_source'] ?? 'online') !== 'online';
+
+                // Kiểm tra trạng thái và thời gian đặt vé theo quy định
+                if ($showtime->status === 'CANCELLED') {
+                    throw new Exception("Suất chiếu này đã bị hủy, không thể đặt vé.");
+                }
+
+                if ($isWalkIn) {
+                    // Tại quầy: Cho phép trong 30 phút đầu kể từ khi bắt đầu chiếu (và chưa kết thúc)
+                    if ($endTime && now()->gte($endTime)) {
+                        throw new Exception("Suất chiếu này đã kết thúc, không thể xuất vé.");
+                    }
+                    if (now()->gt($startTime->copy()->addMinutes(30))) {
+                        throw new Exception("Suất chiếu đã bắt đầu quá 30 phút, hệ thống đã khóa bán vé.");
+                    }
+                } else {
+                    // Trực tuyến (Online): Khóa trước giờ chiếu 15 phút
+                    if ($showtime->status !== 'SCHEDULED') {
+                        throw new Exception("Suất chiếu này không còn mở bán trực tuyến.");
+                    }
+                    if (now()->addMinutes(15)->gte($startTime)) {
+                        throw new Exception("Suất chiếu này đã đóng cổng đặt vé trực tuyến (cần đặt trước giờ chiếu tối thiểu 15 phút). Vui lòng mua vé trực tiếp tại quầy hoặc chọn suất chiếu khác.");
+                    }
+                }
+
                 $ticketPrices = DB::table('ticket_prices')
                     ->where('showtime_id', $showtimeId)
                     ->where('status', 'ACTIVE')
@@ -460,10 +508,13 @@ class BookingService
 
                 $comboDetails = [];
                 if (!empty($combos)) {
+                    if (is_string($combos)) {
+                        $combos = json_decode($combos, true) ?: [];
+                    }
                     $comboIds = array_keys($combos);
                     $dbCombos = DB::table('combos')->whereIn('id', $comboIds)->get()->keyBy('id');
                     foreach ($combos as $comboId => $comboData) {
-                        $qty = (int) ($comboData['qty'] ?? 0);
+                        $qty = is_array($comboData) ? (int) ($comboData['qty'] ?? $comboData['quantity'] ?? 0) : (int) $comboData;
                         if ($qty > 0) {
                             if (!isset($dbCombos[$comboId])) {
                                 throw new Exception("Combo không tồn tại");
@@ -1119,6 +1170,9 @@ class BookingService
             $comboDetails = [];
 
             if (!empty($combos)) {
+                if (is_string($combos)) {
+                    $combos = json_decode($combos, true) ?: [];
+                }
                 $comboIds = array_keys($combos);
                 $dbCombos = DB::table('combos')
                     ->whereIn('id', $comboIds)
@@ -1126,7 +1180,7 @@ class BookingService
                     ->keyBy('id');
 
                 foreach ($combos as $comboId => $comboData) {
-                    $qty = (int) ($comboData['qty'] ?? 0);
+                    $qty = is_array($comboData) ? (int) ($comboData['qty'] ?? $comboData['quantity'] ?? 0) : (int) $comboData;
                     if ($qty > 0) {
                         if (!isset($dbCombos[$comboId])) {
                             throw new Exception("Combo không tồn tại.");

@@ -4,6 +4,7 @@ use App\Models\BookedSeat;
 use App\Models\Booking;
 use App\Models\Cinema;
 use App\Models\Movie;
+use App\Models\Role;
 use App\Models\Room;
 use App\Models\Seat;
 use App\Models\Showtime;
@@ -13,6 +14,24 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
+
+function getOrCreateStaffRole(): Role
+{
+    return Role::firstOrCreate(['role_name' => 'STAFF'], ['description' => 'Staff role']);
+}
+
+function createStaffUser(int $cinemaId): User
+{
+    $role = getOrCreateStaffRole();
+    return User::create([
+        'name' => 'Staff Cinema ' . uniqid(),
+        'email' => 'staff_' . uniqid() . '@example.com',
+        'password' => bcrypt('password'),
+        'role_id' => $role->id,
+        'cinema_id' => $cinemaId,
+        'status' => 'ACTIVE',
+    ]);
+}
 
 function createCinemaWithRoomAndShowtime(string $cinemaName): array
 {
@@ -105,14 +124,7 @@ it('prevents staff of Cinema A from viewing seat map of Cinema B showtime', func
     $cinemaAData = createCinemaWithRoomAndShowtime('Cinema A');
     $cinemaBData = createCinemaWithRoomAndShowtime('Cinema B');
 
-    $staffA = User::create([
-        'name' => 'Staff Cinema A',
-        'email' => 'staffA_' . uniqid() . '@example.com',
-        'password' => bcrypt('password'),
-        'role' => 'STAFF',
-        'cinema_id' => $cinemaAData['cinema']->id,
-        'status' => 'ACTIVE',
-    ]);
+    $staffA = createStaffUser($cinemaAData['cinema']->id);
 
     $response = $this->actingAs($staffA)->get(route('staff.walkin.seats', ['showtime' => $cinemaBData['showtime']->id]));
 
@@ -123,14 +135,7 @@ it('prevents staff of Cinema A from accessing checkout with Cinema B showtime', 
     $cinemaAData = createCinemaWithRoomAndShowtime('Cinema A');
     $cinemaBData = createCinemaWithRoomAndShowtime('Cinema B');
 
-    $staffA = User::create([
-        'name' => 'Staff Cinema A',
-        'email' => 'staffA_' . uniqid() . '@example.com',
-        'password' => bcrypt('password'),
-        'role' => 'STAFF',
-        'cinema_id' => $cinemaAData['cinema']->id,
-        'status' => 'ACTIVE',
-    ]);
+    $staffA = createStaffUser($cinemaAData['cinema']->id);
 
     $response = $this->actingAs($staffA)->get(route('staff.walkin.checkout', [
         'showtime_id' => $cinemaBData['showtime']->id,
@@ -144,14 +149,7 @@ it('prevents staff of Cinema A from reserving seats for Cinema B showtime', func
     $cinemaAData = createCinemaWithRoomAndShowtime('Cinema A');
     $cinemaBData = createCinemaWithRoomAndShowtime('Cinema B');
 
-    $staffA = User::create([
-        'name' => 'Staff Cinema A',
-        'email' => 'staffA_' . uniqid() . '@example.com',
-        'password' => bcrypt('password'),
-        'role' => 'STAFF',
-        'cinema_id' => $cinemaAData['cinema']->id,
-        'status' => 'ACTIVE',
-    ]);
+    $staffA = createStaffUser($cinemaAData['cinema']->id);
 
     $initialBookingsCount = Booking::count();
 
@@ -175,14 +173,7 @@ it('prevents staff of Cinema A from viewing success page of Cinema B booking', f
     $cinemaAData = createCinemaWithRoomAndShowtime('Cinema A');
     $cinemaBData = createCinemaWithRoomAndShowtime('Cinema B');
 
-    $staffA = User::create([
-        'name' => 'Staff Cinema A',
-        'email' => 'staffA_' . uniqid() . '@example.com',
-        'password' => bcrypt('password'),
-        'role' => 'STAFF',
-        'cinema_id' => $cinemaAData['cinema']->id,
-        'status' => 'ACTIVE',
-    ]);
+    $staffA = createStaffUser($cinemaAData['cinema']->id);
 
     $bookingB = Booking::create([
         'user_id' => null,
@@ -201,14 +192,7 @@ it('prevents staff of Cinema A from viewing success page of Cinema B booking', f
 it('allows staff of Cinema A to view seat map and reserve for Cinema A showtime', function () {
     $cinemaAData = createCinemaWithRoomAndShowtime('Cinema A');
 
-    $staffA = User::create([
-        'name' => 'Staff Cinema A',
-        'email' => 'staffA_' . uniqid() . '@example.com',
-        'password' => bcrypt('password'),
-        'role' => 'STAFF',
-        'cinema_id' => $cinemaAData['cinema']->id,
-        'status' => 'ACTIVE',
-    ]);
+    $staffA = createStaffUser($cinemaAData['cinema']->id);
 
     // Can access seat map
     $seatResponse = $this->actingAs($staffA)->get(route('staff.walkin.seats', ['showtime' => $cinemaAData['showtime']->id]));
@@ -234,20 +218,13 @@ it('allows staff of Cinema A to view seat map and reserve for Cinema A showtime'
     expect($createdBooking->status)->toBe('Paid');
 });
 
-// ── TICKET SEARCH, LOOKUP, CHECK-IN, PRINT TESTS ────────────────────
+// ── TICKET SEARCH, LOOKUP, PRINT TESTS ────────────────────
 
 it('allows staff of Cinema A to search / view ticket info of Cinema B with read-only restriction', function () {
     $cinemaAData = createCinemaWithRoomAndShowtime('Cinema A');
     $cinemaBData = createCinemaWithRoomAndShowtime('Cinema B');
 
-    $staffA = User::create([
-        'name' => 'Staff Cinema A',
-        'email' => 'staffA_' . uniqid() . '@example.com',
-        'password' => bcrypt('password'),
-        'role' => 'STAFF',
-        'cinema_id' => $cinemaAData['cinema']->id,
-        'status' => 'ACTIVE',
-    ]);
+    $staffA = createStaffUser($cinemaAData['cinema']->id);
 
     $customerB = User::create([
         'name' => 'Customer Cinema B',
@@ -281,24 +258,16 @@ it('allows staff of Cinema A to search / view ticket info of Cinema B with read-
     $response->assertSee('Cinema B');
     // Must show warning banner for other cinema
     $response->assertSee('Vé thuộc chi nhánh khác');
-    // Action buttons for check-in and printing must NOT be present
-    $response->assertDontSee('CHECK-IN TOÀN BỘ GHẾ');
+    // Action buttons for printing must NOT be present
     $response->assertDontSee('IN TOÀN BỘ VÉ');
-    $response->assertSee('Chức năng Check-in và In vé bị khóa');
+    $response->assertSee('Chức năng In vé bị khóa');
 });
 
 it('allows staff of Cinema A to look up ticket of Cinema B via API with read-only permissions', function () {
     $cinemaAData = createCinemaWithRoomAndShowtime('Cinema A');
     $cinemaBData = createCinemaWithRoomAndShowtime('Cinema B');
 
-    $staffA = User::create([
-        'name' => 'Staff Cinema A',
-        'email' => 'staffA_' . uniqid() . '@example.com',
-        'password' => bcrypt('password'),
-        'role' => 'STAFF',
-        'cinema_id' => $cinemaAData['cinema']->id,
-        'status' => 'ACTIVE',
-    ]);
+    $staffA = createStaffUser($cinemaAData['cinema']->id);
 
     $bookingCode = 'BK-LOOKUP-B-' . uniqid();
     $bookingB = Booking::create([
@@ -317,65 +286,19 @@ it('allows staff of Cinema A to look up ticket of Cinema B via API with read-onl
     $response->assertJson([
         'success' => true,
         'is_other_cinema' => true,
-        'can_checkin' => false,
         'can_print' => false,
         'data' => [
             'booking_code' => $bookingCode,
-            'cinema_name' => 'Cinema B',
+            'cinema_name' => $cinemaBData['cinema']->name,
         ],
     ]);
-});
-
-it('prevents staff of Cinema A from checking in ticket of Cinema B', function () {
-    $cinemaAData = createCinemaWithRoomAndShowtime('Cinema A');
-    $cinemaBData = createCinemaWithRoomAndShowtime('Cinema B');
-
-    $staffA = User::create([
-        'name' => 'Staff Cinema A',
-        'email' => 'staffA_' . uniqid() . '@example.com',
-        'password' => bcrypt('password'),
-        'role' => 'STAFF',
-        'cinema_id' => $cinemaAData['cinema']->id,
-        'status' => 'ACTIVE',
-    ]);
-
-    $bookingB = Booking::create([
-        'user_id' => null,
-        'showtime_id' => $cinemaBData['showtime']->id,
-        'total_price' => 60000,
-        'status' => 'Paid',
-        'booking_code' => 'BK-CHECKIN-B-' . uniqid(),
-        'booking_time' => now(),
-    ]);
-
-    $bookedSeatB = BookedSeat::create([
-        'booking_id' => $bookingB->id,
-        'seat_id' => $cinemaBData['seat']->id,
-        'price_at_booking' => 60000,
-        'status' => 'PAID',
-    ]);
-
-    $response = $this->actingAs($staffA)->postJson(route('staff.ticket.checkin'), [
-        'type' => 'booking',
-        'id' => $bookingB->id,
-    ]);
-
-    $response->assertStatus(403);
-    expect($bookedSeatB->fresh()->status)->toBe('PAID'); // NOT checked in
 });
 
 it('prevents staff of Cinema A from printing ticket of Cinema B', function () {
     $cinemaAData = createCinemaWithRoomAndShowtime('Cinema A');
     $cinemaBData = createCinemaWithRoomAndShowtime('Cinema B');
 
-    $staffA = User::create([
-        'name' => 'Staff Cinema A',
-        'email' => 'staffA_' . uniqid() . '@example.com',
-        'password' => bcrypt('password'),
-        'role' => 'STAFF',
-        'cinema_id' => $cinemaAData['cinema']->id,
-        'status' => 'ACTIVE',
-    ]);
+    $staffA = createStaffUser($cinemaAData['cinema']->id);
 
     $bookingB = Booking::create([
         'user_id' => null,

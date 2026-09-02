@@ -528,7 +528,7 @@ class WalkInBookingController extends Controller
                 return response()->json([
                     'success' => true,
                     'isWalkIn' => true,
-                    'redirect_url' => route('staff.walkin.success', ['booking_id' => $bookingId]),
+                    'redirect_url' => route('staff.walkin.success', ['booking_id' => $bookingId, 'auto_print' => 1]),
                     'message' => $message,
                 ]);
             }
@@ -537,7 +537,7 @@ class WalkInBookingController extends Controller
             return response()->json([
                 'success' => true,
                 'isWalkIn' => true,
-                'redirect_url' => route('staff.walkin.success', ['booking_id' => $bookingId]),
+                'redirect_url' => route('staff.walkin.success', ['booking_id' => $bookingId, 'auto_print' => 1]),
                 'message' => 'Đã giữ ghế thành công.',
             ]);
         } catch (\Exception $e) {
