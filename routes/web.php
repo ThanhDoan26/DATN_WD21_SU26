@@ -16,6 +16,11 @@ Route::get('/rap/{cinema}', [\App\Http\Controllers\CinemaController::class, 'sho
 Route::get('/tin-tuc', [\App\Http\Controllers\PostController::class, 'index'])->name('posts.index');
 Route::get('/tin-tuc/{slug}', [\App\Http\Controllers\PostController::class, 'show'])->name('posts.show');
 
+// Location routes
+Route::post('/api/set-location', [\App\Http\Controllers\LocationController::class, 'setLocation'])->name('api.set-location');
+Route::get('/location/set/{city}', [\App\Http\Controllers\LocationController::class, 'switchLocation'])->name('location.switch');
+Route::get('/api/locations', [\App\Http\Controllers\LocationController::class, 'getLocations'])->name('api.locations');
+
 // AI Chatbot Web Route
 Route::post('/chat/web', [\App\Http\Controllers\ChatController::class, 'chatWeb'])->name('chat.web');
 

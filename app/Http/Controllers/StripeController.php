@@ -20,7 +20,7 @@ class StripeController extends Controller
             ->firstOrFail();
 
         // Không tạo lại nếu đã thanh toán
-        if ($booking->status == 'Paid') {
+        if ($booking->isPaid()) {
             return response()->json([
                 'message' => 'Booking này đã được thanh toán.'
             ], 400);
@@ -82,7 +82,7 @@ class StripeController extends Controller
     {
         $booking = Booking::findOrFail($request->booking_id);
 
-        if ($booking->status != 'Paid') {
+        if (!$booking->isPaid()) {
             try {
                 $bookingService = app(\App\Services\BookingService::class);
                 $bookingService->completePayment($booking->id, 'Stripe');

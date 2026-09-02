@@ -3,11 +3,64 @@
 use App\Models\User;
 use App\Models\SeatHold;
 use App\Models\BookingAbuseLog;
+use App\Models\Booking;
 use App\Services\SeatHoldAbuseService;
 use App\Services\BookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\Cinema;
+use App\Models\Room;
+use App\Models\Movie;
+use App\Models\Showtime;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    $cinema = Cinema::create([
+        'name' => 'Cinema ' . uniqid(),
+        'address' => '123 Test St',
+        'city' => 'Hanoi',
+        'status' => 'ACTIVE',
+    ]);
+    $room = Room::create([
+        'cinema_id' => $cinema->id,
+        'name' => 'Room 1',
+        'format' => '2D',
+        'total_seats' => 50,
+        'status' => 'ACTIVE',
+    ]);
+    $movie = Movie::create([
+        'title' => 'Test Movie ' . uniqid(),
+        'description' => 'Test Description',
+        'duration' => 120,
+        'status' => 'ACTIVE',
+    ]);
+
+    $showtime = Showtime::create([
+        'movie_id' => $movie->id,
+        'room_id' => $room->id,
+        'start_time' => now()->addHours(2),
+        'end_time' => now()->addHours(4),
+        'status' => Showtime::STATUS_SCHEDULED ?? 'SCHEDULED',
+    ]);
+
+    $this->showtimeId = $showtime->id;
+});
+
+function createDummyBooking($user, $showtimeId, $id = null) {
+    $attributes = [
+        'user_id' => $user->id,
+        'showtime_id' => $showtimeId,
+        'booking_code' => 'BOOK_' . uniqid(),
+        'total_price' => 100000,
+        'status' => 'Pending',
+        'payment_method' => 'ONLINE',
+        'booking_time' => now(),
+    ];
+    if ($id) {
+        $attributes['id'] = $id;
+    }
+    return Booking::create($attributes);
+}
 
 // ========================================
 // CONFIG CENTRALIZATION TESTS
@@ -46,7 +99,7 @@ it('rejects booking with more than max seats', function () {
     $maxSeats = config('booking.seat_hold.max_seats_per_booking');
     $fakeSeatIds = range(1, $maxSeats + 1);
 
-    $bookingService->createBooking(1, 1, $fakeSeatIds);
+    $bookingService->createBooking(1, $this->showtimeId, $fakeSeatIds);
 })->throws(Exception::class, 'tối đa');
 
 // ========================================
@@ -55,16 +108,17 @@ it('rejects booking with more than max seats', function () {
 
 it('creates a tracking record when recording a hold', function () {
     $user = User::factory()->create();
+    $booking = createDummyBooking($user, $this->showtimeId);
     $service = new SeatHoldAbuseService();
 
-    $hold = $service->recordHold($user->id, 1, 100, 4, '127.0.0.1');
+    $hold = $service->recordHold($user->id, $this->showtimeId, $booking->id, 4, '127.0.0.1');
 
     expect($hold->status)->toBe(SeatHold::STATUS_ACTIVE);
     expect($hold->expires_at)->not->toBeNull();
 
     $this->assertDatabaseHas('seat_holds', [
         'user_id' => $user->id,
-        'booking_id' => 100,
+        'booking_id' => $booking->id,
         'seat_count' => 4,
         'status' => SeatHold::STATUS_ACTIVE,
     ]);
@@ -72,40 +126,44 @@ it('creates a tracking record when recording a hold', function () {
 
 it('counts active held seats correctly', function () {
     $user = User::factory()->create();
+    $b1 = createDummyBooking($user, $this->showtimeId);
+    $b2 = createDummyBooking($user, $this->showtimeId);
+    $b3 = createDummyBooking($user, $this->showtimeId);
     $service = new SeatHoldAbuseService();
 
     // 2 active holds = 7 seats total
     SeatHold::create([
-        'user_id' => $user->id, 'showtime_id' => 1, 'booking_id' => 100,
+        'user_id' => $user->id, 'showtime_id' => $this->showtimeId, 'booking_id' => $b1->id,
         'seat_count' => 3, 'status' => SeatHold::STATUS_ACTIVE,
         'held_at' => now(), 'expires_at' => now()->addMinutes(10),
     ]);
     SeatHold::create([
-        'user_id' => $user->id, 'showtime_id' => 2, 'booking_id' => 101,
+        'user_id' => $user->id, 'showtime_id' => $this->showtimeId, 'booking_id' => $b2->id,
         'seat_count' => 4, 'status' => SeatHold::STATUS_ACTIVE,
         'held_at' => now(), 'expires_at' => now()->addMinutes(10),
     ]);
     // 1 expired hold (should NOT count)
     SeatHold::create([
-        'user_id' => $user->id, 'showtime_id' => 3, 'booking_id' => 102,
+        'user_id' => $user->id, 'showtime_id' => $this->showtimeId, 'booking_id' => $b3->id,
         'seat_count' => 2, 'status' => SeatHold::STATUS_EXPIRED,
         'held_at' => now()->subMinutes(15), 'expires_at' => now()->subMinutes(5),
     ]);
 
-    expect($service->countActiveHeldSeats($user->id))->toBe(7);
+    expect($service->countActiveHeldSeats($user->id, $this->showtimeId))->toBe(7);
 });
 
 it('marks hold as completed on payment success', function () {
     $user = User::factory()->create();
+    $booking = createDummyBooking($user, $this->showtimeId);
     $service = new SeatHoldAbuseService();
 
     $hold = SeatHold::create([
-        'user_id' => $user->id, 'showtime_id' => 1, 'booking_id' => 100,
+        'user_id' => $user->id, 'showtime_id' => $this->showtimeId, 'booking_id' => $booking->id,
         'seat_count' => 2, 'status' => SeatHold::STATUS_ACTIVE,
         'held_at' => now(), 'expires_at' => now()->addMinutes(10),
     ]);
 
-    $service->markCompleted(100);
+    $service->markCompleted($booking->id);
 
     $this->assertDatabaseHas('seat_holds', [
         'id' => $hold->id,
@@ -115,15 +173,16 @@ it('marks hold as completed on payment success', function () {
 
 it('marks hold as released on user cancel', function () {
     $user = User::factory()->create();
+    $booking = createDummyBooking($user, $this->showtimeId);
     $service = new SeatHoldAbuseService();
 
     $hold = SeatHold::create([
-        'user_id' => $user->id, 'showtime_id' => 1, 'booking_id' => 100,
+        'user_id' => $user->id, 'showtime_id' => $this->showtimeId, 'booking_id' => $booking->id,
         'seat_count' => 2, 'status' => SeatHold::STATUS_ACTIVE,
         'held_at' => now(), 'expires_at' => now()->addMinutes(10),
     ]);
 
-    $service->markReleased(100);
+    $service->markReleased($booking->id);
 
     $this->assertDatabaseHas('seat_holds', [
         'id' => $hold->id,
@@ -137,8 +196,9 @@ it('does not count released holds as abuse', function () {
 
     // 5 RELEASED holds (normal cancel, not abuse)
     for ($i = 0; $i < 5; $i++) {
+        $b = createDummyBooking($user, $this->showtimeId);
         SeatHold::create([
-            'user_id' => $user->id, 'showtime_id' => 1, 'booking_id' => 100 + $i,
+            'user_id' => $user->id, 'showtime_id' => $this->showtimeId, 'booking_id' => $b->id,
             'seat_count' => 2, 'status' => SeatHold::STATUS_RELEASED,
             'held_at' => now()->subMinutes($i), 'expires_at' => now()->addMinutes(10 - $i),
             'released_at' => now(),
@@ -157,8 +217,9 @@ it('treats 2 expired holds as normal', function () {
     $service = new SeatHoldAbuseService();
 
     for ($i = 0; $i < 2; $i++) {
+        $b = createDummyBooking($user, $this->showtimeId);
         SeatHold::create([
-            'user_id' => $user->id, 'showtime_id' => 1, 'booking_id' => 200 + $i,
+            'user_id' => $user->id, 'showtime_id' => $this->showtimeId, 'booking_id' => $b->id,
             'seat_count' => 2, 'status' => SeatHold::STATUS_EXPIRED,
             'held_at' => now()->subMinutes(10 + $i), 'expires_at' => now()->subMinutes($i),
         ]);
@@ -172,8 +233,9 @@ it('triggers warning only at 3 expired holds', function () {
     $service = new SeatHoldAbuseService();
 
     for ($i = 0; $i < 3; $i++) {
+        $b = createDummyBooking($user, $this->showtimeId);
         SeatHold::create([
-            'user_id' => $user->id, 'showtime_id' => 1, 'booking_id' => 300 + $i,
+            'user_id' => $user->id, 'showtime_id' => $this->showtimeId, 'booking_id' => $b->id,
             'seat_count' => 2, 'status' => SeatHold::STATUS_EXPIRED,
             'held_at' => now()->subMinutes(20 + $i), 'expires_at' => now()->subMinutes(10 + $i),
         ]);
@@ -195,8 +257,9 @@ it('triggers restriction at 5 expired holds', function () {
     $service = new SeatHoldAbuseService();
 
     for ($i = 0; $i < 5; $i++) {
+        $b = createDummyBooking($user, $this->showtimeId);
         SeatHold::create([
-            'user_id' => $user->id, 'showtime_id' => 1, 'booking_id' => 400 + $i,
+            'user_id' => $user->id, 'showtime_id' => $this->showtimeId, 'booking_id' => $b->id,
             'seat_count' => 2, 'status' => SeatHold::STATUS_EXPIRED,
             'held_at' => now()->subMinutes(20 + $i), 'expires_at' => now()->subMinutes(10 + $i),
         ]);
@@ -214,16 +277,20 @@ it('uses longer duration for repeat restriction', function () {
     $service = new SeatHoldAbuseService();
 
     // Previous restriction (within 24h)
-    BookingAbuseLog::create([
+    $prevLog = BookingAbuseLog::create([
         'user_id' => $user->id,
         'abuse_type' => BookingAbuseLog::TYPE_RESTRICTION,
         'expired_count' => 5, 'window_minutes' => 30,
         'blocked_until' => now()->subMinutes(10),
+        'details' => ['is_repeat' => false, 'block_minutes' => 30],
     ]);
+    $prevLog->created_at = now()->subHours(2);
+    $prevLog->save();
 
     for ($i = 0; $i < 5; $i++) {
+        $b = createDummyBooking($user, $this->showtimeId);
         SeatHold::create([
-            'user_id' => $user->id, 'showtime_id' => 1, 'booking_id' => 500 + $i,
+            'user_id' => $user->id, 'showtime_id' => $this->showtimeId, 'booking_id' => $b->id,
             'seat_count' => 1, 'status' => SeatHold::STATUS_EXPIRED,
             'held_at' => now()->subMinutes(20 + $i), 'expires_at' => now()->subMinutes(10 + $i),
         ]);
@@ -254,7 +321,7 @@ it('returns 403 for restricted user on reserve', function () {
     ]);
 
     $response = $this->actingAs($user)->postJson('/checkout/reserve', [
-        'showtime_id' => 1,
+        'showtime_id' => $this->showtimeId,
         'seat_ids' => '1,2',
     ]);
 
@@ -282,10 +349,11 @@ it('allows booking when restriction has expired', function () {
 
 it('processes overdue holds in batch', function () {
     $user = User::factory()->create();
+    $b = createDummyBooking($user, $this->showtimeId);
     $service = new SeatHoldAbuseService();
 
     $hold = SeatHold::create([
-        'user_id' => $user->id, 'showtime_id' => 1, 'booking_id' => 600,
+        'user_id' => $user->id, 'showtime_id' => $this->showtimeId, 'booking_id' => $b->id,
         'seat_count' => 2, 'status' => SeatHold::STATUS_ACTIVE,
         'held_at' => now()->subMinutes(15), 'expires_at' => now()->subMinutes(5),
     ]);
@@ -305,14 +373,16 @@ it('processes overdue holds in batch', function () {
 
 it('filters active and expired holds with scopes', function () {
     $user = User::factory()->create();
+    $b1 = createDummyBooking($user, $this->showtimeId);
+    $b2 = createDummyBooking($user, $this->showtimeId);
 
     SeatHold::create([
-        'user_id' => $user->id, 'showtime_id' => 1, 'booking_id' => 700,
+        'user_id' => $user->id, 'showtime_id' => $this->showtimeId, 'booking_id' => $b1->id,
         'seat_count' => 1, 'status' => SeatHold::STATUS_ACTIVE,
         'held_at' => now(), 'expires_at' => now()->addMinutes(10),
     ]);
     SeatHold::create([
-        'user_id' => $user->id, 'showtime_id' => 1, 'booking_id' => 701,
+        'user_id' => $user->id, 'showtime_id' => $this->showtimeId, 'booking_id' => $b2->id,
         'seat_count' => 1, 'status' => SeatHold::STATUS_EXPIRED,
         'held_at' => now()->subMinutes(15), 'expires_at' => now()->subMinutes(5),
     ]);

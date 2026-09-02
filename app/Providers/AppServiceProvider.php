@@ -41,6 +41,27 @@ class AppServiceProvider extends ServiceProvider
             $view->with('activePendingBooking', $activeBooking);
         });
 
+        // Global Location & Navigation view composer
+        \Illuminate\Support\Facades\View::composer(['layouts.frontend', 'layouts.guest-navigation', 'welcome', 'movies.*', 'booking.*'], function ($view) {
+            $userLocation = session('user_location', 'ALL');
+            
+            $activeCinemas = \App\Models\Cinema::where('status', 'ACTIVE')
+                ->whereNotNull('city')
+                ->select('id', 'name', 'city')
+                ->get();
+
+            $activeCinemaCities = $activeCinemas->groupBy('city')
+                ->map(fn($group) => $group->count());
+
+            $allProvinces = config('provinces', []);
+
+            $view->with([
+                'userLocation' => $userLocation,
+                'activeCinemaCities' => $activeCinemaCities,
+                'allProvinces' => $allProvinces,
+            ]);
+        });
+
         // ── Anti-Abuse: Rate limiter cho booking endpoints ──────────
         // Chỉ áp dụng cho POST /checkout/reserve, không rate-limit GET endpoints.
         RateLimiter::for('booking', function (Request $request) {

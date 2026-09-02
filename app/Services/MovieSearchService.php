@@ -46,12 +46,26 @@ class MovieSearchService
             });
         });
 
+        // 5. Lọc theo vị trí / thành phố (nếu có chọn hoặc từ session)
+        $location = $filters['city'] ?? session('user_location');
+        $hasLocation = !empty($location) && strtoupper($location) !== 'ALL';
+        if ($hasLocation) {
+            $query->whereHas('showtimes.room.cinema', function ($qCinema) use ($location) {
+                $qCinema->where('city', 'like', '%' . trim($location) . '%');
+            });
+        }
+
         // Tối ưu N+1: eager load categories và showtimes 
         // Đối với showtimes, chỉ lấy các lịch chiếu hợp lệ trong tương lai để hiển thị
-        $query->with(['categories', 'showtimes' => function ($q) {
+        $query->with(['categories', 'showtimes' => function ($q) use ($hasLocation, $location) {
             $q->whereIn('status', [Showtime::STATUS_SCHEDULED, Showtime::STATUS_ONGOING])
-              ->where('start_time', '>=', now())
-              ->orderBy('start_time');
+              ->where('start_time', '>=', now());
+            if ($hasLocation) {
+                $q->whereHas('room.cinema', function ($qCinema) use ($location) {
+                    $qCinema->where('city', 'like', '%' . trim($location) . '%');
+                });
+            }
+            $q->orderBy('start_time');
         }]);
 
         // Trả về phân trang, ưu tiên mới nhất

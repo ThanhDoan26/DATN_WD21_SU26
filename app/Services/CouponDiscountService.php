@@ -13,10 +13,11 @@ class CouponDiscountService
      *
      * @param Coupon|null $coupon
      * @param float $subtotal Tổng tiền vé và combo trước khi giảm giá
-     * @param int|null $userId ID người dùng (dùng để check hạn mức per-user nếu có)
+     * @param int|null $userId ID người dùng (dùng để check hạn mức per-user)
+     * @param int|null $ignoreBookingId ID booking đang cập nhật (tùy chọn)
      * @return array ['valid' => bool, 'message' => string]
      */
-    public function validateCoupon(?Coupon $coupon, float $subtotal, ?int $userId = null): array
+    public function validateCoupon(?Coupon $coupon, float $subtotal, ?int $userId = null, ?int $ignoreBookingId = null): array
     {
         if (!$coupon) {
             return ['valid' => false, 'message' => 'Mã giảm giá không tồn tại.'];
@@ -49,6 +50,22 @@ class CouponDiscountService
                 'valid' => false,
                 'message' => 'Đơn hàng chưa đạt giá trị tối thiểu ' . number_format($coupon->min_order_value) . 'đ để sử dụng mã này.'
             ];
+        }
+
+        // Kiểm tra mỗi khách hàng chỉ được dùng 1 lần cho các booking hợp lệ (Pending, PROCESSING, Paid, Used)
+        if ($userId) {
+            $hasUsedQuery = \Illuminate\Support\Facades\DB::table('bookings')
+                ->where('user_id', $userId)
+                ->where('coupon_id', $coupon->id)
+                ->whereIn('status', [\App\Models\Booking::STATUS_PENDING, 'processing', \App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED]);
+
+            if ($ignoreBookingId) {
+                $hasUsedQuery->where('id', '!=', $ignoreBookingId);
+            }
+
+            if ($hasUsedQuery->exists()) {
+                return ['valid' => false, 'message' => 'Bạn đã sử dụng hoặc đang chờ thanh toán với mã giảm giá này.'];
+            }
         }
 
         return ['valid' => true, 'message' => 'Mã giảm giá hợp lệ.'];

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>In Vé Xem Phim & Phiếu Combo - {{ $booking->booking_code ?? 'Beta Cinemas' }}</title>
+    <title>In Vé Xem Phim & Phiếu Combo - {{ $booking->booking_code ?? 'MovieGo' }}</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;0,900;1,400;1,700&family=Roboto+Mono:wght@500;700&display=swap');
         
@@ -16,8 +16,7 @@
         }
 
         :root {
-            --ticket-width: 95mm; /* Khổ phóng to rõ nét */
-            --strip-width: 26px;
+            --ticket-width: 80mm; /* Khổ in nhiệt chuẩn K80 */
         }
 
         html, body {
@@ -117,7 +116,7 @@
             text-align: center;
         }
 
-        /* Main Ticket Container (Khổ phóng to 95mm, cân đối mọi máy in) */
+        /* Main Ticket Container */
         .ticket-page-wrapper {
             width: var(--ticket-width) !important;
             max-width: var(--ticket-width) !important;
@@ -138,35 +137,16 @@
         }
 
         .ticket-structure {
-            display: flex !important;
-            flex-direction: row !important;
             width: 100% !important;
             max-width: 100% !important;
-            min-height: 100%;
             background-color: #ffffff;
             overflow: hidden !important;
         }
 
-        /* 2 dải viền dọc màu xanh đậm chứa logo Beta Cinemas phóng to */
-        .ticket-side-strip {
-            width: var(--strip-width) !important;
-            min-width: var(--strip-width) !important;
-            max-width: var(--strip-width) !important;
-            flex-shrink: 0 !important;
-            background-color: #0b4ea2;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='24' viewBox='0 0 44 40'%3E%3Crect x='3' y='3' width='38' height='34' rx='6' fill='%23ffffff'/%3E%3Ctext x='6' y='20' font-family='Arial, sans-serif' font-size='14.5' font-weight='900' fill='%230b4ea2' letter-spacing='-0.5'%3Ebeta%3C/text%3E%3Ccircle cx='36' cy='14.5' r='3.2' fill='%23f37021'/%3E%3Ctext x='22' y='31.5' font-family='Arial, sans-serif' font-size='9' font-weight='700' fill='%230b4ea2' text-anchor='middle' letter-spacing='0.2'%3Ecinemas%3C/text%3E%3C/svg%3E");
-            background-repeat: repeat-y;
-            background-position: center top;
-            background-size: var(--strip-width) 24px;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
-
-        /* Nội dung vé ở giữa */
+        /* Thân nội dung vé */
         .ticket-center-content {
-            flex: 1 1 auto !important;
-            width: calc(100% - (var(--strip-width) * 2)) !important;
-            max-width: calc(100% - (var(--strip-width) * 2)) !important;
+            width: 100% !important;
+            max-width: 100% !important;
             min-width: 0 !important;
             padding: 10px 10px 14px 10px;
             background-color: #ffffff;
@@ -177,31 +157,31 @@
         /* Đường nét đứt chuẩn máy in nhiệt */
         .dashed-line {
             border-top: 1.5px dashed #333333;
-            margin: 6px 0 7px 0;
+            margin: 5px 0 6px 0;
             width: 100%;
         }
 
         /* Header Tên rạp / Địa chỉ */
         .ticket-header {
             text-align: center;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
             width: 100%;
             overflow: hidden;
         }
         .cinema-name {
-            font-size: 13px;
+            font-size: 11.5px;
             font-weight: 800;
             text-transform: uppercase;
-            line-height: 1.25;
-            margin-bottom: 3px;
+            line-height: 1.2;
+            margin-bottom: 2px;
             color: #000;
             word-break: break-word;
         }
         .cinema-address {
-            font-size: 10.5px;
+            font-size: 9.5px;
             color: #222222;
-            line-height: 1.25;
-            padding: 0 4px;
+            line-height: 1.2;
+            padding: 0 2px;
             word-break: break-word;
         }
 
@@ -211,19 +191,19 @@
             text-align: center;
         }
         .ticket-title-main {
-            font-size: 17.5px;
+            font-size: 15.5px;
             font-weight: 900;
             text-align: center;
-            letter-spacing: 0.8px;
-            margin: 4px 0 5px 0;
+            letter-spacing: 0.6px;
+            margin: 3px 0 4px 0;
             color: #000;
         }
         .ticket-title-combo {
-            font-size: 16px;
+            font-size: 14.5px;
             font-weight: 900;
             text-align: center;
             letter-spacing: 0.5px;
-            margin: 4px 0 5px 0;
+            margin: 3px 0 4px 0;
             color: #0b4ea2;
         }
 
@@ -231,7 +211,7 @@
             display: flex;
             flex-direction: column;
             gap: 2px;
-            font-size: 10.5px;
+            font-size: 9.5px;
             color: #111;
         }
         .meta-code-row {
@@ -254,13 +234,13 @@
             width: 100%;
         }
         .showtime-datetime {
-            font-size: 14px;
+            font-size: 12.5px;
             font-weight: 800;
             color: #000;
             line-height: 1.2;
         }
         .movie-title-text {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 900;
             color: #000000;
             line-height: 1.25;
@@ -273,20 +253,20 @@
             align-items: baseline;
         }
         .movie-type-text {
-            font-size: 12.5px;
+            font-size: 11px;
             font-weight: 700;
             color: #111;
             white-space: nowrap;
         }
         .movie-price-text {
-            font-size: 13.5px;
+            font-size: 12px;
             font-weight: 800;
             color: #000;
             text-align: right;
             white-space: nowrap;
         }
         .vat-note-text {
-            font-size: 10px;
+            font-size: 9px;
             font-style: italic;
             color: #333333;
             text-align: right;
@@ -298,28 +278,34 @@
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            padding: 3px 0;
-            gap: 8px;
+            padding: 2px 0;
+            gap: 4px;
             width: 100%;
         }
-        .seat-block, .room-block {
+        .seat-block {
             display: flex;
             align-items: baseline;
-            gap: 5px;
+            gap: 4px;
             white-space: nowrap;
+            flex-shrink: 0;
         }
         .room-block {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
             justify-content: flex-end;
             text-align: right;
+            min-width: 0;
         }
         .seat-room-label {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             color: #333;
             white-space: nowrap;
+            flex-shrink: 0;
         }
         .seat-room-value {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 900;
             color: #000000;
             letter-spacing: -0.2px;
@@ -333,17 +319,17 @@
             width: 100%;
         }
         .age-rating-text {
-            font-size: 11.5px;
+            font-size: 10px;
             font-weight: 800;
             text-align: center;
             color: #111;
-            margin: 4px 0 5px 0;
+            margin: 3px 0 4px 0;
             line-height: 1.2;
         }
         .transaction-row {
             display: flex;
             justify-content: space-between;
-            font-size: 10.5px;
+            font-size: 9px;
             color: #222;
             margin-bottom: 2px;
             white-space: nowrap;
@@ -351,7 +337,7 @@
 
         /* ================= VÉ 2: COMBO / BẮP NƯỚC ================= */
         .combo-ref-section {
-            font-size: 10.5px;
+            font-size: 9.5px;
             color: #222;
             margin-bottom: 3px;
             width: 100%;
@@ -374,7 +360,7 @@
             width: 100%;
         }
         .combo-items-header {
-            font-size: 11.5px;
+            font-size: 10.5px;
             font-weight: 900;
             text-transform: uppercase;
             text-align: center;
@@ -386,7 +372,7 @@
             justify-content: space-between;
             align-items: flex-start;
             margin-bottom: 4px;
-            font-size: 11px;
+            font-size: 10px;
             width: 100%;
         }
         .combo-item-name {
@@ -396,7 +382,7 @@
             word-break: break-word;
         }
         .combo-item-desc {
-            font-size: 9.5px;
+            font-size: 9px;
             color: #555;
             font-style: italic;
         }
@@ -409,7 +395,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 12.5px;
+            font-size: 11px;
             font-weight: 900;
             margin-top: 5px;
             padding-top: 4px;
@@ -420,24 +406,24 @@
         .combo-status-box {
             border: 2px dashed #000;
             background: #f8fafc;
-            padding: 5px 8px;
+            padding: 4px 6px;
             text-align: center;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 900;
             letter-spacing: 0.5px;
-            margin: 6px 0;
+            margin: 5px 0;
             border-radius: 4px;
             white-space: nowrap;
         }
 
         .combo-notice-text {
-            font-size: 10px;
+            font-size: 9px;
             font-style: italic;
             text-align: center;
             color: #222;
             line-height: 1.3;
-            padding: 0 4px;
-            margin: 4px 0;
+            padding: 0 2px;
+            margin: 3px 0;
             word-break: break-word;
         }
 
@@ -449,31 +435,31 @@
             overflow: hidden;
         }
         .thank-you-title {
-            font-size: 11.5px;
+            font-size: 10.5px;
             font-weight: 800;
             color: #000;
             margin-bottom: 2px;
         }
         .event-hotline-note {
-            font-size: 9.5px;
+            font-size: 8.5px;
             font-style: italic;
             color: #333;
             line-height: 1.25;
-            padding: 0 4px;
+            padding: 0 2px;
             word-break: break-word;
         }
         .brand-slogan {
-            font-size: 11px;
+            font-size: 9.5px;
             font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.2px;
             color: #000;
-            margin-top: 4px;
+            margin-top: 3px;
             margin-bottom: 2px;
             word-break: break-word;
         }
         .brand-contact-links {
-            font-size: 9.5px;
+            font-size: 9px;
             color: #222;
             word-break: break-word;
         }
@@ -481,7 +467,7 @@
         /* Khu vực mã vạch & số mã vạch ở dưới cùng */
         .barcode-section {
             text-align: center;
-            margin-top: 6px;
+            margin-top: 5px;
             padding-bottom: 4px;
             width: 100%;
             overflow: hidden;
@@ -498,16 +484,16 @@
         .barcode-svg-wrapper svg {
             max-width: 100% !important;
             width: auto !important;
-            height: 42px !important;
+            height: 38px !important;
             display: block;
         }
         .barcode-number-text {
-            font-size: 13px;
+            font-size: 11.5px;
             font-weight: 800;
-            letter-spacing: 0.8px;
+            letter-spacing: 0.6px;
             font-family: 'Roboto Mono', 'Courier New', monospace;
             color: #000;
-            margin-top: 3px;
+            margin-top: 2px;
             text-align: center;
             word-break: break-all;
             max-width: 100%;
@@ -558,8 +544,8 @@
         $cinema = $firstSeat?->booking?->showtime?->room?->cinema 
                ?? $booking?->showtime?->room?->cinema 
                ?? null;
-        $cinemaName = $cinema?->name ?? 'BETA GIẢI PHÓNG';
-        $cinemaAddress = $cinema?->address ?? 'Tầng 3, Imperial Plaza, 360 Giải Phóng, Phường Phương Liệt, Thành phố Hà Nội';
+        $cinemaName = $cinema?->name ?? 'MOVIEGO CINEMAS';
+        $cinemaAddress = $cinema?->address ?? 'Tầng 3, Trung tâm Thương mại MovieGo';
         $cinemaTax = $cinema?->tax_code ?? '0106633462';
 
         $showtime = $firstSeat?->booking?->showtime ?? $booking?->showtime ?? null;
@@ -619,9 +605,9 @@
         </div>
         <div class="size-controls">
             <span>Kích cỡ khổ in:</span>
-            <button type="button" class="btn-size" onclick="setTicketSize('80mm', '22px', this)">80mm (Chuẩn K80)</button>
-            <button type="button" class="btn-size active" onclick="setTicketSize('95mm', '26px', this)">95mm (Phóng to vừa)</button>
-            <button type="button" class="btn-size" onclick="setTicketSize('110mm', '30px', this)">110mm (Cực đại)</button>
+            <button type="button" class="btn-size active" onclick="setTicketSize('80mm', this)">80mm (Chuẩn K80)</button>
+            <button type="button" class="btn-size" onclick="setTicketSize('90mm', this)">90mm (Rộng vừa)</button>
+            <button type="button" class="btn-size" onclick="setTicketSize('100mm', this)">100mm (Phóng to)</button>
         </div>
         <div class="mode-hint">
             💡 <em>Khổ in đã được <strong>phóng to sắc nét</strong>, chữ to rõ ràng, tự động phân tách Vé Phim & Phiếu Combo.</em>
@@ -659,9 +645,6 @@
 
     <div class="ticket-page-wrapper">
         <div class="ticket-structure">
-            <!-- Dải viền dọc màu xanh đậm bên trái -->
-            <div class="ticket-side-strip ticket-side-left"></div>
-
             <!-- Thân nội dung Vé Xem Phim -->
             <div class="ticket-center-content">
                 
@@ -775,10 +758,10 @@
                     
                     <div class="dashed-line" style="margin: 5px 0;"></div>
 
-                    <div class="brand-slogan live-data">{{ strtoupper($cinemaName) }} - RẠP NGON GIÁ NGỌT</div>
-                    <div class="brand-slogan blank-data" style="display: none;">BETA CINEMAS - RẠP NGON GIÁ NGỌT</div>
+                    <div class="brand-slogan live-data">{{ strtoupper($cinemaName) }} - RẠP PHIM CHẤT LƯỢNG CAO</div>
+                    <div class="brand-slogan blank-data" style="display: none;">MOVIEGO CINEMAS - RẠP PHIM CHẤT LƯỢNG CAO</div>
                     
-                    <div class="brand-contact-links">www.betacinemas.vn - facebook.com/betacinemas/</div>
+                    <div class="brand-contact-links">www.moviego.vn - Hotline: 1900 6868</div>
                 </div>
 
                 <!-- Khu vực mã vạch vé phim ở dưới cùng -->
@@ -799,9 +782,6 @@
                 </div>
 
             </div>
-
-            <!-- Dải viền dọc màu xanh đậm bên phải -->
-            <div class="ticket-side-strip ticket-side-right"></div>
         </div>
     </div>
     @endforeach
@@ -821,9 +801,6 @@
 
     <div class="ticket-page-wrapper combo-ticket-wrapper">
         <div class="ticket-structure">
-            <!-- Dải viền dọc màu xanh đậm bên trái -->
-            <div class="ticket-side-strip ticket-side-left"></div>
-
             <!-- Thân nội dung Phiếu Bắp Nước -->
             <div class="ticket-center-content">
                 
@@ -899,7 +876,7 @@
                     <div class="blank-data" style="display: none;">
                         <div class="combo-item-row">
                             <div class="combo-item-name">
-                                <strong>1x</strong> Combo Beta 2 (1 Bắp + 2 Nước)
+                                <strong>1x</strong> Combo MovieGo 2 (1 Bắp + 2 Nước)
                                 <div class="combo-item-desc">(1 Bắp ngọt 60oz + 2 Coca 22oz)</div>
                             </div>
                             <div class="combo-item-price">85,000đ</div>
@@ -932,7 +909,7 @@
                 <!-- 7. Chân phiếu & Hotline -->
                 <div class="footer-note-section">
                     <div class="brand-slogan live-data">{{ strtoupper($cinemaName) }} - QUẦY BẮP NƯỚC</div>
-                    <div class="brand-slogan blank-data" style="display: none;">BETA CINEMAS - QUẦY BẮP NƯỚC</div>
+                    <div class="brand-slogan blank-data" style="display: none;">MOVIEGO CINEMAS - QUẦY BẮP NƯỚC</div>
                     <div class="brand-contact-links">Saler: {{ $salerName }} | In lúc: {{ $printedTime }}</div>
                 </div>
 
@@ -954,18 +931,14 @@
                 </div>
 
             </div>
-
-            <!-- Dải viền dọc màu xanh đậm bên phải -->
-            <div class="ticket-side-strip ticket-side-right"></div>
         </div>
     </div>
     @endif
 
     <script>
         // Hàm thay đổi kích thước khổ in linh hoạt
-        function setTicketSize(width, stripWidth, btn) {
+        function setTicketSize(width, btn) {
             document.documentElement.style.setProperty('--ticket-width', width);
-            document.documentElement.style.setProperty('--strip-width', stripWidth);
             document.querySelectorAll('.btn-size').forEach(b => b.classList.remove('active'));
             if (btn) btn.classList.add('active');
         }

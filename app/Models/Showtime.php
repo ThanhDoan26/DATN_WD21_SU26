@@ -19,13 +19,18 @@ class Showtime extends Model
     public const STATUS_SCHEDULED = 'SCHEDULED';
     public const STATUS_ONGOING = 'ONGOING';
     public const STATUS_COMPLETED = 'COMPLETED';
+    public const STATUS_FINISHED = 'COMPLETED';
     public const STATUS_CANCELLED = 'CANCELLED';
+    public const STATUS_PENDING = 'PENDING';
+    public const STATUS_UNPUBLISHED = 'UNPUBLISHED';
 
     public const STATUS_LABELS = [
-        self::STATUS_SCHEDULED => 'Lên lịch',
-        self::STATUS_ONGOING   => 'Đang chiếu',
-        self::STATUS_COMPLETED => 'Đã chiếu',
-        self::STATUS_CANCELLED => 'Đã hủy',
+        self::STATUS_SCHEDULED   => 'Lên lịch (SCHEDULED)',
+        self::STATUS_ONGOING     => 'Đang chiếu (ONGOING)',
+        self::STATUS_COMPLETED   => 'Đã chiếu (FINISHED)',
+        self::STATUS_CANCELLED   => 'Đã hủy (CANCELLED)',
+        self::STATUS_PENDING     => 'Chờ công bố (PENDING)',
+        self::STATUS_UNPUBLISHED => 'Chưa công bố (UNPUBLISHED)',
     ];
 
     public const STATUSES = [
@@ -33,6 +38,8 @@ class Showtime extends Model
         self::STATUS_ONGOING,
         self::STATUS_COMPLETED,
         self::STATUS_CANCELLED,
+        self::STATUS_PENDING,
+        self::STATUS_UNPUBLISHED,
     ];
 
     protected $fillable = ['movie_id', 'room_id', 'start_time', 'end_time', 'status', 'surcharge'];
@@ -44,14 +51,14 @@ class Showtime extends Model
     ];
 
     /**
-     * Tự động đồng bộ trạng thái thực tế của tất cả các suất chiếu dựa trên thời gian hiện tại:
-     * - Đã qua giờ kết thúc (end_time <= now) hoặc quá 3 tiếng nếu chưa có end_time -> COMPLETED
-     * - Đang trong giờ chiếu (start_time <= now < end_time) -> ONGOING
+     * Tự động đồng bộ trạng thái thực tế của các suất chiếu đang hoạt động dựa trên thời gian hiện tại:
+     * - Chỉ áp dụng cho các suất chiếu đã mở bán/chiếu (SCHEDULED, ONGOING)
+     * - Suất chiếu PENDING / UNPUBLISHED / CANCELLED sẽ được giữ nguyên theo chủ đích quản trị.
      */
     public static function syncAllStatuses(): void
     {
-        // 1. Chuyển các suất đã kết thúc sang COMPLETED
-        self::where('status', '!=', self::STATUS_CANCELLED)
+        // 1. Chuyển các suất đã kết thúc sang COMPLETED (chỉ áp dụng cho các suất đã mở bán/chiếu)
+        self::whereIn('status', [self::STATUS_SCHEDULED, self::STATUS_ONGOING])
             ->where(function ($q) {
                 $q->where(function ($sub) {
                     $sub->whereNotNull('end_time')
@@ -61,11 +68,10 @@ class Showtime extends Model
                         ->where('start_time', '<=', now()->subHours(3));
                 });
             })
-            ->where('status', '!=', self::STATUS_COMPLETED)
             ->update(['status' => self::STATUS_COMPLETED]);
 
-        // 2. Chuyển các suất đang chiếu sang ONGOING
-        self::where('status', '!=', self::STATUS_CANCELLED)
+        // 2. Chuyển các suất đang chiếu sang ONGOING (chỉ áp dụng cho các suất SCHEDULED)
+        self::where('status', self::STATUS_SCHEDULED)
             ->where('start_time', '<=', now())
             ->where(function ($q) {
                 $q->where('end_time', '>', now())
@@ -74,13 +80,25 @@ class Showtime extends Model
                           ->where('start_time', '>', now()->subHours(3));
                   });
             })
-            ->where('status', '!=', self::STATUS_ONGOING)
             ->update(['status' => self::STATUS_ONGOING]);
     }
 
     public function getStatusLabelAttribute(): string
     {
         return self::STATUS_LABELS[$this->status] ?? $this->status;
+    }
+
+    public function getStatusBadgeClassAttribute(): string
+    {
+        return match ($this->status) {
+            self::STATUS_SCHEDULED   => 'bg-info',
+            self::STATUS_ONGOING     => 'bg-success',
+            self::STATUS_COMPLETED   => 'bg-secondary',
+            self::STATUS_PENDING     => 'bg-warning text-dark',
+            self::STATUS_UNPUBLISHED => 'bg-secondary',
+            self::STATUS_CANCELLED   => 'bg-danger',
+            default                  => 'bg-secondary',
+        };
     }
 
     /**

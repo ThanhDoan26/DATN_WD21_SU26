@@ -15,7 +15,6 @@ class DatabaseSeeder extends Seeder
             UserRoleSeeder::class,
             FullDemoDataSeeder::class,
             PostCategoryAndPostSeeder::class,
-            MovieCinemaSeeder::class, // Added to seed Bookings as well
         ]);
     }
 }

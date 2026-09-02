@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Route;
 
 
 use App\Http\Controllers\CinemaStaffDashboardController;
+use App\Http\Controllers\Staff\CouponCheckController;
+use App\Http\Controllers\Staff\CouponController;
 
 Route::middleware(['auth', 'role:STAFF', 'cinema.assignment'])->prefix('staff')->name('staff.')->group(function () {
     Route::get('/dashboard', [CinemaStaffDashboardController::class, 'index'])->name('dashboard');
@@ -22,5 +24,13 @@ Route::middleware(['auth', 'role:STAFF', 'cinema.assignment'])->prefix('staff')-
     Route::post('/walk-in/release-hold', [\App\Http\Controllers\Staff\WalkInBookingController::class, 'releaseHold'])->name('walkin.release-hold');
     Route::post('/walk-in/reserve', [\App\Http\Controllers\Staff\WalkInBookingController::class, 'reserve'])->name('walkin.reserve');
     Route::get('/walk-in/success', [\App\Http\Controllers\Staff\WalkInBookingController::class, 'success'])->name('walkin.success');
+
+    // ── Quản lý phiếu giảm giá ───────────────────────────────────────
+    Route::get('/coupons/expired', [CouponController::class, 'expired'])->name('coupon.expired');
+    Route::resource('coupons', CouponController::class)->only(['index']);
+
+    // ── Kiểm tra phiếu giảm giá (tra cứu nhanh) ─────────────────────
+    Route::get('/coupon-check', [CouponCheckController::class, 'index'])->name('coupon.check');
+    Route::post('/coupon-check', [CouponCheckController::class, 'check'])->name('coupon.check.post');
 });
 

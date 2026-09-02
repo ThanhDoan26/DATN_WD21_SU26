@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Staff Dashboard') - Cinema Booking System</title>
-    
+
     <script>
-        (function() {
+        (function () {
             const savedTheme = localStorage.getItem('admin_theme') || 'light';
             if (savedTheme === 'dark') {
                 document.documentElement.classList.add('dark-theme');
@@ -18,16 +19,49 @@
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Font Awesome (jsDelivr + cdnjs fallback) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Google Fonts Inter & Sora -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
+        /* FontAwesome Fix for Icon Display */
+        .fa,
+        .fas,
+        .far,
+        .fal,
+        .fad,
+        .fab,
+        [class*=" fa-"],
+        [class^="fa-"] {
+            font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", "FontAwesome" !important;
+            font-style: normal !important;
+        }
+
+        .far,
+        .fa-regular {
+            font-weight: 400 !important;
+        }
+
+        .fas,
+        .fa-solid {
+            font-weight: 900 !important;
+        }
+
+        .fab,
+        .fa-brands {
+            font-family: "Font Awesome 6 Brands" !important;
+            font-weight: 400 !important;
+        }
+
         :root {
             --primary-color: #d97706;
             --primary-hover: #b45309;
@@ -61,12 +95,57 @@
             justify-content: center;
             cursor: pointer;
             transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         }
+
         .theme-toggle-btn:hover {
             transform: scale(1.12) rotate(15deg);
             box-shadow: 0 6px 16px rgba(217, 119, 6, 0.25);
             border-color: var(--primary-color);
+        }
+
+        /* Light Mode High-Contrast & Font Clarity Overrides */
+        label,
+        .form-label {
+            color: #1e293b !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.01em;
+        }
+
+        .form-control,
+        .form-select,
+        input,
+        select,
+        textarea {
+            color: #0f172a !important;
+            font-weight: 500;
+            border-color: #cbd5e1;
+        }
+
+        .form-control::placeholder,
+        .form-select::placeholder,
+        input::placeholder {
+            color: #64748b !important;
+        }
+
+        input:disabled,
+        select:disabled,
+        .form-control:disabled,
+        .form-select:disabled,
+        [readonly] {
+            color: #334155 !important;
+            background-color: #f1f5f9 !important;
+            opacity: 1 !important;
+            font-weight: 600 !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        .text-muted,
+        small,
+        .form-text,
+        .form-hint,
+        .card-subtitle {
+            color: #475569 !important;
         }
 
         /* Dark Mode Variable Overrides */
@@ -74,7 +153,7 @@
             --bg-base: #0b0f19;
             --bg-surface: #131927;
             --text-ink: #f3f4f6;
-            --text-muted: #9ca3af;
+            --text-muted: #cbd5e1;
             --border-light: #1f2937;
             --border-hover: #374151;
         }
@@ -82,6 +161,12 @@
         html.dark-theme body {
             background-color: #0b0f19 !important;
             color: #f3f4f6 !important;
+        }
+
+        html.dark-theme label,
+        html.dark-theme .form-label {
+            color: #f1f5f9 !important;
+            font-weight: 600 !important;
         }
 
         html.dark-theme .topbar {
@@ -110,6 +195,17 @@
             background-color: #1a2234 !important;
             border-color: #374151 !important;
             color: #f3f4f6 !important;
+        }
+
+        html.dark-theme input:disabled,
+        html.dark-theme select:disabled,
+        html.dark-theme .form-control:disabled,
+        html.dark-theme .form-select:disabled,
+        html.dark-theme [readonly] {
+            color: #cbd5e1 !important;
+            background-color: #1e293b !important;
+            opacity: 1 !important;
+            border-color: #334155 !important;
         }
 
         html.dark-theme .table {
@@ -143,7 +239,12 @@
         }
 
         html.dark-theme strong,
-        html.dark-theme h1, html.dark-theme h2, html.dark-theme h3, html.dark-theme h4, html.dark-theme h5, html.dark-theme h6 {
+        html.dark-theme h1,
+        html.dark-theme h2,
+        html.dark-theme h3,
+        html.dark-theme h4,
+        html.dark-theme h5,
+        html.dark-theme h6 {
             color: #f3f4f6 !important;
         }
 
@@ -158,7 +259,7 @@
         html.dark-theme .list-group-item {
             background-color: transparent !important;
             border-color: #1f2937 !important;
-            color: #9ca3af !important;
+            color: #cbd5e1 !important;
         }
 
         html.dark-theme .list-group-item strong {
@@ -166,23 +267,26 @@
         }
 
         html.dark-theme .text-muted {
-            color: #9ca3af !important;
+            color: #cbd5e1 !important;
         }
 
         html.dark-theme .card-text.text-muted {
-            color: #9ca3af !important;
+            color: #cbd5e1 !important;
         }
 
         /* Utility overrides to sync Bootstrap colors with Brand Design System */
         .text-primary {
             color: var(--primary-color) !important;
         }
+
         .bg-primary {
             background-color: var(--primary-color) !important;
         }
+
         .border-primary {
             border-color: var(--primary-color) !important;
         }
+
         .badge.bg-primary {
             background-color: var(--primary-color) !important;
             color: #ffffff !important;
@@ -201,6 +305,8 @@
             display: flex;
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
 
         /* ========== SIDEBAR ========== */
@@ -395,6 +501,7 @@
                 opacity: 0;
                 transform: translateY(8px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -412,9 +519,15 @@
             .content {
                 animation: pageFadeInReduced 0.1s linear forwards;
             }
+
             @keyframes pageFadeInReduced {
-                from { opacity: 0; }
-                to { opacity: 1; }
+                from {
+                    opacity: 0;
+                }
+
+                to {
+                    opacity: 1;
+                }
             }
         }
 
@@ -540,7 +653,7 @@
             padding: 20px;
             border-radius: 12px;
             border: 1px solid var(--border-light);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             text-align: center;
             margin-bottom: 20px;
         }
@@ -568,7 +681,8 @@
             transition: all 0.2s ease;
         }
 
-        .btn-primary:hover, .btn-primary:focus {
+        .btn-primary:hover,
+        .btn-primary:focus {
             background-color: var(--primary-hover);
             border-color: var(--primary-hover);
             box-shadow: 0 4px 12px rgba(217, 119, 6, 0.25);
@@ -582,7 +696,8 @@
         }
 
         /* Forms & Inputs */
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             border-radius: 8px;
             border: 1px solid var(--border-light);
             padding: 10px 14px;
@@ -591,7 +706,8 @@
             color: var(--text-ink);
         }
 
-        .form-control:focus, .form-select:focus {
+        .form-control:focus,
+        .form-select:focus {
             border-color: var(--primary-color);
             box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.12);
             outline: 0;
@@ -631,6 +747,107 @@
             }
         }
 
+        /* ── Sidebar Group (submenu) ── */
+        .sidebar-group-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 12px 16px;
+            color: #fef3c7;
+            opacity: 0.85;
+            background: transparent;
+            border: none;
+            border-radius: 10px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .sidebar-group-toggle:hover,
+        .sidebar-group-toggle.open {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: #ffffff;
+            opacity: 1;
+        }
+
+        .sidebar-group-toggle.active {
+            background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+            color: #ffffff;
+            opacity: 1;
+            box-shadow: 0 4px 14px rgba(217, 119, 6, 0.4);
+        }
+
+        .sidebar-group-toggle.active i {
+            color: #ffffff;
+        }
+
+        .sidebar-chevron {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            transition: transform 0.25s ease;
+        }
+
+        .sidebar-group-toggle.open .sidebar-chevron {
+            transform: rotate(180deg);
+        }
+
+        .sidebar-submenu {
+            list-style: none;
+            padding: 4px 0 4px 14px;
+            margin: 2px 0 4px;
+            border-left: 2px solid rgba(245, 158, 11, 0.25);
+            margin-left: 28px;
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.3s ease, opacity 0.25s ease;
+            opacity: 0;
+        }
+
+        .sidebar-submenu.expanded {
+            max-height: 300px;
+            opacity: 1;
+        }
+
+        .sidebar-submenu li {
+            margin-bottom: 2px;
+        }
+
+        .sidebar-submenu a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            color: #fde68a;
+            opacity: 0.85;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .sidebar-submenu a:hover {
+            background: rgba(245, 158, 11, 0.12);
+            color: #fff;
+            opacity: 1;
+        }
+
+        .sidebar-submenu a.active {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fde68a;
+            font-weight: 700;
+            opacity: 1;
+        }
+
+        .sidebar-submenu a i {
+            font-size: 0.8rem;
+            width: 14px;
+            text-align: center;
+        }
+
         /* Scrollbar */
         .sidebar::-webkit-scrollbar {
             width: 5px;
@@ -654,11 +871,13 @@
             font-weight: 500;
             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         }
+
         .alert-success {
             background-color: #ecfdf5;
             border-color: #a7f3d0;
             color: #065f46;
         }
+
         .alert-danger {
             background-color: #fef2f2;
             border-color: #fca5a5;
@@ -668,6 +887,7 @@
 
     @yield('extra_css')
 </head>
+
 <body>
     <!-- SIDEBAR -->
     <aside class="sidebar">
@@ -677,6 +897,12 @@
             <div class="staff-tag-wrapper">
                 <span class="staff-badge">STAFF</span>
                 <p>Nhân viên rạp</p>
+            </div>
+            <div class="cinema-info-tag mt-2 d-flex align-items-center text-truncate"
+                style="color: #fde68a; font-size: 0.78rem; font-weight: 500;"
+                title="{{ Auth::user()->cinema->name ?? 'Chưa phân công rạp' }}">
+                <i class="fas fa-map-marker-alt me-1 text-warning"></i>
+                <span class="text-truncate">{{ Auth::user()->cinema->name ?? 'Chưa phân công rạp' }}</span>
             </div>
         </div>
 
@@ -690,24 +916,53 @@
             </li>
             <li>
                 <a href="{{ route('staff.dashboard') }}"
-                   class="@if(request()->routeIs('staff.dashboard')) active @endif">
+                    class="@if(request()->routeIs('staff.dashboard')) active @endif">
                     <i class="fas fa-tachometer-alt"></i>
                     <span>Bảng điều khiển</span>
                 </a>
             </li>
             <li>
                 <a href="{{ route('staff.ticket.search') }}"
-                   class="@if(request()->routeIs('staff.ticket.*')) active @endif">
+                    class="@if(request()->routeIs('staff.ticket.*')) active @endif">
                     <i class="fas fa-ticket-alt"></i>
                     <span>Tra cứu & In vé</span>
                 </a>
             </li>
             <li>
                 <a href="{{ route('staff.walkin.movies') }}"
-                   class="@if(request()->routeIs('staff.walkin.*')) active @endif">
+                    class="@if(request()->routeIs('staff.walkin.*')) active @endif">
                     <i class="fas fa-cash-register"></i>
                     <span>Tạo vé tại quầy</span>
                 </a>
+            </li>
+            {{-- Voucher group --}}
+            <li class="sidebar-group">
+                <button type="button" class="sidebar-group-toggle @if(request()->routeIs('staff.coupon*', 'staff.coupons*')) active open @endif"
+                        onclick="toggleSidebarGroup(this)">
+                    <span><i class="fas fa-tag"></i><span class="ms-3">Quản lý Voucher</span></span>
+                    <i class="fas fa-chevron-down sidebar-chevron"></i>
+                </button>
+                <ul class="sidebar-submenu @if(request()->routeIs('staff.coupon*', 'staff.coupons*')) expanded @endif">
+                    <li>
+                        <a href="{{ route('staff.coupons.index') }}"
+                           class="@if(request()->routeIs('staff.coupons.index') || request()->routeIs('staff.coupons.edit') || request()->routeIs('staff.coupons.show')) active @endif">
+                            <i class="fas fa-list-ul"></i>Danh sách mã
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{{ route('staff.coupon.check') }}"
+                           class="@if(request()->routeIs('staff.coupon.check*')) active @endif">
+                            <i class="fas fa-search"></i>Kiểm tra nhanh
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('staff.coupon.expired') }}"
+                           class="@if(request()->routeIs('staff.coupon.expired')) active @endif">
+                            <i class="fas fa-history"></i>Mã hết hạn
+                        </a>
+                    </li>
+                </ul>
             </li>
         </ul>
     </aside>
@@ -718,14 +973,25 @@
         <div class="topbar">
             <h5>@yield('page_title', 'Bảng điều khiển')</h5>
             <div class="topbar-right d-flex align-items-center">
-                <button type="button" class="theme-toggle-btn me-3" id="themeToggleBtn" onclick="toggleAdminTheme()" title="Chuyển đổi Chế độ Sáng / Tối">
+                <button type="button" class="theme-toggle-btn me-3" id="themeToggleBtn" onclick="toggleAdminTheme()"
+                    title="Chuyển đổi Chế độ Sáng / Tối">
                     <i class="fas fa-moon" id="themeToggleIcon"></i>
                 </button>
                 <div class="dropdown">
-                    <div class="user-info dropdown-toggle" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
-                        <div class="text-end">
-                            <span class="badge" style="background: rgba(217, 119, 6, 0.15); color: #d97706; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">STAFF</span><br>
-                            <strong style="color: var(--text-ink);">{{ Auth::user()->name ?? 'Staff' }}</strong>
+                    <div class="user-info dropdown-toggle" id="userDropdown" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false" style="cursor: pointer;">
+                        <div class="text-end me-1">
+                            <div class="d-flex align-items-center justify-content-end gap-1 mb-1">
+                                <span class="badge"
+                                    style="background: rgba(217, 119, 6, 0.15); color: #d97706; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">STAFF</span>
+                            </div>
+                            <strong
+                                style="color: var(--text-ink); font-size: 0.88rem;">{{ Auth::user()->name ?? 'Staff' }}</strong>
+                            <div class="small text-muted d-flex align-items-center justify-content-end"
+                                style="font-size: 0.73rem;">
+                                <i class="fas fa-building me-1 text-warning" style="font-size: 0.7rem;"></i>
+                                <span>{{ Auth::user()->cinema->name ?? 'Chưa gán rạp' }}</span>
+                            </div>
                         </div>
                         <div class="user-avatar ms-2">
                             {{ strtoupper(substr(Auth::user()->name ?? 'S', 0, 1)) }}
@@ -737,7 +1003,9 @@
                                 <i class="fas fa-user-circle me-2 text-primary"></i> Hồ sơ cá nhân
                             </a>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
                         <li>
                             <form method="POST" action="{{ route('logout') }}" class="m-0">
                                 @csrf
@@ -794,12 +1062,20 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const isDark = document.documentElement.classList.contains('dark-theme');
             updateThemeIcon(isDark);
         });
+
+        function toggleSidebarGroup(btn) {
+            const isOpen = btn.classList.toggle('open');
+            const submenu = btn.nextElementSibling;
+            submenu.classList.toggle('expanded', isOpen);
+        }
     </script>
+    @include('components.toast')
     @stack('scripts')
     @yield('extra_js')
 </body>
+
 </html>

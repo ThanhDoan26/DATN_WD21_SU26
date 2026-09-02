@@ -34,7 +34,7 @@
 
                     <div class="mb-3">
                         <label for="price" class="form-label">Giá (VNĐ) <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control" id="price" name="price" value="{{ old('price', (int)$combo->price) }}" min="0" step="1000" required>
+                        <input type="number" class="form-control" id="price" name="price" value="{{ old('price', (int)$combo->price) }}" min="0" step="1" required>
                     </div>
 
                     <div class="mb-3">

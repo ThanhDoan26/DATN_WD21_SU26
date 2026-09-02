@@ -40,10 +40,10 @@ test('validation email and min rules return vietnamese messages', function () {
 });
 
 test('validation unique and exists rules return vietnamese messages', function () {
-    $role = Role::create([
-        'role_name' => 'USER',
-        'description' => 'User role'
-    ]);
+    $role = Role::firstOrCreate(
+        ['role_name' => 'USER'],
+        ['description' => 'User role']
+    );
 
     $existingUser = User::create([
         'name' => 'Existing User',

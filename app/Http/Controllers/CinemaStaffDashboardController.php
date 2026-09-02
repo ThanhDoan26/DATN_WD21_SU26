@@ -54,13 +54,13 @@ class CinemaStaffDashboardController extends Controller
         // Booking mới hôm nay
         $bookingsToday = (clone $baseBookingQuery)
             ->whereDate('created_at', today())
-            ->whereIn('status', ['Paid', 'Used'])
+            ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
             ->count();
 
         // Doanh thu hôm nay
         $revenueToday = (clone $baseBookingQuery)
             ->whereDate('payment_time', today())
-            ->whereIn('status', ['Paid', 'Used'])
+            ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
             ->sum('total_price');
 
         // ── Biểu đồ doanh thu 7 ngày ───────────────────────────────
@@ -69,7 +69,7 @@ class CinemaStaffDashboardController extends Controller
             $date = today()->subDays($i);
             $dayRevenue = (clone $baseBookingQuery)
                 ->whereDate('payment_time', $date)
-                ->whereIn('status', ['Paid', 'Used'])
+                ->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])
                 ->sum('total_price');
             $revenueChart[] = [
                 'date'    => $date->format('d/m'),
@@ -200,9 +200,9 @@ class CinemaStaffDashboardController extends Controller
                     $warnings[] = "⚠️ VÉ THUỘC RẠP KHÁC: Vé này thuộc chi nhánh '{$ticketCinemaName}'. Bạn chỉ có quyền tra cứu/xem thông tin vé, KHÔNG THỂ Chỉnh sửa hoặc In vé tại rạp này.";
                 } else {
                     // Kiểm tra trạng thái thanh toán
-                    if ($booking->status === 'Pending') {
+                    if ($booking->isPending()) {
                         $warnings[] = "Vé chưa thanh toán (Trạng thái đơn: Chờ thanh toán).";
-                    } elseif ($booking->status === 'Cancelled') {
+                    } elseif ($booking->isCancelled()) {
                         $warnings[] = "Đơn hàng vé này đã bị hủy.";
                     }
 
@@ -323,9 +323,9 @@ class CinemaStaffDashboardController extends Controller
             if ($isOtherCinema) {
                 $warnings[] = "Vé này thuộc rạp {$ticketCinemaName}. Bạn chỉ có quyền tra cứu thông tin, không thể in vé tại rạp này.";
             } else {
-                if ($booking->status === 'Pending') {
+                if ($booking->isPending()) {
                     $warnings[] = "Vé chưa thanh toán (Trạng thái đơn: Chờ thanh toán).";
-                } elseif ($booking->status === 'Cancelled') {
+                } elseif ($booking->isCancelled()) {
                     $warnings[] = "Đơn hàng vé này đã bị hủy.";
                 }
 
@@ -483,11 +483,11 @@ class CinemaStaffDashboardController extends Controller
                     return back()->with('error', $errMsg);
                 }
 
-                if ($booking->status === 'Pending') {
+                if ($booking->isPending()) {
                     return back()->with('error', 'Đơn hàng chưa thanh toán, không thể check-in.');
                 }
 
-                if ($booking->status === 'Cancelled') {
+                if ($booking->isCancelled()) {
                     return back()->with('error', 'Đơn hàng đã bị hủy, không thể check-in.');
                 }
 

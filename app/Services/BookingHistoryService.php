@@ -29,10 +29,10 @@ class BookingHistoryService
 
         switch ($statusFilter) {
             case 'paid':
-                $query->whereIn('status', ['Paid', 'Used']);
+                $query->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED]);
                 break;
             case 'cancelled':
-                $query->whereIn('status', ['Cancelled', 'Expired'])
+                $query->whereIn('status', [\App\Models\Booking::STATUS_CANCELLED, \App\Models\Booking::STATUS_EXPIRED])
                     ->where(function ($q) use ($excludedReasons) {
                         $q->whereNull('cancellation_reason')
                           ->orWhereNotIn('cancellation_reason', $excludedReasons);
@@ -41,9 +41,9 @@ class BookingHistoryService
             case 'all':
             default:
                 $query->where(function ($q) use ($excludedReasons) {
-                    $q->whereIn('status', ['Paid', 'Used', 'Pending', 'PROCESSING'])
+                    $q->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED, \App\Models\Booking::STATUS_PENDING, 'processing'])
                       ->orWhere(function ($q2) use ($excludedReasons) {
-                          $q2->whereIn('status', ['Cancelled', 'Expired'])
+                          $q2->whereIn('status', [\App\Models\Booking::STATUS_CANCELLED, \App\Models\Booking::STATUS_EXPIRED])
                              ->where(function ($q3) use ($excludedReasons) {
                                  $q3->whereNull('cancellation_reason')
                                     ->orWhereNotIn('cancellation_reason', $excludedReasons);
@@ -72,9 +72,9 @@ class BookingHistoryService
         ];
 
         return [
-            'paid' => Booking::where('user_id', $userId)->whereIn('status', ['Paid', 'Used'])->count(),
+            'paid' => Booking::where('user_id', $userId)->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED])->count(),
             'cancelled' => Booking::where('user_id', $userId)
-                ->whereIn('status', ['Cancelled', 'Expired'])
+                ->whereIn('status', [\App\Models\Booking::STATUS_CANCELLED, \App\Models\Booking::STATUS_EXPIRED])
                 ->where(function ($q) use ($excludedReasons) {
                     $q->whereNull('cancellation_reason')
                       ->orWhereNotIn('cancellation_reason', $excludedReasons);
@@ -82,9 +82,9 @@ class BookingHistoryService
                 ->count(),
             'all' => Booking::where('user_id', $userId)
                 ->where(function ($q) use ($excludedReasons) {
-                    $q->whereIn('status', ['Paid', 'Used', 'Pending', 'PROCESSING'])
+                    $q->whereIn('status', [\App\Models\Booking::STATUS_PAID, \App\Models\Booking::STATUS_USED, \App\Models\Booking::STATUS_PENDING, 'processing'])
                       ->orWhere(function ($q2) use ($excludedReasons) {
-                          $q2->whereIn('status', ['Cancelled', 'Expired'])
+                          $q2->whereIn('status', [\App\Models\Booking::STATUS_CANCELLED, \App\Models\Booking::STATUS_EXPIRED])
                              ->where(function ($q3) use ($excludedReasons) {
                                  $q3->whereNull('cancellation_reason')
                                     ->orWhereNotIn('cancellation_reason', $excludedReasons);
@@ -110,7 +110,8 @@ class BookingHistoryService
                 'showtime.movie',
                 'showtime.room.cinema',
                 'bookedSeats.seat',
-                'combos.comboReviews' // Eager load combos and their reviews
+                'combos.comboReviews',
+                'coupon'
             ])
             ->first();
     }

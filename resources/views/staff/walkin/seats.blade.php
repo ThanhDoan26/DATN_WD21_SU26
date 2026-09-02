@@ -124,6 +124,21 @@
         z-index: 3;
     }
 
+    @keyframes seatConflictShake {
+        0%, 100% { transform: translateX(0); }
+        20%, 60% { transform: translateX(-4px); }
+        40%, 80% { transform: translateX(4px); }
+    }
+
+    .seat-btn.seat-conflict-flash {
+        animation: seatConflictShake 0.4s ease-in-out 3;
+        border-color: #ef4444 !important;
+        background: #ef4444 !important;
+        color: #ffffff !important;
+        box-shadow: 0 0 14px rgba(239, 68, 68, 0.9) !important;
+        z-index: 10;
+    }
+
     /* POS Cart Sidebar */
     .pos-cart-panel {
         background: var(--bg-surface, #ffffff);
@@ -309,7 +324,10 @@
     let selectedSeats = new Set();
     
     function toggleSeat(seatId, el) {
-        if (el.classList.contains('seat-booked')) return;
+        if (el.classList.contains('seat-booked') || el.disabled) {
+            window.showToast(`⚠️ Ghế ${el.dataset.code || seatId} đã có người đặt hoặc đang được giữ. Vui lòng chọn ghế khác.`, 'error');
+            return;
+        }
         
         if (selectedSeats.has(seatId)) {
             selectedSeats.delete(seatId);
@@ -391,9 +409,12 @@
             conflictIds.forEach(id => {
                 const button = document.querySelector(`[data-id="${id}"]`);
                 if (button) {
-                    button.classList.add('seat-booked');
+                    button.classList.add('seat-booked', 'seat-conflict-flash');
                     button.classList.remove('seat-selected');
                     button.disabled = true;
+                    setTimeout(() => {
+                        button.classList.remove('seat-conflict-flash');
+                    }, 1500);
                 }
                 selectedSeats.delete(id);
             });
@@ -403,7 +424,7 @@
                 return button ? button.dataset.code : `ghế ${id}`;
             }).join(', ');
 
-            alert(`Ghế ${conflictCodes} đã được khách khác đặt hoặc đang giữ. Vui lòng chọn ghế khác.`);
+            window.showToast(`⚠️ Ghế ${conflictCodes} đã có người đặt/giữ trước. Hệ thống đã tự động bỏ chọn các ghế này, vui lòng chọn ghế khác.`, 'error');
             updateCart();
             return false;
         } catch (error) {
@@ -431,19 +452,32 @@
             .then(data => {
                 if (data && data.bookedSeats) {
                     const bookedIds = data.bookedSeats || [];
+                    const conflictSeatCodes = [];
                     document.querySelectorAll('.seat-btn').forEach(btn => {
                         const sid = parseInt(btn.getAttribute('data-id'));
                         if (isNaN(sid)) return;
                         if (bookedIds.includes(sid)) {
                             btn.classList.add('seat-booked');
-                            btn.classList.remove('seat-selected');
+                            btn.disabled = true;
                             if (selectedSeats.has(sid)) {
                                 selectedSeats.delete(sid);
+                                btn.classList.remove('seat-selected');
+                                btn.classList.add('seat-conflict-flash');
+                                conflictSeatCodes.push(btn.dataset.code || sid);
+                                setTimeout(() => {
+                                    btn.classList.remove('seat-conflict-flash');
+                                }, 1500);
                             }
                         } else if (!btn.classList.contains('seat-selected')) {
-                            btn.classList.remove('seat-booked');
+                            btn.classList.remove('seat-booked', 'seat-conflict-flash');
+                            btn.disabled = false;
                         }
                     });
+
+                    if (conflictSeatCodes.length > 0) {
+                        const seatListStr = conflictSeatCodes.join(', ');
+                        window.showToast(`⚠️ Ghế ${seatListStr} đã có người đặt/giữ trước. Hệ thống đã tự động bỏ chọn các ghế này, vui lòng chọn ghế khác.`, 'error');
+                    }
                     updateCart();
                 }
             })
@@ -451,13 +485,22 @@
     }
 
     @if(session('error'))
-        alert("{{ session('error') }}");
+        window.showToast("{{ session('error') }}", 'error');
+    @endif
+    @if(session('success'))
+        window.showToast("{{ session('success') }}", 'success');
     @endif
 
     document.addEventListener('DOMContentLoaded', () => {
         fetchFreshSeatState();
 
         if (typeof window.Echo !== 'undefined') {
+            // Public channel
+            window.Echo.channel(`showtime.${showtimeId}`)
+                .listen('.SeatStatusUpdated', handlePosSeatUpdate)
+                .listen('SeatStatusUpdated', handlePosSeatUpdate);
+
+            // Presence channel
             window.Echo.join(`showtime.${showtimeId}`)
                 .listen('.SeatStatusUpdated', handlePosSeatUpdate)
                 .listen('SeatStatusUpdated', handlePosSeatUpdate);
@@ -469,31 +512,49 @@
                     }
                 });
             }
-        } else {
-            setInterval(fetchFreshSeatState, 5000);
         }
+        
+        // Safety net: Polling every 3 seconds
+        setInterval(fetchFreshSeatState, 3000);
     });
 
     function handlePosSeatUpdate(e) {
         if (!e || !e.seatIds) return;
-        const isMe = e.userId && parseInt(e.userId) === currentStaffId;
+        const isMe = e.userId && currentStaffId && parseInt(e.userId) === parseInt(currentStaffId);
+        const statusUpper = e.status ? String(e.status).toUpperCase() : '';
+        const isLockedStatus = ['PAID', 'PENDING', 'HOLD', 'BOOKED'].includes(statusUpper);
+        const conflictSeatCodes = [];
 
         e.seatIds.forEach(seatId => {
             const btn = document.querySelector(`[data-id="${seatId}"]`);
             if (!btn) return;
 
-            if (e.status === 'PAID' || e.status === 'PENDING' || e.status === 'HOLD') {
+            if (isLockedStatus) {
                 if (!isMe) {
+                    const wasSelected = selectedSeats.has(seatId);
                     btn.classList.add('seat-booked');
                     btn.classList.remove('seat-selected');
-                    if (selectedSeats.has(seatId)) {
+                    btn.disabled = true;
+                    btn.title = "Ghế đã có người đặt hoặc đang được giữ";
+                    if (wasSelected) {
                         selectedSeats.delete(seatId);
+                        conflictSeatCodes.push(btn.dataset.code || seatId);
+                        btn.classList.add('seat-conflict-flash');
+                        setTimeout(() => {
+                            btn.classList.remove('seat-conflict-flash');
+                        }, 1500);
                     }
                 }
-            } else if (e.status === 'AVAILABLE') {
-                btn.classList.remove('seat-booked');
+            } else if (statusUpper === 'AVAILABLE') {
+                btn.classList.remove('seat-booked', 'seat-conflict-flash');
+                btn.disabled = false;
             }
         });
+
+        if (conflictSeatCodes.length > 0) {
+            const seatListStr = conflictSeatCodes.join(', ');
+            window.showToast(`⚠️ Ghế ${seatListStr} đã có người đặt/giữ trước. Hệ thống đã tự động bỏ chọn các ghế này, vui lòng chọn ghế khác.`, 'error');
+        }
 
         updateCart();
     }

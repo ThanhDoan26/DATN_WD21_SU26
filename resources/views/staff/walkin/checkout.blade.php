@@ -262,7 +262,8 @@
                         <label class="form-label fw-bold small text-dark">Mã Giảm Giá / Voucher</label>
                         <div class="input-group">
                             <input type="text" id="couponCode" class="form-control text-uppercase" placeholder="Nhập mã voucher...">
-                            <button class="btn btn-outline-primary fw-bold" type="button" onclick="applyCoupon()">Áp dụng</button>
+                            <button id="btnApplyCoupon" class="btn btn-outline-primary fw-bold" type="button" onclick="applyCoupon()">Áp dụng</button>
+                            <button id="btnRemoveCoupon" class="btn btn-outline-danger fw-bold d-none" type="button" onclick="removeCoupon()" title="Hủy mã voucher"><i class="fas fa-times me-1"></i>Hủy mã</button>
                         </div>
                         <div id="couponMessage" class="mt-1 small"></div>
                     </div>
@@ -301,6 +302,10 @@
     const showtimeId = {{ $showtimeId }};
     const seatIds = "{{ is_array($seatIds) ? implode(',', $seatIds) : $seatIds }}";
     const staffBookingId = {{ $staffBookingId ?? 'null' }};
+    const STORAGE_COMBO_KEY = 'staff_walkin_combos_showtime_' + showtimeId;
+    const STORAGE_CUST_KEY = 'staff_walkin_cust_showtime_' + showtimeId;
+    const serverSavedCombos = @json($savedCombos ?? []);
+
     let baseTotal = {{ $total }}; // Includes ticket prices and surcharge
     let combosTotal = 0;
     let discountAmount = 0;
@@ -310,21 +315,85 @@
         document.getElementById('customer_name').value = 'Khách vãng lai';
         document.getElementById('customer_phone').value = '';
         document.getElementById('customer_email').value = '';
+        saveCustomerToStorage();
     }
 
-    document.getElementById('backToSeats').addEventListener('click', async (event) => {
-        event.preventDefault();
+    function saveCustomerToStorage() {
         try {
-            await fetch('{{ route('staff.walkin.release-hold') }}', {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                keepalive: true,
-            });
-        } finally {
-            history.back();
+            const data = {
+                name: document.getElementById('customer_name').value,
+                phone: document.getElementById('customer_phone').value,
+                email: document.getElementById('customer_email').value,
+            };
+            sessionStorage.setItem(STORAGE_CUST_KEY, JSON.stringify(data));
+        } catch (e) {}
+    }
+
+    function restoreCustomerFromStorage() {
+        try {
+            const stored = sessionStorage.getItem(STORAGE_CUST_KEY);
+            if (stored) {
+                const data = JSON.parse(stored);
+                if (data.name) document.getElementById('customer_name').value = data.name;
+                if (data.phone) document.getElementById('customer_phone').value = data.phone;
+                if (data.email) document.getElementById('customer_email').value = data.email;
+            }
+        } catch (e) {}
+    }
+
+    function saveCombosToStorage() {
+        const combos = {};
+        document.querySelectorAll('.combo-qty').forEach(input => {
+            const qty = parseInt(input.value) || 0;
+            if (qty > 0) {
+                combos[input.dataset.id] = qty;
+            }
+        });
+        try {
+            if (Object.keys(combos).length > 0) {
+                sessionStorage.setItem(STORAGE_COMBO_KEY, JSON.stringify(combos));
+            } else {
+                sessionStorage.removeItem(STORAGE_COMBO_KEY);
+            }
+        } catch (e) {}
+    }
+
+    function restoreCombos() {
+        let combosToRestore = {};
+        
+        try {
+            const stored = sessionStorage.getItem(STORAGE_COMBO_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed && typeof parsed === 'object') {
+                    combosToRestore = parsed;
+                }
+            }
+        } catch (e) {
+            console.error('Failed to parse stored combos:', e);
         }
-    });
-    
+
+        if (Object.keys(combosToRestore).length === 0 && serverSavedCombos && typeof serverSavedCombos === 'object') {
+            combosToRestore = serverSavedCombos;
+        }
+
+        let hasAny = false;
+        Object.entries(combosToRestore).forEach(([comboId, val]) => {
+            const qty = typeof val === 'object' ? parseInt(val.qty || 0) : parseInt(val || 0);
+            if (qty > 0) {
+                const input = document.querySelector(`.combo-qty[data-id="${comboId}"]`);
+                if (input) {
+                    input.value = qty;
+                    hasAny = true;
+                }
+            }
+        });
+
+        if (hasAny) {
+            recalculateCart();
+        }
+    }
+
     function updateCombo(id, change) {
         const input = document.querySelector(`.combo-qty[data-id="${id}"]`);
         let currentVal = parseInt(input.value) || 0;
@@ -333,6 +402,7 @@
         input.value = newVal;
         
         recalculateCart();
+        syncCouponWithCart();
     }
     
     function recalculateCart() {
@@ -346,7 +416,7 @@
             const qty = parseInt(input.value) || 0;
             if (qty > 0) {
                 comboCount++;
-                const price = parseFloat(input.dataset.price);
+                const price = parseFloat(input.dataset.price) || 0;
                 const itemTotal = price * qty;
                 combosTotal += itemTotal;
                 
@@ -365,6 +435,7 @@
             comboSummaryContainer.classList.add('d-none');
         }
         
+        saveCombosToStorage();
         updateFinalTotal();
     }
     
@@ -379,10 +450,10 @@
             return;
         }
         
-        msgEl.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin"></i> Đang kiểm tra voucher...</span>';
+        msgEl.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1"></i> Đang kiểm tra voucher...</span>';
         
         try {
-            const subtotal = baseTotal + combosTotal;
+            const subtotal = (parseFloat(baseTotal) || 0) + (parseFloat(combosTotal) || 0);
             const response = await fetch('/api/apply-coupon', {
                 method: 'POST',
                 headers: {
@@ -400,33 +471,86 @@
             const result = await response.json();
             
             if (result.success) {
-                discountAmount = parseFloat(result.discount_amount);
-                msgEl.innerHTML = '<span class="text-success fw-bold"><i class="fas fa-check-circle"></i> Áp dụng thành công!</span>';
+                const discount = result.discount_amount !== undefined 
+                    ? result.discount_amount 
+                    : (result.data && result.data.discount_amount !== undefined ? result.data.discount_amount : 0);
+                discountAmount = parseFloat(discount) || 0;
+                msgEl.innerHTML = '<span class="text-success fw-bold"><i class="fas fa-check-circle me-1"></i> Áp dụng thành công!</span>';
                 document.getElementById('couponCode').disabled = true;
+                document.getElementById('btnApplyCoupon').classList.add('d-none');
+                document.getElementById('btnRemoveCoupon').classList.remove('d-none');
                 updateFinalTotal();
             } else {
                 discountAmount = 0;
-                msgEl.innerHTML = `<span class="text-danger"><i class="fas fa-times-circle"></i> ${result.message}</span>`;
+                msgEl.innerHTML = `<span class="text-danger"><i class="fas fa-times-circle me-1"></i> ${result.message || 'Mã giảm giá không hợp lệ'}</span>`;
                 updateFinalTotal();
             }
         } catch (e) {
+            console.error('Apply coupon failed:', e);
             msgEl.innerHTML = '<span class="text-danger">Lỗi kết nối kiểm tra mã.</span>';
         }
     }
+
+    function removeCoupon() {
+        const codeInput = document.getElementById('couponCode');
+        codeInput.value = '';
+        codeInput.disabled = false;
+        document.getElementById('btnApplyCoupon').classList.remove('d-none');
+        document.getElementById('btnRemoveCoupon').classList.add('d-none');
+        document.getElementById('couponMessage').innerHTML = '';
+        discountAmount = 0;
+        updateFinalTotal();
+    }
+
+    async function syncCouponWithCart() {
+        const codeInput = document.getElementById('couponCode');
+        const code = codeInput.value.trim();
+        if (!code || !codeInput.disabled) return;
+
+        const subtotal = (parseFloat(baseTotal) || 0) + (parseFloat(combosTotal) || 0);
+        try {
+            const response = await fetch('/api/apply-coupon', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    code: code,
+                    coupon_code: code,
+                    order_total: subtotal,
+                    subtotal: subtotal
+                })
+            });
+            const result = await response.json();
+            if (result.success) {
+                const discount = result.discount_amount !== undefined 
+                    ? result.discount_amount 
+                    : (result.data && result.data.discount_amount !== undefined ? result.data.discount_amount : 0);
+                discountAmount = parseFloat(discount) || 0;
+            } else {
+                discountAmount = 0;
+                document.getElementById('couponMessage').innerHTML = `<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i> Đơn hàng không còn đủ điều kiện dùng mã (${result.message})</span>`;
+            }
+        } catch (e) {
+            console.error('Sync coupon failed:', e);
+        }
+        updateFinalTotal();
+    }
     
     function updateFinalTotal() {
-        const subTotalAmount = baseTotal + combosTotal;
+        const subTotalAmount = (parseFloat(baseTotal) || 0) + (parseFloat(combosTotal) || 0);
         document.getElementById('subTotalDisplay').textContent = new Intl.NumberFormat('vi-VN').format(subTotalAmount) + '₫';
         
-        if (discountAmount > 0) {
+        const validDiscount = parseFloat(discountAmount) || 0;
+        if (validDiscount > 0) {
             document.getElementById('discountRow').classList.remove('d-none');
-            document.getElementById('discountDisplay').textContent = '-' + new Intl.NumberFormat('vi-VN').format(discountAmount) + '₫';
+            document.getElementById('discountDisplay').textContent = '-' + new Intl.NumberFormat('vi-VN').format(validDiscount) + '₫';
         } else {
             document.getElementById('discountRow').classList.add('d-none');
         }
         
-        finalAmountPayable = subTotalAmount - discountAmount;
-        if (finalAmountPayable < 0) finalAmountPayable = 0;
+        finalAmountPayable = Math.max(0, subTotalAmount - validDiscount);
         
         document.getElementById('finalTotalDisplay').textContent = new Intl.NumberFormat('vi-VN').format(finalAmountPayable) + '₫';
         calculateChange();
@@ -503,13 +627,14 @@
             }
         });
         
+        const couponCodeVal = document.getElementById('couponCode').value.trim();
         const payload = {
             showtime_id: showtimeId,
             seat_ids: seatIds,
             booking_id: staffBookingId,
             combos: Object.keys(combos).length > 0 ? combos : null,
             payment_method: 'CASH',
-            coupon_code: document.getElementById('couponCode').value.trim() || null,
+            coupon_code: (discountAmount > 0 && couponCodeVal) ? couponCodeVal : null,
             customer_name: document.getElementById('customer_name').value.trim() || null,
             customer_phone: document.getElementById('customer_phone').value.trim() || null,
             customer_email: document.getElementById('customer_email').value.trim() || null,
@@ -528,20 +653,64 @@
             const result = await response.json();
             
             if (result.success && result.redirect_url) {
+                sessionStorage.removeItem(STORAGE_COMBO_KEY);
+                sessionStorage.removeItem(STORAGE_CUST_KEY);
                 window.location.href = result.redirect_url;
             } else {
-                alertBox.textContent = result.message || 'Lỗi không xác định khi thanh toán.';
+                window.showToast(`⚠️ ${result.message || 'Lỗi không xác định khi thanh toán.'}`, 'error');
+                alertBox.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i><strong>Thông báo:</strong> ${result.message || 'Lỗi không xác định khi thanh toán.'}`;
                 alertBox.classList.remove('d-none');
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-money-bill-wave me-2"></i>THỬ LẠI';
+                if (response.status === 409 || (result.message && result.message.includes('Ghế'))) {
+                    btn.innerHTML = '<i class="fas fa-arrow-left me-2"></i>QUAY LẠI CHỌN GHẾ KHÁC';
+                    btn.onclick = () => window.location.href = `/staff/walk-in/seats/${showtimeId}`;
+                } else {
+                    btn.innerHTML = '<i class="fas fa-money-bill-wave me-2"></i>THỬ LẠI';
+                }
             }
         } catch (e) {
             console.error(e);
-            alertBox.textContent = 'Lỗi hệ thống. Không thể kết nối tới máy chủ.';
+            window.showToast('⚠️ Lỗi hệ thống. Không thể kết nối tới server.', 'error');
+            alertBox.textContent = 'Lỗi hệ thống. Không thể kết nối tới server.';
             alertBox.classList.remove('d-none');
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-money-bill-wave me-2"></i>THỬ LẠI';
         }
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        restoreCombos();
+        restoreCustomerFromStorage();
+
+        const custNameInput = document.getElementById('customer_name');
+        const custPhoneInput = document.getElementById('customer_phone');
+        const custEmailInput = document.getElementById('customer_email');
+
+        if (custNameInput) custNameInput.addEventListener('input', saveCustomerToStorage);
+        if (custPhoneInput) custPhoneInput.addEventListener('input', saveCustomerToStorage);
+        if (custEmailInput) custEmailInput.addEventListener('input', saveCustomerToStorage);
+    });
+
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) {
+            restoreCombos();
+            restoreCustomerFromStorage();
+        }
+    });
+
+    document.getElementById('backToSeats').addEventListener('click', async (event) => {
+        event.preventDefault();
+        saveCombosToStorage();
+        saveCustomerToStorage();
+        try {
+            await fetch('{{ route('staff.walkin.release-hold') }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                keepalive: true,
+            });
+        } finally {
+            history.back();
+        }
+    });
 </script>
 @endsection

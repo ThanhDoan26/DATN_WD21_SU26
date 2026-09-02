@@ -121,7 +121,7 @@ test('staff walk-in booking successfully calculates and saves combos to database
     $booking = Booking::latest('id')->first();
     expect($booking)->not->toBeNull();
     expect((float) $booking->total_price)->toBe(450000.0);
-    expect($booking->status)->toBe('Paid');
+    expect($booking->status)->toBe(\App\Models\Booking::STATUS_PAID);
     expect($booking->payment_method)->toBe('CASH');
 
     // Verify booking_combos table

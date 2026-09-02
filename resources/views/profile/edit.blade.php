@@ -888,7 +888,13 @@ html:not(.dark-theme) .mgp-wrap .pw-seg        { background: #e2e8f0 !important;
                             <dt class="visually-hidden">Số điện thoại:</dt>
                             <dd style="margin:0;">{{ $user->phone ?? 'Chưa cập nhật' }}</dd>
                         </div>
-                        @if($user->cinema)
+                        @if($isStaff || $isManager)
+                        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;">
+                            <i class="fas fa-building" style="color:var(--accent-pur);width:14px;flex-shrink:0;" aria-hidden="true"></i>
+                            <dt class="visually-hidden">Rạp làm việc:</dt>
+                            <dd style="margin:0;font-weight:600;" class="{{ $user->cinema ? '' : 'text-warning' }}">{{ $user->cinema->name ?? '⚠️ Chưa phân công rạp' }}</dd>
+                        </div>
+                        @elseif($user->cinema)
                         <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;">
                             <i class="fas fa-building" style="color:var(--accent-pur);width:14px;flex-shrink:0;" aria-hidden="true"></i>
                             <dt class="visually-hidden">Chi nhánh:</dt>

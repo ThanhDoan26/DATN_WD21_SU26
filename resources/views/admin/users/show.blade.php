@@ -113,10 +113,12 @@
                     <span class="text-muted small"><i class="fas fa-phone me-2"></i>Điện thoại</span>
                     <strong>{{ $user->phone ?? '—' }}</strong>
                 </li>
+                @if($user->isManager() || $user->isStaff())
                 <li class="list-group-item px-4 py-3 d-flex justify-content-between align-items-center">
-                    <span class="text-muted small"><i class="fas fa-building me-2"></i>Rạp chiếu</span>
-                    <span class="badge bg-light text-dark border">{{ $user->cinema->name ?? 'N/A' }}</span>
+                    <span class="text-muted small"><i class="fas fa-building me-2"></i>Rạp làm việc</span>
+                    <span class="badge bg-light text-dark border">{{ $user->cinema->name ?? 'Chưa gán rạp' }}</span>
                 </li>
+                @endif
                 <li class="list-group-item px-4 py-3 d-flex justify-content-between align-items-center">
                     <span class="text-muted small"><i class="fas fa-star me-2"></i>Điểm tích lũy</span>
                     <strong class="text-warning">{{ number_format($user->loyalty_points ?? 0) }} pts</strong>

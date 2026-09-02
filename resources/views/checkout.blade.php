@@ -93,14 +93,6 @@
 @section('content')
 
     <div class="max-w-6xl mx-auto px-4 pt-32 pb-20">
-        <!-- Navigation -->
-        <div class="flex items-center gap-4 mb-6">
-            <a href="{{ route('home') }}" 
-               class="text-slate-300 hover:text-white flex items-center gap-2 transition-colors px-4 py-2 bg-slate-800/50 rounded-lg backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50">
-                <i class="fas fa-home"></i> Trang chủ
-            </a>
-        </div>
-
         <div class="mb-10 text-center">
             <h1 class="text-4xl font-bold text-white mb-2"><i class="fas fa-ticket-alt text-primary mr-3"></i>Thanh Toán Vé</h1>
             <p class="text-slate-400">Hoàn tất các bước cuối cùng để thưởng thức bộ phim của bạn.</p>
@@ -904,7 +896,7 @@
                     e.preventDefault();
 
                     if (!showtimeId || !seatIds) {
-                        alert('Vui lòng chọn ghế trước khi thanh toán');
+                        window.showToast('Vui lòng chọn ghế trước khi thanh toán', 'error');
                         window.location.href = '/';
                         return;
                     }
@@ -970,6 +962,7 @@
                         }
 
                         const bookingId = data.data.booking_id;
+                        window.currentPendingBookingId = bookingId;
 
                         // Đồng hồ đếm ngược đã được khởi tạo lúc load trang.
                         // Không cần set lại để tránh làm reset sai lệch thời gian của server.
@@ -1022,7 +1015,7 @@
                         confirmReservationButton.innerHTML = '<span>Thanh toán ngay</span><i class="fas fa-arrow-right ml-2"></i>';
 
                         console.error('Error:', error);
-                        alert('❌ Lỗi: ' + error.message);
+                        window.showToast(error.message, 'error');
                     });
                 });
             }
@@ -1101,21 +1094,11 @@
             })
             .then(res => res.json())
             .then(data => {
-                if(data.success) {
-                    window.location.href = data.redirect_url || "{{ route('movies.show', $showtime->movie_id) }}";
-                } else {
-                    alert(data.error || "Có lỗi xảy ra khi hủy vé.");
-                    closeCancelModal();
-                    btn.disabled = false;
-                    btn.innerHTML = 'Hủy đặt vé';
-                }
+                window.location.href = data.redirect_url || "{{ route('home') }}";
             })
             .catch(err => {
                 console.error(err);
-                alert("Lỗi kết nối.");
-                closeCancelModal();
-                btn.disabled = false;
-                btn.innerHTML = 'Hủy đặt vé';
+                window.location.href = "{{ route('home') }}";
             });
         }
     </script>

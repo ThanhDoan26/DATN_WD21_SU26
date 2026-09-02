@@ -19,7 +19,8 @@ class VnPayController extends Controller
                 ->where('user_id', auth()->id())
                 ->firstOrFail();
 
-            if ($booking->status == 'Paid') {
+            // Không tạo lại nếu đã thanh toán
+            if ($booking->isPaid()) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Booking này đã được thanh toán.'
@@ -137,7 +138,7 @@ class VnPayController extends Controller
 
         if ($secureHash == $vnp_SecureHash) {
             if ($request->vnp_ResponseCode == '00') {
-                if ($booking->status != 'Paid') {
+                if (!$booking->isPaid()) {
                     try {
                         $bookingService = app(\App\Services\BookingService::class);
                         $bookingService->completePayment($booking->id, 'VNPAY', $inputData);
@@ -198,41 +199,31 @@ class VnPayController extends Controller
         }
 
         try {
-            $bookingId = $request->vnp_TxnRef;
+            $bookingCode = $inputData['vnp_TxnRef'] ?? null;
             
-            DB::beginTransaction();
-            
-            $booking = Booking::where('booking_code', $bookingId)->lockForUpdate()->first();
+            $booking = Booking::where('booking_code', $bookingCode)->lockForUpdate()->first();
             
             if (!$booking) {
-                DB::rollBack();
                 return response()->json(['RspCode' => '01', 'Message' => 'Order not found']);
             }
 
             // Verify amount
             $vnp_Amount = $request->vnp_Amount / 100;
             if (abs((float)$booking->total_price - (float)$vnp_Amount) > 1) {
-                DB::rollBack();
                 return response()->json(['RspCode' => '04', 'Message' => 'Invalid amount']);
             }
 
-            if ($booking->status === 'Paid') {
-                DB::rollBack();
+            if ($booking->isPaid()) {
                 return response()->json(['RspCode' => '02', 'Message' => 'Order already confirmed']);
             }
 
             if ($request->vnp_ResponseCode == '00') {
                 $bookingService = app(\App\Services\BookingService::class);
                 $bookingService->completePayment($booking->id, 'VNPAY', $inputData);
-            } else {
-                // Payment failed, you could mark it as failed or let timeout handle it
-                // We'll leave it pending for timeout handling to clean it up
             }
-            
-            DB::commit();
+
             return response()->json(['RspCode' => '00', 'Message' => 'Confirm Success']);
         } catch (\Exception $e) {
-            DB::rollBack();
             \Illuminate\Support\Facades\Log::error('VNPAY IPN error: ' . $e->getMessage());
             return response()->json(['RspCode' => '99', 'Message' => 'Unknown error']);
         }
