@@ -91,6 +91,11 @@
                     <div class="flex items-center gap-4">
                         @php
                             $statusIcons = [
+                                'paid' => 'fa-check-circle text-emerald-500',
+                                'pending' => 'fa-hourglass-half text-amber-500',
+                                'cancelled' => 'fa-times-circle text-rose-500',
+                                'expired' => 'fa-clock text-slate-400',
+                                'used' => 'fa-user-check text-blue-500',
                                 'Paid' => 'fa-check-circle text-emerald-500',
                                 'Pending' => 'fa-hourglass-half text-amber-500',
                                 'Cancelled' => 'fa-times-circle text-rose-500',
@@ -98,6 +103,11 @@
                                 'Used' => 'fa-user-check text-blue-500',
                             ];
                             $statusLabel = [
+                                'pending' => 'Chờ thanh toán',
+                                'paid' => 'Đã thanh toán',
+                                'cancelled' => 'Đã hủy',
+                                'expired' => 'Hết hạn giữ chỗ',
+                                'used' => 'Đã sử dụng',
                                 'Pending' => 'Chờ thanh toán',
                                 'Paid' => 'Đã thanh toán',
                                 'Cancelled' => 'Đã hủy',
@@ -110,7 +120,7 @@
                         </div>
                         <div>
                             <p class="text-slate-400 text-xs uppercase font-bold tracking-wider">Trạng thái</p>
-                            <p class="text-white text-xl font-bold">{{ $statusLabel[$booking->status] ?? $booking->status }}</p>
+                            <p class="text-white text-xl font-bold">{{ $booking->status_label ?? ($statusLabel[$booking->status] ?? $booking->status) }}</p>
                             <p class="text-slate-500 text-sm">
                                 @if($booking->cancelled_at)
                                     Hủy lúc: {{ $booking->cancelled_at->format('H:i d/m/Y') }}
@@ -191,11 +201,15 @@
                     <!-- QR Section -->
                     <div class="md:w-64 flex flex-col items-center">
                         @php
-                            $isExpired = $booking->status === 'Paid' && ($booking->showtime->status === \App\Models\Showtime::STATUS_COMPLETED || ($booking->showtime->end_time && $booking->showtime->end_time->isPast()));
+                            $isPaid = $booking->isPaid() || strtolower($booking->status ?? '') === 'paid';
+                            $isUsed = $booking->isUsed() || strtolower($booking->status ?? '') === 'used';
+                            $isPending = $booking->isPending() || strtolower($booking->status ?? '') === 'pending';
+                            $isCancelled = $booking->isCancelled() || strtolower($booking->status ?? '') === 'cancelled';
+                            $isExpired = $isPaid && ($booking->showtime->status === \App\Models\Showtime::STATUS_COMPLETED || ($booking->showtime->end_time && $booking->showtime->end_time->isPast()));
                         @endphp
                         
                         <div class="p-4 bg-white rounded-3xl shadow-2xl mb-4 group/qr">
-                            @if($booking->status === 'Used')
+                            @if($isUsed)
                                 <div class="w-48 h-48 bg-emerald-50 rounded-2xl flex flex-col items-center justify-center border-4 border-emerald-100 p-4 text-center">
                                      <i class="fas fa-check-double text-5xl text-emerald-500 mb-3"></i>
                                      <p class="text-emerald-800 text-xs font-bold uppercase tracking-tighter">Vé đã được sử dụng</p>
@@ -205,11 +219,11 @@
                                      <i class="fas fa-lock text-5xl text-rose-400 mb-3"></i>
                                      <p class="text-rose-800 text-xs font-bold uppercase tracking-tighter">Vé đã quá hạn</p>
                                 </div>
-                            @elseif($booking->status === 'Paid')
+                            @elseif($isPaid)
                                 <div class="w-48 h-48 bg-slate-100 rounded-2xl flex items-center justify-center border-4 border-slate-50 overflow-hidden group-hover/qr:scale-105 transition-transform duration-500">
-                                     {!! \SimpleSoftwareIO\QrCode\Facades\QrCode::size(160)->margin(0)->generate(url('/tickets/' . $booking->ticket_token)) !!}
+                                     {!! \SimpleSoftwareIO\QrCode\Facades\QrCode::size(160)->margin(0)->generate(url('/tickets/' . ($booking->ticket_token ?? $booking->booking_code))) !!}
                                 </div>
-                            @elseif($booking->status === 'Pending')
+                            @elseif($isPending)
                                 <div class="w-48 h-48 bg-amber-50 rounded-2xl flex flex-col items-center justify-center border-4 border-amber-100 p-4 text-center">
                                      <i class="fas fa-clock text-5xl text-amber-500 mb-3 animate-pulse"></i>
                                      <p class="text-amber-800 text-xs font-bold uppercase tracking-tighter">Đang chờ thanh toán</p>
@@ -222,13 +236,13 @@
                             @endif
                         </div>
                         
-                        @if($booking->status === 'Used')
+                        @if($isUsed)
                             <p class="text-emerald-500 text-[10px] text-center uppercase font-bold tracking-widest leading-relaxed">Cảm ơn bạn đã xem phim</p>
                         @elseif($isExpired)
                             <p class="text-rose-500 text-[10px] text-center uppercase font-bold tracking-widest leading-relaxed">Suất chiếu đã kết thúc</p>
-                        @elseif($booking->status === 'Paid')
+                        @elseif($isPaid)
                             <p class="text-slate-400 text-[10px] text-center uppercase font-bold tracking-widest leading-relaxed">Xuất trình mã này tại quầy<br/>để nhận vé vào phòng chiếu</p>
-                        @elseif($booking->status === 'Pending')
+                        @elseif($isPending)
                              <a href="{{ route('checkout', ['showtime_id' => $booking->showtime_id, 'seat_ids' => $booking->bookedSeats->pluck('seat_id')->implode(',')]) }}" class="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold py-3 px-6 rounded-2xl transition-all shadow-lg shadow-amber-500/20 block text-center">THANH TOÁN NGAY</a>
                         @endif
                     </div>
@@ -237,11 +251,11 @@
 
             <!-- Footer Note -->
             <div class="bg-slate-900/50 p-6 border-t border-slate-700/50 text-center flex flex-col items-center justify-center gap-2">
-                @if($booking->status === 'Paid')
+                @if($isPaid)
                     <p class="text-slate-500 text-xs">
                         <i class="fas fa-info-circle mr-2"></i>Vé đã thanh toán không thể hoàn trả hoặc đổi trả theo quy chuẩn nghiệp vụ của MovieGo.
                     </p>
-                @elseif($booking->status === 'Pending')
+                @elseif($isPending)
                     {{-- TODO: Thêm nút và logic hủy vé cho khách hàng chưa thanh toán ở đây (Dành cho thành viên khác phát triển) --}}
                 @else
                     <p class="text-slate-500 text-xs">

@@ -205,13 +205,14 @@
                         $statusStr = '';
                         $statusClass = '';
                         if ($searchType === 'booking') {
-                            $status = $result->status;
-                            if ($status === 'Paid') { $statusStr = 'Đã thanh toán'; $statusClass = 'badge-paid'; }
-                            elseif ($status === 'Used') { $statusStr = 'Đã sử dụng'; $statusClass = 'badge-used'; }
-                            elseif ($status === 'Pending') { $statusStr = 'Chưa thanh toán (Chờ)'; $statusClass = 'badge-pending'; }
-                            elseif ($status === 'Cancelled') { $statusStr = 'Đã hủy bỏ'; $statusClass = 'badge-cancelled'; }
+                            $status = strtolower($result->status ?? '');
+                            if ($status === 'paid') { $statusStr = 'Đã thanh toán'; $statusClass = 'badge-paid'; }
+                            elseif ($status === 'used') { $statusStr = 'Đã sử dụng'; $statusClass = 'badge-used'; }
+                            elseif ($status === 'pending') { $statusStr = 'Chưa thanh toán (Chờ)'; $statusClass = 'badge-pending'; }
+                            elseif ($status === 'cancelled') { $statusStr = 'Đã hủy bỏ'; $statusClass = 'badge-cancelled'; }
+                            elseif ($status === 'expired') { $statusStr = 'Đã hết hạn'; $statusClass = 'badge-cancelled'; }
                         } else {
-                            $status = $result->status;
+                            $status = strtoupper($result->status ?? '');
                             if ($status === 'PAID') { $statusStr = 'Đã thanh toán'; $statusClass = 'badge-paid'; }
                             elseif ($status === 'USED') { $statusStr = 'Đã sử dụng'; $statusClass = 'badge-used'; }
                             elseif ($status === 'RESERVED') { $statusStr = 'Chưa thanh toán (Đặt trước)'; $statusClass = 'badge-pending'; }

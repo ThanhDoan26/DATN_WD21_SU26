@@ -19,7 +19,7 @@ class VnPayController extends Controller
                 ->where('user_id', auth()->id())
                 ->firstOrFail();
 
-            if ($booking->status == 'Paid') {
+            if ($booking->isPaid()) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Booking này đã được thanh toán.'
@@ -137,7 +137,7 @@ class VnPayController extends Controller
 
         if ($secureHash == $vnp_SecureHash) {
             if ($request->vnp_ResponseCode == '00') {
-                if ($booking->status != 'Paid') {
+                if (!$booking->isPaid()) {
                     try {
                         $bookingService = app(\App\Services\BookingService::class);
                         $bookingService->completePayment($booking->id, 'VNPAY', $inputData);
@@ -216,7 +216,7 @@ class VnPayController extends Controller
                 return response()->json(['RspCode' => '04', 'Message' => 'Invalid amount']);
             }
 
-            if ($booking->status === 'Paid') {
+            if ($booking->isPaid()) {
                 DB::rollBack();
                 return response()->json(['RspCode' => '02', 'Message' => 'Order already confirmed']);
             }
