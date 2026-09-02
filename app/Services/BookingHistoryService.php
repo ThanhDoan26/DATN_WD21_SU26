@@ -104,7 +104,7 @@ class BookingHistoryService
      */
     public function getBookingDetails(string $bookingCode, int $userId): ?Booking
     {
-        return Booking::where('booking_code', $bookingCode)
+        $booking = Booking::where('booking_code', $bookingCode)
             ->where('user_id', $userId)
             ->with([
                 'showtime.movie',
@@ -114,5 +114,12 @@ class BookingHistoryService
                 'coupon'
             ])
             ->first();
+
+        if ($booking && $booking->isPaid() && empty($booking->ticket_token)) {
+            $booking->ticket_token = (string) \Illuminate\Support\Str::uuid();
+            $booking->saveQuietly();
+        }
+
+        return $booking;
     }
 }

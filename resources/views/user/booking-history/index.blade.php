@@ -119,33 +119,32 @@
                                 <td class="px-6 py-5">
                                     @php
                                         $statusClasses = [
-                                            'Pending' => 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-                                            'Paid' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-                                            'Cancelled' => 'bg-rose-500/10 text-rose-400 border-rose-500/30',
-                                            'Expired' => 'bg-slate-500/10 text-slate-400 border-slate-500/30',
-                                            'Used' => 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+                                            \App\Models\Booking::STATUS_PENDING   => 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+                                            \App\Models\Booking::STATUS_PAID      => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+                                            \App\Models\Booking::STATUS_CANCELLED => 'bg-rose-500/10 text-rose-400 border-rose-500/30',
+                                            \App\Models\Booking::STATUS_EXPIRED   => 'bg-slate-500/10 text-slate-400 border-slate-500/30',
+                                            \App\Models\Booking::STATUS_USED      => 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+                                            'pending'   => 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+                                            'paid'      => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+                                            'cancelled' => 'bg-rose-500/10 text-rose-400 border-rose-500/30',
+                                            'expired'   => 'bg-slate-500/10 text-slate-400 border-slate-500/30',
+                                            'used'      => 'bg-blue-500/10 text-blue-400 border-blue-500/30',
                                         ];
-                                        $statusLabel = [
-                                            'Pending' => 'Chờ thanh toán',
-                                            'Paid' => 'Đã thanh toán',
-                                            'Cancelled' => 'Đã hủy',
-                                            'Expired' => 'Hết hạn giữ chỗ',
-                                            'Used' => 'Đã sử dụng',
-                                        ];
+                                        $normalizedStatus = strtolower($booking->status ?? '');
                                     @endphp
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full border {{ $statusClasses[$booking->status] ?? 'bg-slate-500/10 text-slate-400' }}">
-                                        @if($booking->status === 'Paid')
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full border {{ $statusClasses[$normalizedStatus] ?? 'bg-slate-500/10 text-slate-400' }}">
+                                        @if($booking->isPaid())
                                             <i class="fas fa-check-circle text-[10px]"></i>
-                                        @elseif($booking->status === 'Used')
+                                        @elseif($booking->isUsed())
                                             <i class="fas fa-user-check text-[10px]"></i>
-                                        @elseif($booking->status === 'Cancelled')
+                                        @elseif($booking->isCancelled())
                                             <i class="fas fa-times-circle text-[10px]"></i>
-                                        @elseif($booking->status === 'Expired')
+                                        @elseif($booking->isExpired())
                                             <i class="fas fa-clock text-[10px]"></i>
-                                        @elseif($booking->status === 'Pending')
+                                        @elseif($booking->isPending())
                                             <i class="fas fa-hourglass-half text-[10px]"></i>
                                         @endif
-                                        {{ $statusLabel[$booking->status] ?? $booking->status }}
+                                        {{ $booking->status_label }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-5 text-slate-400 text-sm whitespace-nowrap">

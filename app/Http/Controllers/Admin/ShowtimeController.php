@@ -178,15 +178,59 @@ class ShowtimeController extends AdminController
         // 1. Kiểm tra toàn diện trạng thái suất chiếu và terminal lock
         (new MovieStatusValidationService())->validateShowtimeStatusRules($showtime, $request->all(), $movie);
 
-        // 2. Kiểm tra nếu suất chiếu đã có vé đặt thì khóa thay đổi phim, phòng chiếu, giờ chiếu
-        $hasBookings = $showtime->bookings()->where('status', '!=', 'Cancelled')->exists();
+        // 2. Kiểm tra nếu suất chiếu đã có vé đặt thì khóa thay đổi phim, phòng chiếu, giờ chiếu, phụ thu và giá vé
+        $hasBookings = $showtime->hasActiveBookings();
         if ($hasBookings) {
+            // Tự động giữ giá trị cũ nếu form bị disable không gửi lên
+            if (!$request->has('surcharge')) {
+                $request->merge(['surcharge' => $showtime->surcharge]);
+            }
+            if (!$request->has('ticket_prices') || empty($request->input('ticket_prices'))) {
+                $existingPrices = $showtime->ticketPrices()->pluck('price', 'seat_type')->toArray();
+                $request->merge(['ticket_prices' => $existingPrices]);
+            }
+            if (!$request->has('movie_id')) {
+                $request->merge(['movie_id' => $showtime->movie_id]);
+            }
+            if (!$request->has('room_id')) {
+                $request->merge(['room_id' => $showtime->room_id]);
+            }
+            if (!$request->has('start_time')) {
+                $request->merge(['start_time' => $showtime->start_time ? $showtime->start_time->format('Y-m-d H:i:s') : null]);
+            }
+
+            // 2.1 Khóa thay đổi phim, phòng chiếu, giờ chiếu
             $originalStart = $showtime->start_time ? $showtime->start_time->format('Y-m-d H:i') : '';
             $newStart = $request->filled('start_time') ? Carbon::parse($request->start_time)->format('Y-m-d H:i') : '';
-            if ($originalStart !== $newStart || (int)$showtime->room_id !== (int)$request->input('room_id') || (int)$showtime->movie_id !== (int)$request->input('movie_id')) {
+            if ($originalStart !== $newStart || (int)$showtime->room_id !== (int)$request->input('room_id', $showtime->room_id) || (int)$showtime->movie_id !== (int)$request->input('movie_id', $showtime->movie_id)) {
                 return back()->withInput()->withErrors([
                     'start_time' => 'Suất chiếu này đã phát sinh vé đặt của khách hàng. Không thể thay đổi thời gian, phòng chiếu hoặc phim để tránh sai lệch dữ liệu tài chính/vé.'
                 ]);
+            }
+
+            // 2.2 Khóa thay đổi phụ thu suất chiếu (surcharge)
+            if ($request->has('surcharge')) {
+                $submittedSurcharge = (float) str_replace(',', '.', (string)$request->input('surcharge'));
+                $originalSurcharge = (float) ($showtime->surcharge ?? 0);
+                if (abs($submittedSurcharge - $originalSurcharge) > 0.01) {
+                    return back()->withInput()->withErrors([
+                        'surcharge' => 'Suất chiếu này đã phát sinh vé đặt của khách hàng. Không thể thay đổi phụ thu suất chiếu để bảo toàn dữ liệu tài chính và vé đã xuất.'
+                    ]);
+                }
+            }
+
+            // 2.3 Khóa thay đổi bảng giá vé các loại ghế (ticket_prices)
+            if ($request->has('ticket_prices') && is_array($request->input('ticket_prices'))) {
+                $existingPrices = $showtime->ticketPrices()->pluck('price', 'seat_type')->toArray();
+                foreach ($request->input('ticket_prices') as $seatType => $price) {
+                    $submittedPrice = (float) str_replace(',', '.', (string)$price);
+                    $originalPrice = isset($existingPrices[$seatType]) ? (float) $existingPrices[$seatType] : null;
+                    if ($originalPrice !== null && abs($submittedPrice - $originalPrice) > 0.01) {
+                        return back()->withInput()->withErrors([
+                            'ticket_prices' => "Suất chiếu này đã phát sinh vé đặt của khách hàng. Không thể thay đổi giá vé loại ghế {$seatType} để tránh sai lệch lịch sử giao dịch."
+                        ]);
+                    }
+                }
             }
         }
 
@@ -297,10 +341,14 @@ class ShowtimeController extends AdminController
     public function show($id)
     {
         $showtime = Showtime::withTrashed()
-            ->with(['movie', 'room.cinema'])
+            ->with(['movie', 'room.cinema', 'ticketPrices', 'bookings.bookedSeats.seat'])
             ->findOrFail($id);
 
-        return view('admin.showtimes.show', compact('showtime'));
+        $hasBookings = $showtime->hasActiveBookings();
+        $bookedSeatsCount = $showtime->getBookedSeatsCount();
+        $occupancyRate = $showtime->getOccupancyRate();
+
+        return view('admin.showtimes.show', compact('showtime', 'hasBookings', 'bookedSeatsCount', 'occupancyRate'));
     }
 
     public function trashed(Request $request)

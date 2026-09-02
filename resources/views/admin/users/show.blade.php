@@ -213,11 +213,14 @@
                             <td>
                                 @php
                                     $badgeMap = [
-                                        'PAID'      => ['bg-success-subtle text-success border-success-subtle', 'check-circle', 'Đã thanh toán'],
-                                        'PENDING'   => ['bg-warning-subtle text-warning border-warning-subtle', 'clock', 'Chờ thanh toán'],
-                                        'CANCELLED' => ['bg-danger-subtle text-danger border-danger-subtle',   'times-circle', 'Đã hủy'],
+                                        'paid'      => ['bg-success-subtle text-success border-success-subtle', 'check-circle', 'Đã thanh toán'],
+                                        'pending'   => ['bg-warning-subtle text-warning border-warning-subtle', 'clock', 'Chờ thanh toán'],
+                                        'cancelled' => ['bg-danger-subtle text-danger border-danger-subtle',   'times-circle', 'Đã hủy'],
+                                        'used'      => ['bg-info-subtle text-info border-info-subtle',         'check-double', 'Đã sử dụng'],
+                                        'expired'   => ['bg-secondary-subtle text-secondary border-secondary-subtle', 'clock', 'Hết hạn'],
                                     ];
-                                    $b = $badgeMap[$booking->status] ?? ['bg-secondary text-white', 'question', $booking->status];
+                                    $normStatus = strtolower($booking->status ?? '');
+                                    $b = $badgeMap[$normStatus] ?? ['bg-secondary text-white', 'question', $booking->status_label ?? $booking->status];
                                 @endphp
                                 <span class="badge {{ $b[0] }} border">
                                     <i class="fas fa-{{ $b[1] }} me-1"></i>{{ $b[2] }}

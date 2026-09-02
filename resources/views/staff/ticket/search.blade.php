@@ -71,19 +71,38 @@
         font-weight: 800;
         color: #1e293b;
     }
+    #scannerWrapper {
+        max-width: 480px;
+        margin: 0 auto;
+    }
     #reader {
         width: 100%;
-        max-width: 450px;
-        margin: 0 auto;
         border-radius: 16px;
         overflow: hidden;
-        border: none !important;
+        border: 2px solid #e2e8f0;
+        background: #0f172a;
+        position: relative;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
     }
-    #reader__scan_region {
-        background: #f8fafc;
+    #reader video {
+        border-radius: 14px;
+        object-fit: cover;
     }
-    .scanner-active {
-        border: 3px solid #ca8a04 !important;
+    .scanner-laser-line {
+        position: absolute;
+        top: 0;
+        left: 5%;
+        width: 90%;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, #eab308, transparent);
+        box-shadow: 0 0 12px #eab308;
+        animation: scanLaser 2s infinite ease-in-out;
+        z-index: 10;
+        pointer-events: none;
+    }
+    @keyframes scanLaser {
+        0%, 100% { top: 15%; opacity: 0.2; }
+        50% { top: 85%; opacity: 1; }
     }
 </style>
 @endsection
@@ -128,8 +147,28 @@
             
             <!-- QR Scanner region -->
             <div class="mt-3 text-center d-none" id="scannerWrapper">
-                <div id="reader"></div>
-                <p class="text-muted mt-2 small"><i class="fas fa-info-circle me-1"></i> Di chuyển mã QR của vé vào vùng quét của camera.</p>
+                <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                    <span class="small fw-bold text-muted"><i class="fas fa-video me-1 text-warning"></i> Khung quét camera trực tiếp</span>
+                    <div id="cameraSelectContainer" class="d-none">
+                        <select id="cameraSelect" class="form-select form-select-sm py-1 shadow-none" style="font-size: 0.8rem; border-radius: 8px;">
+                        </select>
+                    </div>
+                </div>
+
+                <div id="scannerAlert" class="alert alert-warning py-2 small d-none mb-2 text-start rounded-3"></div>
+
+                <div class="position-relative">
+                    <div id="reader"></div>
+                    <div class="scanner-laser-line" id="scannerLaser" style="display: none;"></div>
+                </div>
+
+                <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
+                    <label class="btn btn-sm btn-outline-secondary px-3 py-1.5 mb-0" style="cursor: pointer; border-radius: 10px;">
+                        <i class="fas fa-file-image me-1 text-primary"></i> Tải ảnh mã QR từ máy
+                        <input type="file" id="qrFileInput" accept="image/*" class="d-none">
+                    </label>
+                </div>
+                <p class="text-muted mt-2 small mb-0"><i class="fas fa-info-circle me-1"></i> Hướng camera về phía mã QR vé để hệ thống tự động nhận diện và tra cứu.</p>
             </div>
         </div>
     </div>
@@ -202,13 +241,15 @@
                         $statusStr = '';
                         $statusClass = '';
                         if ($searchType === 'booking') {
-                            $status = $result->status;
-                            if ($status === 'Paid') { $statusStr = 'Đã thanh toán'; $statusClass = 'badge-paid'; }
-                            elseif ($status === 'Used') { $statusStr = 'Đã sử dụng'; $statusClass = 'badge-used'; }
-                            elseif ($status === 'Pending') { $statusStr = 'Chưa thanh toán (Chờ)'; $statusClass = 'badge-pending'; }
-                            elseif ($status === 'Cancelled') { $statusStr = 'Đã hủy bỏ'; $statusClass = 'badge-cancelled'; }
+                            $status = strtolower($result->status ?? '');
+                            if ($status === 'paid') { $statusStr = 'Đã thanh toán'; $statusClass = 'badge-paid'; }
+                            elseif ($status === 'used') { $statusStr = 'Đã sử dụng'; $statusClass = 'badge-used'; }
+                            elseif ($status === 'pending') { $statusStr = 'Chưa thanh toán (Chờ)'; $statusClass = 'badge-pending'; }
+                            elseif ($status === 'cancelled') { $statusStr = 'Đã hủy bỏ'; $statusClass = 'badge-cancelled'; }
+                            elseif ($status === 'expired') { $statusStr = 'Hết hạn giữ chỗ'; $statusClass = 'badge-cancelled'; }
+                            else { $statusStr = $result->status_label ?? $result->status; $statusClass = 'badge-pending'; }
                         } else {
-                            $status = $result->status;
+                            $status = strtoupper($result->status ?? '');
                             if ($status === 'PAID') { $statusStr = 'Đã thanh toán'; $statusClass = 'badge-paid'; }
                             elseif ($status === 'USED') { $statusStr = 'Đã sử dụng'; $statusClass = 'badge-used'; }
                             elseif ($status === 'RESERVED') { $statusStr = 'Chưa thanh toán (Đặt trước)'; $statusClass = 'badge-pending'; }
@@ -478,41 +519,144 @@
         const scannerWrapper = document.getElementById('scannerWrapper');
         const ticketCodeInput = document.getElementById('ticketCodeInput');
         const searchForm = document.getElementById('searchForm');
+        const cameraSelect = document.getElementById('cameraSelect');
+        const cameraSelectContainer = document.getElementById('cameraSelectContainer');
+        const scannerAlert = document.getElementById('scannerAlert');
+        const scannerLaser = document.getElementById('scannerLaser');
+        const qrFileInput = document.getElementById('qrFileInput');
         
-        let html5QrcodeScanner = null;
+        let html5QrCode = null;
         let isScannerRunning = false;
+        let availableCameras = [];
 
-        function startScanner() {
-            scannerWrapper.classList.remove('d-none');
-            document.getElementById('reader').classList.add('scanner-active');
-            
-            html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader", 
-                { 
-                    fps: 10, 
-                    qrbox: { width: 250, height: 250 },
-                    aspectRatio: 1.0
-                },
-                /* verbose= */ false
-            );
-            
-            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-            scannerBtnText.textContent = "Tắt Camera";
-            toggleScannerBtn.classList.replace('btn-outline-warning', 'btn-danger');
-            isScannerRunning = true;
+        function showScannerAlert(msg, type = 'warning') {
+            if (scannerAlert) {
+                scannerAlert.className = `alert alert-${type} py-2 small mb-2 text-start rounded-3`;
+                scannerAlert.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i> ${msg}`;
+                scannerAlert.classList.remove('d-none');
+            }
         }
 
-        function stopScanner() {
-            if (html5QrcodeScanner) {
-                html5QrcodeScanner.clear().then(() => {
-                    scannerWrapper.classList.add('d-none');
-                    scannerBtnText.textContent = "Bật Camera Quét QR";
-                    toggleScannerBtn.classList.replace('btn-danger', 'btn-outline-warning');
-                    isScannerRunning = false;
-                }).catch(err => {
-                    console.error("Lỗi khi tắt camera: ", err);
-                });
+        function hideScannerAlert() {
+            if (scannerAlert) {
+                scannerAlert.classList.add('d-none');
+                scannerAlert.innerHTML = '';
             }
+        }
+
+        async function initCameras() {
+            try {
+                availableCameras = await Html5Qrcode.getCameras();
+                if (availableCameras && availableCameras.length > 0) {
+                    cameraSelect.innerHTML = '';
+                    availableCameras.forEach((cam, index) => {
+                        const opt = document.createElement('option');
+                        opt.value = cam.id;
+                        opt.text = cam.label || `Camera ${index + 1}`;
+                        cameraSelect.appendChild(opt);
+                    });
+                    if (availableCameras.length > 1) {
+                        cameraSelectContainer.classList.remove('d-none');
+                    }
+                }
+            } catch (err) {
+                console.warn("Không thể liệt kê danh sách camera trước: ", err);
+            }
+        }
+
+        async function startScanner(cameraId = null) {
+            scannerWrapper.classList.remove('d-none');
+            hideScannerAlert();
+
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+
+            const config = {
+                fps: 15,
+                qrbox: function(viewfinderWidth, viewfinderHeight) {
+                    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                    const qrboxSize = Math.floor(minEdge * 0.75);
+                    return {
+                        width: Math.max(qrboxSize, 180),
+                        height: Math.max(qrboxSize, 180)
+                    };
+                },
+                aspectRatio: 1.0
+            };
+
+            const cameraConfig = cameraId ? cameraId : { facingMode: "environment" };
+
+            try {
+                await html5QrCode.start(
+                    cameraConfig,
+                    config,
+                    onScanSuccess,
+                    onScanFailure
+                );
+                
+                isScannerRunning = true;
+                if (scannerLaser) scannerLaser.style.display = 'block';
+                scannerBtnText.textContent = "Tắt Camera";
+                toggleScannerBtn.classList.remove('btn-outline-warning');
+                toggleScannerBtn.classList.add('btn-danger');
+
+                // Lấy danh sách camera sau khi đã được cấp quyền thành công
+                if (availableCameras.length === 0) {
+                    initCameras();
+                }
+            } catch (err) {
+                console.error("Lỗi khởi động camera: ", err);
+                if (scannerLaser) scannerLaser.style.display = 'none';
+                
+                // Thử fallback sang camera đầu tiên nếu facingMode thất bại (thường xảy ra trên webcam máy bàn)
+                if (!cameraId) {
+                    try {
+                        const cameras = await Html5Qrcode.getCameras();
+                        if (cameras && cameras.length > 0) {
+                            await html5QrCode.start(cameras[0].id, config, onScanSuccess, onScanFailure);
+                            isScannerRunning = true;
+                            if (scannerLaser) scannerLaser.style.display = 'block';
+                            scannerBtnText.textContent = "Tắt Camera";
+                            toggleScannerBtn.classList.remove('btn-outline-warning');
+                            toggleScannerBtn.classList.add('btn-danger');
+                            return;
+                        }
+                    } catch (fallbackErr) {
+                        console.error("Fallback camera cũng thất bại: ", fallbackErr);
+                    }
+                }
+
+                let errorMsg = "Không thể mở camera. ";
+                const errStr = (err && err.toString()) || '';
+                if (err && (err.name === 'NotAllowedError' || errStr.includes('Permission') || errStr.includes('permission') || errStr.includes('NotAllowedError'))) {
+                    errorMsg += "Trình duyệt đang chặn quyền Camera. Vui lòng bấm vào <strong>biểu tượng Máy ảnh/Ổ khóa</strong> trên thanh địa chỉ URL của trình duyệt để <strong>Cho phép (Allow)</strong> truy cập Camera.";
+                } else if (err && (err.name === 'NotFoundError' || errStr.includes('NotFound') || errStr.includes('DevicesNotFoundError'))) {
+                    errorMsg += "Không tìm thấy thiết bị Camera trên thiết bị này. Bạn có thể dùng nút <strong>Tải ảnh mã QR</strong> bên dưới hoặc gõ mã vé trực tiếp.";
+                } else if (err && (err.name === 'NotReadableError' || errStr.includes('in use') || errStr.includes('SourceUnavailableError'))) {
+                    errorMsg += "Camera đang bị ứng dụng khác sử dụng hoặc đang bị khóa.";
+                } else {
+                    errorMsg += "Vui lòng kiểm tra quyền Camera hoặc dùng tính năng tải ảnh mã QR.";
+                }
+                showScannerAlert(errorMsg, 'danger');
+            }
+        }
+
+        async function stopScanner() {
+            if (html5QrCode && isScannerRunning) {
+                try {
+                    await html5QrCode.stop();
+                } catch (err) {
+                    console.error("Lỗi khi dừng camera: ", err);
+                }
+            }
+            isScannerRunning = false;
+            if (scannerLaser) scannerLaser.style.display = 'none';
+            scannerWrapper.classList.add('d-none');
+            scannerBtnText.textContent = "Bật Camera Quét QR";
+            toggleScannerBtn.classList.remove('btn-danger');
+            toggleScannerBtn.classList.add('btn-outline-warning');
+            hideScannerAlert();
         }
 
         toggleScannerBtn.addEventListener('click', function() {
@@ -523,22 +667,63 @@
             }
         });
 
+        if (cameraSelect) {
+            cameraSelect.addEventListener('change', async function() {
+                if (isScannerRunning && html5QrCode) {
+                    try {
+                        await html5QrCode.stop();
+                    } catch(e) {}
+                    isScannerRunning = false;
+                    await startScanner(this.value);
+                }
+            });
+        }
+
+        // Tải ảnh mã QR để nhận diện
+        if (qrFileInput) {
+            qrFileInput.addEventListener('change', async function(e) {
+                if (e.target.files && e.target.files.length > 0) {
+                    const imageFile = e.target.files[0];
+                    if (!html5QrCode) {
+                        html5QrCode = new Html5Qrcode("reader");
+                    }
+                    try {
+                        scannerWrapper.classList.remove('d-none');
+                        showScannerAlert("Đang phân tích hình ảnh mã QR...", "info");
+                        const decodedText = await html5QrCode.scanFile(imageFile, true);
+                        onScanSuccess(decodedText);
+                    } catch (fileErr) {
+                        showScannerAlert("Không tìm thấy mã QR hợp lệ trong hình ảnh đã chọn. Vui lòng chọn ảnh chụp rõ nét hơn.", "danger");
+                    }
+                }
+            });
+        }
+
         function onScanSuccess(decodedText, decodedResult) {
-            // Dừng quét
+            // Tắt camera
             stopScanner();
             
+            // Xử lý chuỗi quét được: bóc tách lấy mã nếu là URL
+            let extractedCode = decodedText ? decodedText.trim() : '';
+            if (extractedCode.includes('/tickets/')) {
+                const parts = extractedCode.split('/tickets/');
+                extractedCode = parts[1].split('?')[0].split('#')[0];
+            } else if (extractedCode.includes('/booking-history/')) {
+                const parts = extractedCode.split('/booking-history/');
+                extractedCode = parts[1].split('?')[0].split('#')[0];
+            }
+
             // Điền vào input và submit
-            ticketCodeInput.value = decodedText;
-            
-            // Hiệu ứng và submit
+            ticketCodeInput.value = extractedCode;
             ticketCodeInput.style.backgroundColor = '#dcfce7';
+            
             setTimeout(() => {
                 searchForm.submit();
-            }, 500);
+            }, 300);
         }
 
         function onScanFailure(error) {
-            // Không log lỗi liên tục tránh tràn console
+            // Callback từng frame quét không khớp - không log để tránh nghẽn console
         }
 
         // Handle iframe printing in same tab

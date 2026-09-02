@@ -48,14 +48,18 @@
                     <div class="col-md-6">
                         <label class="text-muted small">Trạng thái</label>
                         <p>
-                            @if($booking->status === 'Paid')
+                            @if($booking->isPaid())
                                 <span class="badge bg-success"><i class="fas fa-check-circle"></i> Đã Thanh Toán</span>
-                            @elseif($booking->status === 'Pending')
+                            @elseif($booking->isPending())
                                 <span class="badge bg-warning"><i class="fas fa-clock"></i> Chờ Xử Lý</span>
-                            @elseif($booking->status === 'Used')
+                            @elseif($booking->isUsed())
                                 <span class="badge bg-info"><i class="fas fa-check"></i> Đã Sử Dụng</span>
-                            @elseif($booking->status === 'Cancelled')
+                            @elseif($booking->isCancelled())
                                 <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Đã Hủy</span>
+                            @elseif($booking->isExpired())
+                                <span class="badge bg-secondary"><i class="fas fa-clock"></i> Hết Hạn</span>
+                            @else
+                                <span class="badge bg-secondary">{{ $booking->status_label }}</span>
                             @endif
                         </p>
                     </div>

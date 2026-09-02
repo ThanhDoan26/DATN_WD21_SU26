@@ -144,7 +144,9 @@ Route::get('/tickets/{token}', function ($token) {
     }
 
     // Nếu người quét là Khách hàng (User gốc của vé) hoặc chưa đăng nhập
-    $booking = \App\Models\Booking::where('ticket_token', $token)->first();
+    $booking = \App\Models\Booking::where('ticket_token', $token)
+        ->orWhere('booking_code', $token)
+        ->first();
     if ($booking) {
         return redirect()->route('booking.history.show', ['bookingCode' => $booking->booking_code]);
     }

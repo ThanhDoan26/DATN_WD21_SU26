@@ -274,4 +274,14 @@ class Showtime extends Model
         $bookedCount = $this->getBookedSeatsCount();
         return round(($bookedCount / $totalSeats) * 100, 2);
     }
+
+    /**
+     * Kiểm tra suất chiếu đã phát sinh vé đặt thực tế (không tính đơn hủy)
+     */
+    public function hasActiveBookings(): bool
+    {
+        return $this->bookings()
+            ->whereNotIn('status', [Booking::STATUS_CANCELLED, 'cancelled', 'Cancelled'])
+            ->exists();
+    }
 }

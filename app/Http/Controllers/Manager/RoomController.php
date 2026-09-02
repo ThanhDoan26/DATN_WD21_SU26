@@ -446,7 +446,7 @@ class RoomController extends Controller
         ]);
     }
 
-    public function getBySeatsByRoom($roomId)
+    public function getBySeatsByRoom(\Illuminate\Http\Request $request, $roomId)
     {
         // Kiểm tra phòng có thuộc rạp của Manager không
         $room = Room::where('cinema_id', Auth::user()->cinema_id)->findOrFail($roomId);
@@ -458,6 +458,21 @@ class RoomController extends Controller
 
         $seatBookingStateService = app(SeatBookingStateService::class);
         $seats = $seatBookingStateService->enrichSeatsWithBookingState($seats, $room->id);
+
+        $showtimeId = $request->query('showtime_id');
+        if ($showtimeId) {
+            $bookedSeatIds = \Illuminate\Support\Facades\DB::table('booked_seats')
+                ->join('bookings', 'booked_seats.booking_id', '=', 'bookings.id')
+                ->where('bookings.showtime_id', $showtimeId)
+                ->whereNotIn('bookings.status', [\App\Models\Booking::STATUS_CANCELLED, 'cancelled', 'Cancelled'])
+                ->pluck('booked_seats.seat_id')
+                ->toArray();
+
+            $seats = $seats->map(function ($seat) use ($bookedSeatIds) {
+                $seat->is_booked_in_showtime = in_array($seat->id, $bookedSeatIds);
+                return $seat;
+            });
+        }
 
         return response()->json($seats);
     }

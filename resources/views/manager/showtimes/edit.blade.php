@@ -241,8 +241,13 @@
                 </div>
                 <div class="col-md-6">
                     <div class="mb-3">
-                        <label for="surcharge" class="form-label">Phụ thu suất chiếu (VNĐ / ghế)</label>
-                        <input type="number" step="0.01" min="0" id="surcharge" name="surcharge" class="form-control @error('surcharge') is-invalid @enderror" value="{{ old('surcharge', $showtime->surcharge) }}" {{ $isTerminalState ? 'disabled' : '' }}>
+                        <label for="surcharge" class="form-label fw-bold">
+                            Phụ thu suất chiếu (VNĐ / ghế)
+                            @if(isset($hasBookings) && $hasBookings)
+                                <span class="badge bg-warning text-dark ms-1"><i class="fas fa-lock"></i> Đã khóa do có vé đặt</span>
+                            @endif
+                        </label>
+                        <input type="number" step="0.01" min="0" id="surcharge" name="surcharge" class="form-control @error('surcharge') is-invalid @enderror" value="{{ old('surcharge', $showtime->surcharge) }}" {{ ($isTerminalState || (isset($hasBookings) && $hasBookings)) ? 'readonly' : '' }}>
                         @error('surcharge')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -251,35 +256,66 @@
             </div>
 
             <hr class="my-4">
-            <h5 class="mb-3"><i class="fas fa-ticket-alt"></i> Cấu Hình Giá Vé & Sơ Đồ Ghế</h5>
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="mb-0"><i class="fas fa-ticket-alt text-primary"></i> Cấu Hình Giá Vé & Sơ Đồ Ghế</h5>
+                @if(isset($hasBookings) && $hasBookings)
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1.5">
+                        <i class="fas fa-lock me-1"></i> Đã khóa giá vé & phụ thu (Đã có vé đặt)
+                    </span>
+                @endif
+            </div>
+
+            @if(isset($hasBookings) && $hasBookings)
+                <div class="alert alert-warning border-0 shadow-sm rounded-3 py-2.5 px-3 mb-4 d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle fa-lg text-warning me-2.5 flex-shrink-0"></i>
+                    <div class="small">
+                        <strong>Suất chiếu đã phát sinh vé đặt của khách hàng:</strong> Để đảm bảo tính toàn vẹn dữ liệu tài chính và vé đã xuất, các trường <em>Phim, Phòng chiếu, Giờ bắt đầu, Phụ thu</em> và <em>Bảng giá vé các loại ghế</em> đã được khóa chỉnh sửa.
+                    </div>
+                </div>
+            @endif
             
             <div class="row mb-4" id="ticket-prices-section" style="display: none;">
                 <div class="col-md-4">
-                    <label class="form-label text-success fw-bold">Giá Ghế Regular (VNĐ) *</label>
-                    <input type="text" id="price_Regular" name="ticket_prices[Regular]" class="form-control price-input @error('ticket_prices.Regular') is-invalid @enderror" value="{{ old('ticket_prices.Regular', $prices['Regular'] ?? '') }}" placeholder="VD: 80.000" {{ $isTerminalState ? 'disabled' : '' }}>
+                    <label class="form-label text-success fw-bold">
+                        Giá Ghế Regular (VNĐ) *
+                        @if(isset($hasBookings) && $hasBookings)
+                            <i class="fas fa-lock text-warning ms-1" title="Đã khóa"></i>
+                        @endif
+                    </label>
+                    <input type="text" id="price_Regular" name="ticket_prices[Regular]" class="form-control price-input @error('ticket_prices.Regular') is-invalid @enderror" value="{{ old('ticket_prices.Regular', $prices['Regular'] ?? '') }}" placeholder="VD: 80.000" {{ ($isTerminalState || (isset($hasBookings) && $hasBookings)) ? 'readonly' : '' }}>
                     @error('ticket_prices.Regular')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label text-warning fw-bold">Giá Ghế VIP (VNĐ) *</label>
-                    <input type="text" id="price_VIP" name="ticket_prices[VIP]" class="form-control price-input @error('ticket_prices.VIP') is-invalid @enderror" value="{{ old('ticket_prices.VIP', $prices['VIP'] ?? '') }}" placeholder="VD: 100.000" {{ $isTerminalState ? 'disabled' : '' }}>
+                    <label class="form-label text-warning fw-bold">
+                        Giá Ghế VIP (VNĐ) *
+                        @if(isset($hasBookings) && $hasBookings)
+                            <i class="fas fa-lock text-warning ms-1" title="Đã khóa"></i>
+                        @endif
+                    </label>
+                    <input type="text" id="price_VIP" name="ticket_prices[VIP]" class="form-control price-input @error('ticket_prices.VIP') is-invalid @enderror" value="{{ old('ticket_prices.VIP', $prices['VIP'] ?? '') }}" placeholder="VD: 100.000" {{ ($isTerminalState || (isset($hasBookings) && $hasBookings)) ? 'readonly' : '' }}>
                     @error('ticket_prices.VIP')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label text-danger fw-bold">Giá Ghế Sweetbox (VNĐ) *</label>
-                    <input type="text" id="price_Sweetbox" name="ticket_prices[Sweetbox]" class="form-control price-input @error('ticket_prices.Sweetbox') is-invalid @enderror" value="{{ old('ticket_prices.Sweetbox', $prices['Sweetbox'] ?? '') }}" placeholder="VD: 160.000" {{ $isTerminalState ? 'disabled' : '' }}>
+                    <label class="form-label text-danger fw-bold">
+                        Giá Ghế Sweetbox (VNĐ) *
+                        @if(isset($hasBookings) && $hasBookings)
+                            <i class="fas fa-lock text-warning ms-1" title="Đã khóa"></i>
+                        @endif
+                    </label>
+                    <input type="text" id="price_Sweetbox" name="ticket_prices[Sweetbox]" class="form-control price-input @error('ticket_prices.Sweetbox') is-invalid @enderror" value="{{ old('ticket_prices.Sweetbox', $prices['Sweetbox'] ?? '') }}" placeholder="VD: 160.000" {{ ($isTerminalState || (isset($hasBookings) && $hasBookings)) ? 'readonly' : '' }}>
                     @error('ticket_prices.Sweetbox')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
             </div>
 
-            <div class="row mb-4">
+            <div class="row mb-4" id="seat-map-wrapper" style="display: none;">
                 <div class="col-lg-8">
-                    <div class="seat-map-wrapper">
+                    <div class="seat-map-wrapper-inner">
                         <div class="seat-map-header text-center mb-3">
                             <h5 class="fw-bold mb-1">Sơ Đồ Ghế Phòng Chiếu</h5>
                             <span class="badge bg-secondary font-weight-normal" id="selected-room-info">Đang tải...</span>
@@ -289,12 +325,13 @@
                             <div class="legend-item"><div class="legend-box bg-sky"></div> Regular</div>
                             <div class="legend-item"><div class="legend-box bg-gold"></div> VIP</div>
                             <div class="legend-item"><div class="legend-box bg-pink"></div> Sweetbox</div>
+                            <div class="legend-item"><div class="legend-box bg-booked"></div> Đã Đặt</div>
                             <div class="legend-item"><div class="legend-box bg-secondary"></div> Ghế Hỏng</div>
                         </div>
 
-                        <div class="cinema-screen">MÀN HÌNH CHIẾU</div>
+                        <div class="cinema-screen"><i class="fas fa-tv me-1"></i> MÀN HÌNH CHIẾU</div>
 
-                        <div id="seat-grid-container" class="seat-layout-container">
+                        <div id="seatsGrid">
                             <!-- Seat grid will be rendered dynamically here -->
                         </div>
                     </div>
@@ -339,18 +376,17 @@
     .seat.regular { background-color: #0ea5e9; border-color: #0284c7; }
     .seat.vip { background-color: #f59e0b; color: #1e293b; border-color: #d97706; }
     .seat.sweetbox { background-color: #ec4899; width: 90px; border-color: #db2777; }
+    .seat.booked { background-color: #dc2626 !important; border-color: #b91c1c !important; color: #ffffff !important; }
     .seat.unavailable { background-color: #cbd5e1 !important; border-color: #94a3b8 !important; color: #64748b !important; cursor: not-allowed; box-shadow: none; opacity: 0.75; }
     .seat.selected-active { background-color: #22c55e !important; border-color: #16a34a !important; color: #ffffff !important; outline: none !important; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.4); animation: pulseSelection 1.5s infinite; }
     @keyframes pulseSelection { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
     .seat-legend { display: flex; gap: 20px; margin: 10px 0 30px 0; flex-wrap: wrap; justify-content: center; background-color: #f8fafc; padding: 15px 25px; border-radius: 12px; border: 1px solid #e2e8f0; }
-    .seat.selected-active { outline: 3px solid var(--primary-color); outline-offset: 2px; animation: pulseSelection 1.5s infinite; }
-    @keyframes pulseSelection { 0% { outline-color: rgba(13, 148, 136, 0.8); } 50% { outline-color: rgba(13, 148, 136, 0.1); } 100% { outline-color: rgba(13, 148, 136, 0.8); } }
-    .seat-legend { display: flex; gap: 20px; margin: 10px 0 30px 0; flex-wrap: wrap; justify-content: center; background-color: var(--bg-base); padding: 15px 25px; border-radius: 12px; border: 1px solid var(--border-light); }
     .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 500; color: #475569; }
     .legend-box { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.65rem; font-weight: 700; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
     .bg-sky { background-color: #0ea5e9 !important; color: #ffffff; }
     .bg-pink { background-color: #ec4899 !important; color: #ffffff; }
     .bg-gold { background-color: #f59e0b !important; color: #1e293b; }
+    .bg-booked { background-color: #dc2626 !important; color: #ffffff; }
 </style>
 @endsection
 
@@ -396,37 +432,49 @@
 
         function loadSeatMap(roomId) {
             if (!roomId) {
-                seatMapWrapper.style.display = 'none';
-                ticketPricesSection.style.display = 'none';
+                if (seatMapWrapper) seatMapWrapper.style.display = 'none';
+                if (ticketPricesSection) ticketPricesSection.style.display = 'none';
                 return;
             }
 
-            fetch(`/manager/seats/by-room/${roomId}`)
+            const roomText = roomSelect.options[roomSelect.selectedIndex] ? roomSelect.options[roomSelect.selectedIndex].text : '';
+            const roomInfoBadge = document.getElementById('selected-room-info');
+            if (roomInfoBadge) {
+                roomInfoBadge.textContent = roomText || 'Đang tải...';
+                roomInfoBadge.className = 'badge bg-primary font-weight-normal';
+            }
+
+            const showtimeId = '{{ $showtime->id }}';
+            const fetchUrl = `/manager/seats/by-room/${roomId}?showtime_id=${showtimeId}`;
+
+            fetch(fetchUrl)
                 .then(response => response.json())
                 .then(seats => {
                     const grid = document.getElementById('seatsGrid');
+                    if (!grid) return;
                     grid.innerHTML = '';
                     
                     if (seats.length === 0) {
-                        grid.innerHTML = '<p class="text-danger text-center">Phòng chiếu này chưa có cấu hình ghế.</p>';
-                        seatMapWrapper.style.display = 'flex';
+                        grid.innerHTML = '<p class="text-danger text-center py-4">Phòng chiếu này chưa có cấu hình ghế.</p>';
+                        if (seatMapWrapper) seatMapWrapper.style.display = 'flex';
                         return;
                     }
 
-                    seatMapWrapper.style.display = 'flex';
-                    ticketPricesSection.style.display = 'flex';
+                    if (seatMapWrapper) seatMapWrapper.style.display = 'flex';
+                    if (ticketPricesSection) ticketPricesSection.style.display = 'flex';
                     
                     const typesInRoom = [...new Set(seats.map(s => s.seat_type))];
                     ['Regular', 'VIP', 'Sweetbox'].forEach(type => {
                         const input = document.getElementById(`price_${type}`);
-                        const inputDiv = input.parentElement;
-                        if (typesInRoom.includes(type)) {
-                            inputDiv.style.display = 'block';
-                            input.setAttribute('required', 'required');
-                        } else {
-                            inputDiv.style.display = 'none';
-                            input.removeAttribute('required');
-                            // No clear value on edit
+                        if (input) {
+                            const inputDiv = input.closest('.col-md-4');
+                            if (typesInRoom.includes(type)) {
+                                if (inputDiv) inputDiv.style.display = 'block';
+                                input.setAttribute('required', 'required');
+                            } else {
+                                if (inputDiv) inputDiv.style.display = 'none';
+                                input.removeAttribute('required');
+                            }
                         }
                     });
 
@@ -456,15 +504,26 @@
                         
                         sortedSeats.forEach(seat => {
                             const seatDiv = document.createElement('div');
-                            seatDiv.className = `seat ${seat.seat_type.toLowerCase()} ${seat.status.toLowerCase()}`;
+                            const isBooked = seat.is_booked_in_showtime;
+                            const isUnavailable = seat.status === 'UNAVAILABLE';
                             
-                            if (seat.status === 'UNAVAILABLE') {
+                            let seatClass = `seat ${seat.seat_type.toLowerCase()}`;
+                            if (isBooked) {
+                                seatClass += ' booked';
+                            } else if (isUnavailable) {
+                                seatClass += ' unavailable';
+                            }
+                            seatDiv.className = seatClass;
+                            
+                            if (isBooked) {
+                                seatDiv.innerHTML = `<span style="font-size:0.65rem;">${seat.row_name}${seat.seat_number}</span>`;
+                            } else if (isUnavailable) {
                                 seatDiv.innerHTML = `<i class="fas fa-wrench" title="Ghế Hỏng"></i>`;
                             } else {
                                 seatDiv.textContent = `${seat.row_name}${seat.seat_number}`;
                             }
                             
-                            seatDiv.title = `Ghế ${seat.row_name}${seat.seat_number} - Loại: ${seat.seat_type} - Trạng thái: ${seat.status}`;
+                            seatDiv.title = `Ghế ${seat.row_name}${seat.seat_number} - Loại: ${seat.seat_type}` + (isBooked ? ' (Đã Có Khách Đặt)' : (isUnavailable ? ' (Ghế Hỏng)' : ' (Còn Trống)'));
                             seatDiv.onclick = () => {
                                 if (selectedSeatElement) {
                                     selectedSeatElement.classList.remove('selected-active');
@@ -474,16 +533,29 @@
 
                                 const priceInput = document.getElementById(`price_${seat.seat_type}`);
                                 const currentPrice = priceInput && priceInput.value ? priceInput.value.replace(/\./g, '') : 0;
+                                const surchargeInput = document.getElementById('surcharge');
+                                const surchargeVal = surchargeInput ? parseFloat(surchargeInput.value || 0) : 0;
+                                const totalPrice = parseFloat(currentPrice) + surchargeVal;
                                 
                                 const typeClass = seat.seat_type === 'Regular' ? 'bg-sky' : (seat.seat_type === 'VIP' ? 'bg-gold' : 'bg-pink');
+                                
+                                let bookingStatusBadge = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Còn trống</span>';
+                                if (isBooked) {
+                                    bookingStatusBadge = '<span class="badge bg-danger"><i class="fas fa-user-check me-1"></i>Đã có khách đặt</span>';
+                                } else if (isUnavailable) {
+                                    bookingStatusBadge = '<span class="badge bg-secondary"><i class="fas fa-wrench me-1"></i>Ghế hỏng</span>';
+                                }
 
                                 seatDetailCard.innerHTML = `
                                     <h4 class="text-primary mb-3">Ghế: ${seat.row_name}${seat.seat_number}</h4>
-                                    <p><strong>Loại ghế:</strong> <span class="badge ${typeClass}">${seat.seat_type}</span></p>
-                                    <p><strong>Trạng thái:</strong> <span class="badge bg-${seat.status === 'AVAILABLE' ? 'success' : 'danger'}">${seat.status}</span></p>
+                                    <p class="mb-2"><strong>Loại ghế:</strong> <span class="badge ${typeClass}">${seat.seat_type}</span></p>
+                                    <p class="mb-2"><strong>Tình trạng đặt:</strong> ${bookingStatusBadge}</p>
+                                    <p class="mb-2"><strong>Trạng thái vật lý:</strong> <span class="badge bg-${seat.status === 'AVAILABLE' ? 'success' : 'danger'}">${seat.status}</span></p>
                                     <hr>
-                                    <h5 class="text-success">Giá vé: ${currentPrice > 0 ? formatCurrency(currentPrice) : '<em>Chưa nhập giá</em>'}</h5>
-                                    <small class="text-muted">(Giá hiển thị dựa trên cấu hình bạn đang nhập bên trên)</small>
+                                    <p class="mb-1 text-muted">Giá vé cơ bản: <strong class="text-dark">${currentPrice > 0 ? formatCurrency(currentPrice) : 'Chưa nhập giá'}</strong></p>
+                                    <p class="mb-2 text-muted">Phụ thu suất chiếu: <strong class="text-dark">+${formatCurrency(surchargeVal)}</strong></p>
+                                    <h5 class="text-success mt-2">Tổng giá vé: ${totalPrice > 0 ? formatCurrency(totalPrice) : '<em>0 đ</em>'}</h5>
+                                    <small class="text-muted">(Giá hiển thị đã bao gồm phụ thu)</small>
                                 `;
                             };
                             
@@ -502,7 +574,11 @@
                     
                     grid.appendChild(container);
                 })
-                .catch(error => console.error('Error fetching seats:', error));
+                .catch(error => {
+                    console.error('Error fetching seats:', error);
+                    const grid = document.getElementById('seatsGrid');
+                    if (grid) grid.innerHTML = '<p class="text-danger text-center py-4">Lỗi tải sơ đồ ghế. Vui lòng thử lại.</p>';
+                });
         }
 
         const movieSelect = document.getElementById('movie_id');
